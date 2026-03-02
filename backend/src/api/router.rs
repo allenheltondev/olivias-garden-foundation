@@ -1,5 +1,6 @@
 use crate::handlers::{
-    billing, catalog, claim, claim_read, crop, feed, listing, listing_discovery, request, user,
+    billing, catalog, claim, claim_read, crop, feed, listing, listing_discovery, reminder, request,
+    user,
 };
 use crate::middleware::correlation::{
     add_correlation_id_to_response, extract_or_generate_correlation_id,
@@ -78,6 +79,9 @@ pub async fn route_request(event: &Request) -> Result<Response<Body>, lambda_htt
         ("GET", "/claims") => handle(claim_read::list_claims(event, &correlation_id).await)?,
         ("POST", "/claims") => handle(claim::create_claim(event, &correlation_id).await)?,
 
+        ("GET", "/reminders") => handle(reminder::list_reminders(event, &correlation_id).await)?,
+        ("POST", "/reminders") => handle(reminder::create_reminder(event, &correlation_id).await)?,
+
         ("GET", "/catalog/crops") => handle(catalog::list_catalog_crops().await)?,
 
         _ => route_dynamic_routes(event, &correlation_id).await?,
@@ -129,6 +133,14 @@ async fn route_dynamic_routes(
     if let Some(request_id) = event.uri().path().strip_prefix("/requests/") {
         let result = match event.method().as_str() {
             "PUT" => request::update_request(event, correlation_id, request_id).await,
+            _ => method_not_allowed(),
+        };
+        return handle(result);
+    }
+
+    if let Some(reminder_id) = event.uri().path().strip_prefix("/reminders/") {
+        let result = match event.method().as_str() {
+            "PUT" => reminder::update_reminder_status(event, correlation_id, reminder_id).await,
             _ => method_not_allowed(),
         };
         return handle(result);

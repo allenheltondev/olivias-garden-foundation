@@ -6,5 +6,6 @@ pub mod crop;
 pub mod feed;
 pub mod listing;
 pub mod listing_discovery;
+pub mod reminder;
 pub mod request;
 pub mod user;
