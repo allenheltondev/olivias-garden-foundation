@@ -4,18 +4,22 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { SearcherRequestPanel } from './SearcherRequestPanel';
 import {
+  createCheckoutSession,
   createRequest,
   discoverListings,
   getDerivedFeed,
+  getEntitlements,
   listCatalogCrops,
   updateRequest,
 } from '../../services/api';
 import { createClaim, updateClaimStatus } from '../../services/claims';
 
 vi.mock('../../services/api', () => ({
+  createCheckoutSession: vi.fn(),
   createRequest: vi.fn(),
   discoverListings: vi.fn(),
   getDerivedFeed: vi.fn(),
+  getEntitlements: vi.fn(),
   listCatalogCrops: vi.fn(),
   updateRequest: vi.fn(),
 }));
@@ -25,9 +29,11 @@ vi.mock('../../services/claims', () => ({
   updateClaimStatus: vi.fn(),
 }));
 
+const mockCreateCheckoutSession = vi.mocked(createCheckoutSession);
 const mockCreateRequest = vi.mocked(createRequest);
 const mockDiscoverListings = vi.mocked(discoverListings);
 const mockGetDerivedFeed = vi.mocked(getDerivedFeed);
+const mockGetEntitlements = vi.mocked(getEntitlements);
 const mockListCatalogCrops = vi.mocked(listCatalogCrops);
 const mockUpdateRequest = vi.mocked(updateRequest);
 const mockCreateClaim = vi.mocked(createClaim);
@@ -169,6 +175,21 @@ describe('SearcherRequestPanel', () => {
       offset: 0,
       hasMore: false,
       nextOffset: null,
+    });
+
+    mockGetEntitlements.mockResolvedValue({
+      tier: 'premium',
+      entitlementsVersion: 'v1',
+      entitlements: ['ai.feed_insights.read'],
+      policy: {
+        aiIsPremiumOnly: true,
+        freeRemindersDeterministicOnly: true,
+      },
+    });
+
+    mockCreateCheckoutSession.mockResolvedValue({
+      checkoutUrl: 'https://checkout.stripe.test/session_123',
+      checkoutSessionId: 'cs_test_123',
     });
 
     mockCreateRequest.mockResolvedValue({
@@ -461,6 +482,23 @@ describe('SearcherRequestPanel', () => {
     expect(marketSnapshot).toBeInTheDocument();
     expect(within(marketSnapshot).getByText(/likely scarce/i)).toBeInTheDocument();
     expect(within(marketSnapshot).getByText(/likely abundant/i)).toBeInTheDocument();
+  });
+
+  it('shows premium upgrade prompt when AI entitlement is missing', async () => {
+    mockGetEntitlements.mockResolvedValueOnce({
+      tier: 'free',
+      entitlementsVersion: 'v1',
+      entitlements: [],
+      policy: {
+        aiIsPremiumOnly: true,
+        freeRemindersDeterministicOnly: true,
+      },
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText(/ai insights are a premium feature/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /unlock premium ai/i })).toBeInTheDocument();
   });
 
   it('supports opt-out for AI insights while preserving core listing flow', async () => {
