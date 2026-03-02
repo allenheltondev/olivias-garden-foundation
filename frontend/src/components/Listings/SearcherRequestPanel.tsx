@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  createCheckoutSession,
   createRequest,
   discoverListings,
   getDerivedFeed,
+  getEntitlements,
   listCatalogCrops,
   updateRequest,
 } from '../../services/api';
@@ -249,6 +251,7 @@ export function SearcherRequestPanel({
   const [aiInsightsOptOut, setAiInsightsOptOut] = useState<boolean>(() =>
     loadAiOptOutPreference(viewerUserId)
   );
+  const [isStartingUpgrade, setIsStartingUpgrade] = useState(false);
   const [sessionRequests, setSessionRequests] = useState<RequestItem[]>([]);
   const [sessionClaims, setSessionClaims] = useState<Claim[]>(() => loadSessionClaims(viewerUserId));
   const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
@@ -356,6 +359,16 @@ export function SearcherRequestPanel({
     staleTime: 30 * 1000,
   });
 
+  const entitlementsQuery = useQuery({
+    queryKey: ['meEntitlements'],
+    queryFn: getEntitlements,
+    staleTime: 60 * 1000,
+    retry: 1,
+  });
+
+  const hasPremiumAiInsights =
+    entitlementsQuery.data?.entitlements?.includes('ai.feed_insights.read') ?? false;
+
   const derivedFeedQuery = useQuery({
     queryKey: ['derivedFeed', gathererGeoKey],
     queryFn: () =>
@@ -365,7 +378,8 @@ export function SearcherRequestPanel({
         limit: 20,
         offset: 0,
       }),
-    enabled: Boolean(gathererGeoKey) && !isOffline && !aiInsightsOptOut,
+    enabled:
+      Boolean(gathererGeoKey) && !isOffline && !aiInsightsOptOut && hasPremiumAiInsights,
     staleTime: 30 * 1000,
   });
 
@@ -492,6 +506,26 @@ export function SearcherRequestPanel({
     setSubmitError(null);
     setSuccessMessage(null);
     setDraft(createDefaultDraft());
+  };
+
+  const handleStartUpgrade = async () => {
+    try {
+      setIsStartingUpgrade(true);
+      const origin = window.location.origin;
+      const session = await createCheckoutSession({
+        successUrl: `${origin}/?upgrade=success`,
+        cancelUrl: `${origin}/?upgrade=cancelled`,
+      });
+      window.location.assign(session.checkoutUrl);
+    } catch (error) {
+      logger.error(
+        `Failed to start premium upgrade checkout: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    } finally {
+      setIsStartingUpgrade(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -746,39 +780,55 @@ export function SearcherRequestPanel({
                 Optional summaries are labeled as AI-assisted and can be turned off any time.
               </p>
             </div>
-            <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
-              <input
-                type="checkbox"
-                checked={!aiInsightsOptOut}
-                onChange={(event) => setAiInsightsOptOut(!event.target.checked)}
-                aria-label="Show AI-assisted insights"
-              />
-              Show AI insights
-            </label>
+            {hasPremiumAiInsights ? (
+              <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
+                <input
+                  type="checkbox"
+                  checked={!aiInsightsOptOut}
+                  onChange={(event) => setAiInsightsOptOut(!event.target.checked)}
+                  aria-label="Show AI-assisted insights"
+                />
+                Show AI insights
+              </label>
+            ) : (
+              <Button
+                onClick={() => void handleStartUpgrade()}
+                variant="primary"
+                disabled={isStartingUpgrade}
+              >
+                {isStartingUpgrade ? 'Opening checkout...' : 'Unlock Premium AI'}
+              </Button>
+            )}
           </div>
 
           <p className="text-xs text-neutral-500">
-            We only show AI-generated summary text when enabled. Core listing and request flows always remain available.
+            We only show AI-generated summary text for Premium accounts when enabled. Core listing and request flows always remain available.
           </p>
         </div>
 
-        {aiInsightsOptOut && (
+        {!hasPremiumAiInsights && (
+          <p className="rounded-base border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700" role="status">
+            AI insights are a Premium feature. Upgrade to unlock personalized weekly guidance.
+          </p>
+        )}
+
+        {hasPremiumAiInsights && aiInsightsOptOut && (
           <p className="rounded-base border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700" role="status">
             AI insights are off for this account on this device.
           </p>
         )}
 
-        {!aiInsightsOptOut && derivedFeedQuery.isLoading && (
+        {hasPremiumAiInsights && !aiInsightsOptOut && derivedFeedQuery.isLoading && (
           <p className="text-sm text-neutral-600" role="status">Loading AI insights...</p>
         )}
 
-        {!aiInsightsOptOut && derivedFeedQuery.isError && (
+        {hasPremiumAiInsights && !aiInsightsOptOut && derivedFeedQuery.isError && (
           <p className="rounded-base border border-warning bg-accent-50 px-3 py-2 text-sm text-neutral-800" role="status">
             AI insights are temporarily unavailable. You can still discover listings and submit requests.
           </p>
         )}
 
-        {!aiInsightsOptOut && derivedFeedQuery.data?.aiSummary && (
+        {hasPremiumAiInsights && !aiInsightsOptOut && derivedFeedQuery.data?.aiSummary && (
           <div className="rounded-base border border-primary-200 bg-primary-50 px-3 py-3" data-testid="ai-summary-card">
             <div className="mb-2 inline-flex items-center rounded-full border border-primary-300 bg-white px-2 py-0.5 text-xs font-medium text-primary-700">
               AI-assisted
@@ -790,7 +840,7 @@ export function SearcherRequestPanel({
           </div>
         )}
 
-        {!aiInsightsOptOut && marketSnapshot && (
+        {hasPremiumAiInsights && !aiInsightsOptOut && marketSnapshot && (
           <div className="rounded-base border border-neutral-200 bg-white px-3 py-3" data-testid="market-snapshot-card">
             <h5 className="text-sm font-semibold text-neutral-900">Market snapshot (last 7 days)</h5>
             <p className="mt-1 text-xs text-neutral-600">
@@ -1053,3 +1103,4 @@ export function SearcherRequestPanel({
 }
 
 export default SearcherRequestPanel;
+

@@ -698,6 +698,26 @@ export interface DerivedFeedQuery {
   offset?: number;
 }
 
+export interface EntitlementsResponse {
+  tier: string;
+  entitlementsVersion: string;
+  entitlements: string[];
+  policy: {
+    aiIsPremiumOnly: boolean;
+    freeRemindersDeterministicOnly: boolean;
+  };
+}
+
+export interface CreateCheckoutSessionRequest {
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export interface CreateCheckoutSessionResponse {
+  checkoutUrl: string;
+  checkoutSessionId: string;
+}
+
 export async function getDerivedFeed({
   geoKey,
   windowDays = 7,
@@ -712,6 +732,19 @@ export async function getDerivedFeed({
 
   const response = await apiFetch<RawDerivedFeedResponse>(`/feed/derived?${params.toString()}`);
   return mapDerivedFeedResponse(response);
+}
+
+export async function getEntitlements(): Promise<EntitlementsResponse> {
+  return apiFetch<EntitlementsResponse>('/me/entitlements');
+}
+
+export async function createCheckoutSession(
+  payload: CreateCheckoutSessionRequest
+): Promise<CreateCheckoutSessionResponse> {
+  return apiFetch<CreateCheckoutSessionResponse>('/billing/checkout-session', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createRequest(
