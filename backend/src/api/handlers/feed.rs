@@ -2,7 +2,7 @@ use crate::ai::{SummaryArtifact, SummaryGenerator};
 use crate::auth::extract_auth_context;
 use crate::db;
 use crate::location;
-use crate::middleware::entitlements;
+use crate::middleware::{ai_guardrails, entitlements};
 use crate::models::feed::{
     DerivedFeedAiSummary, DerivedFeedFreshness, DerivedFeedResponse, DerivedFeedSignal,
     GrowerGuidance, GrowerGuidanceExplanation, GrowerGuidanceSignalRef,
@@ -160,12 +160,25 @@ pub async fn get_derived_feed(
         .await
         .is_ok()
     {
-        load_or_generate_ai_summary(&client, &geo_prefix, query.window_days, &signals)
-            .await
-            .unwrap_or_else(|error| {
-                tracing::warn!(error = %error, "AI summary generation failed; degrading gracefully");
-                None
-            })
+        let model_id = std::env::var("BEDROCK_MODEL_PRIMARY")
+            .or_else(|_| std::env::var("BEDROCK_MODEL_ID"))
+            .unwrap_or_else(|_| "amazon.nova-lite-v1:0".to_string());
+
+        let guardrails =
+            ai_guardrails::enforce_and_record(&client, user_id, "ai.feed_insights.read", &model_id)
+                .await
+                .ok();
+
+        if matches!(guardrails.as_ref().map(|g| g.allowed), Some(false)) {
+            None
+        } else {
+            load_or_generate_ai_summary(&client, &geo_prefix, query.window_days, &signals)
+                .await
+                .unwrap_or_else(|error| {
+                    tracing::warn!(error = %error, "AI summary generation failed; degrading gracefully");
+                    None
+                })
+        }
     } else {
         None
     };

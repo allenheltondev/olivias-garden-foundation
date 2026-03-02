@@ -1,6 +1,6 @@
 use crate::auth::extract_auth_context;
 use crate::db;
-use crate::middleware::entitlements;
+use crate::middleware::{ai_guardrails, entitlements};
 use lambda_http::{Body, Request, Response};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
@@ -87,12 +87,31 @@ pub async fn generate_weekly_plan(
         .unwrap_or_else(|_| "amazon.nova-lite-v1:0".to_string());
     let model_version = std::env::var("BEDROCK_MODEL_VERSION").unwrap_or_else(|_| "v1".to_string());
 
+    let guardrails = ai_guardrails::enforce_and_record(
+        &client,
+        user_id,
+        "ai.copilot.weekly_grow_plan",
+        &model_id,
+    )
+    .await?;
+
+    if !guardrails.allowed {
+        return error_response(
+            429,
+            guardrails
+                .reason
+                .as_deref()
+                .unwrap_or("ai_guardrail_blocked"),
+        );
+    }
+
     tracing::info!(
         correlation_id = correlation_id,
         user_id = %user_id,
         geo_prefix,
         window_days,
         recommendation_count = recommendations.len(),
+        estimated_tokens = guardrails.estimated_tokens,
         "Generated premium weekly grow plan"
     );
 
