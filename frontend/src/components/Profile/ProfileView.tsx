@@ -6,6 +6,7 @@ import { PlantLoader } from '../branding/PlantLoader';
 import { Button } from '../ui/Button';
 import { GrowerListingPanel } from '../Listings/GrowerListingPanel';
 import { SearcherRequestPanel } from '../Listings/SearcherRequestPanel';
+import { ReminderPanel } from '../Reminders/ReminderPanel';
 
 /**
  * ProfileView Component
@@ -182,6 +183,8 @@ export function ProfileView() {
               defaultRadiusMiles={profile.gathererProfile?.searchRadiusMiles}
             />
           )}
+
+          <ReminderPanel />
 
           <Button
             onClick={handleSignOut}

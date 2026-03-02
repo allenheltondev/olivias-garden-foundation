@@ -718,6 +718,33 @@ export interface CreateCheckoutSessionResponse {
   checkoutSessionId: string;
 }
 
+export type ReminderType = 'watering' | 'harvest' | 'fertilizer' | 'checkin' | 'custom';
+
+export interface ReminderItem {
+  id: string;
+  title: string;
+  reminderType: ReminderType;
+  cadenceDays: number;
+  startDate: string;
+  timezone: string;
+  status: 'active' | 'paused';
+  nextRunAt: string;
+  lastRunAt: string | null;
+  createdAt: string;
+}
+
+export interface ReminderListResponse {
+  items: ReminderItem[];
+}
+
+export interface CreateReminderRequest {
+  title: string;
+  reminderType: ReminderType;
+  cadenceDays: number;
+  startDate: string;
+  timezone?: string;
+}
+
 export async function getDerivedFeed({
   geoKey,
   windowDays = 7,
@@ -744,6 +771,27 @@ export async function createCheckoutSession(
   return apiFetch<CreateCheckoutSessionResponse>('/billing/checkout-session', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export async function listReminders(): Promise<ReminderListResponse> {
+  return apiFetch<ReminderListResponse>('/reminders');
+}
+
+export async function createReminder(payload: CreateReminderRequest): Promise<ReminderItem> {
+  return apiFetch<ReminderItem>('/reminders', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateReminderStatus(
+  reminderId: string,
+  status: 'active' | 'paused'
+): Promise<ReminderItem> {
+  return apiFetch<ReminderItem>(`/reminders/${encodeURIComponent(reminderId)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
   });
 }
 
