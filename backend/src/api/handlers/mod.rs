@@ -1,3 +1,4 @@
+pub mod ai_copilot;
 pub mod billing;
 pub mod catalog;
 pub mod claim;

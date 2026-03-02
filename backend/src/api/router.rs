@@ -1,6 +1,6 @@
 use crate::handlers::{
-    billing, catalog, claim, claim_read, crop, feed, listing, listing_discovery, reminder, request,
-    user,
+    ai_copilot, billing, catalog, claim, claim_read, crop, feed, listing, listing_discovery,
+    reminder, request, user,
 };
 use crate::middleware::correlation::{
     add_correlation_id_to_response, extract_or_generate_correlation_id,
@@ -64,6 +64,10 @@ pub async fn route_request(event: &Request) -> Result<Response<Body>, lambda_htt
         }
         ("POST", "/billing/webhook") => {
             handle(billing::handle_webhook(event, &correlation_id).await)?
+        }
+
+        ("POST", "/ai/copilot/weekly-plan") => {
+            handle(ai_copilot::generate_weekly_plan(event, &correlation_id).await)?
         }
 
         ("GET", "/crops") => handle(crop::list_my_crops(event, &correlation_id).await)?,
