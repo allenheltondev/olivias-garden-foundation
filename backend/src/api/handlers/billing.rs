@@ -1,5 +1,6 @@
 use crate::auth::extract_auth_context;
 use crate::db;
+use crate::handlers::analytics;
 use lambda_http::{Body, Request, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -75,6 +76,14 @@ pub async fn create_checkout_session(
         .get("id")
         .and_then(Value::as_str)
         .ok_or_else(|| lambda_http::Error::from("Stripe checkout id missing"))?;
+
+    let _ = analytics::log_backend_event(
+        &db::connect().await?,
+        Some(user_id),
+        "checkout_start",
+        Some(serde_json::json!({ "checkoutSessionId": checkout_session_id })),
+    )
+    .await;
 
     tracing::info!(
         correlation_id = correlation_id,
@@ -208,6 +217,17 @@ async fn apply_checkout_session_completed(
             )
             .await
             .map_err(|e| format!("Failed to apply checkout completion: {e}"))?;
+
+        let _ = analytics::log_backend_event(
+            client,
+            Some(user_id),
+            "subscribe",
+            Some(serde_json::json!({
+                "source": "stripe_webhook",
+                "status": "active"
+            })),
+        )
+        .await;
     }
 
     Ok(())
@@ -226,7 +246,7 @@ async fn apply_subscription_update(
 
     if let Some(subscription_id) = stripe_subscription_id {
         let (tier, sub_status) = map_subscription_status(status);
-        client
+        let updated = client
             .execute(
                 "
                 update users
@@ -241,6 +261,24 @@ async fn apply_subscription_update(
             )
             .await
             .map_err(|e| format!("Failed to apply subscription update: {e}"))?;
+
+        if updated > 0 {
+            let event_name = if tier == "premium" {
+                "subscribe"
+            } else {
+                "cancel"
+            };
+            let _ = analytics::log_backend_event(
+                client,
+                None,
+                event_name,
+                Some(serde_json::json!({
+                    "source": "stripe_webhook",
+                    "subscriptionStatus": sub_status
+                })),
+            )
+            .await;
+        }
     }
 
     Ok(())

@@ -174,6 +174,23 @@ create index if not exists idx_ai_usage_events_user_created
 create index if not exists idx_ai_usage_events_feature_created
   on ai_usage_events(feature_key, created_at desc);
 
+create table if not exists premium_analytics_events (
+  id bigserial primary key,
+  user_id uuid references users(id) on delete set null,
+  event_name text not null,
+  event_source text not null default 'backend',
+  metadata jsonb,
+  occurred_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_premium_analytics_events_name_time
+  on premium_analytics_events(event_name, occurred_at desc);
+
+create index if not exists idx_premium_analytics_events_user_time
+  on premium_analytics_events(user_id, occurred_at desc)
+  where user_id is not null;
+
 create table if not exists stripe_webhook_events (
   id text primary key,
   event_type text not null,

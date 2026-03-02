@@ -1,5 +1,5 @@
 use crate::handlers::{
-    agent_task, ai_copilot, billing, catalog, claim, claim_read, crop, feed, listing,
+    agent_task, ai_copilot, analytics, billing, catalog, claim, claim_read, crop, feed, listing,
     listing_discovery, reminder, request, user,
 };
 use crate::middleware::correlation::{
@@ -68,6 +68,13 @@ pub async fn route_request(event: &Request) -> Result<Response<Body>, lambda_htt
 
         ("POST", "/ai/copilot/weekly-plan") => {
             handle(ai_copilot::generate_weekly_plan(event, &correlation_id).await)?
+        }
+
+        ("POST", "/analytics/premium/events") => {
+            handle(analytics::track_premium_event(event, &correlation_id).await)?
+        }
+        ("GET", "/analytics/premium/kpis") => {
+            handle(analytics::get_premium_kpis(event, &correlation_id).await)?
         }
 
         ("GET", "/agent-tasks") => {
