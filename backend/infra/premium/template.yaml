@@ -23,14 +23,6 @@ Resources:
         deadLetterTargetArn: !GetAtt PremiumAgentTaskDlq.Arn
         maxReceiveCount: 5
 
-  PremiumEventArchive:
-    Type: AWS::Events::Archive
-    Properties:
-      ArchiveName: !Sub "${ParentStackName}-premium-events"
-      EventSourceArn: !Ref EventBusArn
-      Description: Premium workflow event archive for replay/recovery
-      RetentionDays: 30
-
 Outputs:
   PremiumAgentTaskQueueUrl:
     Value: !Ref PremiumAgentTaskQueue
