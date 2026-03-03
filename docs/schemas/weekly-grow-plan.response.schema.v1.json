@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://community-garden/schemas/weekly-grow-plan.response.schema.v1.json",
+  "title": "WeeklyGrowPlanResponseV1",
+  "type": "object",
+  "required": [
+    "modelId",
+    "modelVersion",
+    "structuredJson",
+    "geoKey",
+    "windowDays",
+    "recommendations"
+  ],
+  "properties": {
+    "modelId": { "type": "string", "minLength": 1 },
+    "modelVersion": { "type": "string", "minLength": 1 },
+    "structuredJson": { "type": "boolean", "const": true },
+    "geoKey": { "type": "string", "minLength": 4 },
+    "windowDays": { "type": "integer", "enum": [7, 14, 30] },
+    "recommendations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["recommendation", "confidence", "rationale"],
+        "properties": {
+          "recommendation": { "type": "string", "minLength": 1 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "rationale": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
