@@ -2,6 +2,7 @@ use crate::ai_model_config;
 use crate::auth::extract_auth_context;
 use crate::db;
 use crate::middleware::{ai_guardrails, entitlements};
+use crate::structured_json;
 use lambda_http::{Body, Request, Response};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
@@ -115,17 +116,39 @@ pub async fn generate_weekly_plan(
         "Generated premium weekly grow plan"
     );
 
-    json_response(
-        200,
-        &WeeklyPlanResponse {
-            model_id,
-            model_version,
+    let response = WeeklyPlanResponse {
+        model_id,
+        model_version,
+        structured_json: true,
+        geo_key,
+        window_days,
+        recommendations,
+    };
+
+    if let Err(reason) = structured_json::validate_weekly_plan_response(&response) {
+        tracing::warn!(reason = %reason, "Weekly plan schema validation failed; using fallback response");
+
+        let fallback = WeeklyPlanResponse {
+            model_id: response.model_id.clone(),
+            model_version: response.model_version.clone(),
             structured_json: true,
-            geo_key,
-            window_days,
-            recommendations,
-        },
-    )
+            geo_key: response.geo_key.clone(),
+            window_days: response.window_days,
+            recommendations: vec![WeeklyPlanRecommendation {
+                recommendation:
+                    "Use a balanced planting mix this week while local premium insights recalibrate."
+                        .to_string(),
+                confidence: 0.4,
+                rationale: vec![
+                    "Fallback triggered due to response schema validation mismatch.".to_string(),
+                ],
+            }],
+        };
+
+        return json_response(200, &fallback);
+    }
+
+    json_response(200, &response)
 }
 
 fn build_recommendations(rows: &[Row]) -> Vec<WeeklyPlanRecommendation> {

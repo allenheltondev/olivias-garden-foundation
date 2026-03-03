@@ -9,6 +9,7 @@ mod location;
 mod middleware;
 mod models;
 mod router;
+mod structured_json;
 
 async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
     router::route_request(&event).await
