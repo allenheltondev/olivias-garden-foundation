@@ -522,6 +522,6 @@ Outputs:
 
   PremiumStackDeploymentMode:
     Description: Indicates whether premium nested stack deployment is enabled
-    Value: !Ref PremiumStackEnabled
+    Value: "true"
 
 
