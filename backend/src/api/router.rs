@@ -325,6 +325,10 @@ fn map_api_error_to_response(
         return crop::error_response(403, &message);
     }
 
+    if message.contains("user type not set") || message.contains("onboarding may be incomplete") {
+        return crop::error_response(403, &message);
+    }
+
     crop::error_response(500, &message)
 }
 
@@ -388,5 +392,13 @@ mod tests {
         let error = lambda_http::Error::from("Listing not found".to_string());
         let response = map_api_error_to_response(&error).unwrap();
         assert_eq!(response.status().as_u16(), 404);
+    }
+
+    #[test]
+    fn map_api_error_maps_missing_user_type_to_403() {
+        let error =
+            lambda_http::Error::from("user type not set, onboarding may be incomplete".to_string());
+        let response = map_api_error_to_response(&error).unwrap();
+        assert_eq!(response.status().as_u16(), 403);
     }
 }
