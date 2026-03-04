@@ -5,11 +5,13 @@ description: |-
   and adding it as a grower crop for the authenticated user.
   
   ## Workflow Steps
-  1. List catalog crops and choose a match client-side
-  2. Get varieties for the selected crop (optional informational step)
-  3. Create a grower crop using the current crop contract
-  4. Verify the crop was added to the user's library
-  5. Cleanup - delete the test crop
+  1. Verify grower endpoints reject pre-onboarding users with explicit guidance
+  2. Initialize authenticated user as grower
+  3. List catalog crops and choose a match client-side
+  4. Get varieties for the selected crop (optional informational step)
+  5. Create a grower crop using the current crop contract
+  6. Verify the crop was added to the user's library
+  7. Cleanup - delete the test crop
   
   ## Variables
   - `baseUrl`: API base URL
@@ -52,4 +54,3 @@ auth:
   credentials:
     - key: token
       value: '{{authToken}}'
-

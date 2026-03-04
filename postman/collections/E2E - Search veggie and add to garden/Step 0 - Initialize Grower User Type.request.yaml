@@ -1,0 +1,37 @@
+$kind: http-request
+name: 'Step 0 - Initialize Grower User Type'
+description: |-
+  Ensure the authenticated test user is initialized as a grower before running
+  the end-to-end add-to-garden flow.
+
+  This request is safe to run repeatedly.
+method: PUT
+url: '{{baseUrl}}/me'
+order: 500
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "CI Grower",
+      "userType": "grower"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 0: Initialize grower user type
+
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const jsonData = pm.response.json();
+
+      pm.test("userType is grower", function () {
+          pm.expect(jsonData.userType).to.eql("grower");
+      });

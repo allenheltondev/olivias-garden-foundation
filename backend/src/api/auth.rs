@@ -1,6 +1,8 @@
+use crate::db;
 use lambda_http::{Error, Request, RequestExt};
 use serde::{Deserialize, Serialize};
-use tracing::error;
+use tracing::{error, warn};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -35,6 +37,60 @@ pub fn extract_auth_context(request: &Request) -> Result<AuthContext, Error> {
         tier,
         email,
     })
+}
+
+pub async fn extract_auth_context_with_fallback(request: &Request) -> Result<AuthContext, Error> {
+    let mut context = extract_auth_context(request)?;
+
+    if context.user_type.is_some() {
+        return Ok(context);
+    }
+
+    context.user_type = load_user_type_from_db(&context.user_id).await;
+
+    if context.user_type.is_none() {
+        warn!(
+            user_id = context.user_id.as_str(),
+            "Unable to resolve user type from authorizer context or database"
+        );
+    }
+
+    Ok(context)
+}
+
+async fn load_user_type_from_db(user_id: &str) -> Option<UserType> {
+    let Ok(user_uuid) = Uuid::parse_str(user_id) else {
+        warn!(
+            user_id = user_id,
+            "Invalid user id format while resolving user type fallback"
+        );
+        return None;
+    };
+
+    let client = match db::connect().await {
+        Ok(client) => client,
+        Err(error) => {
+            error!(error = %error, user_id = user_id, "Failed to connect to database for user type fallback");
+            return None;
+        }
+    };
+
+    match client
+        .query_opt(
+            "select user_type from users where id = $1 and deleted_at is null",
+            &[&user_uuid],
+        )
+        .await
+    {
+        Ok(Some(row)) => row
+            .get::<_, Option<String>>("user_type")
+            .and_then(|raw| parse_user_type(&raw)),
+        Ok(None) => None,
+        Err(error) => {
+            error!(error = %error, user_id = user_id, "Failed querying user type fallback");
+            None
+        }
+    }
 }
 
 pub fn require_grower(ctx: &AuthContext) -> Result<(), Error> {

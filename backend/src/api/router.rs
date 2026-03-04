@@ -6,6 +6,7 @@ use crate::middleware::correlation::{
     add_correlation_id_to_response, extract_or_generate_correlation_id,
 };
 use lambda_http::{Body, Request, Response};
+use serde::Serialize;
 use std::env;
 use tracing::{error, info};
 
@@ -321,21 +322,49 @@ fn map_api_error_to_response(
         return crop::error_response(401, &message);
     }
 
-    if message.contains("Forbidden:") {
-        return crop::error_response(403, &message);
+    if message.contains("user type not set")
+        || message.contains("onboarding may be incomplete")
+        || message.contains("Please complete onboarding")
+    {
+        return onboarding_incomplete_response();
     }
 
-    if message.contains("user type not set") || message.contains("onboarding may be incomplete") {
+    if message.contains("Forbidden:") {
         return crop::error_response(403, &message);
     }
 
     crop::error_response(500, &message)
 }
 
+#[derive(Serialize)]
+struct OnboardingIncompleteError {
+    error: String,
+    message: String,
+}
+
+fn onboarding_incomplete_response() -> Result<Response<Body>, lambda_http::Error> {
+    let payload = OnboardingIncompleteError {
+        error: "onboarding_incomplete".to_string(),
+        message:
+            "User type is not configured. Set userType via PUT /me before calling this endpoint."
+                .to_string(),
+    };
+
+    let body = serde_json::to_string(&payload)
+        .map_err(|e| lambda_http::Error::from(format!("Failed to serialize response: {e}")))?;
+
+    Response::builder()
+        .status(403)
+        .header("content-type", "application/json")
+        .body(Body::from(body))
+        .map_err(|e| lambda_http::Error::from(e.to_string()))
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::{map_api_error_to_response, normalize_route_path};
+    use lambda_http::Body;
 
     #[test]
     fn normalize_route_path_strips_api_stage_prefix() {
@@ -400,5 +429,31 @@ mod tests {
             lambda_http::Error::from("user type not set, onboarding may be incomplete".to_string());
         let response = map_api_error_to_response(&error).unwrap();
         assert_eq!(response.status().as_u16(), 403);
+    }
+
+    #[test]
+    fn map_api_error_missing_user_type_returns_onboarding_code_and_message() {
+        let error = lambda_http::Error::from(
+            "Forbidden: User type not set. Please complete onboarding.".to_string(),
+        );
+        let response = map_api_error_to_response(&error).unwrap();
+
+        assert_eq!(response.status().as_u16(), 403);
+
+        let body = match response.body() {
+            Body::Text(text) => text,
+            Body::Binary(bytes) => std::str::from_utf8(bytes).unwrap(),
+            Body::Empty => "",
+        };
+
+        let json: serde_json::Value = serde_json::from_str(body).unwrap();
+        assert_eq!(
+            json.get("error").and_then(serde_json::Value::as_str),
+            Some("onboarding_incomplete")
+        );
+        assert_eq!(
+            json.get("message").and_then(serde_json::Value::as_str),
+            Some("User type is not configured. Set userType via PUT /me before calling this endpoint.")
+        );
     }
 }

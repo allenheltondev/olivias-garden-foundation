@@ -724,20 +724,6 @@ jobs:
           echo "::add-mask::$GROWER_ACCESS_TOKEN"
           echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Ensure grower user type is initialized
-        run: |
-          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
-          HTTP_CODE=$(curl --silent --show-error \
-            --output /tmp/ensure-grower.json \
-            --write-out "%{http_code}" \
-            -X PUT "$API_URL/me" \
-            -H "Authorization: Bearer ${{ steps.ci-auth.outputs.auth-token }}" \
-            -H "Content-Type: application/json" \
-            --data '{"displayName":"CI Grower","userType":"grower"}')
-
-          test "$HTTP_CODE" = "200"
-          jq -e '.userType == "grower"' /tmp/ensure-grower.json > /dev/null
-
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
 
@@ -795,20 +781,6 @@ jobs:
 
           echo "::add-mask::$GROWER_ACCESS_TOKEN"
           echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Ensure grower user type is initialized
-        run: |
-          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
-          HTTP_CODE=$(curl --silent --show-error \
-            --output /tmp/ensure-grower.json \
-            --write-out "%{http_code}" \
-            -X PUT "$API_URL/me" \
-            -H "Authorization: Bearer ${{ steps.ci-auth.outputs.auth-token }}" \
-            -H "Content-Type: application/json" \
-            --data '{"displayName":"CI Grower","userType":"grower"}')
-
-          test "$HTTP_CODE" = "200"
-          jq -e '.userType == "grower"' /tmp/ensure-grower.json > /dev/null
 
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh

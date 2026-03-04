@@ -1,5 +1,5 @@
 use crate::auth::{
-    extract_auth_context, require_participant_user_type, require_user_type, UserType,
+    extract_auth_context_with_fallback, require_participant_user_type, require_user_type, UserType,
 };
 use crate::db;
 use crate::models::crop::ErrorResponse;
@@ -91,7 +91,7 @@ pub async fn create_claim(
     request: &Request,
     correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_user_type(&auth_context, &UserType::Gatherer)?;
 
     let claimer_id = Uuid::parse_str(&auth_context.user_id)
@@ -188,7 +188,7 @@ pub async fn transition_claim(
     correlation_id: &str,
     claim_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_claim_transition_user_type(auth_context.user_type.as_ref())?;
 
     let actor_user_id = Uuid::parse_str(&auth_context.user_id)

@@ -4,6 +4,7 @@ use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio_postgres::NoTls;
 use tracing::error;
 
 #[derive(Clone)]
@@ -11,6 +12,7 @@ struct AppState {
     cognito: CognitoClient,
     user_pool_id: String,
     user_pool_client_id: String,
+    database_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,12 +58,14 @@ async fn main() -> Result<(), Error> {
 
     let user_pool_id = std::env::var("USER_POOL_ID")?;
     let user_pool_client_id = std::env::var("USER_POOL_CLIENT_ID")?;
+    let database_url = std::env::var("DATABASE_URL")?;
 
     let config = aws_config::load_from_env().await;
     let state = AppState {
         cognito: CognitoClient::new(&config),
         user_pool_id,
         user_pool_client_id,
+        database_url,
     };
 
     run(service_fn(
@@ -133,10 +137,12 @@ async fn handle_jwt_auth(
         .ok_or("Missing sub claim")?;
 
     let tier = get_user_tier(&state.cognito, &state.user_pool_id, &principal_id).await;
+    let user_type = get_user_type_from_db(&state.database_url, &principal_id).await;
 
     let api_arn = get_api_arn_pattern(event.method_arn.as_deref().unwrap_or_default());
     let context = build_context([
         ("userId", Some(principal_id.clone())),
+        ("userType", user_type),
         ("email", user_info.get("email").cloned()),
         ("firstName", user_info.get("given_name").cloned()),
         ("lastName", user_info.get("family_name").cloned()),
@@ -201,6 +207,47 @@ async fn get_user_tier(
         }
     }
 }
+async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<String> {
+    let (client, connection) = match tokio_postgres::connect(database_url, NoTls).await {
+        Ok(parts) => parts,
+        Err(err) => {
+            error!(error = %err, "Failed to connect to database for userType lookup");
+            return None;
+        }
+    };
+
+    tokio::spawn(async move {
+        if let Err(err) = connection.await {
+            error!(error = %err, "Postgres connection error in authorizer");
+        }
+    });
+
+    match client
+        .query_opt(
+            "select user_type from users where id = $1::uuid and deleted_at is null",
+            &[&user_id],
+        )
+        .await
+    {
+        Ok(Some(row)) => row
+            .get::<_, Option<String>>("user_type")
+            .and_then(|raw| normalize_user_type(raw.as_str())),
+        Ok(None) => None,
+        Err(err) => {
+            error!(error = %err, user_id = user_id, "Failed to query userType from database");
+            None
+        }
+    }
+}
+
+fn normalize_user_type(value: &str) -> Option<String> {
+    match value.to_lowercase().as_str() {
+        "grower" => Some("grower".to_string()),
+        "gatherer" => Some("gatherer".to_string()),
+        _ => None,
+    }
+}
+
 async fn verify_jwt(token: &str, user_pool_id: &str, client_id: &str) -> Result<JwtClaims, Error> {
     let jwks = fetch_jwks(user_pool_id).await?;
     let header = decode_header(token)?;
@@ -400,5 +447,21 @@ mod tests {
     fn tier_mapping_all_groups_returns_caretaker() {
         let groups = vec!["neighbor-tier", "supporter-tier", "caretaker-tier"];
         assert_eq!(map_group_to_tier(&groups), "caretaker");
+    }
+
+    #[test]
+    fn normalize_user_type_accepts_supported_values_case_insensitive() {
+        assert_eq!(normalize_user_type("grower"), Some("grower".to_string()));
+        assert_eq!(normalize_user_type("Grower"), Some("grower".to_string()));
+        assert_eq!(
+            normalize_user_type("GATHERER"),
+            Some("gatherer".to_string())
+        );
+    }
+
+    #[test]
+    fn normalize_user_type_rejects_unsupported_values() {
+        assert_eq!(normalize_user_type(""), None);
+        assert_eq!(normalize_user_type("neighbor"), None);
     }
 }
