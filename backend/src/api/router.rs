@@ -122,11 +122,25 @@ pub async fn route_request(event: &Request) -> Result<Response<Body>, lambda_htt
     let response_with_correlation =
         add_correlation_id_to_response(response_with_cors, &correlation_id);
 
-    info!(
-        correlation_id = correlation_id.as_str(),
-        status = response_with_correlation.status().as_u16(),
-        "Response sent"
-    );
+    let response_status = response_with_correlation.status().as_u16();
+
+    if response_status >= 500 {
+        error!(
+            correlation_id = correlation_id.as_str(),
+            method = event.method().as_str(),
+            path = request_path,
+            status = response_status,
+            "Response sent with server error"
+        );
+    } else {
+        info!(
+            correlation_id = correlation_id.as_str(),
+            method = event.method().as_str(),
+            path = request_path,
+            status = response_status,
+            "Response sent"
+        );
+    }
 
     Ok(response_with_correlation)
 }
