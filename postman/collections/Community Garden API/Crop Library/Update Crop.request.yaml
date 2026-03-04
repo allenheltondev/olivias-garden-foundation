@@ -1,0 +1,42 @@
+$kind: http-request
+name: Update Crop
+description: Update a crop in the user's crop library.
+method: PUT
+url: '{{baseUrl}}/crops/:cropLibraryId'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: cropLibraryId
+    value: '{{cropLibraryId}}'
+    description: UUID of the grower crop
+body:
+  type: json
+  content: |-
+    {
+      "crop_id": "{{catalogCropId}}",
+      "status": "growing",
+      "visibility": "local",
+      "surplus_enabled": true,
+      "nickname": "Updated Tomato Name",
+      "notes": "Moved to greenhouse"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Updated crop reflects the request payload", function () {
+          const crop = pm.response.json();
+          pm.expect(crop).to.have.property("id", pm.collectionVariables.get("cropLibraryId"));
+          pm.expect(crop).to.have.property("crop_id", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(crop).to.have.property("nickname", "Updated Tomato Name");
+          pm.expect(crop).to.have.property("status", "growing");
+      });
+

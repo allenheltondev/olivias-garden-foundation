@@ -1,0 +1,5 @@
+$kind: collection
+name: Requests
+description: Gatherer request creation and updates using the current `cropId`, `quantity`, and `neededBy` contract.
+order: 4000
+

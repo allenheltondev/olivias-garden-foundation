@@ -1,0 +1,31 @@
+$kind: http-request
+name: List Crop Varieties
+description: |-
+  Retrieve varieties for a specific crop from the catalog.
+  
+  No authentication required - this is a public endpoint.
+method: GET
+url: '{{baseUrl}}/catalog/crops/:cropId/varieties'
+order: 2000
+pathVariables:
+  - key: cropId
+    value: '{{catalogCropId}}'
+    description: UUID of the catalog crop
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is a JSON array of crop varieties", function () {
+          const varieties = pm.response.json();
+          pm.expect(Array.isArray(varieties)).to.be.true;
+
+          if (varieties.length > 0) {
+              pm.expect(varieties[0]).to.have.property("id");
+              pm.expect(varieties[0]).to.have.property("crop_id");
+              pm.expect(varieties[0]).to.have.property("name");
+          }
+      });

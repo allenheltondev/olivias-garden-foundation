@@ -1,0 +1,39 @@
+$kind: http-request
+name: Generate Weekly Plan
+description: |-
+  Generate an AI-powered weekly gardening plan using the copilot feature.
+  
+  Premium feature - requires active subscription.
+method: POST
+url: '{{baseUrl}}/ai/copilot/weekly-plan'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "geoKey": "9v6kn7",
+      "windowDays": 7
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches weekly plan contract", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("modelId");
+          pm.expect(response).to.have.property("modelVersion");
+          pm.expect(response).to.have.property("structuredJson", true);
+          pm.expect(response).to.have.property("geoKey");
+          pm.expect(response).to.have.property("windowDays", 7);
+          pm.expect(response).to.have.property("recommendations");
+          pm.expect(Array.isArray(response.recommendations)).to.be.true;
+      });

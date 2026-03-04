@@ -1,0 +1,122 @@
+$kind: http-request
+name: 'Update Current User (PUT /me)'
+description: |-
+  Create or update the authenticated user's profile. This request:
+  - Updates user profile with grower configuration
+  - Captures myUserId for subsequent requests
+  - Validates response structure and onboarding status
+  - Stores response snapshot for idempotency verification
+method: PUT
+url: '{{baseUrl}}/me'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "Profile Smoke Test User",
+      "userType": "grower",
+      "growerProfile": {
+        "homeZone": "US-TX-Austin",
+        "address": "123 Smoke Test Lane, Austin, TX 78701",
+        "shareRadiusMiles": 15,
+        "units": "imperial",
+        "locale": "en-US"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // ============================================
+      // PUT /me - Response Tests and Variable Capture
+      // ============================================
+
+      // --- Status Code Validation ---
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      // --- Parse Response ---
+      const jsonData = pm.response.json();
+
+      // --- Required Fields Existence Tests ---
+      pm.test("Response has required field: id", function () {
+          pm.expect(jsonData).to.have.property("id");
+      });
+
+      pm.test("Response has required field: isVerified", function () {
+          pm.expect(jsonData).to.have.property("isVerified");
+      });
+
+      pm.test("Response has required field: createdAt", function () {
+          pm.expect(jsonData).to.have.property("createdAt");
+      });
+
+      pm.test("Response has required field: onboardingCompleted", function () {
+          pm.expect(jsonData).to.have.property("onboardingCompleted");
+      });
+
+      // --- Type Validation Tests ---
+      pm.test("id is a string (UUID format)", function () {
+          pm.expect(jsonData.id).to.be.a("string");
+          pm.expect(jsonData.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      });
+
+      pm.test("isVerified is a boolean", function () {
+          pm.expect(jsonData.isVerified).to.be.a("boolean");
+      });
+
+      pm.test("createdAt is a string (ISO date format)", function () {
+          pm.expect(jsonData.createdAt).to.be.a("string");
+          pm.expect(new Date(jsonData.createdAt).toISOString()).to.be.ok;
+      });
+
+      pm.test("onboardingCompleted is a boolean", function () {
+          pm.expect(jsonData.onboardingCompleted).to.be.a("boolean");
+      });
+
+      // --- Onboarding Status Validation ---
+      pm.test("onboardingCompleted is true after profile update with complete data", function () {
+          pm.expect(jsonData.onboardingCompleted).to.eql(true);
+      });
+
+      // --- User Type Validation ---
+      pm.test("userType matches request payload (grower)", function () {
+          pm.expect(jsonData.userType).to.eql("grower");
+      });
+
+      // --- Grower Profile Validation ---
+      pm.test("growerProfile exists for grower userType", function () {
+          pm.expect(jsonData).to.have.property("growerProfile");
+          pm.expect(jsonData.growerProfile).to.be.an("object");
+      });
+
+      pm.test("growerProfile has expected fields", function () {
+          const gp = jsonData.growerProfile;
+          pm.expect(gp).to.have.property("units");
+          pm.expect(gp.units).to.be.oneOf(["imperial", "metric"]);
+      });
+
+      // --- Variable Capture ---
+      pm.test("Capture myUserId from response", function () {
+          pm.expect(jsonData.id).to.be.a("string");
+          pm.collectionVariables.set("myUserId", jsonData.id);
+          console.log("Captured myUserId:", jsonData.id);
+      });
+
+      // --- Store Response Snapshot for Idempotency Check ---
+      // Store key fields to compare in the idempotency verification request
+      const snapshot = {
+          id: jsonData.id,
+          displayName: jsonData.displayName,
+          userType: jsonData.userType,
+          onboardingCompleted: jsonData.onboardingCompleted,
+          growerProfile: jsonData.growerProfile
+      };
+      pm.collectionVariables.set("putMeResponseSnapshot", JSON.stringify(snapshot));
+      console.log("Stored response snapshot for idempotency verification");

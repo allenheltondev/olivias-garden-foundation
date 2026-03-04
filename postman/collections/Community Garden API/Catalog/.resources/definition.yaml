@@ -1,0 +1,4 @@
+$kind: collection
+name: Catalog
+description: Public catalog endpoints for listing crops and varieties. The current API returns full lists without server-side search filters.
+order: 10000

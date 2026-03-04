@@ -1,0 +1,48 @@
+$kind: http-request
+name: Discover Listings
+description: |-
+  Discover available food listings near a geohash scope.
+  
+  Query Parameters:
+  - geoKey: Required geohash for proximity search
+  - radiusMiles: Optional radius used to reduce geohash precision
+  - status: Only `active` is currently supported
+  - limit / offset: Optional pagination controls
+method: GET
+url: '{{baseUrl}}/listings/discover'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+queryParams:
+  - key: geoKey
+    value: '9v6kn7'
+    description: Required geohash scope
+  - key: radiusMiles
+    value: '10'
+    description: Search radius in miles
+  - key: status
+    value: 'active'
+    description: Only active listings are discoverable
+  - key: limit
+    value: '20'
+    description: Number of results to return
+  - key: offset
+    value: '0'
+    description: Row offset for pagination
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches discover listings contract", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("items");
+          pm.expect(Array.isArray(response.items)).to.be.true;
+          pm.expect(response).to.have.property("limit");
+          pm.expect(response).to.have.property("offset");
+          pm.expect(response).to.have.property("hasMore");
+      });

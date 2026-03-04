@@ -1,0 +1,4 @@
+$kind: collection
+name: Listings
+description: Grower listing CRUD plus gatherer-facing discovery, using geohash-scoped discovery and paged responses.
+order: 3000

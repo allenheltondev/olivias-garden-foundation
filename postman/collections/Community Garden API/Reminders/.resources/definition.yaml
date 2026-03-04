@@ -1,0 +1,4 @@
+$kind: collection
+name: Reminders
+description: Deterministic reminder scheduling and status management (`active` / `paused`) for authenticated users.
+order: 9000

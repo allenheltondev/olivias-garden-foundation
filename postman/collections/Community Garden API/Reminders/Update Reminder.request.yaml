@@ -1,0 +1,34 @@
+$kind: http-request
+name: Update Reminder
+description: Update an existing reminder status.
+method: PUT
+url: '{{baseUrl}}/reminders/:reminderId'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: reminderId
+    value: '{{reminderId}}'
+    description: UUID of the reminder
+body:
+  type: json
+  content: |-
+    {
+      "status": "paused"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Reminder status is updated", function () {
+          const reminder = pm.response.json();
+          pm.expect(reminder).to.have.property("id", pm.collectionVariables.get("reminderId"));
+          pm.expect(reminder).to.have.property("status", "paused");
+      });

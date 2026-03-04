@@ -1,0 +1,43 @@
+$kind: http-request
+name: Transition Claim Status
+description: |-
+  Update the status of a claim.
+  
+  Supported transitions include:
+  - pending -> confirmed
+  - pending -> cancelled
+  - confirmed -> completed
+  - confirmed -> cancelled
+  - confirmed -> no_show
+method: PUT
+url: '{{baseUrl}}/claims/:claimId'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: claimId
+    value: '{{claimId}}'
+    description: UUID of the claim
+body:
+  type: json
+  content: |-
+    {
+      "status": "confirmed",
+      "notes": "Pickup confirmed for tomorrow at 2pm."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response reflects updated claim status", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("id", pm.collectionVariables.get("claimId"));
+          pm.expect(claim).to.have.property("status", "confirmed");
+      });

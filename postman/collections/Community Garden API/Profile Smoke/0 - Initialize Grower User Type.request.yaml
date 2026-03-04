@@ -1,0 +1,44 @@
+$kind: http-request
+name: 'Initialize Grower User Type (PUT /me)'
+description: |-
+  Initialize the authenticated user as a grower to ensure downstream profile
+  and garden flows run against the correct entitlement baseline.
+
+  This request is intentionally lightweight and safe to run repeatedly.
+method: PUT
+url: '{{baseUrl}}/me'
+order: 500
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "CI Grower",
+      "userType": "grower"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // ============================================
+      // PUT /me - Grower Initialization Guard
+      // ============================================
+
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const jsonData = pm.response.json();
+
+      pm.test("userType is grower", function () {
+          pm.expect(jsonData.userType).to.eql("grower");
+      });
+
+      pm.test("Response includes user id", function () {
+          pm.expect(jsonData).to.have.property("id");
+          pm.expect(jsonData.id).to.be.a("string");
+      });

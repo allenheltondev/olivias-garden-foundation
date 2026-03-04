@@ -1,0 +1,89 @@
+$kind: http-request
+name: 'Step 3 - Create Grower Crop'
+description: |-
+  Add the selected catalog crop to the authenticated user's garden (crop library).
+  
+  **Requires**: Valid `authToken` for authentication
+  **Depends on**: `catalogCropId` from Step 1
+  **Chaining**: Captures `createdCropId` from the response for verification and cleanup
+method: POST
+url: '{{baseUrl}}/crops'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "crop_id": "{{catalogCropId}}",
+      "status": "growing",
+      "visibility": "local",
+      "surplus_enabled": true,
+      "nickname": "E2E Test - {{catalogCropName}}",
+      "notes": "Created by E2E workflow test - will be deleted"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Pre-request: Validate required variables are set
+      const catalogCropId = pm.collectionVariables.get("catalogCropId");
+      const authToken = pm.collectionVariables.get("authToken");
+      
+      if (!catalogCropId) {
+          console.error("ERROR: catalogCropId is not set. Run Step 1 first.");
+      }
+      
+      if (!authToken) {
+          console.warn("WARNING: authToken is not set. This request will likely fail with 401.");
+      }
+
+      console.log("Creating grower crop using crop_id: " + catalogCropId);
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 3: Create Grower Crop - Tests and Variable Chaining
+      
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      
+      pm.test("Response is JSON", function () {
+          pm.response.to.be.json;
+      });
+      
+      pm.test("Response contains created crop data", function () {
+          const crop = pm.response.json();
+          
+          pm.expect(crop).to.be.an('object');
+          pm.expect(crop).to.have.property("id");
+          pm.expect(crop).to.have.property("crop_id");
+          pm.expect(crop).to.have.property("status", "growing");
+          pm.expect(crop).to.have.property("visibility", "local");
+          pm.expect(crop).to.have.property("surplus_enabled", true);
+      });
+      
+      pm.test("Capture created crop ID", function () {
+          const crop = pm.response.json();
+          const createdId = crop.id;
+          
+          pm.expect(createdId, "Created crop should have an ID").to.not.be.undefined;
+          
+          pm.collectionVariables.set("createdCropId", createdId);
+          console.log("Captured createdCropId: " + createdId);
+      });
+      
+      pm.test("Created crop references correct catalog crop", function () {
+          const crop = pm.response.json();
+          const expectedCatalogId = pm.collectionVariables.get("catalogCropId");
+          pm.expect(crop.crop_id).to.equal(expectedCatalogId);
+      });
+
+      pm.test("Created crop preserves nickname", function () {
+          const crop = pm.response.json();
+          pm.expect(crop.nickname).to.include("E2E Test");
+      });
+

@@ -1,0 +1,42 @@
+$kind: http-request
+name: Create Request
+description: |-
+  Create a gatherer request for a specific crop.
+  
+  This allows gatherers to broadcast what they're looking for so growers can respond.
+method: POST
+url: '{{baseUrl}}/requests'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "cropId": "{{catalogCropId}}",
+      "unit": "lb",
+      "quantity": 5,
+      "neededBy": "2026-07-15T18:00:00Z",
+      "notes": "Looking for fresh tomatoes for a community soup kitchen.",
+      "status": "open"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches request contract", function () {
+          const request = pm.response.json();
+          pm.expect(request).to.have.property("id");
+          pm.expect(request).to.have.property("cropId", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(request).to.have.property("quantity", "5");
+          pm.expect(request).to.have.property("status", "open");
+          pm.collectionVariables.set("requestId", request.id);
+      });
+

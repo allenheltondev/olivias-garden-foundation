@@ -1,0 +1,47 @@
+$kind: http-request
+name: Update Listing
+description: Update an existing listing.
+method: PUT
+url: '{{baseUrl}}/listings/:listingId'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: listingId
+    value: '{{listingId}}'
+    description: UUID of the listing to update
+body:
+  type: json
+  content: |-
+    {
+      "title": "Fresh Tomatoes - 3 lb remaining",
+      "crop_id": "{{catalogCropId}}",
+      "quantity_total": 3,
+      "unit": "lb",
+      "available_start": "2026-07-01T08:00:00Z",
+      "available_end": "2026-07-05T18:00:00Z",
+      "pickup_location_text": "Front porch",
+      "pickup_address": "123 Garden Lane, Austin, TX 78701",
+      "pickup_disclosure_policy": "after_confirmed",
+      "pickup_notes": "Ring doorbell, produce will be in cooler on porch",
+      "contact_pref": "app_message",
+      "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response reflects updated listing", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id", pm.collectionVariables.get("listingId"));
+          pm.expect(listing).to.have.property("cropId", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(listing).to.have.property("quantityTotal", "3");
+          pm.expect(listing).to.have.property("status", "active");
+      });

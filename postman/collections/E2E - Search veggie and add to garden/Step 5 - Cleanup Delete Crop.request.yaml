@@ -1,0 +1,54 @@
+$kind: http-request
+name: 'Step 5 - Cleanup Delete Crop'
+description: |-
+  Clean up by deleting the test crop created during this workflow.
+  
+  **Requires**: Valid `authToken` for authentication
+  **Depends on**: `createdCropId` from Step 3
+  
+  This step ensures the test data is removed after the E2E workflow completes.
+method: DELETE
+url: '{{baseUrl}}/crops/:cropLibraryId'
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+pathVariables:
+  - key: cropLibraryId
+    value: '{{createdCropId}}'
+    description: UUID of the crop to delete (from Step 3)
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Pre-request: Validate createdCropId is set
+      const createdCropId = pm.collectionVariables.get("createdCropId");
+      
+      if (!createdCropId) {
+          console.error("ERROR: createdCropId is not set. Cannot cleanup - no crop was created.");
+          console.log("This may happen if Step 3 failed or was skipped.");
+      } else {
+          console.log("Cleaning up crop: " + createdCropId);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 5: Cleanup Delete Crop - Tests
+      
+      pm.test("Status code is 204 (successful deletion)", function () {
+          pm.response.to.have.status(204);
+      });
+      
+      pm.test("Cleanup successful", function () {
+          const createdCropId = pm.collectionVariables.get("createdCropId");
+          console.log("Successfully deleted test crop: " + createdCropId);
+          
+          // Clear the captured variables after cleanup
+          pm.collectionVariables.set("createdCropId", "");
+          pm.collectionVariables.set("catalogCropId", "");
+          pm.collectionVariables.set("varietyId", "");
+          pm.collectionVariables.set("catalogCropName", "");
+          pm.collectionVariables.set("varietyName", "");
+          
+          console.log("Cleared workflow variables. E2E test complete!");
+      });

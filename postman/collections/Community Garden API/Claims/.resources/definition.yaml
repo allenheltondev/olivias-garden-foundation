@@ -1,0 +1,4 @@
+$kind: collection
+name: Claims
+description: Claim creation, participant claim listing, and status transitions for reserving surplus listings.
+order: 5000

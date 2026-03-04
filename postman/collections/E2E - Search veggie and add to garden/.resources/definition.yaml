@@ -1,0 +1,56 @@
+$kind: collection
+name: E2E - Search veggie and add to garden
+description: |-
+  End-to-end workflow collection that demonstrates listing a crop from the public catalog
+  and adding it as a grower crop for the authenticated user.
+  
+  ## Workflow Steps
+  1. Verify grower endpoints reject pre-onboarding users with explicit guidance
+  2. Initialize authenticated user as grower
+  3. List catalog crops and choose a match client-side
+  4. Get varieties for the selected crop (optional informational step)
+  5. Create a grower crop using the current crop contract
+  6. Verify the crop was added to the user's library
+  7. Cleanup - delete the test crop
+  
+  ## Variables
+  - `baseUrl`: API base URL
+  - `authToken`: JWT Bearer token (required for authenticated endpoints)
+  - `searchTerm`: Client-side match term (default: tomato)
+  - `catalogCropId`: Captured from step 1 response
+  - `varietyId`: Optionally captured from step 2 response
+  - `createdCropId`: Captured from step 3 response
+  
+  ## Running the Collection
+  Run this collection sequentially using the Collection Runner or Postman CLI.
+  Ensure `authToken` is set before running.
+variables:
+  - key: baseUrl
+    value: 'https://api.example.com'
+    description: Base URL for the Community Garden API
+  - key: authToken
+    value: ''
+    description: JWT Bearer token for authentication (required)
+  - key: searchTerm
+    value: 'tomato'
+    description: Client-side term used to choose a catalog crop
+  - key: catalogCropId
+    value: ''
+    description: ID of the selected catalog crop (captured from Step 1)
+  - key: varietyId
+    value: ''
+    description: ID of the selected variety (captured from Step 2)
+  - key: createdCropId
+    value: ''
+    description: ID of the created grower crop (captured from Step 3)
+  - key: catalogCropName
+    value: ''
+    description: Common name of the selected catalog crop (captured from Step 1)
+  - key: varietyName
+    value: ''
+    description: Name of the selected variety (captured from Step 2)
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'

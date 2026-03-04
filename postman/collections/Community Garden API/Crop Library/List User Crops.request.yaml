@@ -1,0 +1,21 @@
+$kind: http-request
+name: List User Crops
+description: Retrieve all crops in the authenticated user's crop library.
+method: GET
+url: '{{baseUrl}}/crops'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is a JSON array", function () {
+          const crops = pm.response.json();
+          pm.expect(Array.isArray(crops)).to.be.true;
+      });

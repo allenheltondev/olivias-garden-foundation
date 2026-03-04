@@ -1,0 +1,5 @@
+$kind: collection
+name: AI Features
+description: Premium AI endpoints for weekly grow plans and scheduled automation tasks.
+order: 7000
+

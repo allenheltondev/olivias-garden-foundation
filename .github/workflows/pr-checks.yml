@@ -5,15 +5,131 @@ on:
     branches:
       - main
       - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - closed
 
 permissions:
   id-token: write
   contents: read
   pull-requests: write
 
+env:
+  VITE_USER_POOL_ID: placeholder
+  VITE_USER_POOL_CLIENT_ID: placeholder
+  VITE_USER_POOL_DOMAIN: placeholder.auth.us-east-1.amazoncognito.com
+  VITE_API_URL: https://placeholder.execute-api.us-east-1.amazonaws.com
+  VITE_FRONTEND_URL: https://placeholder.cloudfront.net
+  VITE_AWS_REGION: us-east-1
+
 jobs:
-  backend-checks:
-    name: Backend Lint & Test
+  backend-format:
+    name: Backend Format Check
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check code formatting
+        run: cargo fmt --all -- --check
+
+  backend-lint:
+    name: Backend Clippy
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run Clippy linter
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  backend-build:
+    name: Backend Build Check
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run cargo check
+        run: cargo check --all-targets --all-features
+
+  backend-unit-tests:
+    name: Backend Unit Tests
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -43,7 +159,6 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v4
@@ -54,7 +169,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -64,24 +179,67 @@ jobs:
       - name: Run database migrations
         run: ./db/migrate.sh
 
-
-      - name: Check code formatting
-        run: cargo fmt --all -- --check
-
-      - name: Run Clippy linter
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run cargo check
-        run: cargo check --all-targets --all-features
-
       - name: Run unit tests
-        run: cargo test --all-features
+        run: cargo test --bins --all-features
+
+  backend-integration-tests:
+    name: Backend Integration Tests
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: community_garden_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/community_garden_ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run database migrations
+        run: ./db/migrate.sh
 
       - name: Run integration tests
         run: cargo test --test integration_test
 
-  frontend-checks:
-    name: Frontend Lint & Test
+  frontend-lint:
+    name: Frontend Lint
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -104,53 +262,152 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+  frontend-typecheck:
+    name: Frontend Type Check
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Type check
         run: npx tsc --noEmit
 
+  frontend-unit-tests:
+    name: Frontend Unit Tests
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run tests
         run: npm test
-        env:
-          # Use placeholder values for tests
-          VITE_USER_POOL_ID: placeholder
-          VITE_USER_POOL_CLIENT_ID: placeholder
-          VITE_USER_POOL_DOMAIN: placeholder.auth.us-east-1.amazoncognito.com
-          VITE_API_URL: https://placeholder.execute-api.us-east-1.amazonaws.com
-          VITE_FRONTEND_URL: https://placeholder.cloudfront.net
-          VITE_AWS_REGION: us-east-1
+
+  frontend-build:
+    name: Frontend Build Check
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build check
         run: npm run build
-        env:
-          # Use placeholder values for build check
-          VITE_USER_POOL_ID: placeholder
-          VITE_USER_POOL_CLIENT_ID: placeholder
-          VITE_USER_POOL_DOMAIN: placeholder.auth.us-east-1.amazoncognito.com
-          VITE_API_URL: https://placeholder.execute-api.us-east-1.amazonaws.com
-          VITE_FRONTEND_URL: https://placeholder.cloudfront.net
-          VITE_AWS_REGION: us-east-1
+
+  frontend-performance-budget:
+    name: Frontend Performance Budget
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend for bundle analysis
+        run: npm run build
 
       - name: Performance budget check
         run: npm run perf:budget
 
-  summary:
-    name: All Checks Passed
+  ci-summary:
+    name: CI Summary
     runs-on: ubuntu-latest
-    needs: [backend-checks, frontend-checks]
-    if: always()
+    needs:
+      - backend-format
+      - backend-lint
+      - backend-build
+      - backend-unit-tests
+      - backend-integration-tests
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-unit-tests
+      - frontend-build
+      - frontend-performance-budget
+    if: always() && github.event.action != 'closed'
 
     steps:
-      - name: Check all jobs
+      - name: Check all CI jobs
         run: |
-          if [ "${{ needs.backend-checks.result }}" != "success" ] || [ "${{ needs.frontend-checks.result }}" != "success" ]; then
-            echo "❌ Some checks failed"
-            exit 1
-          fi
-          echo "✅ All checks passed"
+          check_result() {
+            local job_name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$job_name failed with result: $result"
+              exit 1
+            fi
+          }
 
-  deploy-staging:
-    name: Deploy to Staging
+          check_result "backend-format" "${{ needs.backend-format.result }}"
+          check_result "backend-lint" "${{ needs.backend-lint.result }}"
+          check_result "backend-build" "${{ needs.backend-build.result }}"
+          check_result "backend-unit-tests" "${{ needs.backend-unit-tests.result }}"
+          check_result "backend-integration-tests" "${{ needs.backend-integration-tests.result }}"
+          check_result "frontend-lint" "${{ needs.frontend-lint.result }}"
+          check_result "frontend-typecheck" "${{ needs.frontend-typecheck.result }}"
+          check_result "frontend-unit-tests" "${{ needs.frontend-unit-tests.result }}"
+          check_result "frontend-build" "${{ needs.frontend-build.result }}"
+          check_result "frontend-performance-budget" "${{ needs.frontend-performance-budget.result }}"
+
+          echo "All applicable CI checks passed"
+
+  deploy-staging-backend:
+    name: Deploy Staging Backend
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    needs: [backend-checks, frontend-checks]
+    needs: [ci-summary]
     environment:
       name: staging
       url: ${{ steps.get-outputs.outputs.frontend-url }}
@@ -232,7 +489,7 @@ jobs:
               -e "s|{{DATABASE_URL}}|${DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|staging|g" \
               samconfig.template.toml > samconfig.toml
-          echo "✓ Generated samconfig.toml for CI"
+          echo "Generated samconfig.toml for CI"
 
       - name: Deploy backend to staging
         run: python deploy-and-configure.py --region ${{ env.AWS_REGION }} --stack-name ${{ env.STACK_NAME }} --ci
@@ -299,32 +556,34 @@ jobs:
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
           echo "ci-auth-seed-users-function=$CI_AUTH_SEED_USERS_FUNCTION" >> $GITHUB_OUTPUT
 
+    outputs:
+      api-url: ${{ steps.get-outputs.outputs.api-url }}
+      frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
+      frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
+      cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
+      user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
+      user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
+      user-pool-domain: ${{ steps.get-outputs.outputs.user-pool-domain }}
+      ci-auth-seed-users-function: ${{ steps.get-outputs.outputs.ci-auth-seed-users-function }}
 
-      - name: Generate CI auth tokens for Postman
-        if: steps.get-outputs.outputs.ci-auth-seed-users-function != '' && steps.get-outputs.outputs.ci-auth-seed-users-function != 'None'
-        run: |
-          aws lambda invoke \
-            --function-name "${{ steps.get-outputs.outputs.ci-auth-seed-users-function }}" \
-            --payload '{}' \
-            --cli-binary-format raw-in-base64-out \
-            ci-auth-seed-response.json
+  deploy-staging-frontend:
+    name: Deploy Staging Frontend
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend]
+    env:
+      AWS_REGION: us-east-1
 
-          GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower.access_token' ci-auth-seed-response.json)
-          GROWER_ID_TOKEN=$(jq -r '.body | fromjson | .grower.id_token' ci-auth-seed-response.json)
-          GATHERER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .gatherer.access_token' ci-auth-seed-response.json)
-          GATHERER_ID_TOKEN=$(jq -r '.body | fromjson | .gatherer.id_token' ci-auth-seed-response.json)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-          echo "::add-mask::$GROWER_ACCESS_TOKEN"
-          echo "::add-mask::$GROWER_ID_TOKEN"
-          echo "::add-mask::$GATHERER_ACCESS_TOKEN"
-          echo "::add-mask::$GATHERER_ID_TOKEN"
-
-          echo "POSTMAN_GROWER_ACCESS_TOKEN=$GROWER_ACCESS_TOKEN" >> $GITHUB_ENV
-          echo "POSTMAN_GROWER_ID_TOKEN=$GROWER_ID_TOKEN" >> $GITHUB_ENV
-          echo "POSTMAN_GATHERER_ACCESS_TOKEN=$GATHERER_ACCESS_TOKEN" >> $GITHUB_ENV
-          echo "POSTMAN_GATHERER_ID_TOKEN=$GATHERER_ID_TOKEN" >> $GITHUB_ENV
-
-          echo "Generated ephemeral grower/gatherer Cognito JWTs for downstream Postman runs."
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Frontend-PR-${{ github.event.pull_request.number }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -341,29 +600,29 @@ jobs:
         working-directory: frontend
         run: npm run build
         env:
-          VITE_USER_POOL_ID: ${{ steps.get-outputs.outputs.user-pool-id }}
-          VITE_USER_POOL_CLIENT_ID: ${{ steps.get-outputs.outputs.user-pool-client-id }}
-          VITE_USER_POOL_DOMAIN: ${{ steps.get-outputs.outputs.user-pool-domain }}
-          VITE_API_URL: ${{ steps.get-outputs.outputs.api-url }}
-          VITE_FRONTEND_URL: ${{ steps.get-outputs.outputs.frontend-url }}
+          VITE_USER_POOL_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-id }}
+          VITE_USER_POOL_CLIENT_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-client-id }}
+          VITE_USER_POOL_DOMAIN: ${{ needs.deploy-staging-backend.outputs.user-pool-domain }}
+          VITE_API_URL: ${{ needs.deploy-staging-backend.outputs.api-url }}
+          VITE_FRONTEND_URL: ${{ needs.deploy-staging-backend.outputs.frontend-url }}
           VITE_AWS_REGION: ${{ env.AWS_REGION }}
 
       - name: Deploy frontend to S3
         run: |
-          aws s3 sync frontend/dist/ "s3://${{ steps.get-outputs.outputs.frontend-bucket }}/" \
+          aws s3 sync frontend/dist/ "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/" \
             --region ${{ env.AWS_REGION }} \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
             --exclude "manifest.json"
 
-          aws s3 cp frontend/dist/index.html "s3://${{ steps.get-outputs.outputs.frontend-bucket }}/index.html" \
+          aws s3 cp frontend/dist/index.html "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/index.html" \
             --region ${{ env.AWS_REGION }} \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
 
           if [ -f "frontend/dist/manifest.json" ]; then
-            aws s3 cp frontend/dist/manifest.json "s3://${{ steps.get-outputs.outputs.frontend-bucket }}/manifest.json" \
+            aws s3 cp frontend/dist/manifest.json "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/manifest.json" \
               --region ${{ env.AWS_REGION }} \
               --cache-control "no-cache, no-store, must-revalidate" \
               --content-type "application/json"
@@ -371,24 +630,31 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: |
-          DISTRIBUTION_ID="${{ steps.get-outputs.outputs.cloudfront-distribution-id }}"
+          DISTRIBUTION_ID="${{ needs.deploy-staging-backend.outputs.cloudfront-distribution-id }}"
           if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
             aws cloudfront create-invalidation \
               --distribution-id "$DISTRIBUTION_ID" \
               --paths "/*"
           fi
 
+  comment-staging-deployment:
+    name: Comment Staging Deployment
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend]
+
+    steps:
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
-            const output = `#### Staging Deployment Complete! 🚀
+            const output = `#### Staging Deployment Complete
 
             **Environment:** \`staging-pr-${{ github.event.pull_request.number }}\`
-            **Stack:** \`${{ env.STACK_NAME }}\`
+            **Stack:** \`community-garden-staging-pr-${{ github.event.pull_request.number }}\`
 
-            🌐 **Frontend URL:** ${{ steps.get-outputs.outputs.frontend-url }}
-            🔌 **API URL:** ${{ steps.get-outputs.outputs.api-url }}
+            **Frontend URL:** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
+            **API URL:** ${{ needs.deploy-staging-backend.outputs.api-url }}
 
             The staging environment will be automatically cleaned up when the PR is closed.`;
 
@@ -398,6 +664,166 @@ jobs:
               repo: context.repo.repo,
               body: output
             });
+
+  staging-public-api-smoke:
+    name: Staging Unauthorized API Smoke Test
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend]
+
+    steps:
+      - name: Verify unauthorized catalog request is rejected
+        run: |
+          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
+          HTTP_CODE=$(curl --silent --show-error --output /tmp/catalog.json --write-out "%{http_code}" "$API_URL/catalog/crops")
+          test "$HTTP_CODE" = "401"
+
+  contract-api-tests:
+    name: Staging Contract API Tests
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Contract-PR-${{ github.event.pull_request.number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Generate grower auth token for Postman
+        id: ci-auth
+        run: |
+          FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
+
+          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+            echo "CiAuthSeedUsersFunctionName stack output is required for Postman contract auth."
+            exit 1
+          fi
+
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-auth-seed-response.json > /dev/null
+
+          GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower.access_token' ci-auth-seed-response.json)
+
+          if [ -z "$GROWER_ACCESS_TOKEN" ] || [ "$GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$GROWER_ACCESS_TOKEN"
+          echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Install Postman CLI
+        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
+      - name: Login to Postman CLI
+        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
+
+      - name: Run contract collection
+        run: |
+          postman collection run "postman/collections/Community Garden API" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.auth-token }}"
+
+  e2e-api-tests:
+    name: Staging E2E API Tests
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-E2E-PR-${{ github.event.pull_request.number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Generate grower auth token for Postman
+        id: ci-auth
+        run: |
+          FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
+
+          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+            echo "CiAuthSeedUsersFunctionName stack output is required for Postman E2E auth."
+            exit 1
+          fi
+
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-auth-seed-response.json > /dev/null
+
+          GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower.access_token' ci-auth-seed-response.json)
+
+          if [ -z "$GROWER_ACCESS_TOKEN" ] || [ "$GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$GROWER_ACCESS_TOKEN"
+          echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Install Postman CLI
+        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
+      - name: Login to Postman CLI
+        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
+
+      - name: Run E2E collection
+        run: |
+          postman collection run "postman/collections/E2E - Search veggie and add to garden" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.auth-token }}"
+
+  staging-validation-summary:
+    name: Staging Validation Summary
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-staging-backend
+      - deploy-staging-frontend
+      - staging-public-api-smoke
+      - contract-api-tests
+      - e2e-api-tests
+    if: always() && github.event.action != 'closed'
+
+    steps:
+      - name: Check staging validation jobs
+        run: |
+          check_result() {
+            local job_name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$job_name failed with result: $result"
+              exit 1
+            fi
+          }
+
+          check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
+          check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
+          check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
+          check_result "contract-api-tests" "${{ needs.contract-api-tests.result }}"
+          check_result "e2e-api-tests" "${{ needs.e2e-api-tests.result }}"
+
+          echo "Staging validation passed"
 
   cleanup-staging:
     name: Cleanup Staging Environment
@@ -420,7 +846,7 @@ jobs:
           if aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} &>/dev/null; then
             echo "Deleting stack ${{ env.STACK_NAME }}..."
             aws cloudformation delete-stack --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }}
-            echo "✓ Stack deletion initiated"
+            echo "Stack deletion initiated"
           else
             echo "Stack ${{ env.STACK_NAME }} does not exist, nothing to clean up"
           fi

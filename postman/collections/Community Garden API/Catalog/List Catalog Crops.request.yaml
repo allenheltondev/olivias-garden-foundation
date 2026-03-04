@@ -1,0 +1,28 @@
+$kind: http-request
+name: List Catalog Crops
+description: |-
+  Retrieve the public catalog of available crops.
+  
+  No authentication required - this is a public endpoint.
+  The current API returns the full catalog without server-side filtering.
+method: GET
+url: '{{baseUrl}}/catalog/crops'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is a JSON array of catalog crops", function () {
+          const crops = pm.response.json();
+          pm.expect(Array.isArray(crops)).to.be.true;
+
+          if (crops.length > 0) {
+              pm.expect(crops[0]).to.have.property("id");
+              pm.expect(crops[0]).to.have.property("slug");
+              pm.expect(crops[0]).to.have.property("common_name");
+          }
+      });

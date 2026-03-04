@@ -1,0 +1,23 @@
+$kind: http-request
+name: Delete Crop
+description: Remove a crop from the user's crop library.
+method: DELETE
+url: '{{baseUrl}}/crops/:cropLibraryId'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+pathVariables:
+  - key: cropLibraryId
+    value: '{{cropLibraryId}}'
+    description: UUID of the grower crop to delete
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 204", function () {
+          pm.response.to.have.status(204);
+      });
+
+      pm.collectionVariables.unset("cropLibraryId");
+

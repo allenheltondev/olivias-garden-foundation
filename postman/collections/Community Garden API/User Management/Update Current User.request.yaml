@@ -1,0 +1,48 @@
+$kind: http-request
+name: Update Current User
+description: |-
+  Create or update the authenticated user's profile. Supports both grower and gatherer profile types.
+  
+  User Types:
+  - grower: Users who grow food and share surplus
+  - gatherer: Users who look for and collect available food
+method: PUT
+url: '{{baseUrl}}/me'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "John Gardener",
+      "userType": "grower",
+      "growerProfile": {
+        "homeZone": "US-TX-Austin",
+        "address": "123 Garden Lane, Austin, TX 78701",
+        "shareRadiusMiles": 10,
+        "units": "imperial",
+        "locale": "en-US"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches updated user contract", function () {
+          const user = pm.response.json();
+          pm.expect(user).to.have.property("id");
+          pm.expect(user).to.have.property("displayName", "John Gardener");
+          pm.expect(user).to.have.property("userType", "grower");
+          pm.expect(user).to.have.property("onboardingCompleted", true);
+          pm.expect(user).to.have.property("growerProfile");
+          pm.collectionVariables.set("myUserId", user.id);
+          pm.collectionVariables.set("userId", user.id);
+      });

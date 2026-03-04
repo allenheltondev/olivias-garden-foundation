@@ -1,0 +1,78 @@
+$kind: collection
+name: Community Garden API
+description: |-
+  REST API for the Community Garden platform.
+  
+  This Postman collection is aligned to the current backend handlers in this repository,
+  including authenticated profile management, grower crop CRUD, listings, gatherer requests,
+  claims, deterministic reminders, premium billing, analytics, agent tasks, and derived feeds.
+  
+  ## Authentication
+  Most endpoints require a valid JWT Bearer token. Public catalog endpoints do not require authentication.
+  
+  ## User Types
+  - **Grower**: Users who grow food and share surplus with the community
+  - **Gatherer**: Users who look for and collect available food
+  
+  ## Notes
+  - Several flows depend on captured IDs from earlier requests.
+  - Premium endpoints may return `403 feature_locked` without the required entitlements.
+  - The source-of-truth API contract remains `backend/openapi.yaml` plus the Rust handlers.
+variables:
+  - key: baseUrl
+    value: 'https://api.example.com'
+    description: Base URL for the Community Garden API
+  - key: authToken
+    value: ''
+    description: JWT Bearer token for authentication
+  - key: myUserId
+    value: ''
+    description: Captured current user ID from /me responses
+  - key: userId
+    value: ''
+    description: User ID used by public profile requests (often copied from myUserId)
+  - key: catalogCropId
+    value: ''
+    description: Catalog crop ID used by crop, listing, and request examples
+  - key: catalogCropName
+    value: ''
+    description: Catalog crop common name captured by E2E flows
+  - key: varietyId
+    value: ''
+    description: Optional catalog variety ID captured by catalog examples
+  - key: varietyName
+    value: ''
+    description: Optional catalog variety name captured by catalog examples
+  - key: cropLibraryId
+    value: ''
+    description: Captured grower crop ID
+  - key: listingId
+    value: ''
+    description: Captured listing ID for follow-up listing and claim requests
+  - key: requestId
+    value: ''
+    description: Captured gatherer request ID for follow-up request examples
+  - key: claimId
+    value: ''
+    description: Captured claim ID for claim transition examples
+  - key: reminderId
+    value: ''
+    description: Captured reminder ID for reminder status updates
+  - key: taskId
+    value: ''
+    description: Captured premium agent task ID for follow-up task updates
+  - key: searchTerm
+    value: 'tomato'
+    description: Client-side catalog match term used by the E2E workflow
+  - key: stripeWebhookSignature
+    value: ''
+    description: Stripe signature header for webhook testing in non-production environments
+  - key: putMeResponseSnapshot
+    value: ''
+    description: Temporary storage for PUT /me response snapshot (used for idempotency verification)
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+

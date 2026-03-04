@@ -1,0 +1,58 @@
+$kind: http-request
+name: 'Step 1 - List Catalog Crops'
+description: |-
+  List the public catalog of crops, then select a matching crop client-side.
+  
+  This is a public endpoint - no authentication required.
+  
+  **Chaining**: Captures `catalogCropId` and `catalogCropName` from the first matching crop
+  for use in subsequent requests.
+method: GET
+url: '{{baseUrl}}/catalog/crops'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 1: List Catalog Crops - Tests and Variable Chaining
+      
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+      
+      pm.test("Response is JSON", function () {
+          pm.response.to.be.json;
+      });
+      
+      pm.test("Response contains crops array", function () {
+          const jsonData = pm.response.json();
+          const crops = jsonData.crops || jsonData.data || jsonData.items || jsonData;
+          pm.expect(Array.isArray(crops)).to.be.true;
+      });
+      
+      pm.test("Find and capture matching crop", function () {
+          const jsonData = pm.response.json();
+          const crops = jsonData.crops || jsonData.data || jsonData.items || jsonData;
+          const searchTerm = (pm.collectionVariables.get("searchTerm") || "").toLowerCase();
+          
+          let matchingCrop = crops.find(crop =>
+              crop.common_name && crop.common_name.toLowerCase().includes(searchTerm)
+          );
+          
+          if (!matchingCrop && crops.length > 0) {
+              matchingCrop = crops[0];
+              console.log("No exact match found for '" + searchTerm + "', using first crop: " + matchingCrop.common_name);
+          }
+          
+          pm.expect(matchingCrop, "At least one crop should be available").to.not.be.undefined;
+          pm.expect(matchingCrop).to.have.property("common_name");
+          
+          const cropId = matchingCrop.id || matchingCrop.cropId || matchingCrop.crop_id;
+          pm.expect(cropId, "Crop should have an ID").to.not.be.undefined;
+          
+          pm.collectionVariables.set("catalogCropId", cropId);
+          pm.collectionVariables.set("catalogCropName", matchingCrop.common_name || "Unknown Crop");
+          
+          console.log("Captured catalogCropId: " + cropId);
+          console.log("Captured catalogCropName: " + matchingCrop.common_name);
+      });

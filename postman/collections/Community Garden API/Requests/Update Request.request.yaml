@@ -1,0 +1,41 @@
+$kind: http-request
+name: Update Request
+description: Update an existing food request.
+method: PUT
+url: '{{baseUrl}}/requests/:requestId'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: requestId
+    value: '{{requestId}}'
+    description: UUID of the request to update
+body:
+  type: json
+  content: |-
+    {
+      "cropId": "{{catalogCropId}}",
+      "unit": "lb",
+      "quantity": 8,
+      "neededBy": "2026-07-20T18:00:00Z",
+      "notes": "Expanded request for the weekend meal service.",
+      "status": "matched"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response reflects updated request", function () {
+          const request = pm.response.json();
+          pm.expect(request).to.have.property("id", pm.collectionVariables.get("requestId"));
+          pm.expect(request).to.have.property("cropId", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(request).to.have.property("quantity", "8");
+          pm.expect(request).to.have.property("status", "matched");
+      });

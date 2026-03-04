@@ -1,0 +1,48 @@
+$kind: http-request
+name: 'Step 4a - Verify Crop in List'
+description: |-
+  Verify the created crop appears in the user's crop library list.
+  
+  **Requires**: Valid `authToken` for authentication
+  **Depends on**: `createdCropId` from Step 3
+method: GET
+url: '{{baseUrl}}/crops'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 4a: Verify Crop in List - Tests
+      
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+      
+      pm.test("Response is JSON", function () {
+          pm.response.to.be.json;
+      });
+      
+      pm.test("Response contains crops array", function () {
+          const jsonData = pm.response.json();
+          const crops = jsonData.crops || jsonData.data || jsonData.items || jsonData;
+          pm.expect(Array.isArray(crops)).to.be.true;
+      });
+      
+      pm.test("Created crop is in the list", function () {
+          const jsonData = pm.response.json();
+          const crops = jsonData.crops || jsonData.data || jsonData.items || jsonData;
+          const createdCropId = pm.collectionVariables.get("createdCropId");
+          const expectedCatalogId = pm.collectionVariables.get("catalogCropId");
+          
+          pm.expect(createdCropId, "createdCropId should be set from Step 3").to.not.be.empty;
+          
+          const foundCrop = crops.find(crop => crop.id === createdCropId);
+          
+          pm.expect(foundCrop, "Created crop should be in the user's crop list").to.not.be.undefined;
+          pm.expect(foundCrop.crop_id).to.eql(expectedCatalogId);
+          pm.expect(foundCrop.status).to.eql("growing");
+          console.log("Verified: Crop " + createdCropId + " found in user's crop list");
+      });

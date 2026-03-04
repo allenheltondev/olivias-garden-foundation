@@ -1,0 +1,36 @@
+$kind: http-request
+name: 'Step 0a - Verify Onboarding Required for Grower Endpoints'
+description: |-
+  Validate that grower-only endpoints return an explicit onboarding error before
+  the user has configured userType.
+
+  Expected response:
+  - Status 403
+  - error = onboarding_incomplete
+  - message explains to call PUT /me with userType
+method: GET
+url: '{{baseUrl}}/crops'
+order: 400
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 0a: Ensure pre-onboarding guard is explicit
+
+      pm.test("Status code is 403 before onboarding", function () {
+          pm.response.to.have.status(403);
+      });
+
+      const jsonData = pm.response.json();
+
+      pm.test("Error code is onboarding_incomplete", function () {
+          pm.expect(jsonData.error).to.eql("onboarding_incomplete");
+      });
+
+      pm.test("Error message explains remediation", function () {
+          pm.expect(jsonData.message).to.be.a("string");
+          pm.expect(jsonData.message).to.include("Set userType via PUT /me");
+      });

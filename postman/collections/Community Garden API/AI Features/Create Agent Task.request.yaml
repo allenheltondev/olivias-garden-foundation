@@ -1,0 +1,39 @@
+$kind: http-request
+name: Create Agent Task
+description: |-
+  Create a new premium automation task.
+  
+  Premium feature - requires active subscription.
+method: POST
+url: '{{baseUrl}}/agent-tasks'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Weekly crop planning",
+      "scheduleCron": "0 9 * * 1",
+      "instruction": "Generate a concise weekly crop planning checklist for my garden."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches agent task contract", function () {
+          const task = pm.response.json();
+          pm.expect(task).to.have.property("id");
+          pm.expect(task).to.have.property("name", "Weekly crop planning");
+          pm.expect(task).to.have.property("scheduleCron", "0 9 * * 1");
+          pm.expect(task).to.have.property("status", "active");
+          pm.collectionVariables.set("taskId", task.id);
+      });
+

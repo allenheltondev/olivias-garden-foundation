@@ -1,0 +1,23 @@
+$kind: collection
+name: Profile Smoke
+description: |-
+  Standalone smoke tests for user profile endpoints (PUT /me and GET /me).
+  
+  ## Test Coverage
+  - User type initialization guard (ensures grower baseline state)
+  - Status code validation
+  - Required field existence and type checking
+  - Onboarding status validation
+  - Variable capture (`myUserId` / `userId`)
+  - Idempotency verification (PUT /me can be run twice with the same payload)
+  
+  ## Prerequisites
+  - Valid `authToken` must be set
+  - `baseUrl` must be configured
+  
+  ## Execution Order
+  1. Initialize Grower User Type (PUT /me) - establish grower baseline for fresh users
+  2. Update Current User (PUT /me) - initial update and variable capture
+  3. Update Current User - Idempotency Check - verify repeated PUT behavior
+  4. Get Current User (GET /me) - validate persisted state
+order: 500

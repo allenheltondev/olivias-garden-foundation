@@ -1,4 +1,4 @@
-use crate::auth::{extract_auth_context, require_grower};
+use crate::auth::{extract_auth_context_with_fallback, require_grower};
 use crate::db;
 use crate::models::crop::{ErrorResponse, GrowerCropItem, UpsertGrowerCropRequest};
 use lambda_http::{Body, Request, Response};
@@ -15,7 +15,7 @@ pub async fn list_my_crops(
     _correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     // Require grower user type - gatherers will receive 403 Forbidden
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -49,7 +49,7 @@ pub async fn get_my_crop(
     crop_library_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     // Require grower user type - gatherers will receive 403 Forbidden
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -87,7 +87,7 @@ pub async fn create_my_crop(
     correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     // Require grower user type - gatherers will receive 403 Forbidden
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -142,7 +142,7 @@ pub async fn update_my_crop(
     crop_library_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     // Require grower user type - gatherers will receive 403 Forbidden
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -214,7 +214,7 @@ pub async fn delete_my_crop(
     crop_library_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     // Require grower user type - gatherers will receive 403 Forbidden
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)

@@ -1,0 +1,5 @@
+$kind: collection
+name: User Management
+description: Current profile, entitlements, and public profile endpoints, with reusable captured `userId` variables.
+order: 1000
+

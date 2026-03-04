@@ -1,0 +1,38 @@
+$kind: http-request
+name: Create Reminder
+description: Create a new gardening reminder.
+method: POST
+url: '{{baseUrl}}/reminders'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Water tomatoes",
+      "reminderType": "watering",
+      "cadenceDays": 3,
+      "startDate": "2026-07-02",
+      "timezone": "America/Chicago"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches reminder contract", function () {
+          const reminder = pm.response.json();
+          pm.expect(reminder).to.have.property("id");
+          pm.expect(reminder).to.have.property("title", "Water tomatoes");
+          pm.expect(reminder).to.have.property("reminderType", "watering");
+          pm.expect(reminder).to.have.property("cadenceDays", 3);
+          pm.expect(reminder).to.have.property("status", "active");
+          pm.collectionVariables.set("reminderId", reminder.id);
+      });

@@ -1,0 +1,46 @@
+$kind: http-request
+name: Stripe Webhook
+description: |-
+  Handle Stripe webhook events for subscription lifecycle.
+  
+  Note: This endpoint is called by Stripe, not by clients directly.
+  Requires Stripe webhook signature verification.
+method: POST
+url: '{{baseUrl}}/billing/webhook'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Stripe-Signature
+    value: '{{stripeWebhookSignature}}'
+    description: Stripe webhook signature for verification
+body:
+  type: json
+  content: |-
+    {
+      "id": "evt_example",
+      "type": "checkout.session.completed",
+      "created": 1767225600,
+      "data": {
+        "object": {
+          "id": "cs_example",
+          "customer": "cus_example",
+          "subscription": "sub_example",
+          "metadata": {
+            "user_id": "{{myUserId}}"
+          }
+        }
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response acknowledges webhook receipt", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("received", true);
+      });

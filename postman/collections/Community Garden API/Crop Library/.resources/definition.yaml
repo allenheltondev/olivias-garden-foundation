@@ -1,0 +1,5 @@
+$kind: collection
+name: Crop Library
+description: Grower crop CRUD using the current `crop_id` / `status` / `visibility` contract.
+order: 2000
+

@@ -1,0 +1,111 @@
+$kind: http-request
+name: 'Update Current User - Idempotency Check (PUT /me)'
+description: |-
+  Idempotency verification: Re-run PUT /me with the exact same payload.
+  
+  This request verifies that:
+  - The API returns 200 on repeated calls
+  - The response is consistent with the first call
+  - No unintended side effects occur (same id, same data)
+  
+  Per OpenAPI spec: "This endpoint uses upsert semantics. Repeated requests with
+  the same payload are safe and will not cause duplicate data."
+method: PUT
+url: '{{baseUrl}}/me'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "Profile Smoke Test User",
+      "userType": "grower",
+      "growerProfile": {
+        "homeZone": "US-TX-Austin",
+        "address": "123 Smoke Test Lane, Austin, TX 78701",
+        "shareRadiusMiles": 15,
+        "units": "imperial",
+        "locale": "en-US"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // ============================================
+      // PUT /me - Idempotency Verification Tests
+      // ============================================
+
+      // --- Status Code Validation ---
+      pm.test("Status code is 200 on repeated PUT", function () {
+          pm.response.to.have.status(200);
+      });
+
+      // --- Parse Response ---
+      const jsonData = pm.response.json();
+
+      // --- Required Fields Still Present ---
+      pm.test("Response still has required field: id", function () {
+          pm.expect(jsonData).to.have.property("id");
+      });
+
+      pm.test("Response still has required field: onboardingCompleted", function () {
+          pm.expect(jsonData).to.have.property("onboardingCompleted");
+      });
+
+      // --- Idempotency Verification ---
+      pm.test("User ID is unchanged (idempotency check)", function () {
+          const expectedUserId = pm.collectionVariables.get("myUserId");
+          pm.expect(jsonData.id).to.eql(expectedUserId);
+      });
+
+      pm.test("Response matches previous PUT response (idempotency verification)", function () {
+          const snapshotStr = pm.collectionVariables.get("putMeResponseSnapshot");
+          
+          if (!snapshotStr) {
+              console.warn("No snapshot found - skipping detailed comparison");
+              pm.expect.fail("Previous response snapshot not found. Run requests in order.");
+              return;
+          }
+          
+          const snapshot = JSON.parse(snapshotStr);
+          
+          // Verify key fields match
+          pm.expect(jsonData.id).to.eql(snapshot.id, "id should be unchanged");
+          pm.expect(jsonData.displayName).to.eql(snapshot.displayName, "displayName should be unchanged");
+          pm.expect(jsonData.userType).to.eql(snapshot.userType, "userType should be unchanged");
+          pm.expect(jsonData.onboardingCompleted).to.eql(snapshot.onboardingCompleted, "onboardingCompleted should be unchanged");
+          
+          // Verify grower profile key fields
+          if (snapshot.growerProfile && jsonData.growerProfile) {
+              pm.expect(jsonData.growerProfile.units).to.eql(snapshot.growerProfile.units, "growerProfile.units should be unchanged");
+          }
+          
+          console.log("Idempotency verified: Response matches previous PUT");
+      });
+
+      pm.test("onboardingCompleted remains true", function () {
+          pm.expect(jsonData.onboardingCompleted).to.eql(true);
+      });
+
+      pm.test("userType remains grower", function () {
+          pm.expect(jsonData.userType).to.eql("grower");
+      });
+
+      // --- Type Validation (ensure no type changes) ---
+      pm.test("id is still a valid UUID", function () {
+          pm.expect(jsonData.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      });
+
+      pm.test("isVerified is still a boolean", function () {
+          pm.expect(jsonData.isVerified).to.be.a("boolean");
+      });
+
+      pm.test("createdAt is still a valid ISO date", function () {
+          pm.expect(jsonData.createdAt).to.be.a("string");
+          pm.expect(new Date(jsonData.createdAt).toISOString()).to.be.ok;
+      });

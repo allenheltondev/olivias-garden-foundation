@@ -1,0 +1,36 @@
+$kind: http-request
+name: Track Analytics Event
+description: |-
+  Track a premium analytics event.
+  
+  Premium feature - requires active subscription.
+method: POST
+url: '{{baseUrl}}/analytics/premium/events'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "eventName": "checkout_start",
+      "metadata": {
+        "listingId": "{{listingId}}",
+        "source": "discover_feed"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 202", function () {
+          pm.response.to.have.status(202);
+      });
+
+      pm.test("Response confirms analytics event acceptance", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("accepted", true);
+      });

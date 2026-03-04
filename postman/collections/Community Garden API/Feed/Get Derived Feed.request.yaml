@@ -1,0 +1,45 @@
+$kind: http-request
+name: Get Derived Feed
+description: |-
+  Retrieve the derived feed for a geohash scope.
+  
+  The feed includes active listings, derived supply signals, freshness metadata,
+  and optional premium AI summaries.
+method: GET
+url: '{{baseUrl}}/feed/derived'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+queryParams:
+  - key: geoKey
+    value: '9v6kn7'
+    description: Required geohash used to scope the derived feed
+  - key: windowDays
+    value: '7'
+    description: Supported windows: 7, 14, 30
+  - key: limit
+    value: '20'
+    description: Number of items per page
+  - key: offset
+    value: '0'
+    description: Row offset for pagination
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches derived feed contract", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("items");
+          pm.expect(response).to.have.property("signals");
+          pm.expect(response).to.have.property("freshness");
+          pm.expect(response).to.have.property("limit");
+          pm.expect(response).to.have.property("offset");
+          pm.expect(response).to.have.property("hasMore");
+          pm.expect(Array.isArray(response.items)).to.be.true;
+          pm.expect(Array.isArray(response.signals)).to.be.true;
+      });

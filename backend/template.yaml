@@ -501,6 +501,14 @@ Resources:
                 - claim.created
                 - claim.updated
 
+  PremiumStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: premium-template.yaml
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        EventBusArn: !GetAtt EventBus.Arn
+
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
@@ -562,8 +570,14 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-CiAuthSeedUsersFunctionName"
 
-  PremiumStackDeploymentMode:
-    Description: Indicates whether premium nested stack deployment is enabled
-    Value: "true"
+  PremiumAgentTaskQueueUrl:
+    Description: URL of the premium agent task queue in the nested premium stack
+    Value: !GetAtt PremiumStack.Outputs.PremiumAgentTaskQueueUrl
+    Export:
+      Name: !Sub "${AWS::StackName}-PremiumAgentTaskQueueUrl"
 
-
+  PremiumAgentTaskQueueArn:
+    Description: ARN of the premium agent task queue in the nested premium stack
+    Value: !GetAtt PremiumStack.Outputs.PremiumAgentTaskQueueArn
+    Export:
+      Name: !Sub "${AWS::StackName}-PremiumAgentTaskQueueArn"

@@ -1,0 +1,22 @@
+$kind: http-request
+name: List Reminders
+description: Retrieve all reminders for the authenticated user.
+method: GET
+url: '{{baseUrl}}/reminders'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches reminder list contract", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("items");
+          pm.expect(Array.isArray(response.items)).to.be.true;
+      });

@@ -1,0 +1,4 @@
+$kind: collection
+name: Billing
+description: Stripe-backed premium subscription billing, including checkout session creation and webhook handling.
+order: 6000

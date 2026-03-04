@@ -1,0 +1,39 @@
+$kind: http-request
+name: Create Claim
+description: |-
+  Create a gatherer claim on a listing.
+  
+  This reserves the listing for pickup. The claim starts in `pending` state.
+method: POST
+url: '{{baseUrl}}/claims'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listingId": "{{listingId}}",
+      "quantityClaimed": 5,
+      "notes": "I can pick these up tomorrow afternoon."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches claim contract", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("id");
+          pm.expect(claim).to.have.property("listingId", pm.collectionVariables.get("listingId"));
+          pm.expect(claim).to.have.property("quantityClaimed", "5");
+          pm.expect(claim).to.have.property("status", "pending");
+          pm.collectionVariables.set("claimId", claim.id);
+      });
+

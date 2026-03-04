@@ -1,0 +1,34 @@
+$kind: http-request
+name: Create Checkout Session
+description: |-
+  Create a Stripe checkout session for premium subscription.
+  
+  Redirects user to Stripe-hosted checkout page for payment processing.
+method: POST
+url: '{{baseUrl}}/billing/checkout-session'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "successUrl": "https://app.example.com/billing/success",
+      "cancelUrl": "https://app.example.com/billing/cancel"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response contains Stripe checkout session details", function () {
+          const response = pm.response.json();
+          pm.expect(response).to.have.property("checkoutUrl");
+          pm.expect(response).to.have.property("checkoutSessionId");
+      });

@@ -1,0 +1,27 @@
+$kind: http-request
+name: Get Public User Profile
+description: Retrieve a public profile by user ID. Returns limited public information.
+method: GET
+url: '{{baseUrl}}/users/:userId'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+pathVariables:
+  - key: userId
+    value: '{{userId}}'
+    description: UUID of the user to retrieve
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches public user contract", function () {
+          const user = pm.response.json();
+          pm.expect(user).to.have.property("id", pm.collectionVariables.get("userId"));
+          pm.expect(user).to.have.property("created_at");
+      });
+

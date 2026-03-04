@@ -1,0 +1,35 @@
+$kind: http-request
+name: Update Agent Task
+description: Update the status of a premium automation task.
+method: PUT
+url: '{{baseUrl}}/agent-tasks/:taskId'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+pathVariables:
+  - key: taskId
+    value: '{{taskId}}'
+    description: UUID of the agent task
+body:
+  type: json
+  content: |-
+    {
+      "status": "paused"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response reflects updated agent task status", function () {
+          const task = pm.response.json();
+          pm.expect(task).to.have.property("id", pm.collectionVariables.get("taskId"));
+          pm.expect(task).to.have.property("status", "paused");
+      });
+

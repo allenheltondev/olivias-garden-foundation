@@ -1,0 +1,61 @@
+$kind: http-request
+name: 'Step 4b - Get Crop by ID'
+description: |-
+  Verify the created crop can be retrieved directly by its ID.
+  
+  **Requires**: Valid `authToken` for authentication
+  **Depends on**: `createdCropId` from Step 3
+method: GET
+url: '{{baseUrl}}/crops/:cropLibraryId'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+pathVariables:
+  - key: cropLibraryId
+    value: '{{createdCropId}}'
+    description: UUID of the created crop from Step 3
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 4b: Get Crop by ID - Tests
+      
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+      
+      pm.test("Response is JSON", function () {
+          pm.response.to.be.json;
+      });
+      
+      pm.test("Response contains crop data", function () {
+          const crop = pm.response.json();
+          
+          pm.expect(crop).to.be.an('object');
+          pm.expect(crop).to.have.property("crop_id");
+          pm.expect(crop).to.have.property("nickname");
+      });
+      
+      pm.test("Returned crop has correct ID", function () {
+          const crop = pm.response.json();
+          const expectedId = pm.collectionVariables.get("createdCropId");
+          
+          pm.expect(crop.id).to.equal(expectedId);
+          console.log("Verified: Retrieved crop ID matches created crop ID");
+      });
+      
+      pm.test("Crop has expected nickname", function () {
+          const crop = pm.response.json();
+          
+          pm.expect(crop.nickname).to.include("E2E Test");
+          console.log("Verified: Crop nickname: " + crop.nickname);
+      });
+      
+      pm.test("Crop references correct catalog crop", function () {
+          const crop = pm.response.json();
+          const expectedCatalogId = pm.collectionVariables.get("catalogCropId");
+          
+          pm.expect(crop.crop_id).to.equal(expectedCatalogId);
+          console.log("Verified: Crop references correct catalog crop");
+      });

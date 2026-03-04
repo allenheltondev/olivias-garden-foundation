@@ -1,0 +1,39 @@
+$kind: http-request
+name: Create Crop
+description: Add a new crop to the user's crop library.
+method: POST
+url: '{{baseUrl}}/crops'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "crop_id": "{{catalogCropId}}",
+      "status": "growing",
+      "visibility": "local",
+      "surplus_enabled": true,
+      "nickname": "My Heirloom Tomatoes",
+      "notes": "Planted in raised bed #2"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches grower crop contract", function () {
+          const crop = pm.response.json();
+          pm.expect(crop).to.have.property("id");
+          pm.expect(crop).to.have.property("crop_id");
+          pm.expect(crop).to.have.property("status", "growing");
+          pm.expect(crop).to.have.property("visibility", "local");
+          pm.expect(crop).to.have.property("surplus_enabled", true);
+          pm.collectionVariables.set("cropLibraryId", crop.id);
+      });

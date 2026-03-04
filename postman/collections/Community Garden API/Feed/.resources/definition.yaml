@@ -1,0 +1,4 @@
+$kind: collection
+name: Feed
+description: Derived feed reads scoped by `geoKey`, including active listings, supply signals, freshness, and optional premium AI summaries.
+order: 11000

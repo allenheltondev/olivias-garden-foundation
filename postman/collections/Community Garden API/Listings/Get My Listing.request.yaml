@@ -1,0 +1,27 @@
+$kind: http-request
+name: Get My Listing
+description: Retrieve a specific listing owned by the authenticated user.
+method: GET
+url: '{{baseUrl}}/my/listings/:listingId'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+pathVariables:
+  - key: listingId
+    value: '{{listingId}}'
+    description: UUID of the listing
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response matches requested listing", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id", pm.collectionVariables.get("listingId"));
+          pm.expect(listing).to.have.property("cropId");
+          pm.expect(listing).to.have.property("status");
+      });

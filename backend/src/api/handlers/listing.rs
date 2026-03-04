@@ -1,4 +1,4 @@
-use crate::auth::{extract_auth_context, require_grower};
+use crate::auth::{extract_auth_context_with_fallback, require_grower};
 use crate::db;
 use crate::location;
 use crate::models::crop::ErrorResponse;
@@ -130,7 +130,7 @@ pub async fn list_my_listings(
     request: &Request,
     correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -225,7 +225,7 @@ pub async fn get_listing(
     correlation_id: &str,
     listing_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -271,7 +271,7 @@ pub async fn create_listing(
     request: &Request,
     correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)
@@ -408,7 +408,7 @@ pub async fn update_listing(
     correlation_id: &str,
     listing_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let auth_context = extract_auth_context(request)?;
+    let auth_context = extract_auth_context_with_fallback(request).await?;
     require_grower(&auth_context)?;
 
     let user_id = Uuid::parse_str(&auth_context.user_id)

@@ -1,0 +1,53 @@
+$kind: http-request
+name: Create Listing
+description: |-
+  Create a new food listing to share surplus produce.
+  
+  Status values:
+  - active: Available for claims
+  - pending: Waiting on a follow-up action
+  - claimed: Reserved by a gatherer
+  - expired: No longer available
+  - completed: Successfully shared
+method: POST
+url: '{{baseUrl}}/listings'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Fresh Tomatoes - 5 lb available",
+      "crop_id": "{{catalogCropId}}",
+      "quantity_total": 5,
+      "unit": "lb",
+      "available_start": "2026-07-01T08:00:00Z",
+      "available_end": "2026-07-03T18:00:00Z",
+      "pickup_location_text": "Front porch",
+      "pickup_address": "123 Garden Lane, Austin, TX 78701",
+      "pickup_disclosure_policy": "after_confirmed",
+      "pickup_notes": "Ring doorbell, produce will be in cooler on porch",
+      "contact_pref": "app_message",
+      "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches listing write contract", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id");
+          pm.expect(listing).to.have.property("cropId", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(listing).to.have.property("quantityTotal", "5");
+          pm.expect(listing).to.have.property("unit", "lb");
+          pm.expect(listing).to.have.property("status", "active");
+          pm.collectionVariables.set("listingId", listing.id);
+      });

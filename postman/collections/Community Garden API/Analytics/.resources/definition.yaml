@@ -1,0 +1,4 @@
+$kind: collection
+name: Analytics
+description: Premium analytics endpoints for accepted event tracking and rolling-window KPI reads.
+order: 8000

@@ -1,0 +1,123 @@
+$kind: http-request
+name: 'Get Current User (GET /me)'
+description: |-
+  Retrieve the authenticated user's profile and validate the state after PUT /me.
+  
+  This request verifies:
+  - GET returns the updated profile data
+  - All required fields are present with correct types
+  - Onboarding status reflects completed state
+  - User ID matches the captured myUserId
+method: GET
+url: '{{baseUrl}}/me'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // ============================================
+      // GET /me - Response Tests and State Validation
+      // ============================================
+
+      // --- Status Code Validation ---
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      // --- Parse Response ---
+      const jsonData = pm.response.json();
+
+      // --- Required Fields Existence Tests ---
+      pm.test("Response has required field: id", function () {
+          pm.expect(jsonData).to.have.property("id");
+      });
+
+      pm.test("Response has required field: isVerified", function () {
+          pm.expect(jsonData).to.have.property("isVerified");
+      });
+
+      pm.test("Response has required field: createdAt", function () {
+          pm.expect(jsonData).to.have.property("createdAt");
+      });
+
+      pm.test("Response has required field: onboardingCompleted", function () {
+          pm.expect(jsonData).to.have.property("onboardingCompleted");
+      });
+
+      // --- Type Validation Tests ---
+      pm.test("id is a string (UUID format)", function () {
+          pm.expect(jsonData.id).to.be.a("string");
+          pm.expect(jsonData.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      });
+
+      pm.test("isVerified is a boolean", function () {
+          pm.expect(jsonData.isVerified).to.be.a("boolean");
+      });
+
+      pm.test("createdAt is a string (ISO date format)", function () {
+          pm.expect(jsonData.createdAt).to.be.a("string");
+          pm.expect(new Date(jsonData.createdAt).toISOString()).to.be.ok;
+      });
+
+      pm.test("onboardingCompleted is a boolean", function () {
+          pm.expect(jsonData.onboardingCompleted).to.be.a("boolean");
+      });
+
+      // --- Validate State After PUT ---
+      pm.test("User ID matches captured myUserId", function () {
+          const expectedUserId = pm.collectionVariables.get("myUserId");
+          if (expectedUserId) {
+              pm.expect(jsonData.id).to.eql(expectedUserId);
+              console.log("Verified user ID matches:", expectedUserId);
+          } else {
+              console.warn("myUserId not set - skipping ID comparison");
+          }
+      });
+
+      pm.test("onboardingCompleted is true (reflects PUT update)", function () {
+          pm.expect(jsonData.onboardingCompleted).to.eql(true);
+      });
+
+      pm.test("userType is grower (reflects PUT update)", function () {
+          pm.expect(jsonData.userType).to.eql("grower");
+      });
+
+      pm.test("displayName matches PUT payload", function () {
+          pm.expect(jsonData.displayName).to.eql("Profile Smoke Test User");
+      });
+
+      // --- Grower Profile Validation ---
+      pm.test("growerProfile exists and is an object", function () {
+          pm.expect(jsonData).to.have.property("growerProfile");
+          pm.expect(jsonData.growerProfile).to.be.an("object");
+      });
+
+      pm.test("growerProfile.units is imperial (reflects PUT update)", function () {
+          pm.expect(jsonData.growerProfile.units).to.eql("imperial");
+      });
+
+      // --- Validate Against Stored Snapshot ---
+      pm.test("GET response matches PUT response snapshot", function () {
+          const snapshotStr = pm.collectionVariables.get("putMeResponseSnapshot");
+          
+          if (!snapshotStr) {
+              console.warn("No snapshot found - skipping snapshot comparison");
+              return;
+          }
+          
+          const snapshot = JSON.parse(snapshotStr);
+          
+          pm.expect(jsonData.id).to.eql(snapshot.id, "id should match PUT response");
+          pm.expect(jsonData.displayName).to.eql(snapshot.displayName, "displayName should match PUT response");
+          pm.expect(jsonData.userType).to.eql(snapshot.userType, "userType should match PUT response");
+          pm.expect(jsonData.onboardingCompleted).to.eql(snapshot.onboardingCompleted, "onboardingCompleted should match PUT response");
+          
+          console.log("GET response validated against PUT snapshot");
+      });
+
+      // --- Cleanup temporary variables (optional) ---
+      // Uncomment if you want to clean up after the smoke test run
+      // pm.collectionVariables.unset("putMeResponseSnapshot");

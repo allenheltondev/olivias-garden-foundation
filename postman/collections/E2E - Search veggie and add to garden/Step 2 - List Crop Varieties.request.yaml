@@ -1,0 +1,72 @@
+$kind: http-request
+name: 'Step 2 - List Crop Varieties'
+description: |-
+  Retrieve available varieties for the selected catalog crop.
+  
+  This is a public endpoint - no authentication required.
+  
+  **Depends on**: `catalogCropId` from Step 1
+  **Chaining**: Captures `varietyId` and `varietyName` from the first variety
+  for optional follow-up use.
+method: GET
+url: '{{baseUrl}}/catalog/crops/:cropId/varieties'
+order: 2000
+pathVariables:
+  - key: cropId
+    value: '{{catalogCropId}}'
+    description: UUID of the catalog crop from Step 1
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Step 2: List Crop Varieties - Tests and Variable Chaining
+      
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+      
+      pm.test("Response is JSON", function () {
+          pm.response.to.be.json;
+      });
+      
+      pm.test("Response contains varieties array", function () {
+          const jsonData = pm.response.json();
+          const varieties = jsonData.varieties || jsonData.data || jsonData.items || jsonData;
+          pm.expect(Array.isArray(varieties)).to.be.true;
+
+          if (varieties.length > 0) {
+              pm.expect(varieties[0]).to.have.property("crop_id");
+              pm.expect(varieties[0].crop_id).to.eql(pm.collectionVariables.get("catalogCropId"));
+          }
+      });
+      
+      pm.test("Capture first variety", function () {
+          const jsonData = pm.response.json();
+          const varieties = jsonData.varieties || jsonData.data || jsonData.items || jsonData;
+          
+          if (varieties.length > 0) {
+              const variety = varieties[0];
+              const varietyId = variety.id || variety.varietyId || variety.variety_id;
+              
+              if (varietyId) {
+                  pm.collectionVariables.set("varietyId", varietyId);
+                  pm.collectionVariables.set("varietyName", variety.name || "Unknown Variety");
+                  
+                  console.log("Captured varietyId: " + varietyId);
+                  console.log("Captured varietyName: " + variety.name);
+              } else {
+                  console.log("No variety ID found, storing empty variety variables");
+                  pm.collectionVariables.set("varietyId", "");
+                  pm.collectionVariables.set("varietyName", "");
+              }
+          } else {
+              console.log("No varieties available for this crop");
+              pm.collectionVariables.set("varietyId", "");
+              pm.collectionVariables.set("varietyName", "");
+          }
+      });
+      
+      pm.test("catalogCropId is set from previous step", function () {
+          const cropId = pm.collectionVariables.get("catalogCropId");
+          pm.expect(cropId, "catalogCropId should be set from Step 1").to.not.be.empty;
+      });
