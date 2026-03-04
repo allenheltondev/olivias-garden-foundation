@@ -26,9 +26,79 @@ env:
   VITE_AWS_REGION: us-east-1
 
 jobs:
+  detect-changes:
+    name: Detect Changed Paths
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      backend_code: ${{ steps.filter.outputs.backend_code }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      postman: ${{ steps.filter.outputs.postman }}
+      infra: ${{ steps.filter.outputs.infra }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+      staging: ${{ steps.derive.outputs.staging }}
+      api-tests: ${{ steps.derive.outputs.api-tests }}
+      frontend-deploy: ${{ steps.derive.outputs.frontend-deploy }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed files
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend_code:
+              - 'backend/**'
+              - '!backend/template.yaml'
+              - '!backend/premium-template.yaml'
+              - '!backend/samconfig.template.toml'
+              - '!backend/samconfig.toml'
+            frontend:
+              - 'frontend/**'
+            postman:
+              - 'postman/**'
+              - '.postman/**'
+            infra:
+              - 'backend/template.yaml'
+              - 'backend/premium-template.yaml'
+              - 'backend/samconfig.template.toml'
+              - 'backend/samconfig.toml'
+            workflow:
+              - '.github/workflows/pr-checks.yml'
+
+      - name: Derive run toggles
+        id: derive
+        shell: bash
+        run: |
+          backend_code="${{ steps.filter.outputs.backend_code }}"
+          frontend="${{ steps.filter.outputs.frontend }}"
+          postman="${{ steps.filter.outputs.postman }}"
+          infra="${{ steps.filter.outputs.infra }}"
+          workflow="${{ steps.filter.outputs.workflow }}"
+
+          if [[ "$backend_code" == "true" || "$frontend" == "true" || "$postman" == "true" || "$infra" == "true" || "$workflow" == "true" ]]; then
+            echo "staging=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "staging=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ "$backend_code" == "true" || "$postman" == "true" || "$infra" == "true" || "$workflow" == "true" ]]; then
+            echo "api-tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api-tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ "$frontend" == "true" || "$infra" == "true" || "$workflow" == "true" ]]; then
+            echo "frontend-deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend-deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   backend-format:
     name: Backend Format Check
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.backend_code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -62,7 +132,8 @@ jobs:
 
   backend-lint:
     name: Backend Clippy
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.backend_code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -96,7 +167,8 @@ jobs:
 
   backend-build:
     name: Backend Build Check
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.backend_code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -129,7 +201,8 @@ jobs:
 
   backend-unit-tests:
     name: Backend Unit Tests
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.backend_code == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -184,7 +257,8 @@ jobs:
 
   backend-integration-tests:
     name: Backend Integration Tests
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.backend_code == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -239,7 +313,8 @@ jobs:
 
   frontend-lint:
     name: Frontend Lint
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -264,7 +339,8 @@ jobs:
 
   frontend-typecheck:
     name: Frontend Type Check
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -289,7 +365,8 @@ jobs:
 
   frontend-unit-tests:
     name: Frontend Unit Tests
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -313,7 +390,8 @@ jobs:
 
   frontend-build:
     name: Frontend Build Check
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -337,7 +415,8 @@ jobs:
 
   frontend-performance-budget:
     name: Frontend Performance Budget
-    if: github.event.action != 'closed'
+    needs: [detect-changes]
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -366,6 +445,7 @@ jobs:
     name: CI Summary
     runs-on: ubuntu-latest
     needs:
+      - detect-changes
       - backend-format
       - backend-lint
       - backend-build
@@ -381,26 +461,33 @@ jobs:
     steps:
       - name: Check all CI jobs
         run: |
-          if [ "${{ needs.backend-format.result }}" != "success" ] || \
-             [ "${{ needs.backend-lint.result }}" != "success" ] || \
-             [ "${{ needs.backend-build.result }}" != "success" ] || \
-             [ "${{ needs.backend-unit-tests.result }}" != "success" ] || \
-             [ "${{ needs.backend-integration-tests.result }}" != "success" ] || \
-             [ "${{ needs.frontend-lint.result }}" != "success" ] || \
-             [ "${{ needs.frontend-typecheck.result }}" != "success" ] || \
-             [ "${{ needs.frontend-unit-tests.result }}" != "success" ] || \
-             [ "${{ needs.frontend-build.result }}" != "success" ] || \
-             [ "${{ needs.frontend-performance-budget.result }}" != "success" ]; then
-            echo "Some CI checks failed"
-            exit 1
-          fi
-          echo "All CI checks passed"
+          check_result() {
+            local job_name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$job_name failed with result: $result"
+              exit 1
+            fi
+          }
+
+          check_result "backend-format" "${{ needs.backend-format.result }}"
+          check_result "backend-lint" "${{ needs.backend-lint.result }}"
+          check_result "backend-build" "${{ needs.backend-build.result }}"
+          check_result "backend-unit-tests" "${{ needs.backend-unit-tests.result }}"
+          check_result "backend-integration-tests" "${{ needs.backend-integration-tests.result }}"
+          check_result "frontend-lint" "${{ needs.frontend-lint.result }}"
+          check_result "frontend-typecheck" "${{ needs.frontend-typecheck.result }}"
+          check_result "frontend-unit-tests" "${{ needs.frontend-unit-tests.result }}"
+          check_result "frontend-build" "${{ needs.frontend-build.result }}"
+          check_result "frontend-performance-budget" "${{ needs.frontend-performance-budget.result }}"
+
+          echo "All applicable CI checks passed"
 
   deploy-staging-backend:
     name: Deploy Staging Backend
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.staging == 'true'
     runs-on: ubuntu-latest
-    needs: [ci-summary]
+    needs: [detect-changes, ci-summary]
     environment:
       name: staging
       url: ${{ steps.get-outputs.outputs.frontend-url }}
@@ -561,9 +648,9 @@ jobs:
 
   deploy-staging-frontend:
     name: Deploy Staging Frontend
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.frontend-deploy == 'true'
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend]
+    needs: [detect-changes, deploy-staging-backend]
     env:
       AWS_REGION: us-east-1
 
@@ -632,9 +719,9 @@ jobs:
 
   comment-staging-deployment:
     name: Comment Staging Deployment
-    if: github.event.action != 'closed'
+    if: always() && github.event.action != 'closed' && needs.detect-changes.outputs.staging == 'true' && needs.deploy-staging-backend.result == 'success' && (needs.deploy-staging-frontend.result == 'success' || needs.deploy-staging-frontend.result == 'skipped')
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend]
+    needs: [detect-changes, deploy-staging-backend, deploy-staging-frontend]
 
     steps:
       - name: Comment on PR
@@ -660,9 +747,9 @@ jobs:
 
   staging-public-api-smoke:
     name: Staging Unauthorized API Smoke Test
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.api-tests == 'true'
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend]
+    needs: [detect-changes, deploy-staging-backend]
 
     steps:
       - name: Verify unauthorized catalog request is rejected
@@ -673,9 +760,9 @@ jobs:
 
   contract-api-tests:
     name: Staging Contract API Tests
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.api-tests == 'true'
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    needs: [detect-changes, deploy-staging-backend, staging-public-api-smoke]
     env:
       AWS_REGION: us-east-1
 
@@ -717,6 +804,20 @@ jobs:
           echo "::add-mask::$GROWER_ACCESS_TOKEN"
           echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
+      - name: Ensure grower user type is initialized
+        run: |
+          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
+          HTTP_CODE=$(curl --silent --show-error \
+            --output /tmp/ensure-grower.json \
+            --write-out "%{http_code}" \
+            -X PUT "$API_URL/me" \
+            -H "Authorization: Bearer ${{ steps.ci-auth.outputs.auth-token }}" \
+            -H "Content-Type: application/json" \
+            --data '{"displayName":"CI Grower","userType":"grower"}')
+
+          test "$HTTP_CODE" = "200"
+          jq -e '.userType == "grower"' /tmp/ensure-grower.json > /dev/null
+
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
 
@@ -731,9 +832,9 @@ jobs:
 
   e2e-api-tests:
     name: Staging E2E API Tests
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && needs.detect-changes.outputs.api-tests == 'true'
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    needs: [detect-changes, deploy-staging-backend, staging-public-api-smoke]
     env:
       AWS_REGION: us-east-1
 
@@ -775,6 +876,20 @@ jobs:
           echo "::add-mask::$GROWER_ACCESS_TOKEN"
           echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
+      - name: Ensure grower user type is initialized
+        run: |
+          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
+          HTTP_CODE=$(curl --silent --show-error \
+            --output /tmp/ensure-grower.json \
+            --write-out "%{http_code}" \
+            -X PUT "$API_URL/me" \
+            -H "Authorization: Bearer ${{ steps.ci-auth.outputs.auth-token }}" \
+            -H "Content-Type: application/json" \
+            --data '{"displayName":"CI Grower","userType":"grower"}')
+
+          test "$HTTP_CODE" = "200"
+          jq -e '.userType == "grower"' /tmp/ensure-grower.json > /dev/null
+
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
 
@@ -791,24 +906,32 @@ jobs:
     name: Staging Validation Summary
     runs-on: ubuntu-latest
     needs:
+      - detect-changes
       - deploy-staging-backend
       - deploy-staging-frontend
       - staging-public-api-smoke
       - contract-api-tests
       - e2e-api-tests
-    if: always() && github.event.action != 'closed'
+    if: always() && github.event.action != 'closed' && needs.detect-changes.outputs.staging == 'true'
 
     steps:
       - name: Check staging validation jobs
         run: |
-          if [ "${{ needs.deploy-staging-backend.result }}" != "success" ] || \
-             [ "${{ needs.deploy-staging-frontend.result }}" != "success" ] || \
-             [ "${{ needs.staging-public-api-smoke.result }}" != "success" ] || \
-             [ "${{ needs.contract-api-tests.result }}" != "success" ] || \
-             [ "${{ needs.e2e-api-tests.result }}" != "success" ]; then
-            echo "Staging validation failed"
-            exit 1
-          fi
+          check_result() {
+            local job_name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$job_name failed with result: $result"
+              exit 1
+            fi
+          }
+
+          check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
+          check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
+          check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
+          check_result "contract-api-tests" "${{ needs.contract-api-tests.result }}"
+          check_result "e2e-api-tests" "${{ needs.e2e-api-tests.result }}"
+
           echo "Staging validation passed"
 
   cleanup-staging:

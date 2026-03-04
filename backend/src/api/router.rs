@@ -7,7 +7,7 @@ use crate::middleware::correlation::{
 };
 use lambda_http::{Body, Request, Response};
 use std::env;
-use tracing::info;
+use tracing::{error, info};
 
 fn add_cors_headers(mut response: Response<Body>) -> Response<Body> {
     let origin = env::var("ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string());
@@ -232,7 +232,10 @@ fn handle(
 ) -> Result<Response<Body>, lambda_http::Error> {
     match result {
         Ok(response) => Ok(response),
-        Err(error) => map_api_error_to_response(&error),
+        Err(error) => {
+            error!(error = %error, "Request handler returned error");
+            map_api_error_to_response(&error)
+        }
     }
 }
 
