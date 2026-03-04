@@ -485,7 +485,7 @@ jobs:
 
   deploy-staging-backend:
     name: Deploy Staging Backend
-    if: github.event.action != 'closed' && needs.detect-changes.outputs.staging == 'true'
+    if: github.event.action != 'closed' && (needs.detect-changes.outputs.staging == 'true' || needs.detect-changes.outputs.backend_code == 'true')
     runs-on: ubuntu-latest
     needs: [detect-changes, ci-summary]
     environment:
@@ -747,7 +747,7 @@ jobs:
 
   staging-public-api-smoke:
     name: Staging Unauthorized API Smoke Test
-    if: github.event.action != 'closed' && needs.detect-changes.outputs.api-tests == 'true'
+    if: github.event.action != 'closed' && (needs.detect-changes.outputs.api-tests == 'true' || needs.detect-changes.outputs.backend_code == 'true')
     runs-on: ubuntu-latest
     needs: [detect-changes, deploy-staging-backend]
 
@@ -760,7 +760,7 @@ jobs:
 
   contract-api-tests:
     name: Staging Contract API Tests
-    if: github.event.action != 'closed' && needs.detect-changes.outputs.api-tests == 'true'
+    if: github.event.action != 'closed' && (needs.detect-changes.outputs.api-tests == 'true' || needs.detect-changes.outputs.backend_code == 'true')
     runs-on: ubuntu-latest
     needs: [detect-changes, deploy-staging-backend, staging-public-api-smoke]
     env:
@@ -832,7 +832,7 @@ jobs:
 
   e2e-api-tests:
     name: Staging E2E API Tests
-    if: github.event.action != 'closed' && needs.detect-changes.outputs.api-tests == 'true'
+    if: github.event.action != 'closed' && (needs.detect-changes.outputs.api-tests == 'true' || needs.detect-changes.outputs.backend_code == 'true')
     runs-on: ubuntu-latest
     needs: [detect-changes, deploy-staging-backend, staging-public-api-smoke]
     env:
