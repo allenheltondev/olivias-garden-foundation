@@ -46,6 +46,8 @@ scripts:
               const response = pm.response.json();
               pm.expect(response).to.have.property("modelId");
               pm.expect(response).to.have.property("modelVersion");
+              pm.expect(response.modelVersion).to.be.a("string").and.not.empty;
+              pm.expect(response.modelVersion).to.include("tool_first_json");
               pm.expect(response).to.have.property("structuredJson", true);
               pm.expect(response).to.have.property("geoKey");
               pm.expect(response).to.have.property("windowDays", 7);

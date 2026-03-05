@@ -23,7 +23,7 @@ pub fn load_model_config() -> AiModelConfig {
             .or_else(|_| std::env::var("AWS_REGION"))
             .unwrap_or_else(|_| "us-east-1".to_string()),
         response_mode: std::env::var("AI_RESPONSE_MODE")
-            .unwrap_or_else(|_| "structured_json".to_string()),
+            .unwrap_or_else(|_| "tool_first_json".to_string()),
         schema_version: std::env::var("AI_RESPONSE_SCHEMA_VERSION")
             .unwrap_or_else(|_| "v1".to_string()),
     }
