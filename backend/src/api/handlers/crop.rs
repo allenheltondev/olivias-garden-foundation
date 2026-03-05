@@ -313,7 +313,8 @@ async fn validate_catalog_links(
 }
 
 fn parse_uuid(value: &str, field_name: &str) -> Result<Uuid, lambda_http::Error> {
-    Uuid::parse_str(value)
+    let normalized = value.trim();
+    Uuid::parse_str(normalized)
         .map_err(|_| lambda_http::Error::from(format!("{field_name} must be a valid UUID")))
 }
 

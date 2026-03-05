@@ -48,7 +48,7 @@ pub async fn discover_listings(
                    geo_key, lat, lng, created_at
             from surplus_listings
             where deleted_at is null
-              and status = $1::listing_status
+              and status = $1::text::listing_status
               and geo_key is not null
               and geo_key like $2
             order by created_at desc, id desc
