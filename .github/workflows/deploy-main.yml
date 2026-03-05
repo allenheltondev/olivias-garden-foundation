@@ -48,6 +48,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       # Backend checks
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -137,6 +138,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -195,9 +197,10 @@ jobs:
         env:
           DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
         run: |
+          ESCAPED_DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed 's/[&|]/\\&/g')
           sed -e "s|{{STACK_NAME}}|${{ env.STACK_NAME }}|g" \
               -e "s|{{REGION}}|${{ env.AWS_REGION }}|g" \
-              -e "s|{{DATABASE_URL}}|${DATABASE_URL}|g" \
+              -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|${{ env.ENVIRONMENT }}|g" \
               samconfig.template.toml > samconfig.toml
           echo "✓ Generated samconfig.toml for CI"
@@ -383,3 +386,4 @@ jobs:
             exit 1
           fi
           echo "✅ Deployment successful"
+

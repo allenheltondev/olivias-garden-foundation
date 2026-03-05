@@ -38,6 +38,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -72,6 +73,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -105,6 +107,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
 
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -154,6 +157,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
 
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -209,6 +213,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
 
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -419,6 +424,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -484,9 +490,10 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
+          ESCAPED_DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed 's/[&|]/\\&/g')
           sed -e "s|{{STACK_NAME}}|${{ env.STACK_NAME }}|g" \
               -e "s|{{REGION}}|${{ env.AWS_REGION }}|g" \
-              -e "s|{{DATABASE_URL}}|${DATABASE_URL}|g" \
+              -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|staging|g" \
               samconfig.template.toml > samconfig.toml
           echo "Generated samconfig.toml for CI"
@@ -869,6 +876,47 @@ jobs:
           role-session-name: GitHubActions-Cleanup-PR-${{ github.event.pull_request.number }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Empty frontend bucket
+        run: |
+          if ! aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} &>/dev/null; then
+            echo "Stack ${{ env.STACK_NAME }} does not exist, nothing to clean up"
+            exit 0
+          fi
+
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucket'].OutputValue" \
+            --output text)
+
+          if [ -z "$FRONTEND_BUCKET" ] || [ "$FRONTEND_BUCKET" = "None" ]; then
+            echo "No FrontendBucket output found; skipping bucket cleanup"
+            exit 0
+          fi
+
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+          echo "Emptying s3://$FRONTEND_BUCKET ..."
+          aws s3 rm "s3://$FRONTEND_BUCKET" --recursive || true
+
+          while true; do
+            VERSIONS_JSON=$(aws s3api list-object-versions --bucket "$FRONTEND_BUCKET" --output json)
+            VERSION_COUNT=$(echo "$VERSIONS_JSON" | jq '[.Versions[]?, .DeleteMarkers[]?] | length')
+
+            if [ "$VERSION_COUNT" -eq 0 ]; then
+              break
+            fi
+
+            DELETE_PAYLOAD=$(echo "$VERSIONS_JSON" | jq '{Objects: ([.Versions[]? | {Key, VersionId}] + [.DeleteMarkers[]? | {Key, VersionId}]), Quiet: true}')
+            echo "$DELETE_PAYLOAD" > /tmp/delete-objects.json
+            aws s3api delete-objects --bucket "$FRONTEND_BUCKET" --delete file:///tmp/delete-objects.json >/dev/null
+          done
+
+          echo "Frontend bucket is empty"
+
       - name: Delete CloudFormation stack
         run: |
           if aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} &>/dev/null; then
@@ -878,3 +926,4 @@ jobs:
           else
             echo "Stack ${{ env.STACK_NAME }} does not exist, nothing to clean up"
           fi
+

@@ -2,11 +2,13 @@ use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerRequestTypeReques
 use aws_sdk_cognitoidentityprovider::Client as CognitoClient;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
+use rustls::{ClientConfig, RootCertStore};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio_postgres::NoTls;
-use tracing::error;
-
+use std::str::FromStr;
+use tokio_postgres::config::{ChannelBinding, Config};
+use tokio_postgres_rustls::MakeRustlsConnect;
+use tracing::{error, warn};
 #[derive(Clone)]
 struct AppState {
     cognito: CognitoClient,
@@ -208,17 +210,56 @@ async fn get_user_tier(
     }
 }
 async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<String> {
-    let (client, connection) = match tokio_postgres::connect(database_url, NoTls).await {
+    let mut config = match Config::from_str(database_url) {
+        Ok(config) => config,
+        Err(err) => {
+            error!(error = %err, "Invalid DATABASE_URL in authorizer");
+            return None;
+        }
+    };
+
+    if matches!(config.get_channel_binding(), ChannelBinding::Require) {
+        warn!(
+            "DATABASE_URL requested channel_binding=require; downgrading to prefer in authorizer"
+        );
+        config.channel_binding(ChannelBinding::Prefer);
+    }
+
+    let cert_result = rustls_native_certs::load_native_certs();
+    if !cert_result.errors.is_empty() {
+        error!(
+            error_count = cert_result.errors.len(),
+            "Errors occurred while loading native root certificates for userType lookup"
+        );
+    }
+
+    let mut root_store = RootCertStore::empty();
+    let (added, _) = root_store.add_parsable_certificates(cert_result.certs);
+    if added == 0 {
+        error!("No native root certificates available for userType lookup");
+        return None;
+    }
+
+    let tls_config = ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    let tls = MakeRustlsConnect::new(tls_config);
+
+    let (client, connection) = match config.connect(tls).await {
         Ok(parts) => parts,
         Err(err) => {
-            error!(error = %err, "Failed to connect to database for userType lookup");
+            error!(
+                error = %err,
+                error_debug = ?err,
+                "Failed to connect to database for userType lookup"
+            );
             return None;
         }
     };
 
     tokio::spawn(async move {
         if let Err(err) = connection.await {
-            error!(error = %err, "Postgres connection error in authorizer");
+            error!(error = %err, error_debug = ?err, "Postgres connection error in authorizer");
         }
     });
 

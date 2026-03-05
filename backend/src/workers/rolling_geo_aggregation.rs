@@ -1,10 +1,14 @@
 use aws_lambda_events::event::eventbridge::EventBridgeEvent;
 use chrono::{DateTime, Duration, Utc};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
+use rustls::{ClientConfig, RootCertStore};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
+use tokio_postgres::config::{ChannelBinding, Config};
 use tokio_postgres::Client;
+use tokio_postgres_rustls::MakeRustlsConnect;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -174,13 +178,36 @@ async fn connect_db() -> Result<Client, String> {
     let database_url = std::env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL environment variable is required".to_string())?;
 
-    let (client, connection) = tokio_postgres::connect(&database_url, tokio_postgres::NoTls)
+    let mut config =
+        Config::from_str(&database_url).map_err(|e| format!("Invalid DATABASE_URL: {e}"))?;
+
+    if matches!(config.get_channel_binding(), ChannelBinding::Require) {
+        warn!(
+            "DATABASE_URL requested channel_binding=require; downgrading to prefer for compatibility"
+        );
+        config.channel_binding(ChannelBinding::Prefer);
+    }
+
+    let cert_result = rustls_native_certs::load_native_certs();
+    let mut root_store = RootCertStore::empty();
+    let (added, _) = root_store.add_parsable_certificates(cert_result.certs);
+    if added == 0 {
+        return Err("No native root certificates available for TLS".to_string());
+    }
+
+    let tls_config = ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    let tls_connector = MakeRustlsConnect::new(tls_config);
+
+    let (client, connection) = config
+        .connect(tls_connector)
         .await
         .map_err(|e| format!("Failed to connect to Postgres: {e}"))?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            error!(error = %e, "Database connection error");
+            error!(error = %e, error_debug = ?e, "Database connection error");
         }
     });
 
