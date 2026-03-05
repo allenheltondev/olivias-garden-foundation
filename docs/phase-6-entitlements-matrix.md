@@ -5,6 +5,9 @@ This defines what is available in **free** vs **premium** and acts as the source
 Machine-readable source:
 - `config/entitlements/v1.tiers.json`
 
+Enforcement source of truth:
+- Backend middleware (`backend/src/api/middleware/entitlements.rs`) loads this JSON directly at runtime so tier rules and API checks cannot drift.
+
 ## Tier matrix
 
 | Capability | Entitlement Key | Free | Premium |

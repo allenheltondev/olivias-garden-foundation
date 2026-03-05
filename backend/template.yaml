@@ -416,6 +416,7 @@ Resources:
         Variables:
           USER_POOL_ID: !Ref UserPool
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          DATABASE_URL: !Ref DatabaseUrl
 
   ApiFunction:
     Type: AWS::Serverless::Function

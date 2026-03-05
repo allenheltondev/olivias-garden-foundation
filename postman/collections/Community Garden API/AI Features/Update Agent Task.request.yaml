@@ -23,13 +23,29 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test("Status code is 200", function () {
-          pm.response.to.have.status(200);
-      });
+      const expectFeatureLocked = pm.variables.get("expectFeatureLocked") === "true";
 
-      pm.test("Response reflects updated agent task status", function () {
-          const task = pm.response.json();
-          pm.expect(task).to.have.property("id", pm.collectionVariables.get("taskId"));
-          pm.expect(task).to.have.property("status", "paused");
-      });
+      if (expectFeatureLocked) {
+          pm.test("Status code is 403 when feature is locked", function () {
+              pm.response.to.have.status(403);
+          });
+
+          pm.test("Feature lock response matches entitlement error contract", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("error", "feature_locked");
+              pm.expect(response).to.have.property("entitlementKey", "agent.tasks.automation");
+              pm.expect(response).to.have.property("requiredTier", "premium");
+              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.premium");
+          });
+      } else {
+          pm.test("Status code is 200", function () {
+              pm.response.to.have.status(200);
+          });
+
+          pm.test("Response reflects updated agent task status", function () {
+              const task = pm.response.json();
+              pm.expect(task).to.have.property("id", pm.collectionVariables.get("taskId"));
+              pm.expect(task).to.have.property("status", "paused");
+          });
+      }
 

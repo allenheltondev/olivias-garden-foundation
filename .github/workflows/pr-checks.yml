@@ -720,16 +720,26 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower.access_token' ci-auth-seed-response.json)
+          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower_free.access_token' ci-auth-seed-response.json)
+          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower_premium.access_token' ci-auth-seed-response.json)
 
-          if [ -z "$GROWER_ACCESS_TOKEN" ] || [ "$GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract grower.access_token from CI auth seed response."
+          if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower_free.access_token from CI auth seed response."
             cat ci-auth-seed-response.json
             exit 1
           fi
 
-          echo "::add-mask::$GROWER_ACCESS_TOKEN"
-          echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower_premium.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
+          echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
+          echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
@@ -737,11 +747,19 @@ jobs:
       - name: Login to Postman CLI
         run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
 
-      - name: Run contract collection
+      - name: Run contract collection (premium token)
         run: |
           postman collection run "postman/collections/Community Garden API" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.auth-token }}"
+            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "expectFeatureLocked=false"
+
+      - name: Run entitlement negative checks (free token)
+        run: |
+          postman collection run "postman/collections/Community Garden API/AI Features" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
+            --env-var "expectFeatureLocked=true"
 
   e2e-api-tests:
     name: Staging E2E API Tests
@@ -778,16 +796,26 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower.access_token' ci-auth-seed-response.json)
+          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower_free.access_token' ci-auth-seed-response.json)
+          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower_premium.access_token' ci-auth-seed-response.json)
 
-          if [ -z "$GROWER_ACCESS_TOKEN" ] || [ "$GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract grower.access_token from CI auth seed response."
+          if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower_free.access_token from CI auth seed response."
             cat ci-auth-seed-response.json
             exit 1
           fi
 
-          echo "::add-mask::$GROWER_ACCESS_TOKEN"
-          echo "auth-token=$GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower_premium.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
+          echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
+          echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
@@ -799,7 +827,7 @@ jobs:
         run: |
           postman collection run "postman/collections/E2E - Search veggie and add to garden" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.auth-token }}"
+            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}"
 
   staging-validation-summary:
     name: Staging Validation Summary
