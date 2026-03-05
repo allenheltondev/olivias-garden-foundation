@@ -9,6 +9,7 @@ use std::str::FromStr;
 use tokio_postgres::config::{ChannelBinding, Config};
 use tokio_postgres_rustls::MakeRustlsConnect;
 use tracing::{error, warn};
+use uuid::Uuid;
 #[derive(Clone)]
 struct AppState {
     cognito: CognitoClient,
@@ -267,10 +268,22 @@ async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<Stri
         }
     });
 
+    let user_uuid = match Uuid::parse_str(user_id) {
+        Ok(uuid) => uuid,
+        Err(err) => {
+            warn!(
+                error = %err,
+                user_id = user_id,
+                "Invalid user_id format for userType lookup"
+            );
+            return None;
+        }
+    };
+
     match client
         .query_opt(
-            "select user_type from users where id = $1::uuid and deleted_at is null",
-            &[&user_id],
+            "select user_type from users where id = $1 and deleted_at is null",
+            &[&user_uuid],
         )
         .await
     {
