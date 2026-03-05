@@ -2,10 +2,10 @@ use aws_lambda_events::event::apigw::ApiGatewayCustomAuthorizerRequestTypeReques
 use aws_sdk_cognitoidentityprovider::Client as CognitoClient;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
-use native_tls::TlsConnector;
-use postgres_native_tls::MakeTlsConnector;
+use rustls::{ClientConfig, RootCertStore};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio_postgres_rustls::MakeRustlsConnect;
 use tracing::error;
 
 #[derive(Clone)]
@@ -209,13 +209,25 @@ async fn get_user_tier(
     }
 }
 async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<String> {
-    let tls = match TlsConnector::builder().build() {
-        Ok(tls) => MakeTlsConnector::new(tls),
-        Err(err) => {
-            error!(error = %err, "Failed to initialize TLS connector for userType lookup");
-            return None;
-        }
-    };
+    let cert_result = rustls_native_certs::load_native_certs();
+    if !cert_result.errors.is_empty() {
+        error!(
+            error_count = cert_result.errors.len(),
+            "Errors occurred while loading native root certificates for userType lookup"
+        );
+    }
+
+    let mut root_store = RootCertStore::empty();
+    let (added, _) = root_store.add_parsable_certificates(cert_result.certs);
+    if added == 0 {
+        error!("No native root certificates available for userType lookup");
+        return None;
+    }
+
+    let tls_config = ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    let tls = MakeRustlsConnect::new(tls_config);
 
     let (client, connection) = match tokio_postgres::connect(database_url, tls).await {
         Ok(parts) => parts,

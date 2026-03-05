@@ -1,11 +1,11 @@
 use chrono::{DateTime, Duration, Utc};
-use native_tls::TlsConnector;
-use postgres_native_tls::MakeTlsConnector;
+use rustls::{ClientConfig, RootCertStore};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use tokio_postgres::Client;
+use tokio_postgres_rustls::MakeRustlsConnect;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -206,10 +206,17 @@ async fn connect_db() -> Result<Client, String> {
     let database_url = env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL environment variable is required".to_string())?;
 
-    let tls = TlsConnector::builder()
-        .build()
-        .map_err(|e| format!("Failed to initialize TLS connector: {e}"))?;
-    let tls_connector = MakeTlsConnector::new(tls);
+    let cert_result = rustls_native_certs::load_native_certs();
+    let mut root_store = RootCertStore::empty();
+    let (added, _) = root_store.add_parsable_certificates(cert_result.certs);
+    if added == 0 {
+        return Err("No native root certificates available for TLS".to_string());
+    }
+
+    let tls_config = ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    let tls_connector = MakeRustlsConnect::new(tls_config);
 
     let (client, connection) = tokio_postgres::connect(&database_url, tls_connector)
         .await

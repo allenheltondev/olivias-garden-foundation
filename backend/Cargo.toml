@@ -43,8 +43,9 @@ tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 tokio-postgres = { version = "0.7", features = ["with-uuid-1", "with-chrono-0_4"] }
-native-tls = "0.2"
-postgres-native-tls = "0.5"
+rustls = "0.23"
+rustls-native-certs = "0.8"
+tokio-postgres-rustls = "0.13"
 geohash = "0.13"
 sha2 = { workspace = true }
 hmac = "0.12"
@@ -105,3 +106,4 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 aws_lambda_events = "0.15"
 jsonwebtoken = "9"
 serial_test = "3"
+
