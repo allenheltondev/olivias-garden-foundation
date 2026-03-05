@@ -23,17 +23,31 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test("Status code is 200", function () {
-          pm.response.to.have.status(200);
+      const statusCode = pm.response.code;
+
+      pm.test("Status code is 200 (premium) or 403 (feature locked)", function () {
+          pm.expect([200, 403]).to.include(statusCode);
       });
 
-      pm.test("Response matches weekly plan contract", function () {
-          const response = pm.response.json();
-          pm.expect(response).to.have.property("modelId");
-          pm.expect(response).to.have.property("modelVersion");
-          pm.expect(response).to.have.property("structuredJson", true);
-          pm.expect(response).to.have.property("geoKey");
-          pm.expect(response).to.have.property("windowDays", 7);
-          pm.expect(response).to.have.property("recommendations");
-          pm.expect(Array.isArray(response.recommendations)).to.be.true;
-      });
+      if (statusCode === 200) {
+          pm.test("Response matches weekly plan contract", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("modelId");
+              pm.expect(response).to.have.property("modelVersion");
+              pm.expect(response).to.have.property("structuredJson", true);
+              pm.expect(response).to.have.property("geoKey");
+              pm.expect(response).to.have.property("windowDays", 7);
+              pm.expect(response).to.have.property("recommendations");
+              pm.expect(Array.isArray(response.recommendations)).to.be.true;
+          });
+      }
+
+      if (statusCode === 403) {
+          pm.test("Feature lock response matches entitlement error contract", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("error", "feature_locked");
+              pm.expect(response).to.have.property("entitlementKey", "ai.copilot.weekly_grow_plan");
+              pm.expect(response).to.have.property("requiredTier", "premium");
+              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.premium");
+          });
+      }

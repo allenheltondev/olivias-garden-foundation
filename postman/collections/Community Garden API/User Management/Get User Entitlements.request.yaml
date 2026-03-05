@@ -17,9 +17,23 @@ scripts:
 
       pm.test("Response matches entitlements contract", function () {
           const response = pm.response.json();
+
           pm.expect(response).to.have.property("tier");
+          pm.expect(response.tier).to.be.a("string").and.not.empty;
+
           pm.expect(response).to.have.property("entitlementsVersion");
+          pm.expect(response.entitlementsVersion).to.be.a("string").and.not.empty;
+
           pm.expect(response).to.have.property("entitlements");
           pm.expect(Array.isArray(response.entitlements)).to.be.true;
+          response.entitlements.forEach((key) => pm.expect(key).to.be.a("string").and.not.empty);
+
           pm.expect(response).to.have.property("policy");
+          pm.expect(response.policy).to.be.an("object");
+          pm.expect(response.policy).to.have.property("aiIsPremiumOnly");
+          pm.expect(response.policy.aiIsPremiumOnly).to.be.a("boolean");
+          pm.expect(response.policy).to.have.property("freeRemindersDeterministicOnly");
+          pm.expect(response.policy.freeRemindersDeterministicOnly).to.be.a("boolean");
       });
+
+      pm.collectionVariables.set("currentTier", pm.response.json().tier);
