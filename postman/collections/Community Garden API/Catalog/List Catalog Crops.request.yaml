@@ -12,17 +12,55 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
+      const uuidV4Like = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      function expectNullableString(value, fieldName) {
+          pm.expect(
+              value === null || typeof value === "string",
+              `${fieldName} must be string or null`
+          ).to.be.true;
+      }
+
+      function assertSourceAttribution(sourceAttribution) {
+          pm.expect(sourceAttribution, "source_attribution must exist").to.be.an("object");
+          pm.expect(sourceAttribution).to.have.property("source");
+          pm.expect(sourceAttribution.source, "source must be non-empty string").to.be.a("string").and.not.empty;
+
+          expectNullableString(sourceAttribution.source_id, "source_attribution.source_id");
+          expectNullableString(sourceAttribution.source_url, "source_attribution.source_url");
+          expectNullableString(sourceAttribution.license, "source_attribution.license");
+          expectNullableString(sourceAttribution.attribution, "source_attribution.attribution");
+          expectNullableString(sourceAttribution.import_batch_id, "source_attribution.import_batch_id");
+          expectNullableString(sourceAttribution.imported_at, "source_attribution.imported_at");
+          expectNullableString(sourceAttribution.last_verified_at, "source_attribution.last_verified_at");
+      }
+
       pm.test("Status code is 200", function () {
           pm.response.to.have.status(200);
       });
 
-      pm.test("Response is a JSON array of catalog crops", function () {
-          const crops = pm.response.json();
-          pm.expect(Array.isArray(crops)).to.be.true;
+      const crops = pm.response.json();
 
-          if (crops.length > 0) {
-              pm.expect(crops[0]).to.have.property("id");
-              pm.expect(crops[0]).to.have.property("slug");
-              pm.expect(crops[0]).to.have.property("common_name");
-          }
+      pm.test("Response is a JSON array of catalog crops", function () {
+          pm.expect(Array.isArray(crops)).to.be.true;
       });
+
+      if (crops.length > 0) {
+          const first = crops[0];
+
+          pm.test("Catalog crop matches OAS required fields", function () {
+              pm.expect(first).to.have.property("id");
+              pm.expect(first.id).to.match(uuidV4Like);
+              pm.expect(first).to.have.property("slug");
+              pm.expect(first.slug).to.be.a("string").and.not.empty;
+              pm.expect(first).to.have.property("common_name");
+              pm.expect(first.common_name).to.be.a("string").and.not.empty;
+              expectNullableString(first.scientific_name, "scientific_name");
+              expectNullableString(first.category, "category");
+              expectNullableString(first.description, "description");
+              pm.expect(first).to.have.property("source_attribution");
+              assertSourceAttribution(first.source_attribution);
+          });
+
+          pm.collectionVariables.set("catalogCropId", first.id);
+      }
