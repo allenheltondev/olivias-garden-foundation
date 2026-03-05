@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::env;
 use std::fs;
+use std::str::FromStr;
+use tokio_postgres::config::{ChannelBinding, Config};
 use tokio_postgres::Client;
 use tokio_postgres_rustls::MakeRustlsConnect;
 use tracing::{error, info, warn};
@@ -206,6 +208,16 @@ async fn connect_db() -> Result<Client, String> {
     let database_url = env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL environment variable is required".to_string())?;
 
+    let mut config =
+        Config::from_str(&database_url).map_err(|e| format!("Invalid DATABASE_URL: {e}"))?;
+
+    if matches!(config.get_channel_binding(), ChannelBinding::Require) {
+        warn!(
+            "DATABASE_URL requested channel_binding=require; downgrading to prefer for compatibility"
+        );
+        config.channel_binding(ChannelBinding::Prefer);
+    }
+
     let cert_result = rustls_native_certs::load_native_certs();
     let mut root_store = RootCertStore::empty();
     let (added, _) = root_store.add_parsable_certificates(cert_result.certs);
@@ -218,13 +230,14 @@ async fn connect_db() -> Result<Client, String> {
         .with_no_client_auth();
     let tls_connector = MakeRustlsConnect::new(tls_config);
 
-    let (client, connection) = tokio_postgres::connect(&database_url, tls_connector)
+    let (client, connection) = config
+        .connect(tls_connector)
         .await
         .map_err(|e| format!("Failed to connect to Postgres: {e}"))?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            error!(error = %e, "Database connection error");
+            error!(error = %e, error_debug = ?e, "Database connection error");
         }
     });
 
