@@ -278,9 +278,22 @@ create table if not exists crops (
   scientific_name text,
   category text,
   description text,
+  source_provider text not null default 'internal_seed',
+  source_record_id text,
+  source_url text,
+  source_license text,
+  attribution_text text,
+  import_batch_id text,
+  imported_at timestamptz,
+  last_verified_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index if not exists idx_crops_source_provider on crops(source_provider);
+create unique index if not exists idx_crops_source_record
+  on crops(source_provider, source_record_id)
+  where source_record_id is not null;
 
 create table if not exists crop_varieties (
   id uuid primary key default gen_random_uuid(),
@@ -288,10 +301,23 @@ create table if not exists crop_varieties (
   slug text not null,
   name text not null,
   description text,
+  source_provider text not null default 'internal_seed',
+  source_record_id text,
+  source_url text,
+  source_license text,
+  attribution_text text,
+  import_batch_id text,
+  imported_at timestamptz,
+  last_verified_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (crop_id, slug)
 );
+
+create index if not exists idx_crop_varieties_source_provider on crop_varieties(source_provider);
+create unique index if not exists idx_crop_varieties_source_record
+  on crop_varieties(crop_id, source_provider, source_record_id)
+  where source_record_id is not null;
 
 create table if not exists crop_profiles (
   id uuid primary key default gen_random_uuid(),

@@ -602,9 +602,45 @@ components:
           type: string
           nullable: true
 
+    SourceAttribution:
+      type: object
+      required: [source]
+      properties:
+        source:
+          type: string
+          description: Source provider key (for example `internal_seed`, `permapeople`, `usda`).
+        source_id:
+          type: string
+          nullable: true
+          description: Provider-specific stable identifier for this record.
+        source_url:
+          type: string
+          nullable: true
+          description: Canonical source URL for attribution and audits.
+        license:
+          type: string
+          nullable: true
+          description: License text or SPDX-style short identifier when available.
+        attribution:
+          type: string
+          nullable: true
+          description: Required attribution copy to display in UI where applicable.
+        import_batch_id:
+          type: string
+          nullable: true
+          description: Batch ID used during import for replay/debug purposes.
+        imported_at:
+          type: string
+          nullable: true
+          description: ISO-8601 timestamp when this record was imported.
+        last_verified_at:
+          type: string
+          nullable: true
+          description: ISO-8601 timestamp when source/license were last re-verified.
+
     CatalogCrop:
       type: object
-      required: [id, slug, common_name]
+      required: [id, slug, common_name, source_attribution]
       properties:
         id:
           type: string
@@ -622,10 +658,12 @@ components:
         description:
           type: string
           nullable: true
+        source_attribution:
+          $ref: '#/components/schemas/SourceAttribution'
 
     CatalogVariety:
       type: object
-      required: [id, crop_id, slug, name]
+      required: [id, crop_id, slug, name, source_attribution]
       properties:
         id:
           type: string
@@ -640,6 +678,8 @@ components:
         description:
           type: string
           nullable: true
+        source_attribution:
+          $ref: '#/components/schemas/SourceAttribution'
 
     ErrorResponse:
       type: object

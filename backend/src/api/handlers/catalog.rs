@@ -1,5 +1,5 @@
 use crate::db;
-use crate::models::catalog::{CatalogCrop, CatalogVariety};
+use crate::models::catalog::{CatalogCrop, CatalogVariety, SourceAttribution};
 use crate::models::crop::ErrorResponse;
 use lambda_http::{Body, Response};
 use serde::Serialize;
@@ -9,7 +9,7 @@ pub async fn list_catalog_crops() -> Result<Response<Body>, lambda_http::Error> 
     let client = db::connect().await?;
     let rows = client
         .query(
-            "select id, slug, common_name, scientific_name, category, description from crops order by common_name asc",
+            "select id, slug, common_name, scientific_name, category, description, source_provider, source_record_id, source_url, source_license, attribution_text, import_batch_id, imported_at::text as imported_at, last_verified_at::text as last_verified_at from crops order by common_name asc",
             &[],
         )
         .await
@@ -24,6 +24,16 @@ pub async fn list_catalog_crops() -> Result<Response<Body>, lambda_http::Error> 
             scientific_name: row.get("scientific_name"),
             category: row.get("category"),
             description: row.get("description"),
+            source_attribution: SourceAttribution {
+                source: row.get("source_provider"),
+                source_id: row.get("source_record_id"),
+                source_url: row.get("source_url"),
+                license: row.get("source_license"),
+                attribution: row.get("attribution_text"),
+                import_batch_id: row.get("import_batch_id"),
+                imported_at: row.get("imported_at"),
+                last_verified_at: row.get("last_verified_at"),
+            },
         })
         .collect::<Vec<_>>();
 
@@ -56,7 +66,7 @@ pub async fn list_catalog_varieties(crop_id: &str) -> Result<Response<Body>, lam
 
     let rows = client
         .query(
-            "select id, crop_id, slug, name, description from crop_varieties where crop_id = $1 order by name asc",
+            "select id, crop_id, slug, name, description, source_provider, source_record_id, source_url, source_license, attribution_text, import_batch_id, imported_at::text as imported_at, last_verified_at::text as last_verified_at from crop_varieties where crop_id = $1 order by name asc",
             &[&crop_uuid],
         )
         .await
@@ -70,6 +80,16 @@ pub async fn list_catalog_varieties(crop_id: &str) -> Result<Response<Body>, lam
             slug: row.get("slug"),
             name: row.get("name"),
             description: row.get("description"),
+            source_attribution: SourceAttribution {
+                source: row.get("source_provider"),
+                source_id: row.get("source_record_id"),
+                source_url: row.get("source_url"),
+                license: row.get("source_license"),
+                attribution: row.get("attribution_text"),
+                import_batch_id: row.get("import_batch_id"),
+                imported_at: row.get("imported_at"),
+                last_verified_at: row.get("last_verified_at"),
+            },
         })
         .collect::<Vec<_>>();
 
