@@ -143,8 +143,11 @@ async fn handle_jwt_auth(
         .or_else(|| claims.sub.clone())
         .ok_or("Missing sub claim")?;
 
+    let principal_uuid = Uuid::parse_str(&principal_id).map_err(|_| "Invalid sub claim format")?;
+    let principal_id = principal_uuid.to_string();
+
     let tier = get_user_tier(&state.cognito, &state.user_pool_id, &principal_id).await;
-    let user_type = get_user_type_from_db(&state.database_url, &principal_id).await;
+    let user_type = get_user_type_from_db(&state.database_url, &principal_uuid).await;
 
     let api_arn = get_api_arn_pattern(event.method_arn.as_deref().unwrap_or_default());
     let context = build_context([
@@ -214,7 +217,7 @@ async fn get_user_tier(
         }
     }
 }
-async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<String> {
+async fn get_user_type_from_db(database_url: &str, user_id: &Uuid) -> Option<String> {
     let mut config = match Config::from_str(database_url) {
         Ok(config) => config,
         Err(err) => {
@@ -268,22 +271,10 @@ async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<Stri
         }
     });
 
-    let user_uuid = match Uuid::parse_str(user_id) {
-        Ok(uuid) => uuid,
-        Err(err) => {
-            warn!(
-                error = %err,
-                user_id = user_id,
-                "Invalid user_id format for userType lookup"
-            );
-            return None;
-        }
-    };
-
     match client
         .query_opt(
             "select user_type from users where id = $1 and deleted_at is null",
-            &[&user_uuid],
+            &[user_id],
         )
         .await
     {
@@ -292,7 +283,7 @@ async fn get_user_type_from_db(database_url: &str, user_id: &str) -> Option<Stri
             .and_then(|raw| normalize_user_type(raw.as_str())),
         Ok(None) => None,
         Err(err) => {
-            error!(error = %err, user_id = user_id, "Failed to query userType from database");
+            error!(error = %err, user_id = %user_id, "Failed to query userType from database");
             None
         }
     }
