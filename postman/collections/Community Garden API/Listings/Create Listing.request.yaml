@@ -62,7 +62,8 @@ scripts:
           const listing = pm.response.json();
           pm.expect(listing).to.have.property("id");
           pm.expect(listing).to.have.property("cropId", pm.collectionVariables.get("catalogCropId"));
-          pm.expect(listing).to.have.property("quantityTotal", "5");
+          pm.expect(listing).to.have.property("quantityTotal");
+          pm.expect(Number(listing.quantityTotal)).to.eql(5);
           pm.expect(listing).to.have.property("unit", "lb");
           pm.expect(listing).to.have.property("status", "active");
 
