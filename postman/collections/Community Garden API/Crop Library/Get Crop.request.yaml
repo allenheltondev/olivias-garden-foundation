@@ -21,6 +21,10 @@ scripts:
           pm.expect(cropLibraryId, "cropLibraryId is required").to.be.a("string").and.not.empty;
           pm.expect(cropLibraryId).to.match(uuidRe);
       });
+
+      if (!cropLibraryId || !uuidRe.test(cropLibraryId)) {
+          postman.setNextRequest(null);
+      }
   - type: afterResponse
     language: text/javascript
     code: |-

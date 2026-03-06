@@ -4,7 +4,6 @@ use std::str::FromStr;
 use tokio_postgres::config::{ChannelBinding, Config};
 use tokio_postgres::Client;
 use tokio_postgres_rustls::MakeRustlsConnect;
-use tracing::info;
 
 pub async fn connect() -> Result<Client, lambda_http::Error> {
     let database_url = env::var("DATABASE_URL")
@@ -14,9 +13,6 @@ pub async fn connect() -> Result<Client, lambda_http::Error> {
         .map_err(|e| lambda_http::Error::from(format!("Invalid DATABASE_URL: {e}")))?;
 
     if matches!(config.get_channel_binding(), ChannelBinding::Require) {
-        info!(
-            "DATABASE_URL requested channel_binding=require; downgrading to prefer for compatibility"
-        );
         config.channel_binding(ChannelBinding::Prefer);
     }
 

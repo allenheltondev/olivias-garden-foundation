@@ -5,6 +5,10 @@ use std::sync::OnceLock;
 
 pub const TIP_SCHEMA_VERSION_V1: &str = "tips.v1";
 
+fn default_tip_schema_version() -> String {
+    TIP_SCHEMA_VERSION_V1.to_string()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ExperienceLevel {
@@ -47,6 +51,7 @@ pub struct TipTargeting {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GardeningTip {
+    #[serde(default = "default_tip_schema_version")]
     pub schema_version: String,
     pub title: String,
     pub body: String,
@@ -126,10 +131,9 @@ pub fn is_tip_eligible(
     }
 
     let season_matches = targeting.seasons.is_empty()
-        || targeting
-            .seasons
-            .iter()
-            .any(|season| season.eq_ignore_ascii_case("any") || season.eq_ignore_ascii_case(user_season));
+        || targeting.seasons.iter().any(|season| {
+            season.eq_ignore_ascii_case("any") || season.eq_ignore_ascii_case(user_season)
+        });
 
     if !season_matches {
         return false;
@@ -178,24 +182,30 @@ pub fn recommend_curated_tips(
         .collect()
 }
 
+#[allow(clippy::panic)]
 pub fn curated_tip_catalog() -> &'static [CuratedTip] {
     static TIP_CATALOG: OnceLock<Vec<CuratedTip>> = OnceLock::new();
 
     TIP_CATALOG
         .get_or_init(|| {
             let raw = include_str!("../../../data/tips/curated_tips.v1.json");
-            let parsed: Vec<CuratedTip> = serde_json::from_str(raw)
-                .expect("curated tip catalog JSON should parse during startup");
+            let parsed: Vec<CuratedTip> = match serde_json::from_str(raw) {
+                Ok(parsed) => parsed,
+                Err(error) => {
+                    panic!("curated tip catalog JSON should parse during startup: {error}");
+                }
+            };
 
-            validate_curated_tip_catalog(&parsed)
-                .expect("curated tip catalog JSON must satisfy metadata constraints");
+            if let Err(error) = validate_curated_tip_catalog(&parsed) {
+                panic!("curated tip catalog JSON must satisfy metadata constraints: {error}");
+            }
 
             parsed
         })
         .as_slice()
 }
 
-pub fn season_from_month(month: u32) -> &'static str {
+pub const fn season_from_month(month: u32) -> &'static str {
     match month {
         3..=5 => "spring",
         6..=8 => "summer",
@@ -358,8 +368,12 @@ mod tests {
         let catalog = curated_tip_catalog();
         assert!(!catalog.is_empty());
         assert!(catalog.iter().all(|tip| !tip.targeting.seasons.is_empty()));
-        assert!(catalog.iter().all(|tip| !tip.targeting.zone_tags.is_empty()));
-        assert!(catalog.iter().all(|tip| !tip.targeting.crop_tags.is_empty()));
+        assert!(catalog
+            .iter()
+            .all(|tip| !tip.targeting.zone_tags.is_empty()));
+        assert!(catalog
+            .iter()
+            .all(|tip| !tip.targeting.crop_tags.is_empty()));
     }
 
     #[test]
@@ -373,7 +387,9 @@ mod tests {
         );
 
         assert!(!tips.is_empty());
-        assert!(tips.iter().all(|tip| tip.level == ExperienceLevel::Beginner));
+        assert!(tips
+            .iter()
+            .all(|tip| tip.level == ExperienceLevel::Beginner));
     }
 
     #[test]

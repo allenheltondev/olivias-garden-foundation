@@ -108,7 +108,7 @@ pub async fn create_my_crop(
             insert into grower_crop_library
                 (user_id, crop_id, variety_id, status, visibility, surplus_enabled, nickname, default_unit, notes)
             values
-                ($1, $2, $3::text::uuid, $4::text::grower_crop_status, $5::visibility_scope, $6, $7, $8, $9)
+                ($1, $2, $3::text::uuid, $4::text::grower_crop_status, $5::text::visibility_scope, $6, $7, $8, $9)
             returning id, user_id, crop_id, variety_id, status::text, visibility::text,
                       surplus_enabled, nickname, default_unit, notes, created_at, updated_at
             ",
