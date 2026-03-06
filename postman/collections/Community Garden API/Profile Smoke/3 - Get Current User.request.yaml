@@ -91,6 +91,24 @@ scripts:
           });
       });
 
+      pm.test("curatedTips are present with structured seasonal and zone metadata", function () {
+          pm.expect(jsonData).to.have.property("curatedTips");
+          pm.expect(Array.isArray(jsonData.curatedTips)).to.eql(true);
+
+          jsonData.curatedTips.forEach((tip, index) => {
+              pm.expect(tip).to.have.property("schemaVersion", "tips.v1");
+              pm.expect(tip).to.have.property("title");
+              pm.expect(tip).to.have.property("body");
+              pm.expect(["watering", "pests", "planting", "soil", "seasonal", "harvest"]).to.include(tip.category);
+              pm.expect(["beginner", "intermediate", "advanced"]).to.include(tip.level);
+              pm.expect(tip).to.have.property("season");
+              pm.expect(tip.season, `curatedTips[${index}].season`).to.be.a("string").and.not.empty;
+              pm.expect(tip).to.have.property("zoneTags");
+              pm.expect(Array.isArray(tip.zoneTags), `curatedTips[${index}].zoneTags`).to.eql(true);
+              pm.expect(tip.zoneTags.length, `curatedTips[${index}].zoneTags must not be empty`).to.be.above(0);
+          });
+      });
+
       // --- Validate State After PUT ---
       pm.test("User ID matches captured myUserId", function () {
           const expectedUserId = pm.collectionVariables.get("myUserId");

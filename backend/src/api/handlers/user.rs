@@ -8,7 +8,10 @@ use crate::models::profile::{
     GrowerProfile, MeProfileResponse, PublicUserResponse, PutMeRequest, SeasonalTimelineEntry,
     SubscriptionMetadata, UserRatingSummary, UserType,
 };
-use crate::tips_framework::{assign_experience_level, ExperienceSignals};
+use crate::tips_framework::{
+    assign_experience_level, recommend_curated_tips, season_from_month, ExperienceSignals,
+};
+use chrono::Datelike;
 use lambda_http::{Body, Request, RequestExt, Response};
 use serde::Serialize;
 use tokio_postgres::Row;
@@ -343,6 +346,16 @@ async fn to_me_response(
     let experience_signals = load_experience_signals(client, user_id).await?;
     let experience_level = assign_experience_level(&experience_signals);
     persist_experience_level(client, user_id, experience_level, &experience_signals).await?;
+    let grower_profile = load_grower_profile(client, user_id).await?;
+
+    let now = chrono::Utc::now();
+    let season = season_from_month(now.month());
+    let zone = grower_profile
+        .as_ref()
+        .and_then(|profile| profile.home_zone.as_deref())
+        .unwrap_or("any");
+
+    let curated_tips = recommend_curated_tips(experience_level, season, zone, &[], 6);
 
     let seasonal_timeline = badge_cabinet
         .iter()
@@ -381,7 +394,8 @@ async fn to_me_response(
         seasonal_timeline,
         experience_level,
         experience_signals,
-        grower_profile: load_grower_profile(client, user_id).await?,
+        curated_tips,
+        grower_profile,
         gatherer_profile: load_gatherer_profile(client, user_id).await?,
         rating_summary: load_rating_summary(client, user_id).await?,
     })

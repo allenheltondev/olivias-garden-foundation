@@ -1,6 +1,6 @@
 use crate::badge_cabinet::BadgeCabinetEntry;
 use crate::gardener_tier::GardenerTierProfile;
-use crate::tips_framework::{ExperienceLevel, ExperienceSignals};
+use crate::tips_framework::{ExperienceLevel, ExperienceSignals, GardeningTip};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -66,6 +66,7 @@ pub struct MeProfileResponse {
     pub seasonal_timeline: Vec<SeasonalTimelineEntry>,
     pub experience_level: ExperienceLevel,
     pub experience_signals: ExperienceSignals,
+    pub curated_tips: Vec<GardeningTip>,
     pub grower_profile: Option<GrowerProfile>,
     pub gatherer_profile: Option<GathererProfile>,
     pub rating_summary: Option<UserRatingSummary>,

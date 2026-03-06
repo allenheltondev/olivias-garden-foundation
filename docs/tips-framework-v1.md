@@ -1,15 +1,15 @@
 # Tips Framework v1 (`tips.v1`)
 
-Issue: #133
+Issue: #133, #135
 
 ## Experience tiers
 
 `beginner` → `intermediate` → `advanced`
 
-Deterministic assignment (`assign_experience_level`):
+Deterministic assignment (`assign_experience_level`) uses a weighted score plus gates:
 
-- **advanced**: completed_grows >= 10 AND successful_harvests >= 6 AND active_days_last_90 >= 45
-- **intermediate**: completed_grows >= 3 AND successful_harvests >= 1 AND active_days_last_90 >= 15
+- **advanced**: score >= 50, completed_grows >= 10, seasonal_consistency >= 2, variety_breadth >= 6
+- **intermediate**: score >= 18, completed_grows >= 3, variety_breadth >= 2
 - **beginner**: all others
 
 ## Locked v1 categories
@@ -19,6 +19,7 @@ Deterministic assignment (`assign_experience_level`):
 - `planting`
 - `soil`
 - `seasonal`
+- `harvest`
 
 ## Tip schema (`tips.v1`)
 
@@ -44,7 +45,15 @@ A tip is eligible only when **all** of the following are true:
 3. zone matches (or tip zone list is empty)
 4. at least one crop tag overlaps (or tip crop list is empty)
 
-Matching for season/zone/crop tags is case-insensitive.
+Matching for season/zone/crop tags is case-insensitive. `any` is supported as a wildcard for season, zone, and crop tags.
+
+## Curated catalog (content-driven)
+
+The starter catalog lives in `data/tips/curated_tips.v1.json` and is loaded at runtime.
+
+- One starter tip exists per level/category combination.
+- Every tip includes targeting metadata (`seasons`, `zoneTags`, `cropTags`).
+- Catalog validation fails startup if required metadata is missing.
 
 ## Safety/content quality guidelines
 
