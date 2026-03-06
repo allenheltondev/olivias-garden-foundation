@@ -343,9 +343,31 @@ async fn to_me_response(
         });
 
     let badge_cabinet = badge_cabinet::load_and_sync_badges(client, user_id).await?;
-    let experience_signals = load_experience_signals(client, user_id).await?;
+
+    let experience_signals = match load_experience_signals(client, user_id).await {
+        Ok(signals) => signals,
+        Err(error) => {
+            error!(
+                user_id = %user_id,
+                reason = %error,
+                "Failed to load experience signals; using safe defaults"
+            );
+            ExperienceSignals::default()
+        }
+    };
+
     let experience_level = assign_experience_level(&experience_signals);
-    persist_experience_level(client, user_id, experience_level, &experience_signals).await?;
+
+    if let Err(error) =
+        persist_experience_level(client, user_id, experience_level, &experience_signals).await
+    {
+        error!(
+            user_id = %user_id,
+            reason = %error,
+            "Failed to persist experience level; continuing without blocking /me response"
+        );
+    }
+
     let grower_profile = load_grower_profile(client, user_id).await?;
 
     let now = chrono::Utc::now();

@@ -28,7 +28,7 @@ pub enum TipCategory {
     Harvest,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceSignals {
     pub completed_grows: u32,
