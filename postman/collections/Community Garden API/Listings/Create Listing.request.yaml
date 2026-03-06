@@ -65,5 +65,12 @@ scripts:
           pm.expect(listing).to.have.property("quantityTotal", "5");
           pm.expect(listing).to.have.property("unit", "lb");
           pm.expect(listing).to.have.property("status", "active");
+
+          if (!listing.id) {
+              pm.expect.fail("Missing listing.id; aborting chained run to prevent cascade failures.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
           pm.collectionVariables.set("listingId", listing.id);
       });

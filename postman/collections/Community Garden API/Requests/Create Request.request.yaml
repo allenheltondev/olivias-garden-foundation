@@ -40,6 +40,13 @@ scripts:
               pm.expect(request).to.have.property("cropId", pm.collectionVariables.get("catalogCropId"));
               pm.expect(request).to.have.property("quantity", "5");
               pm.expect(request).to.have.property("status", "open");
+
+              if (!request.id) {
+                  pm.expect.fail("Missing request.id; aborting chained run to prevent cascade failures.");
+                  pm.execution.setNextRequest(null);
+                  return;
+              }
+
               pm.collectionVariables.set("requestId", request.id);
           });
       } else {

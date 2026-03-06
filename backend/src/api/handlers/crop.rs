@@ -97,6 +97,7 @@ pub async fn create_my_crop(
 
     let crop_id = parse_uuid(&payload.crop_id, "crop_id")?;
     let variety_id = parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?;
+    let variety_id_text = variety_id.map(|v| v.to_string());
 
     let client = db::connect().await?;
     validate_catalog_links(&client, crop_id, variety_id).await?;
@@ -107,14 +108,14 @@ pub async fn create_my_crop(
             insert into grower_crop_library
                 (user_id, crop_id, variety_id, status, visibility, surplus_enabled, nickname, default_unit, notes)
             values
-                ($1, $2, $3::uuid, $4::grower_crop_status, $5::visibility_scope, $6, $7, $8, $9)
+                ($1, $2, $3::text::uuid, $4::text::grower_crop_status, $5::visibility_scope, $6, $7, $8, $9)
             returning id, user_id, crop_id, variety_id, status::text, visibility::text,
                       surplus_enabled, nickname, default_unit, notes, created_at, updated_at
             ",
             &[
                 &user_id,
                 &crop_id,
-                &variety_id,
+                &variety_id_text,
                 &payload.status,
                 &payload.visibility,
                 &payload.surplus_enabled,
@@ -153,6 +154,7 @@ pub async fn update_my_crop(
     let id = parse_uuid(crop_library_id, "crop library id")?;
     let crop_id = parse_uuid(&payload.crop_id, "crop_id")?;
     let variety_id = parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?;
+    let variety_id_text = variety_id.map(|v| v.to_string());
 
     let client = db::connect().await?;
     validate_catalog_links(&client, crop_id, variety_id).await?;
@@ -162,9 +164,9 @@ pub async fn update_my_crop(
             "
             update grower_crop_library
             set crop_id = $1,
-                variety_id = $2::uuid,
-                status = $3::grower_crop_status,
-                visibility = $4::visibility_scope,
+                variety_id = $2::text::uuid,
+                status = $3::text::grower_crop_status,
+                visibility = $4::text::visibility_scope,
                 surplus_enabled = $5,
                 nickname = $6,
                 default_unit = $7,
@@ -176,7 +178,7 @@ pub async fn update_my_crop(
             ",
             &[
                 &crop_id,
-                &variety_id,
+                &variety_id_text,
                 &payload.status,
                 &payload.visibility,
                 &payload.surplus_enabled,

@@ -69,9 +69,13 @@ scripts:
       pm.test("Capture created crop ID", function () {
           const crop = pm.response.json();
           const createdId = crop.id;
-          
-          pm.expect(createdId, "Created crop should have an ID").to.not.be.undefined;
-          
+
+          if (!createdId) {
+              pm.expect.fail("Missing createdCropId from Step 3 response; aborting remaining E2E run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
           pm.collectionVariables.set("createdCropId", createdId);
           console.log("Captured createdCropId: " + createdId);
       });

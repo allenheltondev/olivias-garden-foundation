@@ -37,6 +37,13 @@ scripts:
               pm.expect(claim).to.have.property("listingId", pm.collectionVariables.get("listingId"));
               pm.expect(claim).to.have.property("quantityClaimed", "5");
               pm.expect(claim).to.have.property("status", "pending");
+
+              if (!claim.id) {
+                  pm.expect.fail("Missing claim.id; aborting chained run to prevent cascade failures.");
+                  pm.execution.setNextRequest(null);
+                  return;
+              }
+
               pm.collectionVariables.set("claimId", claim.id);
           });
       } else {
