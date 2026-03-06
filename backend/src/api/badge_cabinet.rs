@@ -4,7 +4,16 @@ use uuid::Uuid;
 
 const FIRST_HARVEST_BADGE_KEY: &str = "first_harvest";
 const GARDENER_SEASON_BADGE_PREFIX: &str = "gardener_season_";
+const FRUIT_TREE_KEEPER_BADGE_KEY: &str = "fruit_tree_keeper";
+const ORCHARD_STARTER_BADGE_KEY: &str = "orchard_starter";
+const BERRY_BUILDER_BADGE_KEY: &str = "berry_builder";
 const HARVEST_PROOF_WINDOW_DAYS: i64 = 14;
+
+const FRUIT_TREE_KEEPER_MIN_TREE_COUNT: i32 = 1;
+const ORCHARD_STARTER_MIN_TREE_COUNT: i32 = 3;
+const BERRY_BUILDER_MIN_VARIETY_COUNT: i32 = 3;
+const FRUIT_BADGE_MIN_EVIDENCE_PER_TREE: i32 = 2;
+const FRUIT_BADGE_MIN_ACTIVITY_DAYS: i64 = 60;
 
 const SEASON_DEFAULT_ACTIVITY_WEEKS_MIN: i32 = 10;
 const SEASON_DEFAULT_CROP_COMPLETIONS_MIN: i32 = 3;
@@ -38,6 +47,7 @@ pub async fn load_and_sync_badges(
 ) -> Result<Vec<BadgeCabinetEntry>, lambda_http::Error> {
     maybe_award_first_harvest(client, user_id).await?;
     maybe_award_gardener_season_ladder(client, user_id).await?;
+    maybe_award_fruit_focused_badges(client, user_id).await?;
 
     let rows = client
         .query(
@@ -205,6 +215,184 @@ async fn load_gardener_season_criteria(
             evidence_count_min: r.get("min_evidence_count"),
         },
     ))
+}
+
+#[allow(clippy::too_many_lines)]
+async fn maybe_award_fruit_focused_badges(
+    client: &Client,
+    user_id: Uuid,
+) -> Result<(), lambda_http::Error> {
+    let tree_rows = client
+        .query(
+            r"
+            with fruit_tree_events as (
+              select
+                sl.crop_id,
+                min(c.completed_at) as first_completed_at,
+                max(c.completed_at) as last_completed_at,
+                count(*)::int as completed_count
+              from surplus_listings sl
+              join claims c on c.listing_id = sl.id
+              join crops cr on cr.id = sl.crop_id
+              where sl.user_id = $1
+                and c.status = 'completed'
+                and c.completed_at is not null
+                and (
+                  coalesce(cr.category, '') ilike '%fruit%'
+                  or cr.common_name ilike any(array['%apple%', '%pear%', '%peach%', '%plum%', '%cherry%', '%citrus%', '%orange%', '%lemon%'])
+                )
+              group by sl.crop_id
+            ),
+            fruit_tree_proof as (
+              select
+                bes.grower_crop_id,
+                count(*)::int as evidence_count
+              from badge_evidence_submissions bes
+              where bes.user_id = $1
+                and bes.status in ('auto_approved', 'needs_review')
+              group by bes.grower_crop_id
+            )
+            select
+              fte.crop_id,
+              fte.first_completed_at,
+              fte.last_completed_at,
+              fte.completed_count,
+              coalesce(sum(ftp.evidence_count), 0)::int as evidence_count
+            from fruit_tree_events fte
+            left join grower_crop_library gcl
+              on gcl.user_id = $1
+             and gcl.crop_id = fte.crop_id
+            left join fruit_tree_proof ftp
+              on ftp.grower_crop_id = gcl.id
+            group by fte.crop_id, fte.first_completed_at, fte.last_completed_at, fte.completed_count
+            ",
+            &[&user_id],
+        )
+        .await
+        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+
+    let qualifying_tree_count = i32::try_from(
+        tree_rows
+            .iter()
+            .filter(|row| {
+                let first_completed_at: chrono::DateTime<chrono::Utc> =
+                    row.get("first_completed_at");
+                let last_completed_at: chrono::DateTime<chrono::Utc> = row.get("last_completed_at");
+                let evidence_count: i32 = row.get("evidence_count");
+                (last_completed_at - first_completed_at).num_days() >= FRUIT_BADGE_MIN_ACTIVITY_DAYS
+                    && evidence_count >= FRUIT_BADGE_MIN_EVIDENCE_PER_TREE
+            })
+            .count(),
+    )
+    .unwrap_or(i32::MAX);
+
+    maybe_award_fruit_badge_if_needed(
+        client,
+        user_id,
+        FRUIT_TREE_KEEPER_BADGE_KEY,
+        qualifying_tree_count >= FRUIT_TREE_KEEPER_MIN_TREE_COUNT,
+        serde_json::json!({
+            "badgeFamily": "fruit_focus",
+            "qualifyingTreeCount": qualifying_tree_count,
+            "minTreeCount": FRUIT_TREE_KEEPER_MIN_TREE_COUNT,
+            "minEvidencePerTree": FRUIT_BADGE_MIN_EVIDENCE_PER_TREE,
+            "minActivityDays": FRUIT_BADGE_MIN_ACTIVITY_DAYS,
+        }),
+        "Fruit Tree Keeper awarded: sustained fruit tree activity with linked timestamped proof",
+    )
+    .await?;
+
+    maybe_award_fruit_badge_if_needed(
+        client,
+        user_id,
+        ORCHARD_STARTER_BADGE_KEY,
+        qualifying_tree_count >= ORCHARD_STARTER_MIN_TREE_COUNT,
+        serde_json::json!({
+            "badgeFamily": "fruit_focus",
+            "qualifyingTreeCount": qualifying_tree_count,
+            "minTreeCount": ORCHARD_STARTER_MIN_TREE_COUNT,
+            "minEvidencePerTree": FRUIT_BADGE_MIN_EVIDENCE_PER_TREE,
+            "minActivityDays": FRUIT_BADGE_MIN_ACTIVITY_DAYS,
+        }),
+        "Orchard Starter awarded: maintained at least three fruit trees with evidence-backed seasonal continuity",
+    )
+    .await?;
+
+    let berry_row = client
+        .query_one(
+            r"
+            select count(distinct coalesce(cv.id::text, sl.variety_id::text, sl.crop_id::text))::int as berry_variety_count
+            from surplus_listings sl
+            join claims c on c.listing_id = sl.id
+            join crops cr on cr.id = sl.crop_id
+            left join crop_varieties cv on cv.id = sl.variety_id
+            where sl.user_id = $1
+              and c.status = 'completed'
+              and c.completed_at is not null
+              and (
+                coalesce(cr.category, '') ilike '%berry%'
+                or cr.common_name ilike '%berry%'
+                or coalesce(cv.name, '') ilike '%berry%'
+              )
+            ",
+            &[&user_id],
+        )
+        .await
+        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+
+    let berry_variety_count: i32 = berry_row.get("berry_variety_count");
+
+    maybe_award_fruit_badge_if_needed(
+        client,
+        user_id,
+        BERRY_BUILDER_BADGE_KEY,
+        berry_variety_count >= BERRY_BUILDER_MIN_VARIETY_COUNT,
+        serde_json::json!({
+            "badgeFamily": "fruit_focus",
+            "berryVarietyCount": berry_variety_count,
+            "minBerryVarietyCount": BERRY_BUILDER_MIN_VARIETY_COUNT,
+        }),
+        "Berry Builder awarded: completed harvest/share activity across multiple berry varieties",
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn maybe_award_fruit_badge_if_needed(
+    client: &Client,
+    user_id: Uuid,
+    badge_key: &str,
+    qualifies: bool,
+    snapshot: serde_json::Value,
+    reason: &str,
+) -> Result<(), lambda_http::Error> {
+    if !qualifies {
+        return Ok(());
+    }
+
+    let already_awarded = client
+        .query_opt(
+            "select id from badge_award_audit where user_id = $1 and badge_key = $2 limit 1",
+            &[&user_id, &badge_key],
+        )
+        .await
+        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?
+        .is_some();
+
+    if already_awarded {
+        return Ok(());
+    }
+
+    client
+        .execute(
+            "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, now(), null, $3, '[]'::jsonb, $4::jsonb)",
+            &[&user_id, &badge_key, &reason.to_string(), &snapshot.to_string()],
+        )
+        .await
+        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+
+    Ok(())
 }
 
 async fn maybe_award_first_harvest(
