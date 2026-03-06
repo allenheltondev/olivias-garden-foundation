@@ -65,7 +65,7 @@ pub async fn upsert_current_user(
         .query_one(
             "
             insert into users (id, email, display_name, user_type, onboarding_completed)
-            values ($1::text::uuid, $2, $3, $4::text::user_type, $5)
+            values ($1::text::uuid, $2, $3, $4, $5)
             on conflict (id) do update
             set email = coalesce(excluded.email, users.email),
                 display_name = coalesce(excluded.display_name, users.display_name),
