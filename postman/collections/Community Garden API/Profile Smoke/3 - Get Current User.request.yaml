@@ -117,6 +117,33 @@ scripts:
           }
       });
 
+      pm.test("badgeCabinet entries use supported badge keys", function () {
+          if (!Array.isArray(jsonData.badgeCabinet)) {
+              return;
+          }
+
+          const fixedBadgeKeys = [
+              "first_harvest",
+              "gardener_novice",
+              "gardener_intermediate",
+              "gardener_pro",
+              "gardener_master",
+              "fruit_tree_keeper",
+              "orchard_starter",
+              "berry_builder"
+          ];
+
+          jsonData.badgeCabinet.forEach((entry) => {
+              const key = entry.badgeKey || "";
+              const isKnownFixed = fixedBadgeKeys.includes(key);
+              const isKnownLadder = /^gardener_season_\d+$/.test(key);
+              pm.expect(
+                  isKnownFixed || isKnownLadder,
+                  `Unexpected badge key in cabinet: ${key}`
+              ).to.eql(true);
+          });
+      });
+
       // --- Validate Against Stored Snapshot ---
       pm.test("GET response matches PUT response snapshot", function () {
           const snapshotStr = pm.collectionVariables.get("putMeResponseSnapshot");
