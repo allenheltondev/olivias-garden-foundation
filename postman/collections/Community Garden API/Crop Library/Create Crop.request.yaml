@@ -51,5 +51,12 @@ scripts:
           pm.expect(crop).to.have.property("status", "growing");
           pm.expect(crop).to.have.property("visibility", "local");
           pm.expect(crop).to.have.property("surplus_enabled", true);
+
+          if (!crop.id) {
+              pm.expect.fail("Missing crop.id; aborting chained run to prevent cascade failures.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
           pm.collectionVariables.set("cropLibraryId", crop.id);
       });
