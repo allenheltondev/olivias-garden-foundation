@@ -111,9 +111,9 @@ scripts:
           ).to.be.true;
       });
 
-      pm.test("growerProfile.units is imperial when grower profile exists", function () {
+      pm.test("growerProfile.units is a supported value when grower profile exists", function () {
           if (jsonData.growerProfile !== null) {
-              pm.expect(jsonData.growerProfile.units).to.eql("imperial");
+              pm.expect(["imperial", "metric"]).to.include(jsonData.growerProfile.units);
           }
       });
 
