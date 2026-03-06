@@ -13,6 +13,7 @@ mod middleware;
 mod models;
 mod router;
 mod structured_json;
+mod tips_framework;
 
 async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
     router::route_request(&event).await
