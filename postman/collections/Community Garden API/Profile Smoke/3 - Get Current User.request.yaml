@@ -67,6 +67,30 @@ scripts:
           pm.expect(jsonData.onboardingCompleted).to.be.a("boolean");
       });
 
+      pm.test("experienceLevel is present and within supported enum values", function () {
+          pm.expect(jsonData).to.have.property("experienceLevel");
+          pm.expect(["beginner", "intermediate", "advanced"]).to.include(jsonData.experienceLevel);
+      });
+
+      pm.test("experienceSignals object is present with non-negative numeric counters", function () {
+          pm.expect(jsonData).to.have.property("experienceSignals");
+          const signals = jsonData.experienceSignals;
+          pm.expect(signals).to.be.an("object");
+
+          [
+              "completedGrows",
+              "successfulHarvests",
+              "activeDaysLast90",
+              "seasonalConsistency",
+              "varietyBreadth",
+              "badgeCredibility"
+          ].forEach((key) => {
+              pm.expect(signals).to.have.property(key);
+              pm.expect(signals[key]).to.be.a("number");
+              pm.expect(signals[key]).to.be.at.least(0);
+          });
+      });
+
       // --- Validate State After PUT ---
       pm.test("User ID matches captured myUserId", function () {
           const expectedUserId = pm.collectionVariables.get("myUserId");

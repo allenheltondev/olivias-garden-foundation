@@ -8,6 +8,7 @@ use crate::models::profile::{
     GrowerProfile, MeProfileResponse, PublicUserResponse, PutMeRequest, SeasonalTimelineEntry,
     SubscriptionMetadata, UserRatingSummary, UserType,
 };
+use crate::tips_framework::{assign_experience_level, ExperienceSignals};
 use lambda_http::{Body, Request, RequestExt, Response};
 use serde::Serialize;
 use tokio_postgres::Row;
@@ -339,6 +340,10 @@ async fn to_me_response(
         });
 
     let badge_cabinet = badge_cabinet::load_and_sync_badges(client, user_id).await?;
+    let experience_signals = load_experience_signals(client, user_id).await?;
+    let experience_level = assign_experience_level(&experience_signals);
+    persist_experience_level(client, user_id, experience_level, &experience_signals).await?;
+
     let seasonal_timeline = badge_cabinet
         .iter()
         .filter_map(|entry| {
@@ -374,6 +379,8 @@ async fn to_me_response(
         gardener_tier: gardener_tier::evaluate_and_record(client, user_id).await?,
         badge_cabinet,
         seasonal_timeline,
+        experience_level,
+        experience_signals,
         grower_profile: load_grower_profile(client, user_id).await?,
         gatherer_profile: load_gatherer_profile(client, user_id).await?,
         rating_summary: load_rating_summary(client, user_id).await?,
@@ -448,6 +455,150 @@ async fn load_rating_summary(
         avg_score: rating.get("avg_score"),
         rating_count: rating.get("rating_count"),
     }))
+}
+
+async fn load_experience_signals(
+    client: &tokio_postgres::Client,
+    user_id: Uuid,
+) -> Result<ExperienceSignals, lambda_http::Error> {
+    let row = client
+        .query_one(
+            "
+            with activity_events as (
+              select created_at as activity_at from grower_crop_library where user_id = $1
+              union all
+              select updated_at as activity_at from grower_crop_library where user_id = $1
+              union all
+              select created_at as activity_at from surplus_listings where user_id = $1 and deleted_at is null
+              union all
+              select claimed_at as activity_at from claims where claimer_id = $1
+              union all
+              select confirmed_at as activity_at from claims where claimer_id = $1 and confirmed_at is not null
+              union all
+              select completed_at as activity_at from claims where claimer_id = $1 and completed_at is not null
+            )
+            select
+              (select count(*)::bigint from claims where claimer_id = $1 and status = 'completed') as completed_grows,
+              (select count(*)::bigint from claims where claimer_id = $1 and status = 'completed') as successful_harvests,
+              (
+                select count(distinct date_trunc('day', activity_at))::bigint
+                from activity_events
+                where activity_at >= now() - interval '90 days'
+              ) as active_days_last_90,
+              (
+                select count(distinct (award_snapshot->>'seasonYear'))::bigint
+                from badge_award_audit
+                where user_id = $1
+                  and badge_key like 'gardener_season_%'
+                  and award_snapshot->>'seasonYear' is not null
+              ) as seasonal_consistency,
+              (
+                select count(distinct lower(trim(crop_name)))::bigint
+                from grower_crop_library
+                where user_id = $1
+                  and nullif(trim(crop_name), '') is not null
+              ) as variety_breadth,
+              (
+                select count(*)::bigint
+                from badge_evidence_submissions
+                where user_id = $1 and status = 'auto_approved'
+              ) as badge_credibility
+            ",
+            &[&user_id],
+        )
+        .await
+        .map_err(|error| db_error(&error))?;
+
+    let to_u32 = |column: &str| u32::try_from(row.get::<_, i64>(column).max(0)).unwrap_or(u32::MAX);
+
+    Ok(ExperienceSignals {
+        completed_grows: to_u32("completed_grows"),
+        successful_harvests: to_u32("successful_harvests"),
+        active_days_last_90: to_u32("active_days_last_90"),
+        seasonal_consistency: to_u32("seasonal_consistency"),
+        variety_breadth: to_u32("variety_breadth"),
+        badge_credibility: to_u32("badge_credibility"),
+    })
+}
+
+async fn persist_experience_level(
+    client: &tokio_postgres::Client,
+    user_id: Uuid,
+    experience_level: crate::tips_framework::ExperienceLevel,
+    experience_signals: &ExperienceSignals,
+) -> Result<(), lambda_http::Error> {
+    let current_row = client
+        .query_opt(
+            "select experience_level::text as experience_level, signals from user_experience_levels where user_id = $1",
+            &[&user_id],
+        )
+        .await
+        .map_err(|error| db_error(&error))?;
+
+    let level_text = serde_json::to_string(&experience_level)
+        .map_err(|error| {
+            lambda_http::Error::from(format!("Failed to serialize experience level: {error}"))
+        })?
+        .trim_matches('"')
+        .to_string();
+    let new_signals = serde_json::to_string(experience_signals).map_err(|error| {
+        lambda_http::Error::from(format!("Failed to serialize experience signals: {error}"))
+    })?;
+
+    let previous_level = current_row
+        .as_ref()
+        .and_then(|row| row.get::<_, Option<String>>("experience_level"));
+    let previous_signals = current_row
+        .as_ref()
+        .and_then(|row| row.get::<_, Option<String>>("signals"));
+
+    client
+        .execute(
+            "
+            insert into user_experience_levels (user_id, experience_level, signals, computed_at, updated_at)
+            values ($1, $2, $3::jsonb, now(), now())
+            on conflict (user_id) do update
+              set experience_level = excluded.experience_level,
+                  signals = excluded.signals,
+                  computed_at = excluded.computed_at,
+                  updated_at = now()
+            ",
+            &[&user_id, &level_text, &new_signals],
+        )
+        .await
+        .map_err(|error| db_error(&error))?;
+
+    if previous_level.as_deref() != Some(level_text.as_str())
+        || previous_signals.as_ref() != Some(&new_signals)
+    {
+        client
+            .execute(
+                "
+                insert into user_experience_level_audit (
+                  user_id,
+                  previous_level,
+                  new_level,
+                  previous_signals,
+                  new_signals,
+                  transition_reason,
+                  changed_at
+                )
+                values ($1, $2, $3, $4::jsonb, $5::jsonb, $6, now())
+                ",
+                &[
+                    &user_id,
+                    &previous_level,
+                    &level_text,
+                    &previous_signals,
+                    &new_signals,
+                    &"refresh_me_profile",
+                ],
+            )
+            .await
+            .map_err(|error| db_error(&error))?;
+    }
+
+    Ok(())
 }
 
 fn parse_uuid(value: &str, field_name: &str) -> Result<Uuid, lambda_http::Error> {

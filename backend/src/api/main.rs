@@ -13,7 +13,6 @@ mod middleware;
 mod models;
 mod router;
 mod structured_json;
-#[allow(dead_code)]
 mod tips_framework;
 
 async fn function_handler(event: Request) -> Result<Response<Body>, Error> {

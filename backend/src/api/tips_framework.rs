@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 pub const TIP_SCHEMA_VERSION_V1: &str = "tips.v1";
@@ -26,6 +28,9 @@ pub struct ExperienceSignals {
     pub completed_grows: u32,
     pub successful_harvests: u32,
     pub active_days_last_90: u32,
+    pub seasonal_consistency: u32,
+    pub variety_breadth: u32,
+    pub badge_credibility: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,14 +81,20 @@ impl GardeningTip {
 
 #[must_use]
 pub const fn assign_experience_level(signals: &ExperienceSignals) -> ExperienceLevel {
-    if signals.completed_grows >= 10
-        && signals.successful_harvests >= 6
-        && signals.active_days_last_90 >= 45
+    let experience_score = (signals.completed_grows * 3)
+        + (signals.seasonal_consistency * 3)
+        + (signals.variety_breadth * 2)
+        + (signals.badge_credibility * 2)
+        + (signals.successful_harvests * 2)
+        + (signals.active_days_last_90 / 10);
+
+    if experience_score >= 50
+        && signals.completed_grows >= 10
+        && signals.seasonal_consistency >= 2
+        && signals.variety_breadth >= 6
     {
         ExperienceLevel::Advanced
-    } else if signals.completed_grows >= 3
-        && signals.successful_harvests >= 1
-        && signals.active_days_last_90 >= 15
+    } else if experience_score >= 18 && signals.completed_grows >= 3 && signals.variety_breadth >= 2
     {
         ExperienceLevel::Intermediate
     } else {
@@ -164,6 +175,9 @@ mod tests {
             completed_grows: 1,
             successful_harvests: 0,
             active_days_last_90: 4,
+            seasonal_consistency: 0,
+            variety_breadth: 1,
+            badge_credibility: 0,
         };
 
         assert_eq!(assign_experience_level(&signals), ExperienceLevel::Beginner);
@@ -175,6 +189,9 @@ mod tests {
             completed_grows: 3,
             successful_harvests: 1,
             active_days_last_90: 20,
+            seasonal_consistency: 1,
+            variety_breadth: 3,
+            badge_credibility: 1,
         };
 
         assert_eq!(
@@ -189,6 +206,9 @@ mod tests {
             completed_grows: 11,
             successful_harvests: 6,
             active_days_last_90: 50,
+            seasonal_consistency: 3,
+            variety_breadth: 8,
+            badge_credibility: 2,
         };
 
         assert_eq!(assign_experience_level(&signals), ExperienceLevel::Advanced);
