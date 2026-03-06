@@ -36,6 +36,7 @@ pub struct WeeklyPlanResponse {
     pub recommendations: Vec<WeeklyPlanRecommendation>,
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn generate_weekly_plan(
     request: &Request,
     correlation_id: &str,
@@ -125,30 +126,42 @@ pub async fn generate_weekly_plan(
         recommendations,
     };
 
-    if let Err(reason) = structured_json::validate_weekly_plan_response(&response) {
-        tracing::warn!(reason = %reason, "Weekly plan schema validation failed; using fallback response");
+    match structured_json::validate_or_repair_weekly_plan_response(&response) {
+        Ok(structured_json::ValidationResult::Valid) => json_response(200, &response),
+        Ok(structured_json::ValidationResult::Repaired(repaired)) => {
+            tracing::warn!(
+                correlation_id = correlation_id,
+                "Weekly plan schema required repair pass; returning normalized structured response"
+            );
+            json_response(200, &repaired)
+        }
+        Err(reason) => {
+            tracing::warn!(
+                correlation_id = correlation_id,
+                reason = %reason,
+                "Weekly plan schema validation failed after repair; using fallback response"
+            );
 
-        let fallback = WeeklyPlanResponse {
-            model_id: response.model_id.clone(),
-            model_version: response.model_version.clone(),
-            structured_json: true,
-            geo_key: response.geo_key.clone(),
-            window_days: response.window_days,
-            recommendations: vec![WeeklyPlanRecommendation {
-                recommendation:
-                    "Use a balanced planting mix this week while local premium insights recalibrate."
-                        .to_string(),
-                confidence: 0.4,
-                rationale: vec![
-                    "Fallback triggered due to response schema validation mismatch.".to_string(),
-                ],
-            }],
-        };
+            let fallback = WeeklyPlanResponse {
+                model_id: response.model_id.clone(),
+                model_version: response.model_version.clone(),
+                structured_json: true,
+                geo_key: response.geo_key.clone(),
+                window_days: response.window_days,
+                recommendations: vec![WeeklyPlanRecommendation {
+                    recommendation:
+                        "Use a balanced planting mix this week while local premium insights recalibrate."
+                            .to_string(),
+                    confidence: 0.4,
+                    rationale: vec![
+                        "Fallback triggered due to response schema validation mismatch.".to_string(),
+                    ],
+                }],
+            };
 
-        return json_response(200, &fallback);
+            json_response(200, &fallback)
+        }
     }
-
-    json_response(200, &response)
 }
 
 fn build_recommendations(rows: &[Row]) -> Vec<WeeklyPlanRecommendation> {

@@ -22,7 +22,7 @@ body:
       "userType": "grower",
       "growerProfile": {
         "homeZone": "US-TX-Austin",
-        "address": "123 Garden Lane, Austin, TX 78701",
+        "address": "1100 Congress Ave, Austin, TX 78701",
         "shareRadiusMiles": 10,
         "units": "imperial",
         "locale": "en-US"

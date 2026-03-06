@@ -12,6 +12,15 @@ pathVariables:
     value: '{{cropLibraryId}}'
     description: UUID of the grower crop
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const cropLibraryId = pm.collectionVariables.get("cropLibraryId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      pm.test("cropLibraryId is set and valid UUID", function () {
+          pm.expect(cropLibraryId, "cropLibraryId is required").to.be.a("string").and.not.empty;
+          pm.expect(cropLibraryId).to.match(uuidRe);
+      });
   - type: afterResponse
     language: text/javascript
     code: |-

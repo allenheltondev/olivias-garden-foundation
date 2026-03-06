@@ -34,6 +34,9 @@ variables:
   - key: catalogCropId
     value: ''
     description: Catalog crop ID used by crop, listing, and request examples
+  - key: defaultCatalogCropId
+    value: '8e7139d1-8aed-4228-bd5e-ff38c1311765'
+    description: Stable fallback crop ID for CI when catalog chaining has not run yet
   - key: catalogCropName
     value: ''
     description: Catalog crop common name captured by E2E flows

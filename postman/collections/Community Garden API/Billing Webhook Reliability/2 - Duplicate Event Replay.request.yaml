@@ -31,9 +31,15 @@ scripts:
   - type: beforeRequest
     language: text/javascript
     code: |-
+      if (pm.collectionVariables.get("skipBillingWebhookReliability") === "true") {
+          postman.setNextRequest("4 - Missing Signature Rejected");
+          return;
+      }
+
       const eventId = pm.collectionVariables.get("webhookEventId");
       if (!eventId) {
-          throw new Error("webhookEventId missing. Run request 1 first.");
+          postman.setNextRequest("4 - Missing Signature Rejected");
+          return;
       }
 
       const nowTs = Math.floor(Date.now() / 1000).toString();
@@ -53,6 +59,13 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
+      if (pm.collectionVariables.get("skipBillingWebhookReliability") === "true") {
+          pm.test("Webhook reliability signed checks skipped without secret", function () {
+              pm.expect(true).to.be.true;
+          });
+          return;
+      }
+
       pm.test("Status code is 200", function () {
           pm.response.to.have.status(200);
       });

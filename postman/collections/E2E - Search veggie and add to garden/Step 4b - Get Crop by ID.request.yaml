@@ -16,6 +16,15 @@ pathVariables:
     value: '{{createdCropId}}'
     description: UUID of the created crop from Step 3
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const createdCropId = pm.collectionVariables.get("createdCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      pm.test("createdCropId is set and valid UUID", function () {
+          pm.expect(createdCropId, "createdCropId is required").to.be.a("string").and.not.empty;
+          pm.expect(createdCropId).to.match(uuidRe);
+      });
   - type: afterResponse
     language: text/javascript
     code: |-

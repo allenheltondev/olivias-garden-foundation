@@ -18,19 +18,35 @@ body:
   content: |-
     {
       "title": "Fresh Tomatoes - 3 lb remaining",
-      "crop_id": "{{catalogCropId}}",
-      "quantity_total": 3,
+      "cropId": "{{catalogCropId}}",
+      "quantityTotal": 3,
       "unit": "lb",
-      "available_start": "2026-07-01T08:00:00Z",
-      "available_end": "2026-07-05T18:00:00Z",
-      "pickup_location_text": "Front porch",
-      "pickup_address": "123 Garden Lane, Austin, TX 78701",
-      "pickup_disclosure_policy": "after_confirmed",
-      "pickup_notes": "Ring doorbell, produce will be in cooler on porch",
-      "contact_pref": "app_message",
+      "availableStart": "2026-07-01T08:00:00Z",
+      "availableEnd": "2026-07-05T18:00:00Z",
+      "pickupLocationText": "Front porch",
+      "pickupAddress": "1100 Congress Ave, Austin, TX 78701",
+      "pickupDisclosurePolicy": "after_confirmed",
+      "pickupNotes": "Ring doorbell, produce will be in cooler on porch",
+      "contactPref": "app_message",
       "status": "active"
     }
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      let cropId = pm.collectionVariables.get("catalogCropId");
+      const fallbackCropId = pm.collectionVariables.get("defaultCatalogCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if ((!cropId || !uuidRe.test(cropId)) && fallbackCropId && uuidRe.test(fallbackCropId)) {
+          cropId = fallbackCropId;
+          pm.collectionVariables.set("catalogCropId", cropId);
+      }
+
+      pm.test("catalogCropId is set and valid UUID", function () {
+          pm.expect(cropId, "catalogCropId is required").to.be.a("string").and.not.empty;
+          pm.expect(cropId).to.match(uuidRe);
+      });
   - type: afterResponse
     language: text/javascript
     code: |-

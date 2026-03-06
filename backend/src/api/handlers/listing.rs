@@ -28,13 +28,13 @@ const UPDATE_LISTING_SQL: &str = "
                 quantity_remaining = least(coalesce(quantity_remaining, $5), $5),
                 available_start = $6,
                 available_end = $7,
-                status = $8::listing_status,
+                status = $8::text::listing_status,
                 pickup_location_text = $9,
                 pickup_address = $10,
                 effective_pickup_address = $11,
-                pickup_disclosure_policy = $12::pickup_disclosure_policy,
+                pickup_disclosure_policy = $12::text::pickup_disclosure_policy,
                 pickup_notes = $13,
-                contact_pref = $14::contact_preference,
+                contact_pref = $14::text::contact_preference,
                 geo_key = $15,
                 lat = $16,
                 lng = $17
@@ -154,7 +154,7 @@ pub async fn list_my_listings(
                 from surplus_listings
                 where user_id = $1
                   and deleted_at is null
-                  and status = $2::listing_status
+                  and status = $2::text::listing_status
                 order by created_at desc, id desc
                 limit $3 offset $4
                 ",
@@ -318,10 +318,10 @@ pub async fn create_listing(
             values
                 ($1, $2, $3, $4, $5, $6,
                  $7, $7,
-                 $8, $9, $10::listing_status,
+                 $8, $9, $10::text::listing_status,
                  $11, $12, $13,
-                 $14::pickup_disclosure_policy, $15,
-                 $16::contact_preference, $17, $18, $19)
+                 $14::text::pickup_disclosure_policy, $15,
+                 $16::text::contact_preference, $17, $18, $19)
             on conflict (id) do nothing
             returning id, user_id, crop_id, variety_id, title,
                       quantity_total::text as quantity_total,
@@ -756,7 +756,8 @@ fn parse_datetime(value: &str, field_name: &str) -> Result<DateTime<Utc>, lambda
 }
 
 fn parse_uuid(value: &str, field_name: &str) -> Result<Uuid, lambda_http::Error> {
-    Uuid::parse_str(value)
+    let normalized = value.trim();
+    Uuid::parse_str(normalized)
         .map_err(|_| lambda_http::Error::from(format!("{field_name} must be a valid UUID")))
 }
 

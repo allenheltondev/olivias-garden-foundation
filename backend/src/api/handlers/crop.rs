@@ -107,7 +107,7 @@ pub async fn create_my_crop(
             insert into grower_crop_library
                 (user_id, crop_id, variety_id, status, visibility, surplus_enabled, nickname, default_unit, notes)
             values
-                ($1, $2, $3, $4::grower_crop_status, $5::visibility_scope, $6, $7, $8, $9)
+                ($1, $2, $3::uuid, $4::grower_crop_status, $5::visibility_scope, $6, $7, $8, $9)
             returning id, user_id, crop_id, variety_id, status::text, visibility::text,
                       surplus_enabled, nickname, default_unit, notes, created_at, updated_at
             ",
@@ -162,7 +162,7 @@ pub async fn update_my_crop(
             "
             update grower_crop_library
             set crop_id = $1,
-                variety_id = $2,
+                variety_id = $2::uuid,
                 status = $3::grower_crop_status,
                 visibility = $4::visibility_scope,
                 surplus_enabled = $5,
@@ -313,7 +313,8 @@ async fn validate_catalog_links(
 }
 
 fn parse_uuid(value: &str, field_name: &str) -> Result<Uuid, lambda_http::Error> {
-    Uuid::parse_str(value)
+    let normalized = value.trim();
+    Uuid::parse_str(normalized)
         .map_err(|_| lambda_http::Error::from(format!("{field_name} must be a valid UUID")))
 }
 

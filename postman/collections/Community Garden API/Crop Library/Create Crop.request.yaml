@@ -21,6 +21,22 @@ body:
       "notes": "Planted in raised bed #2"
     }
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      let cropId = pm.collectionVariables.get("catalogCropId");
+      const fallbackCropId = pm.collectionVariables.get("defaultCatalogCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if ((!cropId || !uuidRe.test(cropId)) && fallbackCropId && uuidRe.test(fallbackCropId)) {
+          cropId = fallbackCropId;
+          pm.collectionVariables.set("catalogCropId", cropId);
+      }
+
+      pm.test("catalogCropId is set and valid UUID", function () {
+          pm.expect(cropId, "catalogCropId is required").to.be.a("string").and.not.empty;
+          pm.expect(cropId).to.match(uuidRe);
+      });
   - type: afterResponse
     language: text/javascript
     code: |-

@@ -23,11 +23,14 @@ scripts:
     code: |-
       // Pre-request: Validate createdCropId is set
       const createdCropId = pm.collectionVariables.get("createdCropId");
-      
-      if (!createdCropId) {
-          console.error("ERROR: createdCropId is not set. Cannot cleanup - no crop was created.");
-          console.log("This may happen if Step 3 failed or was skipped.");
-      } else {
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      pm.test("createdCropId is set and valid UUID before cleanup", function () {
+          pm.expect(createdCropId, "createdCropId is required").to.be.a("string").and.not.empty;
+          pm.expect(createdCropId).to.match(uuidRe);
+      });
+
+      if (createdCropId) {
           console.log("Cleaning up crop: " + createdCropId);
       }
   - type: afterResponse

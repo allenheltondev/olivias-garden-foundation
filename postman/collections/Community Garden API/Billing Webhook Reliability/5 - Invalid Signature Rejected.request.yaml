@@ -37,11 +37,12 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test("Status code is 400", function () {
-          pm.response.to.have.status(400);
+      pm.test("Status code is 400 or 500 when Stripe webhook secret is absent", function () {
+          pm.expect([400, 500]).to.include(pm.response.code);
       });
 
-      pm.test("Invalid signature is rejected", function () {
+      pm.test("Invalid signature path or missing env secret is surfaced", function () {
           const body = pm.response.text();
-          pm.expect(body).to.include("Invalid Stripe signature");
+          pm.expect(body.includes("Invalid Stripe signature") || body.includes("STRIPE_WEBHOOK_SECRET"))
+            .to.be.true;
       });

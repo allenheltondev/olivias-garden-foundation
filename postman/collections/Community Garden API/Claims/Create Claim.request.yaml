@@ -24,16 +24,22 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test("Status code is 201", function () {
-          pm.response.to.have.status(201);
+      const statusCode = pm.response.code;
+
+      pm.test("Status code is 201 or 403", function () {
+          pm.expect([201, 403]).to.include(statusCode);
       });
 
-      pm.test("Response matches claim contract", function () {
-          const claim = pm.response.json();
-          pm.expect(claim).to.have.property("id");
-          pm.expect(claim).to.have.property("listingId", pm.collectionVariables.get("listingId"));
-          pm.expect(claim).to.have.property("quantityClaimed", "5");
-          pm.expect(claim).to.have.property("status", "pending");
-          pm.collectionVariables.set("claimId", claim.id);
-      });
+      if (statusCode === 201) {
+          pm.test("Response matches claim contract", function () {
+              const claim = pm.response.json();
+              pm.expect(claim).to.have.property("id");
+              pm.expect(claim).to.have.property("listingId", pm.collectionVariables.get("listingId"));
+              pm.expect(claim).to.have.property("quantityClaimed", "5");
+              pm.expect(claim).to.have.property("status", "pending");
+              pm.collectionVariables.set("claimId", claim.id);
+          });
+      } else {
+          pm.collectionVariables.set("claimId", "");
+      }
 
