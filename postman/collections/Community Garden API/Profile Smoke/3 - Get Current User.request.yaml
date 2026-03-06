@@ -130,7 +130,12 @@ scripts:
               "gardener_master",
               "fruit_tree_keeper",
               "orchard_starter",
-              "berry_builder"
+              "berry_builder",
+              "first_share",
+              "neighborhood_provider",
+              "abundance_giver",
+              "consistency_giver",
+              "reliable_grower"
           ];
 
           jsonData.badgeCabinet.forEach((entry) => {

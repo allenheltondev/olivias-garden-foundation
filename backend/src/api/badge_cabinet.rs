@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use serde::Serialize;
 use tokio_postgres::Client;
 use uuid::Uuid;
@@ -7,6 +8,11 @@ const GARDENER_SEASON_BADGE_PREFIX: &str = "gardener_season_";
 const FRUIT_TREE_KEEPER_BADGE_KEY: &str = "fruit_tree_keeper";
 const ORCHARD_STARTER_BADGE_KEY: &str = "orchard_starter";
 const BERRY_BUILDER_BADGE_KEY: &str = "berry_builder";
+const FIRST_SHARE_BADGE_KEY: &str = "first_share";
+const NEIGHBORHOOD_PROVIDER_BADGE_KEY: &str = "neighborhood_provider";
+const ABUNDANCE_GIVER_BADGE_KEY: &str = "abundance_giver";
+const CONSISTENCY_GIVER_BADGE_KEY: &str = "consistency_giver";
+const RELIABLE_GROWER_BADGE_KEY: &str = "reliable_grower";
 const HARVEST_PROOF_WINDOW_DAYS: i64 = 14;
 
 const FRUIT_TREE_KEEPER_MIN_TREE_COUNT: i32 = 1;
@@ -14,6 +20,13 @@ const ORCHARD_STARTER_MIN_TREE_COUNT: i32 = 3;
 const BERRY_BUILDER_MIN_VARIETY_COUNT: i32 = 3;
 const FRUIT_BADGE_MIN_EVIDENCE_PER_TREE: i32 = 2;
 const FRUIT_BADGE_MIN_ACTIVITY_DAYS: i64 = 60;
+
+const NEIGHBORHOOD_PROVIDER_MIN_COMPLETED_SHARES: i32 = 10;
+const ABUNDANCE_GIVER_MIN_WEIGHT_VOLUME: f64 = 25.0;
+const CONSISTENCY_GIVER_STREAK_MONTHS: i32 = 3;
+const RELIABLE_GROWER_MIN_COMPLETED_SHARES: i32 = 10;
+const RELIABLE_GROWER_MIN_COMPLETION_RATIO: f64 = 0.9;
+const RELIABLE_GROWER_MAX_DISRUPTED_OUTCOMES: i32 = 1;
 
 const SEASON_DEFAULT_ACTIVITY_WEEKS_MIN: i32 = 10;
 const SEASON_DEFAULT_CROP_COMPLETIONS_MIN: i32 = 3;
@@ -48,6 +61,7 @@ pub async fn load_and_sync_badges(
     maybe_award_first_harvest(client, user_id).await?;
     maybe_award_gardener_season_ladder(client, user_id).await?;
     maybe_award_fruit_focused_badges(client, user_id).await?;
+    maybe_award_sharing_credibility_badges(client, user_id).await?;
 
     let rows = client
         .query(
@@ -286,7 +300,7 @@ async fn maybe_award_fruit_focused_badges(
     )
     .unwrap_or(i32::MAX);
 
-    maybe_award_fruit_badge_if_needed(
+    maybe_award_badge_if_needed(
         client,
         user_id,
         FRUIT_TREE_KEEPER_BADGE_KEY,
@@ -302,7 +316,7 @@ async fn maybe_award_fruit_focused_badges(
     )
     .await?;
 
-    maybe_award_fruit_badge_if_needed(
+    maybe_award_badge_if_needed(
         client,
         user_id,
         ORCHARD_STARTER_BADGE_KEY,
@@ -342,7 +356,7 @@ async fn maybe_award_fruit_focused_badges(
 
     let berry_variety_count: i32 = berry_row.get("berry_variety_count");
 
-    maybe_award_fruit_badge_if_needed(
+    maybe_award_badge_if_needed(
         client,
         user_id,
         BERRY_BUILDER_BADGE_KEY,
@@ -359,7 +373,195 @@ async fn maybe_award_fruit_focused_badges(
     Ok(())
 }
 
-async fn maybe_award_fruit_badge_if_needed(
+#[allow(clippy::too_many_lines)]
+async fn maybe_award_sharing_credibility_badges(
+    client: &Client,
+    user_id: Uuid,
+) -> Result<(), lambda_http::Error> {
+    let outcome_row = client
+        .query_one(
+            r"
+            select
+              count(*) filter (where c.status = 'completed')::int as completed_count,
+              count(*) filter (where c.status in ('cancelled', 'no_show'))::int as disrupted_count,
+              count(*)::int as total_count,
+              min(c.completed_at) filter (where c.status = 'completed' and c.completed_at is not null) as first_completed_at,
+              max(c.completed_at) filter (where c.status = 'completed' and c.completed_at is not null) as last_completed_at,
+              coalesce(sum(c.quantity_claimed) filter (
+                where c.status = 'completed'
+                  and c.completed_at is not null
+                  and lower(coalesce(sl.unit, '')) in ('g', 'gram', 'grams', 'kg', 'kilogram', 'kilograms', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'ml', 'milliliter', 'milliliters', 'l', 'liter', 'liters')
+              ), 0)::double precision as weight_volume_completed_quantity
+            from surplus_listings sl
+            join claims c on c.listing_id = sl.id
+            where sl.user_id = $1
+              and c.claimer_id <> $1
+            ",
+            &[&user_id],
+        )
+        .await
+        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+
+    let completed_count: i32 = outcome_row.get("completed_count");
+    let disrupted_count: i32 = outcome_row.get("disrupted_count");
+    let total_count: i32 = outcome_row.get("total_count");
+    let first_completed_at: Option<chrono::DateTime<chrono::Utc>> =
+        outcome_row.get("first_completed_at");
+    let last_completed_at: Option<chrono::DateTime<chrono::Utc>> =
+        outcome_row.get("last_completed_at");
+    let weight_volume_completed_quantity: f64 = outcome_row.get("weight_volume_completed_quantity");
+
+    maybe_award_badge_if_needed(
+        client,
+        user_id,
+        FIRST_SHARE_BADGE_KEY,
+        completed_count >= 1,
+        serde_json::json!({
+            "badgeFamily": "sharing_credibility",
+            "completedShareCount": completed_count,
+            "antiAbuse": {
+                "excludesSelfClaims": true
+            }
+        }),
+        "First Share awarded: first completed handoff with non-self claimer",
+    )
+    .await?;
+
+    maybe_award_badge_if_needed(
+        client,
+        user_id,
+        NEIGHBORHOOD_PROVIDER_BADGE_KEY,
+        completed_count >= NEIGHBORHOOD_PROVIDER_MIN_COMPLETED_SHARES,
+        serde_json::json!({
+            "badgeFamily": "sharing_credibility",
+            "completedShareCount": completed_count,
+            "minCompletedShareCount": NEIGHBORHOOD_PROVIDER_MIN_COMPLETED_SHARES,
+            "antiAbuse": {
+                "excludesSelfClaims": true
+            }
+        }),
+        "Neighborhood Provider awarded: ten completed handoffs with non-self claimers",
+    )
+    .await?;
+
+    maybe_award_badge_if_needed(
+        client,
+        user_id,
+        ABUNDANCE_GIVER_BADGE_KEY,
+        weight_volume_completed_quantity >= ABUNDANCE_GIVER_MIN_WEIGHT_VOLUME,
+        serde_json::json!({
+            "badgeFamily": "sharing_credibility",
+            "weightVolumeCompletedQuantity": weight_volume_completed_quantity,
+            "minWeightVolume": ABUNDANCE_GIVER_MIN_WEIGHT_VOLUME,
+            "countedUnits": ["g", "gram", "grams", "kg", "kilogram", "kilograms", "oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds", "ml", "milliliter", "milliliters", "l", "liter", "liters"],
+            "antiAbuse": {
+                "excludesSelfClaims": true
+            }
+        }),
+        "Abundance Giver awarded: crossed cumulative completed weight/volume handoff threshold",
+    )
+    .await?;
+
+    let monthly_rows = client
+        .query(
+            r"
+            select
+              date_trunc('month', c.completed_at at time zone 'utc')::date as completed_month,
+              count(*)::int as completed_count
+            from surplus_listings sl
+            join claims c on c.listing_id = sl.id
+            where sl.user_id = $1
+              and c.claimer_id <> $1
+              and c.status = 'completed'
+              and c.completed_at is not null
+            group by 1
+            order by 1 asc
+            ",
+            &[&user_id],
+        )
+        .await
+        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+
+    let mut longest_streak = 0_i32;
+    let mut current_streak = 0_i32;
+    let mut previous_month: Option<chrono::NaiveDate> = None;
+
+    for row in &monthly_rows {
+        let month: chrono::NaiveDate = row.get("completed_month");
+
+        if let Some(prev) = previous_month {
+            let prev_idx = prev.year() * 12 + i32::try_from(prev.month()).unwrap_or(i32::MAX);
+            let current_idx = month.year() * 12 + i32::try_from(month.month()).unwrap_or(i32::MAX);
+            if current_idx == prev_idx + 1 {
+                current_streak += 1;
+            } else {
+                current_streak = 1;
+            }
+        } else {
+            current_streak = 1;
+        }
+
+        if current_streak > longest_streak {
+            longest_streak = current_streak;
+        }
+
+        previous_month = Some(month);
+    }
+
+    maybe_award_badge_if_needed(
+        client,
+        user_id,
+        CONSISTENCY_GIVER_BADGE_KEY,
+        longest_streak >= CONSISTENCY_GIVER_STREAK_MONTHS,
+        serde_json::json!({
+            "badgeFamily": "sharing_credibility",
+            "longestCompletedMonthStreak": longest_streak,
+            "requiredStreakMonths": CONSISTENCY_GIVER_STREAK_MONTHS,
+            "activeMonthCount": monthly_rows.len(),
+            "antiAbuse": {
+                "excludesSelfClaims": true
+            }
+        }),
+        "Consistency Giver awarded: maintained completed shares across consecutive months",
+    )
+    .await?;
+
+    let completion_ratio = if total_count == 0 {
+        0.0
+    } else {
+        f64::from(completed_count) / f64::from(total_count)
+    };
+
+    maybe_award_badge_if_needed(
+        client,
+        user_id,
+        RELIABLE_GROWER_BADGE_KEY,
+        completed_count >= RELIABLE_GROWER_MIN_COMPLETED_SHARES
+            && completion_ratio >= RELIABLE_GROWER_MIN_COMPLETION_RATIO
+            && disrupted_count <= RELIABLE_GROWER_MAX_DISRUPTED_OUTCOMES,
+        serde_json::json!({
+            "badgeFamily": "sharing_credibility",
+            "completedShareCount": completed_count,
+            "totalOutcomeCount": total_count,
+            "disruptedOutcomeCount": disrupted_count,
+            "completionRatio": completion_ratio,
+            "minCompletedShareCount": RELIABLE_GROWER_MIN_COMPLETED_SHARES,
+            "minCompletionRatio": RELIABLE_GROWER_MIN_COMPLETION_RATIO,
+            "maxDisruptedOutcomes": RELIABLE_GROWER_MAX_DISRUPTED_OUTCOMES,
+            "firstCompletedAt": first_completed_at.map(|ts| ts.to_rfc3339()),
+            "lastCompletedAt": last_completed_at.map(|ts| ts.to_rfc3339()),
+            "antiAbuse": {
+                "excludesSelfClaims": true
+            }
+        }),
+        "Reliable Grower awarded: high completion outcomes with low cancellation/no-show rate",
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn maybe_award_badge_if_needed(
     client: &Client,
     user_id: Uuid,
     badge_key: &str,
