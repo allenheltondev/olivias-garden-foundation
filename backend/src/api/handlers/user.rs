@@ -61,7 +61,7 @@ pub async fn upsert_current_user(
         .query_one(
             "
             insert into users (id, email, display_name, user_type, onboarding_completed)
-            values ($1, $2, $3, $4, $5)
+            values ($1, $2, $3, $4::text, $5)
             on conflict (id) do update
             set email = coalesce(excluded.email, users.email),
                 display_name = coalesce(excluded.display_name, users.display_name),
@@ -451,7 +451,8 @@ async fn load_rating_summary(
 }
 
 fn parse_uuid(value: &str, field_name: &str) -> Result<Uuid, lambda_http::Error> {
-    Uuid::parse_str(value)
+    let normalized = value.trim();
+    Uuid::parse_str(normalized)
         .map_err(|_| lambda_http::Error::from(format!("{field_name} must be a valid UUID")))
 }
 

@@ -24,8 +24,8 @@ const UPDATE_LISTING_SQL: &str = "
                 variety_id = $2,
                 title = $3,
                 unit = $4,
-                quantity_total = $5,
-                quantity_remaining = least(coalesce(quantity_remaining, $5), $5),
+                quantity_total = $5::double precision,
+                quantity_remaining = least(coalesce(quantity_remaining, $5::double precision), $5::double precision),
                 available_start = $6,
                 available_end = $7,
                 status = $8::text::listing_status,
@@ -317,7 +317,7 @@ pub async fn create_listing(
                  contact_pref, geo_key, lat, lng)
             values
                 ($1, $2, $3, $4, $5, $6,
-                 $7, $7,
+                 $7::double precision, $7::double precision,
                  $8, $9, $10::text::listing_status,
                  $11, $12, $13,
                  $14::text::pickup_disclosure_policy, $15,
@@ -986,7 +986,7 @@ mod tests {
     #[test]
     fn update_listing_sql_preserves_existing_remaining_inventory() {
         assert!(UPDATE_LISTING_SQL.contains("quantity_remaining = least("));
-        assert!(UPDATE_LISTING_SQL.contains("coalesce(quantity_remaining, $5)"));
+        assert!(UPDATE_LISTING_SQL.contains("coalesce(quantity_remaining, $5::double precision)"));
         assert!(!UPDATE_LISTING_SQL.contains("quantity_remaining = $5,"));
     }
 
