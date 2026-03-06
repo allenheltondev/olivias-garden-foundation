@@ -162,6 +162,24 @@ scripts:
           });
       });
 
+      pm.test("badgeCabinet earnedAt values are parseable timestamps", function () {
+          if (!Array.isArray(jsonData.badgeCabinet)) {
+              return;
+          }
+
+          jsonData.badgeCabinet.forEach((entry, index) => {
+              if (!entry.earnedAt) {
+                  return;
+              }
+
+              const parsed = Date.parse(entry.earnedAt);
+              pm.expect(
+                  Number.isNaN(parsed),
+                  `badgeCabinet[${index}].earnedAt should be parseable: ${entry.earnedAt}`
+              ).to.eql(false);
+          });
+      });
+
       // --- Validate Against Stored Snapshot ---
       pm.test("GET response matches PUT response snapshot", function () {
           const snapshotStr = pm.collectionVariables.get("putMeResponseSnapshot");

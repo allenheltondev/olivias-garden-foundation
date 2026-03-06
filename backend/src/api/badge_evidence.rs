@@ -21,6 +21,27 @@ pub enum EvidenceReviewStatus {
     Rejected,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BadgeDisputeStatus {
+    Open,
+    UnderReview,
+    MoreEvidenceRequested,
+    Upheld,
+    Revoked,
+}
+
+pub fn parse_badge_dispute_status(value: &str) -> Option<BadgeDisputeStatus> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "open" => Some(BadgeDisputeStatus::Open),
+        "under_review" => Some(BadgeDisputeStatus::UnderReview),
+        "more_evidence_requested" => Some(BadgeDisputeStatus::MoreEvidenceRequested),
+        "upheld" => Some(BadgeDisputeStatus::Upheld),
+        "revoked" => Some(BadgeDisputeStatus::Revoked),
+        _ => None,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct EvidenceSignals {
@@ -190,5 +211,27 @@ mod tests {
 
         assert_eq!(decision.status, EvidenceReviewStatus::Rejected);
         assert!(decision.trust_score < 55);
+    }
+
+    #[test]
+    fn parses_supported_badge_dispute_statuses() {
+        assert_eq!(
+            parse_badge_dispute_status("under_review"),
+            Some(BadgeDisputeStatus::UnderReview)
+        );
+        assert_eq!(
+            parse_badge_dispute_status("MORE_EVIDENCE_REQUESTED"),
+            Some(BadgeDisputeStatus::MoreEvidenceRequested)
+        );
+        assert_eq!(
+            parse_badge_dispute_status("revoked"),
+            Some(BadgeDisputeStatus::Revoked)
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_badge_dispute_statuses() {
+        assert_eq!(parse_badge_dispute_status("pending"), None);
+        assert_eq!(parse_badge_dispute_status(""), None);
     }
 }
