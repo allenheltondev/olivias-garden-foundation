@@ -75,10 +75,16 @@ impl GardeningTip {
 }
 
 #[must_use]
-pub fn assign_experience_level(signals: &ExperienceSignals) -> ExperienceLevel {
-    if signals.completed_grows >= 10 && signals.successful_harvests >= 6 && signals.active_days_last_90 >= 45 {
+pub const fn assign_experience_level(signals: &ExperienceSignals) -> ExperienceLevel {
+    if signals.completed_grows >= 10
+        && signals.successful_harvests >= 6
+        && signals.active_days_last_90 >= 45
+    {
         ExperienceLevel::Advanced
-    } else if signals.completed_grows >= 3 && signals.successful_harvests >= 1 && signals.active_days_last_90 >= 15 {
+    } else if signals.completed_grows >= 3
+        && signals.successful_harvests >= 1
+        && signals.active_days_last_90 >= 15
+    {
         ExperienceLevel::Intermediate
     } else {
         ExperienceLevel::Beginner
@@ -171,7 +177,10 @@ mod tests {
             active_days_last_90: 20,
         };
 
-        assert_eq!(assign_experience_level(&signals), ExperienceLevel::Intermediate);
+        assert_eq!(
+            assign_experience_level(&signals),
+            ExperienceLevel::Intermediate
+        );
     }
 
     #[test]
