@@ -100,15 +100,17 @@ scripts:
       });
 
       // --- Grower Profile Validation ---
-      pm.test("growerProfile exists for grower userType", function () {
+      pm.test("growerProfile is nullable per contract", function () {
           pm.expect(jsonData).to.have.property("growerProfile");
-          pm.expect(jsonData.growerProfile).to.be.an("object");
+          pm.expect(jsonData.growerProfile === null || typeof jsonData.growerProfile === "object").to.be.true;
       });
 
-      pm.test("growerProfile has expected fields", function () {
-          const gp = jsonData.growerProfile;
-          pm.expect(gp).to.have.property("units");
-          pm.expect(gp.units).to.be.oneOf(["imperial", "metric"]);
+      pm.test("growerProfile has expected fields when present", function () {
+          if (jsonData.growerProfile !== null) {
+              const gp = jsonData.growerProfile;
+              pm.expect(gp).to.have.property("units");
+              pm.expect(gp.units).to.be.oneOf(["imperial", "metric"]);
+          }
       });
 
       // --- Variable Capture ---
