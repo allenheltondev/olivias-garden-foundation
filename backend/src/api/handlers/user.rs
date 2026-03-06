@@ -1,3 +1,4 @@
+use crate::badge_cabinet;
 use crate::db;
 use crate::gardener_tier;
 use crate::location;
@@ -355,6 +356,7 @@ async fn to_me_response(
                 .map(|v| v.to_rfc3339()),
         },
         gardener_tier: gardener_tier::evaluate_and_record(client, user_id).await?,
+        badge_cabinet: badge_cabinet::load_and_sync_badges(client, user_id).await?,
         grower_profile: load_grower_profile(client, user_id).await?,
         gatherer_profile: load_gatherer_profile(client, user_id).await?,
         rating_summary: load_rating_summary(client, user_id).await?,

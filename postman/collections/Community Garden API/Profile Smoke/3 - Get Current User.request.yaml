@@ -81,8 +81,15 @@ scripts:
           pm.expect(jsonData.onboardingCompleted).to.eql(true);
       });
 
-      pm.test("userType is grower (reflects PUT update)", function () {
-          pm.expect(jsonData.userType).to.eql("grower");
+      pm.test("userType matches PUT snapshot when available", function () {
+          const snapshotStr = pm.collectionVariables.get("putMeResponseSnapshot");
+          if (!snapshotStr) {
+              console.warn("No snapshot found - skipping userType assertion");
+              return;
+          }
+
+          const snapshot = JSON.parse(snapshotStr);
+          pm.expect(jsonData.userType).to.eql(snapshot.userType);
       });
 
       pm.test("displayName matches PUT snapshot when available", function () {

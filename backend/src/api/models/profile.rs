@@ -1,3 +1,4 @@
+use crate::badge_cabinet::BadgeCabinetEntry;
 use crate::gardener_tier::GardenerTierProfile;
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +61,7 @@ pub struct MeProfileResponse {
     pub created_at: String,
     pub subscription: SubscriptionMetadata,
     pub gardener_tier: GardenerTierProfile,
+    pub badge_cabinet: Vec<BadgeCabinetEntry>,
     pub grower_profile: Option<GrowerProfile>,
     pub gatherer_profile: Option<GathererProfile>,
     pub rating_summary: Option<UserRatingSummary>,

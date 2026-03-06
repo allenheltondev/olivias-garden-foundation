@@ -3,6 +3,7 @@ use lambda_http::{run, service_fn, Body, Error, Request, Response};
 mod ai;
 mod ai_model_config;
 mod auth;
+mod badge_cabinet;
 mod badge_evidence;
 mod db;
 mod gardener_tier;
