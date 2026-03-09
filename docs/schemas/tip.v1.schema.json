@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://community-garden.example.com/schemas/tip.v1.schema.json",
+  "title": "Gardening Tip v1",
+  "description": "Schema for experience-based gardening tips with targeting metadata",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "body",
+    "category",
+    "level",
+    "season",
+    "cropTags",
+    "zoneTags",
+    "targeting"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the tip",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short, actionable title",
+      "minLength": 5,
+      "maxLength": 100
+    },
+    "body": {
+      "type": "string",
+      "description": "Practical guidance text",
+      "minLength": 20,
+      "maxLength": 500
+    },
+    "category": {
+      "type": "string",
+      "description": "Tip category (locked for v1)",
+      "enum": ["watering", "pests", "planting", "soil", "seasonal", "harvest"]
+    },
+    "level": {
+      "type": "string",
+      "description": "Minimum experience level required",
+      "enum": ["beginner", "intermediate", "advanced"]
+    },
+    "season": {
+      "type": "string",
+      "description": "Primary season context",
+      "enum": ["spring", "summer", "fall", "winter", "any"]
+    },
+    "cropTags": {
+      "type": "array",
+      "description": "Relevant crop types (empty array means applies to all)",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 0
+    },
+    "zoneTags": {
+      "type": "array",
+      "description": "Relevant hardiness zones (empty array or 'any' means applies to all)",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "targeting": {
+      "type": "object",
+      "description": "Eligibility and targeting rules",
+      "required": ["minimumLevel", "seasons", "cropTags", "zoneTags"],
+      "properties": {
+        "minimumLevel": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"]
+        },
+        "seasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["spring", "summer", "fall", "winter", "any"]
+          },
+          "minItems": 1
+        },
+        "cropTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "zoneTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

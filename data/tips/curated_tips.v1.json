@@ -6,13 +6,23 @@
     "category": "watering",
     "level": "beginner",
     "season": "spring",
-    "cropTags": ["leafy_greens"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "leafy_greens"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "beginner",
-      "seasons": ["spring"],
-      "cropTags": ["leafy_greens"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "leafy_greens"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -22,13 +32,24 @@
     "category": "pests",
     "level": "beginner",
     "season": "spring",
-    "cropTags": ["brassicas"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "brassicas"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "beginner",
-      "seasons": ["spring", "summer"],
-      "cropTags": ["brassicas"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "cropTags": [
+        "brassicas"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -38,13 +59,39 @@
     "category": "planting",
     "level": "beginner",
     "season": "spring",
-    "cropTags": ["tomato", "pepper"],
-    "zoneTags": ["3a", "4a", "5a", "6a", "7a", "8a", "9a", "10a"],
+    "cropTags": [
+      "tomato",
+      "pepper"
+    ],
+    "zoneTags": [
+      "3a",
+      "4a",
+      "5a",
+      "6a",
+      "7a",
+      "8a",
+      "9a",
+      "10a"
+    ],
     "targeting": {
       "minimumLevel": "beginner",
-      "seasons": ["spring"],
-      "cropTags": ["tomato", "pepper"],
-      "zoneTags": ["3a", "4a", "5a", "6a", "7a", "8a", "9a", "10a"]
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "tomato",
+        "pepper"
+      ],
+      "zoneTags": [
+        "3a",
+        "4a",
+        "5a",
+        "6a",
+        "7a",
+        "8a",
+        "9a",
+        "10a"
+      ]
     }
   },
   {
@@ -54,13 +101,23 @@
     "category": "soil",
     "level": "beginner",
     "season": "spring",
-    "cropTags": ["tomato"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "tomato"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "beginner",
-      "seasons": ["spring"],
-      "cropTags": ["tomato"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "tomato"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -70,13 +127,52 @@
     "category": "harvest",
     "level": "beginner",
     "season": "summer",
-    "cropTags": ["leafy_greens"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "leafy_greens"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "beginner",
-      "seasons": ["summer", "fall"],
-      "cropTags": ["leafy_greens"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "summer",
+        "fall"
+      ],
+      "cropTags": [
+        "leafy_greens"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "beg-seasonal-spring-prep",
+    "title": "Start seeds indoors 6-8 weeks early",
+    "body": "Begin tomato and pepper seeds indoors in late winter to have transplants ready for spring planting.",
+    "category": "seasonal",
+    "level": "beginner",
+    "season": "spring",
+    "cropTags": [
+      "tomato",
+      "pepper"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "tomato",
+        "pepper"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -86,13 +182,31 @@
     "category": "watering",
     "level": "intermediate",
     "season": "summer",
-    "cropTags": ["tomato", "squash"],
-    "zoneTags": ["7a", "8a", "9a", "10a"],
+    "cropTags": [
+      "tomato",
+      "squash"
+    ],
+    "zoneTags": [
+      "7a",
+      "8a",
+      "9a",
+      "10a"
+    ],
     "targeting": {
       "minimumLevel": "intermediate",
-      "seasons": ["summer"],
-      "cropTags": ["tomato", "squash"],
-      "zoneTags": ["7a", "8a", "9a", "10a"]
+      "seasons": [
+        "summer"
+      ],
+      "cropTags": [
+        "tomato",
+        "squash"
+      ],
+      "zoneTags": [
+        "7a",
+        "8a",
+        "9a",
+        "10a"
+      ]
     }
   },
   {
@@ -102,13 +216,23 @@
     "category": "pests",
     "level": "intermediate",
     "season": "spring",
-    "cropTags": ["brassicas"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "brassicas"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "intermediate",
-      "seasons": ["spring"],
-      "cropTags": ["brassicas"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "brassicas"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -118,13 +242,26 @@
     "category": "planting",
     "level": "intermediate",
     "season": "spring",
-    "cropTags": ["radish", "lettuce"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "radish",
+      "lettuce"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "intermediate",
-      "seasons": ["spring", "summer"],
-      "cropTags": ["radish", "lettuce"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "cropTags": [
+        "radish",
+        "lettuce"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -134,13 +271,31 @@
     "category": "soil",
     "level": "intermediate",
     "season": "summer",
-    "cropTags": ["mixed_beds"],
-    "zoneTags": ["5a", "6a", "7a", "8a", "9a"],
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "5a",
+      "6a",
+      "7a",
+      "8a",
+      "9a"
+    ],
     "targeting": {
       "minimumLevel": "intermediate",
-      "seasons": ["summer"],
-      "cropTags": ["mixed_beds"],
-      "zoneTags": ["5a", "6a", "7a", "8a", "9a"]
+      "seasons": [
+        "summer"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "5a",
+        "6a",
+        "7a",
+        "8a",
+        "9a"
+      ]
     }
   },
   {
@@ -150,13 +305,55 @@
     "category": "harvest",
     "level": "intermediate",
     "season": "fall",
-    "cropTags": ["onion", "garlic", "squash"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "onion",
+      "garlic",
+      "squash"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "intermediate",
-      "seasons": ["fall"],
-      "cropTags": ["onion", "garlic", "squash"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "fall"
+      ],
+      "cropTags": [
+        "onion",
+        "garlic",
+        "squash"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "int-seasonal-fall-succession",
+    "title": "Plan fall crops by first frost date",
+    "body": "Count back from your first frost date using days-to-maturity to time late summer sowings for fall harvest.",
+    "category": "seasonal",
+    "level": "intermediate",
+    "season": "fall",
+    "cropTags": [
+      "brassicas",
+      "leafy_greens"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "fall"
+      ],
+      "cropTags": [
+        "brassicas",
+        "leafy_greens"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -166,13 +363,31 @@
     "category": "watering",
     "level": "advanced",
     "season": "summer",
-    "cropTags": ["tomato", "pepper"],
-    "zoneTags": ["8a", "9a", "10a", "10b"],
+    "cropTags": [
+      "tomato",
+      "pepper"
+    ],
+    "zoneTags": [
+      "8a",
+      "9a",
+      "10a",
+      "10b"
+    ],
     "targeting": {
       "minimumLevel": "advanced",
-      "seasons": ["summer"],
-      "cropTags": ["tomato", "pepper"],
-      "zoneTags": ["8a", "9a", "10a", "10b"]
+      "seasons": [
+        "summer"
+      ],
+      "cropTags": [
+        "tomato",
+        "pepper"
+      ],
+      "zoneTags": [
+        "8a",
+        "9a",
+        "10a",
+        "10b"
+      ]
     }
   },
   {
@@ -182,13 +397,24 @@
     "category": "pests",
     "level": "advanced",
     "season": "summer",
-    "cropTags": ["mixed_beds"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "advanced",
-      "seasons": ["spring", "summer"],
-      "cropTags": ["mixed_beds"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -198,13 +424,31 @@
     "category": "planting",
     "level": "advanced",
     "season": "fall",
-    "cropTags": ["brassicas"],
-    "zoneTags": ["4a", "5a", "6a", "7a", "8a"],
+    "cropTags": [
+      "brassicas"
+    ],
+    "zoneTags": [
+      "4a",
+      "5a",
+      "6a",
+      "7a",
+      "8a"
+    ],
     "targeting": {
       "minimumLevel": "advanced",
-      "seasons": ["fall"],
-      "cropTags": ["brassicas"],
-      "zoneTags": ["4a", "5a", "6a", "7a", "8a"]
+      "seasons": [
+        "fall"
+      ],
+      "cropTags": [
+        "brassicas"
+      ],
+      "zoneTags": [
+        "4a",
+        "5a",
+        "6a",
+        "7a",
+        "8a"
+      ]
     }
   },
   {
@@ -214,13 +458,23 @@
     "category": "soil",
     "level": "advanced",
     "season": "winter",
-    "cropTags": ["mixed_beds"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "advanced",
-      "seasons": ["winter"],
-      "cropTags": ["mixed_beds"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "winter"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   },
   {
@@ -230,13 +484,51 @@
     "category": "harvest",
     "level": "advanced",
     "season": "summer",
-    "cropTags": ["fruiting_crops"],
-    "zoneTags": ["any"],
+    "cropTags": [
+      "fruiting_crops"
+    ],
+    "zoneTags": [
+      "any"
+    ],
     "targeting": {
       "minimumLevel": "advanced",
-      "seasons": ["summer", "fall"],
-      "cropTags": ["fruiting_crops"],
-      "zoneTags": ["any"]
+      "seasons": [
+        "summer",
+        "fall"
+      ],
+      "cropTags": [
+        "fruiting_crops"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "adv-seasonal-microclimate-mapping",
+    "title": "Map and exploit microclimates",
+    "body": "Track frost pockets and warm zones across your site to extend season length by strategic crop placement.",
+    "category": "seasonal",
+    "level": "advanced",
+    "season": "winter",
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "winter",
+        "spring"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "any"
+      ]
     }
   }
 ]
