@@ -95,6 +95,25 @@ When working on an issue:
 - Prioritize tests for auth, validation, idempotency, and state transitions.
 - For frontend, cover critical grower/searcher paths with focused tests.
 
+### API testing is mandatory for backward compatibility
+
+**Critical: API tests are how we ensure backward compatibility.**
+
+When changing or adding API endpoints:
+- **Always** add or update Postman tests in the `postman/` folder
+- Add assertions to existing end-to-end test collections when applicable
+- Create new test requests for new endpoints
+- Validate response schemas, status codes, and error cases
+- Test both success and failure paths
+
+Postman tests can be run locally before pushing:
+```bash
+# Run Postman collections locally (if newman is installed)
+newman run postman/collections/<collection-name>
+```
+
+API contract changes without corresponding Postman tests will be rejected.
+
 ## Non-goals guardrails
 
 - Do not optimize for competitive metrics (leaderboards, production competition).
@@ -109,6 +128,7 @@ Before submitting any PR, all of the following must pass:
 - Frontend linting
 - Backend linting
 - Backend formatting check (`fmt`)
+- Postman API tests (if API endpoints were changed/added)
 
 If any required check cannot be run in the current environment, explicitly state that blocker in the PR description and ask for guidance before merging.
 
@@ -133,3 +153,6 @@ Before finishing, confirm:
 - Work was done on a feature branch (not `main`) and submitted via PR.
 - Documentation or issue dependencies were updated if scope changed.
 - Any post-PR workflow failures were diagnosed and fixed, or explicitly documented if externally blocked.
+
+
+**After all checks pass, automatically open a PR using `gh pr create`.**
