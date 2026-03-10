@@ -91,6 +91,8 @@ pub async fn upsert_current_user(
         .await
         .map_err(|error| db_error(&error))?;
 
+    let user_id_text = user_id.to_string();
+
     if let Some(grower_profile) = payload.grower_profile {
         let address = location::normalize_address(&grower_profile.address);
         let geocoded = location::geocode_address(&address, correlation_id).await?;
@@ -102,7 +104,7 @@ pub async fn upsert_current_user(
                 insert into grower_profiles
                     (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, units, locale)
                 values
-                    ($1, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                    ($1::uuid, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
                 on conflict (user_id) do update
                 set home_zone = excluded.home_zone,
                     address = excluded.address,
@@ -115,7 +117,7 @@ pub async fn upsert_current_user(
                     updated_at = now()
                 ",
                 &[
-                    &user_id,
+                    &user_id_text,
                     &grower_profile.home_zone,
                     &address,
                     &geocoded.geo_key,
@@ -141,7 +143,7 @@ pub async fn upsert_current_user(
                 insert into gatherer_profiles
                     (user_id, address, geo_key, lat, lng, search_radius_km, organization_affiliation, units, locale)
                 values
-                    ($1, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                    ($1::uuid, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
                 on conflict (user_id) do update
                 set address = excluded.address,
                     geo_key = excluded.geo_key,
@@ -154,7 +156,7 @@ pub async fn upsert_current_user(
                     updated_at = now()
                 ",
                 &[
-                    &user_id,
+                    &user_id_text,
                     &address,
                     &geocoded.geo_key,
                     &geocoded.lat,
