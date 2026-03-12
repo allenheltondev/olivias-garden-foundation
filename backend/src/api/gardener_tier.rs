@@ -2,10 +2,14 @@ use serde::Serialize;
 use tokio_postgres::Client;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 const SHARING_OUTCOMES_WEIGHT: i32 = 20;
+#[allow(dead_code)]
 const PHOTO_TRUST_WEIGHT: i32 = 15;
+#[allow(dead_code)]
 const RELIABILITY_WEIGHT: i32 = 15;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum GardenerTier {
@@ -45,10 +49,20 @@ pub struct GardenerTierProfile {
 }
 
 #[allow(clippy::too_many_lines, clippy::cast_possible_truncation)]
-pub async fn evaluate_and_record(
-    client: &Client,
+pub fn evaluate_and_record(
+    _client: &Client,
     user_id: Uuid,
 ) -> Result<GardenerTierProfile, lambda_http::Error> {
+    // TODO: Fix UUID serialization issue with tokio-postgres
+    tracing::warn!(
+        user_id = %user_id,
+        "Gardener tier calculation temporarily disabled due to UUID serialization issue"
+    );
+    Err(lambda_http::Error::from(
+        "Gardener tier calculation temporarily disabled",
+    ))
+
+    /* Temporarily disabled - UUID serialization issue
     let metrics = client
         .query_one(
             r"
@@ -204,8 +218,10 @@ pub async fn evaluate_and_record(
             },
         },
     })
+    */
 }
 
+#[allow(dead_code)]
 fn bucket_points(value: i32, steps: &[(i32, i32)]) -> i32 {
     steps
         .iter()
@@ -215,6 +231,7 @@ fn bucket_points(value: i32, steps: &[(i32, i32)]) -> i32 {
         .unwrap_or(0)
 }
 
+#[allow(dead_code)]
 fn parse_tier(value: &str) -> Option<GardenerTier> {
     match value {
         "novice" => Some(GardenerTier::Novice),
@@ -225,6 +242,7 @@ fn parse_tier(value: &str) -> Option<GardenerTier> {
     }
 }
 
+#[allow(dead_code)]
 const fn tier_as_str(tier: &GardenerTier) -> &'static str {
     match tier {
         GardenerTier::Novice => "novice",

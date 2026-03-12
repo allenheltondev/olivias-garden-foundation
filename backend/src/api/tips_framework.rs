@@ -188,7 +188,10 @@ pub fn curated_tip_catalog() -> &'static [CuratedTip] {
 
     TIP_CATALOG
         .get_or_init(|| {
-            let raw = include_str!("../../../data/tips/curated_tips.v1.json");
+            let raw = include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/data/tips/curated_tips.v1.json"
+            ));
             let parsed: Vec<CuratedTip> = match serde_json::from_str(raw) {
                 Ok(parsed) => parsed,
                 Err(error) => {

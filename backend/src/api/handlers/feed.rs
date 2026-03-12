@@ -533,7 +533,7 @@ async fn persist_ai_summary(
     signals: &[DerivedFeedSignal],
     artifact: &SummaryArtifact,
 ) -> Result<(), lambda_http::Error> {
-    let snapshot = serde_json::to_string(signals).map_err(|error| {
+    let snapshot = serde_json::to_value(signals).map_err(|error| {
         lambda_http::Error::from(format!("Failed to serialize signal snapshot: {error}"))
     })?;
 

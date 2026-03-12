@@ -7,8 +7,10 @@ use std::sync::OnceLock;
 use tokio_postgres::Client;
 use uuid::Uuid;
 
-const ENTITLEMENTS_CONFIG_JSON: &str =
-    include_str!("../../../../config/entitlements/v1.tiers.json");
+const ENTITLEMENTS_CONFIG_JSON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/config/entitlements/v1.tiers.json"
+));
 const DEFAULT_TIER: &str = "free";
 const PREMIUM_TIER: &str = "premium";
 

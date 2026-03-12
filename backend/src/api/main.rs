@@ -6,6 +6,7 @@ mod auth;
 mod badge_cabinet;
 mod badge_evidence;
 mod db;
+#[allow(dead_code, clippy::unused_async)]
 mod gardener_tier;
 mod handlers;
 mod location;

@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "tiers": {
+    "free": {
+      "name": "Free",
+      "description": "Core gardening/homesteading experience with deterministic reminders.",
+      "entitlements": [
+        "core.discovery",
+        "core.listings.write",
+        "core.requests.write",
+        "core.claims.write",
+        "core.derived_feed.read",
+        "reminders.deterministic.schedule",
+        "reminders.deterministic.manage"
+      ]
+    },
+    "premium": {
+      "name": "Premium",
+      "description": "Everything in Free plus AI and advanced automations.",
+      "inherits": [
+        "free"
+      ],
+      "entitlements": [
+        "ai.copilot.weekly_grow_plan",
+        "ai.feed_insights.read",
+        "agent.tasks.automation",
+        "premium.analytics.read"
+      ]
+    }
+  },
+  "policies": {
+    "ai_is_premium_only": true,
+    "free_reminders_are_deterministic_only": true
+  },
+  "feature_map": {
+    "discover_listings": "core.discovery",
+    "create_listing": "core.listings.write",
+    "create_request": "core.requests.write",
+    "create_claim": "core.claims.write",
+    "derived_feed": "core.derived_feed.read",
+    "scheduled_reminders": "reminders.deterministic.schedule",
+    "manage_reminders": "reminders.deterministic.manage",
+    "ai_copilot": "ai.copilot.weekly_grow_plan",
+    "ai_feed_cards": "ai.feed_insights.read",
+    "agentic_automations": "agent.tasks.automation",
+    "premium_dashboard": "premium.analytics.read"
+  }
+}

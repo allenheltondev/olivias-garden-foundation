@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Apply database migrations
+# Usage: ./migrate.sh [database_url]
+# Example: ./migrate.sh "postgres://user:pass@host/db"
+# Or use environment variable: export DATABASE_URL="postgres://user:pass@host/db"; ./migrate.sh
+
 set -euo pipefail
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -6,8 +11,13 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "DATABASE_URL must be set." >&2
+# Use provided URL or fall back to environment variable
+if [[ -n "${1:-}" ]]; then
+  DATABASE_URL="$1"
+elif [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "DATABASE_URL must be provided as an argument or environment variable." >&2
+  echo "Usage: ./migrate.sh 'postgres://user:pass@host/db'" >&2
+  echo "Or: export DATABASE_URL='postgres://user:pass@host/db'" >&2
   exit 1
 fi
 

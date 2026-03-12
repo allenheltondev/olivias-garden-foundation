@@ -19,7 +19,7 @@ const WATER_WISE_BADGE_KEY: &str = "water_wise";
 const COMPOST_CHAMPION_BADGE_KEY: &str = "compost_champion";
 const SEASON_STARTER_BADGE_KEY: &str = "season_starter";
 const SEASON_FINISHER_BADGE_KEY: &str = "season_finisher";
-const HARVEST_PROOF_WINDOW_DAYS: i64 = 14;
+const HARVEST_PROOF_WINDOW_DAYS: i32 = 14;
 
 const PRACTICE_MIN_CONFIDENCE: f64 = 0.8;
 const PRACTICE_HERB_EVIDENCE_MIN: i32 = 3;
@@ -71,11 +71,22 @@ pub async fn load_and_sync_badges(
     client: &Client,
     user_id: Uuid,
 ) -> Result<Vec<BadgeCabinetEntry>, lambda_http::Error> {
+    tracing::info!(user_id = %user_id, "Starting load_and_sync_badges");
+
     maybe_award_first_harvest(client, user_id).await?;
+    tracing::info!(user_id = %user_id, "Completed maybe_award_first_harvest");
+
     maybe_award_gardener_season_ladder(client, user_id).await?;
+    tracing::info!(user_id = %user_id, "Completed maybe_award_gardener_season_ladder");
+
     maybe_award_fruit_focused_badges(client, user_id).await?;
+    tracing::info!(user_id = %user_id, "Completed maybe_award_fruit_focused_badges");
+
     maybe_award_sharing_credibility_badges(client, user_id).await?;
+    tracing::info!(user_id = %user_id, "Completed maybe_award_sharing_credibility_badges");
+
     maybe_award_practice_badges(client, user_id).await?;
+    tracing::info!(user_id = %user_id, "Completed maybe_award_practice_badges");
 
     let rows = client
         .query(
@@ -84,6 +95,8 @@ pub async fn load_and_sync_badges(
         )
         .await
         .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+
+    tracing::info!(user_id = %user_id, "Completed loading badge_award_audit");
 
     Ok(rows
         .into_iter()
@@ -102,7 +115,11 @@ async fn maybe_award_gardener_season_ladder(
     client: &Client,
     user_id: Uuid,
 ) -> Result<(), lambda_http::Error> {
+    tracing::info!(user_id = %user_id, "maybe_award_gardener_season_ladder: loading criteria");
+
     let criteria = load_gardener_season_criteria(client).await?;
+
+    tracing::info!(user_id = %user_id, "maybe_award_gardener_season_ladder: querying year activity");
 
     let rows = client
         .query(
@@ -143,7 +160,9 @@ async fn maybe_award_gardener_season_ladder(
             &[&user_id],
         )
         .await
-        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+        .map_err(|e| lambda_http::Error::from(format!("Database query error in maybe_award_gardener_season_ladder: {e}")))?;
+
+    tracing::info!(user_id = %user_id, row_count = rows.len(), "maybe_award_gardener_season_ladder: processing seasons");
 
     let mut qualified = Vec::new();
     for row in rows {
@@ -167,9 +186,13 @@ async fn maybe_award_gardener_season_ladder(
         }
     }
 
+    tracing::info!(user_id = %user_id, qualified_count = qualified.len(), "maybe_award_gardener_season_ladder: awarding badges");
+
     for (index, season) in qualified.iter().enumerate() {
         let level = i32::try_from(index + 1).unwrap_or(i32::MAX);
         let badge_key = format!("{GARDENER_SEASON_BADGE_PREFIX}{level}");
+
+        tracing::info!(user_id = %user_id, badge_key = %badge_key, season_year = season.season_year, "maybe_award_gardener_season_ladder: checking if already awarded");
 
         let already_awarded = client
             .query_opt(
@@ -184,10 +207,13 @@ async fn maybe_award_gardener_season_ladder(
                 &[&user_id, &badge_key, &season.season_year],
             )
             .await
-            .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?
+            .map_err(|e| {
+                lambda_http::Error::from(format!("Database query error checking badge award: {e}"))
+            })?
             .is_some();
 
         if already_awarded {
+            tracing::info!(user_id = %user_id, badge_key = %badge_key, "maybe_award_gardener_season_ladder: already awarded, skipping");
             continue;
         }
 
@@ -202,19 +228,23 @@ async fn maybe_award_gardener_season_ladder(
             }
         });
 
+        tracing::info!(user_id = %user_id, badge_key = %badge_key, "maybe_award_gardener_season_ladder: about to insert badge");
+
         client
             .execute(
-                "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, $3, null, $4, '[]'::jsonb, $5::jsonb)",
+                "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, $3, null, $4, '[]'::jsonb, $5)",
                 &[
                     &user_id,
                     &badge_key,
                     &season.earned_at,
                     &"Gardener Season awarded: met configured annual activity, crop completion, and evidence thresholds".to_string(),
-                    &snapshot.to_string(),
+                    &snapshot,
                 ],
             )
             .await
-            .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+            .map_err(|e| lambda_http::Error::from(format!("Database insert error in maybe_award_gardener_season_ladder for badge {badge_key}: {e}")))?;
+
+        tracing::info!(user_id = %user_id, badge_key = %badge_key, "maybe_award_gardener_season_ladder: badge awarded successfully");
     }
 
     Ok(())
@@ -753,8 +783,8 @@ async fn maybe_award_badge_if_needed(
 
     client
         .execute(
-            "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, now(), null, $3, '[]'::jsonb, $4::jsonb)",
-            &[&user_id, &badge_key, &reason.to_string(), &snapshot.to_string()],
+            "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, now(), null, $3, '[]'::jsonb, $4)",
+            &[&user_id, &badge_key, &reason.to_string(), &snapshot],
         )
         .await
         .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
@@ -766,18 +796,29 @@ async fn maybe_award_first_harvest(
     client: &Client,
     user_id: Uuid,
 ) -> Result<(), lambda_http::Error> {
+    tracing::info!(user_id = %user_id, "maybe_award_first_harvest: checking if already awarded");
+
     let already_awarded = client
         .query_opt(
             "select id from badge_award_audit where user_id = $1 and badge_key = $2 limit 1",
             &[&user_id, &FIRST_HARVEST_BADGE_KEY],
         )
         .await
-        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?
+        .map_err(|e| {
+            lambda_http::Error::from(format!(
+                "Database query error in maybe_award_first_harvest check: {e}"
+            ))
+        })?
         .is_some();
 
     if already_awarded {
+        tracing::info!(user_id = %user_id, "maybe_award_first_harvest: already awarded, skipping");
         return Ok(());
     }
+
+    tracing::info!(user_id = %user_id, "maybe_award_first_harvest: querying harvest events");
+
+    let window_days = HARVEST_PROOF_WINDOW_DAYS;
 
     let row = client
         .query_opt(
@@ -805,20 +846,25 @@ async fn maybe_award_first_harvest(
                and bes.grower_crop_id = he.grower_crop_id
                and bes.status in ('auto_approved', 'needs_review')
                and coalesce(bes.exif_taken_at, bes.captured_at, bes.created_at)
-                    between he.harvest_at - ($2 || ' days')::interval
-                        and he.harvest_at + ($2 || ' days')::interval
+                    between he.harvest_at - make_interval(days => $2)
+                        and he.harvest_at + make_interval(days => $2)
               group by he.grower_crop_id
             )
             select sum(proof_count)::int as proof_count,
                    min(first_harvest_at) as first_harvest_at
             from proof_matches
             ",
-            &[&user_id, &HARVEST_PROOF_WINDOW_DAYS],
+            &[&user_id, &window_days],
         )
         .await
-        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+        .map_err(|e| {
+            lambda_http::Error::from(format!(
+                "Database query error in maybe_award_first_harvest harvest query: {e}"
+            ))
+        })?;
 
     let Some(row) = row else {
+        tracing::info!(user_id = %user_id, "maybe_award_first_harvest: no harvest events found");
         return Ok(());
     };
 
@@ -826,8 +872,11 @@ async fn maybe_award_first_harvest(
     let first_harvest_at = row.get::<_, Option<chrono::DateTime<chrono::Utc>>>("first_harvest_at");
 
     if proof_count <= 0 || first_harvest_at.is_none() {
+        tracing::info!(user_id = %user_id, proof_count = proof_count, "maybe_award_first_harvest: insufficient proof");
         return Ok(());
     }
+
+    tracing::info!(user_id = %user_id, proof_count = proof_count, "maybe_award_first_harvest: awarding badge");
 
     let awarded_at = first_harvest_at.unwrap_or_else(chrono::Utc::now);
     let snapshot = serde_json::json!({
@@ -836,19 +885,23 @@ async fn maybe_award_first_harvest(
         "badgeFamily": "milestone_identity"
     });
 
+    tracing::info!(user_id = %user_id, "maybe_award_first_harvest: about to insert badge_award_audit");
+
     client
         .execute(
-            "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, $3, null, $4, '[]'::jsonb, $5::jsonb)",
+            "insert into badge_award_audit (user_id, badge_key, awarded_at, trust_score_snapshot, decision_reason, evidence_submission_ids, award_snapshot) values ($1, $2, $3, null, $4, '[]'::jsonb, $5)",
             &[
                 &user_id,
                 &FIRST_HARVEST_BADGE_KEY,
                 &awarded_at,
                 &"First Harvest awarded: completed harvest event with timestamped linked photo proof near harvest window".to_string(),
-                &snapshot.to_string(),
+                &snapshot,
             ],
         )
         .await
-        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
+        .map_err(|e| lambda_http::Error::from(format!("Database insert error in maybe_award_first_harvest: {e}")))?;
+
+    tracing::info!(user_id = %user_id, "maybe_award_first_harvest: badge awarded successfully");
 
     Ok(())
 }

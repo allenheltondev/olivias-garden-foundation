@@ -400,7 +400,7 @@ Resources:
     Properties:
       CodeUri: functions/ci_auth_seed
       Handler: app.handler
-      Runtime: python3.12
+      Runtime: python3.14
       Timeout: 30
       Policies:
         - AWSLambdaBasicExecutionRole

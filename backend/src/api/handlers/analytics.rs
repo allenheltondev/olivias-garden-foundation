@@ -39,7 +39,7 @@ pub async fn track_premium_event(
     let metadata = payload
         .metadata
         .as_ref()
-        .map(serde_json::to_string)
+        .map(serde_json::to_value)
         .transpose()
         .map_err(|e| lambda_http::Error::from(format!("Invalid metadata JSON: {e}")))?;
 
@@ -113,7 +113,7 @@ pub async fn log_backend_event(
 ) -> Result<(), lambda_http::Error> {
     let metadata = metadata
         .as_ref()
-        .map(serde_json::to_string)
+        .map(serde_json::to_value)
         .transpose()
         .map_err(|e| lambda_http::Error::from(format!("Invalid metadata JSON: {e}")))?;
 

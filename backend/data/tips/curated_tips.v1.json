@@ -1,0 +1,534 @@
+[
+  {
+    "id": "beg-watering-spring-mulch",
+    "title": "Mulch after soil warms",
+    "body": "Apply 1-2 inches of organic mulch after spring soil warms to hold moisture and reduce weed pressure.",
+    "category": "watering",
+    "level": "beginner",
+    "season": "spring",
+    "cropTags": [
+      "leafy_greens"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "leafy_greens"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "beg-pests-scout-undersides",
+    "title": "Check leaf undersides weekly",
+    "body": "Inspect leaf undersides once a week and remove early aphid clusters by hand before they spread.",
+    "category": "pests",
+    "level": "beginner",
+    "season": "spring",
+    "cropTags": [
+      "brassicas"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "cropTags": [
+        "brassicas"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "beg-planting-frost-buffer",
+    "title": "Use a one-week frost buffer",
+    "body": "For tender crops, plant one week after your last frost date unless using row cover.",
+    "category": "planting",
+    "level": "beginner",
+    "season": "spring",
+    "cropTags": [
+      "tomato",
+      "pepper"
+    ],
+    "zoneTags": [
+      "3a",
+      "4a",
+      "5a",
+      "6a",
+      "7a",
+      "8a",
+      "9a",
+      "10a"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "tomato",
+        "pepper"
+      ],
+      "zoneTags": [
+        "3a",
+        "4a",
+        "5a",
+        "6a",
+        "7a",
+        "8a",
+        "9a",
+        "10a"
+      ]
+    }
+  },
+  {
+    "id": "beg-soil-compost-blend",
+    "title": "Blend compost into topsoil",
+    "body": "Mix 1 part finished compost into roughly 3 parts topsoil before planting heavy feeders.",
+    "category": "soil",
+    "level": "beginner",
+    "season": "spring",
+    "cropTags": [
+      "tomato"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "tomato"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "beg-harvest-cut-and-come-again",
+    "title": "Harvest outer leaves first",
+    "body": "For lettuce and kale, harvest outer leaves and keep the center intact for repeat picking.",
+    "category": "harvest",
+    "level": "beginner",
+    "season": "summer",
+    "cropTags": [
+      "leafy_greens"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "summer",
+        "fall"
+      ],
+      "cropTags": [
+        "leafy_greens"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "beg-seasonal-spring-prep",
+    "title": "Start seeds indoors 6-8 weeks early",
+    "body": "Begin tomato and pepper seeds indoors in late winter to have transplants ready for spring planting.",
+    "category": "seasonal",
+    "level": "beginner",
+    "season": "spring",
+    "cropTags": [
+      "tomato",
+      "pepper"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "beginner",
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "tomato",
+        "pepper"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "int-watering-deep-cycle",
+    "title": "Switch to deep watering cycles",
+    "body": "Water deeply 2-3 times weekly instead of daily shallow watering to encourage deeper roots.",
+    "category": "watering",
+    "level": "intermediate",
+    "season": "summer",
+    "cropTags": [
+      "tomato",
+      "squash"
+    ],
+    "zoneTags": [
+      "7a",
+      "8a",
+      "9a",
+      "10a"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "summer"
+      ],
+      "cropTags": [
+        "tomato",
+        "squash"
+      ],
+      "zoneTags": [
+        "7a",
+        "8a",
+        "9a",
+        "10a"
+      ]
+    }
+  },
+  {
+    "id": "int-pests-trap-crop",
+    "title": "Use a trap crop row",
+    "body": "Plant a sacrificial mustard row away from brassicas to draw flea beetles from your main crop.",
+    "category": "pests",
+    "level": "intermediate",
+    "season": "spring",
+    "cropTags": [
+      "brassicas"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "spring"
+      ],
+      "cropTags": [
+        "brassicas"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "int-planting-succession",
+    "title": "Stagger sowings every 14 days",
+    "body": "Sow fast crops in small blocks every two weeks to smooth harvest peaks and avoid waste.",
+    "category": "planting",
+    "level": "intermediate",
+    "season": "spring",
+    "cropTags": [
+      "radish",
+      "lettuce"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "cropTags": [
+        "radish",
+        "lettuce"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "int-soil-cover-crop",
+    "title": "Sow a short cover crop",
+    "body": "Use buckwheat between main crops to shade soil and add quick organic matter before flowering.",
+    "category": "soil",
+    "level": "intermediate",
+    "season": "summer",
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "5a",
+      "6a",
+      "7a",
+      "8a",
+      "9a"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "summer"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "5a",
+        "6a",
+        "7a",
+        "8a",
+        "9a"
+      ]
+    }
+  },
+  {
+    "id": "int-harvest-cure-storage-crops",
+    "title": "Cure storage crops before shelving",
+    "body": "Cure onions, garlic, and winter squash in a dry ventilated area before long-term storage.",
+    "category": "harvest",
+    "level": "intermediate",
+    "season": "fall",
+    "cropTags": [
+      "onion",
+      "garlic",
+      "squash"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "fall"
+      ],
+      "cropTags": [
+        "onion",
+        "garlic",
+        "squash"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "int-seasonal-fall-succession",
+    "title": "Plan fall crops by first frost date",
+    "body": "Count back from your first frost date using days-to-maturity to time late summer sowings for fall harvest.",
+    "category": "seasonal",
+    "level": "intermediate",
+    "season": "fall",
+    "cropTags": [
+      "brassicas",
+      "leafy_greens"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "intermediate",
+      "seasons": [
+        "fall"
+      ],
+      "cropTags": [
+        "brassicas",
+        "leafy_greens"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "adv-watering-tensiometer",
+    "title": "Calibrate irrigation with soil moisture",
+    "body": "Use a moisture probe to trigger irrigation only when root-zone readings cross your crop threshold.",
+    "category": "watering",
+    "level": "advanced",
+    "season": "summer",
+    "cropTags": [
+      "tomato",
+      "pepper"
+    ],
+    "zoneTags": [
+      "8a",
+      "9a",
+      "10a",
+      "10b"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "summer"
+      ],
+      "cropTags": [
+        "tomato",
+        "pepper"
+      ],
+      "zoneTags": [
+        "8a",
+        "9a",
+        "10a",
+        "10b"
+      ]
+    }
+  },
+  {
+    "id": "adv-pests-threshold-log",
+    "title": "Use intervention thresholds",
+    "body": "Track weekly pest counts per bed and intervene only after a defined threshold is exceeded.",
+    "category": "pests",
+    "level": "advanced",
+    "season": "summer",
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "spring",
+        "summer"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "adv-planting-fall-shoulder-window",
+    "title": "Exploit shoulder-season windows",
+    "body": "Back-schedule transplants from first frost and use low tunnels to extend productive weeks.",
+    "category": "planting",
+    "level": "advanced",
+    "season": "fall",
+    "cropTags": [
+      "brassicas"
+    ],
+    "zoneTags": [
+      "4a",
+      "5a",
+      "6a",
+      "7a",
+      "8a"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "fall"
+      ],
+      "cropTags": [
+        "brassicas"
+      ],
+      "zoneTags": [
+        "4a",
+        "5a",
+        "6a",
+        "7a",
+        "8a"
+      ]
+    }
+  },
+  {
+    "id": "adv-soil-nutrient-balance",
+    "title": "Tune amendments to test data",
+    "body": "Adjust amendments from seasonal soil tests and avoid adding phosphorus when levels are already high.",
+    "category": "soil",
+    "level": "advanced",
+    "season": "winter",
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "winter"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "adv-harvest-postharvest-cooling",
+    "title": "Cool produce immediately after harvest",
+    "body": "Move harvested produce into shade and pre-cool quickly to preserve texture and shelf life.",
+    "category": "harvest",
+    "level": "advanced",
+    "season": "summer",
+    "cropTags": [
+      "fruiting_crops"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "summer",
+        "fall"
+      ],
+      "cropTags": [
+        "fruiting_crops"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  },
+  {
+    "id": "adv-seasonal-microclimate-mapping",
+    "title": "Map and exploit microclimates",
+    "body": "Track frost pockets and warm zones across your site to extend season length by strategic crop placement.",
+    "category": "seasonal",
+    "level": "advanced",
+    "season": "winter",
+    "cropTags": [
+      "mixed_beds"
+    ],
+    "zoneTags": [
+      "any"
+    ],
+    "targeting": {
+      "minimumLevel": "advanced",
+      "seasons": [
+        "winter",
+        "spring"
+      ],
+      "cropTags": [
+        "mixed_beds"
+      ],
+      "zoneTags": [
+        "any"
+      ]
+    }
+  }
+]
