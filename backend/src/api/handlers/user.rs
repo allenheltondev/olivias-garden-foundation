@@ -1,6 +1,7 @@
 use crate::badge_cabinet;
 use crate::db;
 use crate::gardener_tier;
+use crate::handlers::analytics;
 use crate::location;
 use crate::middleware::entitlements;
 use crate::models::crop::ErrorResponse;
@@ -380,6 +381,19 @@ async fn to_me_response(
         .unwrap_or("any");
 
     let curated_tips = recommend_curated_tips(experience_level, season, zone, &[], 6);
+
+    let _ = analytics::log_backend_event(
+        client,
+        Some(user_id),
+        "tips.curated.presented",
+        Some(serde_json::json!({
+            "experienceLevel": experience_level,
+            "season": season,
+            "zone": zone,
+            "tipCount": curated_tips.len()
+        })),
+    )
+    .await;
 
     let seasonal_timeline = badge_cabinet
         .iter()

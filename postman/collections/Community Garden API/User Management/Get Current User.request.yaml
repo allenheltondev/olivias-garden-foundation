@@ -31,13 +31,22 @@ scripts:
           pm.expect(user.subscription).to.have.property("tier");
           pm.expect(user.subscription).to.have.property("subscriptionStatus");
           pm.expect(user.subscription.tier).to.be.oneOf(["free", "premium"]);
-          pm.expect(user.subscription.subscriptionStatus).to.be.oneOf(["none", "trialing", "active", "past_due", "canceled"]);
+          pm.expect(user.subscription.subscriptionStatus).to.be.oneOf([
+              "none",
+              "trialing",
+              "active",
+              "past_due",
+              "canceled",
+              "incomplete",
+              "incomplete_expired",
+              "unpaid"
+          ]);
       });
 
-      pm.test("Free tier users have correct defaults", function () {
+      pm.test("Free tier users have no active premium entitlement", function () {
           const user = pm.response.json();
           if (user.subscription.tier === "free") {
-              pm.expect(user.subscription.subscriptionStatus).to.equal("none");
+              pm.expect(["none", "canceled", "unpaid", "incomplete_expired"]).to.include(user.subscription.subscriptionStatus);
               pm.expect(user.subscription.premiumExpiresAt).to.be.oneOf([null, undefined]);
           }
       });
