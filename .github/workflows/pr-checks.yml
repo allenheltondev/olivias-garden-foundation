@@ -310,6 +310,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Install esbuild
+        run: npm install -g esbuild
+
       - name: Install dependencies
         run: npm ci
 
