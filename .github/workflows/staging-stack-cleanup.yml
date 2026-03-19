@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   cleanup-closed-pr-stack:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && (secrets.AWS_ROLE_TO_ASSUME != '' || secrets.AWS_DEPLOY_ROLE_TO_ASSUME != '')
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -60,7 +60,7 @@ jobs:
           echo "Deleting stack in status: $STATUS"
           aws cloudformation delete-stack --stack-name "$STACK_NAME"
           aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" || true
-          
+
           # Delete CloudWatch log groups for Lambda functions
           echo "Deleting CloudWatch log groups for $STACK_NAME"
           aws logs describe-log-groups \
@@ -72,10 +72,10 @@ jobs:
                 aws logs delete-log-group --log-group-name "$log_group" || true
               fi
             done
-          
+
           echo "Cleanup request submitted for $STACK_NAME"
   nightly-prune-orphan-pr-stacks:
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (secrets.AWS_ROLE_TO_ASSUME != '' || secrets.AWS_DEPLOY_ROLE_TO_ASSUME != '')
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -144,7 +144,7 @@ jobs:
 
             echo "Deleting orphan stack: $stack"
             aws cloudformation delete-stack --stack-name "$stack" || true
-            
+
             # Delete CloudWatch log groups for Lambda functions
             echo "Deleting CloudWatch log groups for $stack"
             aws logs describe-log-groups \
