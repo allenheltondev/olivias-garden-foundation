@@ -39,6 +39,9 @@ frontend/build/
 frontend/.cache/
 frontend/coverage/
 
+# Backend Functions (Node.js)
+backend/node_modules/
+
 # Backend (Rust)
 backend/target/
 backend/Cargo.lock

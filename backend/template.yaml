@@ -46,6 +46,21 @@ Globals:
     Timeout: 2
     MemorySize: 1024
 
+Metadata:
+  esbuild-properties: &esbuild-properties
+    Format: esm
+    Minify: true
+    OutExtension:
+      - .js=.mjs
+    Target: es2020
+    Sourcemap: false
+    EntryPoints:
+      - index.mjs
+    Banner:
+      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    External:
+      - '@aws-sdk/*'
+
 Resources:
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -371,20 +386,20 @@ Resources:
   PostConfirmationFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: rust-cargolambda
+      BuildMethod: esbuild
       BuildProperties:
-        Binary: post-confirmation
+        <<: *esbuild-properties
+        EntryPoints:
+          - post-confirmation.mjs
     Properties:
-      CodeUri: .
-      Handler: bootstrap
-      Runtime: provided.al2023
+      CodeUri: functions
+      Handler: post-confirmation.handler
+      Runtime: nodejs24.x
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
-          RUST_LOG: info
-          RUST_BACKTRACE: "1"
 
   PostConfirmationInvokePermission:
     Type: AWS::Lambda::Permission
@@ -397,10 +412,16 @@ Resources:
   CiAuthSeedUsersFunction:
     Type: AWS::Serverless::Function
     Condition: DeployCiAuthSeedFunction
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ci-auth-seed.mjs
     Properties:
-      CodeUri: functions/ci_auth_seed
-      Handler: app.handler
-      Runtime: python3.12
+      CodeUri: functions
+      Handler: ci-auth-seed.handler
+      Runtime: nodejs24.x
       Timeout: 30
       Policies:
         - AWSLambdaBasicExecutionRole
@@ -455,21 +476,21 @@ Resources:
   RollingGeoAggregationWorkerFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: rust-cargolambda
+      BuildMethod: esbuild
       BuildProperties:
-        Binary: rolling-geo-aggregation-worker
+        <<: *esbuild-properties
+        EntryPoints:
+          - rolling-geo-aggregation.mjs
     Properties:
-      CodeUri: .
-      Handler: bootstrap
-      Runtime: provided.al2023
+      CodeUri: functions
+      Handler: rolling-geo-aggregation.handler
+      Runtime: nodejs24.x
       Timeout: 15
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
-          RUST_LOG: info
-          RUST_BACKTRACE: "1"
       Events:
         ListingCreatedEvent:
           Type: EventBridgeRule
@@ -481,26 +502,36 @@ Resources:
               detail-type:
                 - listing.created
                 - listing.updated
-        RequestCreatedEvent:
-          Type: EventBridgeRule
-          Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              source:
-                - community-garden.api
-              detail-type:
                 - request.created
                 - request.updated
-        ClaimCreatedEvent:
-          Type: EventBridgeRule
-          Properties:
-            EventBusName: !Ref EventBus
-            Pattern:
-              source:
-                - community-garden.api
-              detail-type:
                 - claim.created
                 - claim.updated
+
+  # CatalogSeedFunction:
+  #   Type: AWS::Serverless::Function
+  #   Metadata:
+  #     BuildMethod: esbuild
+  #     BuildProperties:
+  #       <<: *esbuild-properties
+  #       EntryPoints:
+  #         - catalog-seed.mjs
+  #   Properties:
+  #     CodeUri: functions
+  #     Handler: catalog-seed.handler
+  #     Runtime: nodejs24.x
+  #     Timeout: 120
+  #     MemorySize: 512
+  #     Policies:
+  #       - AWSLambdaBasicExecutionRole
+  #     Environment:
+  #       Variables:
+  #         DATABASE_URL: !Ref DatabaseUrl
+
+  # CatalogSeedTrigger:
+  #   Type: Custom::CatalogSeed
+  #   Properties:
+  #     ServiceToken: !GetAtt CatalogSeedFunction.Arn
+  #     SeedVersion: "1"
 
   PremiumStack:
     Type: AWS::Serverless::Application

@@ -290,7 +290,7 @@ The AWS credentials need the following permissions:
 ## Troubleshooting
 
 ### Build fails with "cargo-lambda not found"
-The workflow installs cargo-lambda via pip. Ensure the pip installation step completes successfully.
+The workflow installs cargo-lambda via a GitHub release action. Ensure the installation step completes successfully.
 
 ### SAM deployment fails
 - Check AWS credentials are valid

@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "{**/auth/**,**/authorization/**,**/cognito/**,**/*auth*.{rs,py,ts}}"
+fileMatchPattern: "{**/auth/**,**/authorization/**,**/cognito/**,**/*auth*.{rs,mjs,ts}}"
 ---
 
 # Authentication and Entitlements Model
@@ -40,7 +40,7 @@ Prefer a small, stable set of tier labels plus a flexible list of feature entitl
 * Authorization checks read from JWT claims
 * Return 403 Forbidden when entitlements are insufficient
 
-### Python Workers
+### Node.js Workers
 * Workers should treat entitlements as input context when generating derived outputs
 * Workers must not grant entitlements
 * Workers can read user tier/entitlements from event context or query from core table

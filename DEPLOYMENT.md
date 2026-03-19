@@ -6,21 +6,15 @@ This guide explains how to deploy the backend and configure the frontend using t
 
 Before running the deployment script, ensure you have the following installed:
 
-1. **Python 3.7+** - The deployment script is written in Python
+1. **Node.js 24+** - The deployment script is written in Node.js
 2. **AWS SAM CLI** - For building and deploying the backend
    ```bash
-   # Install via pip
-   pip install aws-sam-cli
-
-   # Or via Homebrew (macOS)
+   # Via Homebrew (macOS/Linux)
    brew install aws-sam-cli
    ```
 3. **AWS CLI** - For retrieving stack outputs
    ```bash
-   # Install via pip
-   pip install awscli
-
-   # Or via Homebrew (macOS)
+   # Via Homebrew (macOS/Linux)
    brew install awscli
    ```
 4. **Rust and Cargo Lambda** - For building the Rust Lambda functions
@@ -29,7 +23,7 @@ Before running the deployment script, ensure you have the following installed:
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
    # Install cargo-lambda
-   pip install cargo-lambda
+   brew install cargo-lambda
    ```
 
 ## AWS Configuration
@@ -90,16 +84,16 @@ The deployment script passes minimal CLI arguments and relies on `samconfig.toml
 
 ```bash
 # Using default profile
-python deploy-and-configure.py
+node deploy-and-configure.mjs
 
 # Using a specific profile
-python deploy-and-configure.py --profile sandbox
+node deploy-and-configure.mjs --profile sandbox
 
 # Using a specific region
-python deploy-and-configure.py --profile sandbox --region us-west-2
+node deploy-and-configure.mjs --profile sandbox --region us-west-2
 
 # Using a custom stack name
-python deploy-and-configure.py --stack-name my-custom-stack
+node deploy-and-configure.mjs --stack-name my-custom-stack
 ```
 
 ### Update Frontend Config Only
@@ -107,10 +101,10 @@ python deploy-and-configure.py --stack-name my-custom-stack
 If the backend is already deployed and you just need to update the frontend `.env` file:
 
 ```bash
-python deploy-and-configure.py --config-only --profile sandbox
+node deploy-and-configure.mjs --config-only --profile sandbox
 
 # Or using the longer form:
-python deploy-and-configure.py --skip-build --skip-deploy --profile sandbox
+node deploy-and-configure.mjs --skip-build --skip-deploy --profile sandbox
 ```
 
 ### Deploy Without Building
@@ -118,20 +112,20 @@ python deploy-and-configure.py --skip-build --skip-deploy --profile sandbox
 If you've already built the backend and just want to deploy:
 
 ```bash
-python deploy-and-configure.py --skip-build --profile sandbox
+node deploy-and-configure.mjs --skip-build --profile sandbox
 ```
 
 ## Script Options
 
 ```
-usage: deploy-and-configure.py [-h] [--profile PROFILE] [--region REGION]
-                               [--stack-name STACK_NAME] [--skip-build]
-                               [--skip-deploy] [--config-only] [--no-color]
+usage: node deploy-and-configure.mjs [-h] [--profile PROFILE] [--region REGION]
+                                     [--stack-name STACK_NAME] [--skip-build]
+                                     [--skip-deploy] [--config-only] [--no-color]
+                                     [--ci]
 
 Deploy backend and configure frontend environment
 
 optional arguments:
-  -h, --help            show this help message and exit
   --profile PROFILE     AWS profile to use (default: from samconfig.toml or default profile)
   --region REGION       AWS region (default: us-east-1)
   --stack-name STACK_NAME
@@ -140,6 +134,7 @@ optional arguments:
   --skip-deploy         Skip deployment (only update .env from existing stack)
   --config-only         Only update frontend .env from existing stack (same as --skip-build --skip-deploy)
   --no-color            Disable colored output
+  --ci                  CI mode (non-interactive)
 ```
 
 ## What the Script Does
@@ -183,14 +178,14 @@ Once the script completes successfully:
 
 Install AWS SAM CLI:
 ```bash
-pip install aws-sam-cli
+brew install aws-sam-cli
 ```
 
 ### "aws: command not found"
 
 Install AWS CLI:
 ```bash
-pip install awscli
+brew install awscli
 ```
 
 ### "No credentials found"
@@ -208,21 +203,14 @@ Ensure Rust and cargo-lambda are installed:
 rustc --version
 
 # Install cargo-lambda if missing
-pip install cargo-lambda
+brew install cargo-lambda
 ```
 
 ### Stack already exists error
 
 If you need to update an existing stack, the script will automatically update it. If you want to use a different stack name:
 ```bash
-python deploy-and-configure.py --stack-name my-new-stack
-```
-
-### Permission denied on script
-
-Make the script executable:
-```bash
-chmod +x deploy-and-configure.py
+node deploy-and-configure.mjs --stack-name my-new-stack
 ```
 
 ## Manual Deployment
@@ -258,8 +246,8 @@ cp frontend/.env.example frontend/.env
 
 This script can be integrated into CI/CD pipelines. For GitHub Actions, see `.github/workflows/deploy-main.yml`.
 
-For CI environments, use the `--no-color` flag to disable ANSI color codes:
+For CI environments, use the `--ci` flag:
 
 ```bash
-python deploy-and-configure.py --no-color --profile ci-deploy
+node deploy-and-configure.mjs --ci --region us-east-1 --stack-name community-garden-prod
 ```

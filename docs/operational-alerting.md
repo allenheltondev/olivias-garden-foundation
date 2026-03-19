@@ -41,8 +41,7 @@ Dashboard widget is provisioned for these app metrics:
 1. Acknowledge alarm within 5 minutes.
 2. Check dashboard for correlated spikes (errors, throttles, latency).
 3. Verify derived freshness in app endpoints (`/feed/derived`).
-4. If stale data risk is detected, run replay/backfill tooling from the runbook:
-   - `docs/derived-pipeline-replay-runbook.md`
+4. If stale data risk is detected, consider rerunning the aggregation worker for affected scopes.
 5. Document root cause + mitigation in incident notes.
 
 ## Notes

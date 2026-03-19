@@ -1,5 +1,6 @@
 ---
 inclusion: auto
+description: Definitions of technical and domain terms used across the community food coordination platform codebase.
 ---
 
 # Glossary – Community Food Coordination Platform
@@ -37,7 +38,7 @@ The property that an operation can be applied multiple times without changing th
 A web application that can be installed on devices and works offline, providing an app-like experience while being delivered via the web.
 
 **Lambda Powertools**
-AWS-provided libraries for Python and other languages that standardize structured logging, tracing, metrics, and other Lambda best practices.
+AWS-provided libraries that standardize structured logging, tracing, metrics, and other Lambda best practices.
 
 ## Domain Terms
 
