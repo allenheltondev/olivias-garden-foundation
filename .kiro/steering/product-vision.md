@@ -1,5 +1,6 @@
 ---
 inclusion: auto
+description: Core product vision, principles, target users, AI boundaries, and success metrics for the community food coordination platform.
 ---
 
 # Product Vision – Community Food Coordination Platform

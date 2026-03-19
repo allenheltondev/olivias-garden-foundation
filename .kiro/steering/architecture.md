@@ -12,7 +12,7 @@ fileMatchPattern: "{backend/**,infra/**,services/**,**/*.yaml,**/*.yml}"
 * **Sync API**: API Gateway HTTP API -> Rust Lambda (monolambda)
 * **Data**: DynamoDB core table for transactional data; DynamoDB derived table for aggregates and AI outputs
 * **Events**: EventBridge for domain events emitted by the API
-* **Async workers**: Python Lambdas subscribed via EventBridge rules
+* **Async workers**: Node.js Lambdas subscribed via EventBridge rules
 * **AI**: Amazon Bedrock invoked only from workers; outputs stored in derived table
 * **Notifications**: Modeled as events and deferred; SNS or other notification delivery can be added later
 
@@ -92,7 +92,7 @@ Single repository with clear boundaries:
 
 * `apps/web` - PWA frontend
 * `services/api` - Rust monolambda
-* `services/workers` - Python async/event handlers
+* `services/workers` - Node.js async/event handlers
 * `infra` - IaC
 * `docs/steering` - Steering docs
 

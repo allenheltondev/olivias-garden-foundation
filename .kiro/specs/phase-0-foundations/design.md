@@ -555,7 +555,7 @@ frontend/
 - Profile editing endpoint
 - DynamoDB user profile storage
 - Event emission from API
-- Python workers for event processing
+- Node.js workers for event processing
 - Advanced PWA features (offline mode, push notifications)
 - Performance optimization
 - Monitoring dashboards

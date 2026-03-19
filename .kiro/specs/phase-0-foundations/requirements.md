@@ -135,7 +135,7 @@ As a developer, I want structured logging with correlation IDs so that I can tra
 - Monitoring dashboards
 - Alerting
 - Cost optimization
-- Python workers (deferred to Phase 1+)
+- Node.js workers (deferred to Phase 1+)
 - Event emission from API (infrastructure only in Phase 0)
 - Actual event handlers (deferred to Phase 3+)
 

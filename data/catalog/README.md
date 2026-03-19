@@ -11,7 +11,7 @@ This folder contains import-ready seed artifacts for GRN crop catalog bootstrap 
 ## Generation
 
 ```bash
-python scripts/catalog/build_openfarm_seed.py
+node scripts/catalog/build_openfarm_seed.mjs
 ```
 
 Current generator source: OpenFarm archived dataset CSV (`lib/crops.csv`).

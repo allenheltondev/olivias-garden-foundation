@@ -59,20 +59,8 @@ name = "lambda-authorizer"
 path = "src/auth/authorizer.rs"
 
 [[bin]]
-name = "post-confirmation"
-path = "src/auth/post_confirmation.rs"
-
-[[bin]]
 name = "api"
 path = "src/api/main.rs"
-
-[[bin]]
-name = "rolling-geo-aggregation-worker"
-path = "src/workers/rolling_geo_aggregation.rs"
-
-[[bin]]
-name = "derived-pipeline-replay"
-path = "src/workers/derived_pipeline_replay.rs"
 
 [workspace.dependencies]
 lambda_runtime = "0.13"

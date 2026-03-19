@@ -54,7 +54,7 @@ bash ./db/migrate.sh
 To deploy locally with your own DATABASE_URL:
 
 ```bash
-python deploy-and-configure.py \
+node deploy-and-configure.mjs \
   --region us-east-1 \
   --stack-name community-garden-dev \
   --parameter-overrides "DatabaseUrl=your-neon-connection-string"
