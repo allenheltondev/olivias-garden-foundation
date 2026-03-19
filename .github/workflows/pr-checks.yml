@@ -529,6 +529,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install esbuild
+        run: npm install -g esbuild
+        
       - name: Install backend Node.js dependencies
         working-directory: backend
         run: npm install
