@@ -8,17 +8,18 @@ import { readProgress, writeProgress, verifyChecksum, resetProgress } from './li
 function normalizeProviderPayload(raw = {}) {
   return {
     scientific_name: normalizeToNull(raw.scientific_name),
+    family: normalizeToNull(raw.Family ?? raw.family),
     common_names: normalizeToArray(raw.common_name || raw.name),
     light_requirements: normalizeToArray(raw['Light requirement']),
     water_requirement: normalizeToNull(raw['Water requirement'])?.toLowerCase() || null,
-    edible: normalizeBool(raw.Edible),
+    edible: normalizeBool(raw.Edible ?? raw.edible),
     edible_parts: normalizeToArray(raw['Edible parts']),
     life_cycle: normalizeToNull(raw['Life cycle'])?.toLowerCase() || null,
-    hardiness_zones: [],
+    hardiness_zones: Array.isArray(raw['USDA Hardiness zone']) ? raw['USDA Hardiness zone'] : [],
     layer: normalizeToNull(raw.Layer)?.toLowerCase() || null,
     growth_habit: normalizeToNull(raw.Growth)?.toLowerCase() || null,
-    warnings: normalizeToArray(raw.Warning),
-    utility: normalizeToArray(raw.Utility),
+    warnings: normalizeToArray(raw.Warning ?? raw.warning),
+    utility: normalizeToArray(raw.Utility ?? raw.utility),
     external_links: {
       pfaf_url: normalizeToNull(raw['Plants For A Future']),
       powo_url: normalizeToNull(raw['Plants of the World Online']),
@@ -43,22 +44,26 @@ export async function runStep3({ reset = false, dryRun = false, limit = null } =
   const startIndex = progress ? progress.lastProcessedIndex + 1 : 0;
   const slice = step2.slice(startIndex, limit ? startIndex + limit : undefined);
 
-  const out = slice.map((r) => ({
-    source_provider: r.source_provider,
-    source_record_id: r.source_record_id,
-    canonical_id: r.canonical_id,
-    match_type: r.match_type,
-    match_score: r.match_score,
-    normalized: normalizeProviderPayload({
-      scientific_name: r.source_scientific_name,
-      common_name: r.source_common_name,
-    }),
-    raw: {
+  const out = slice.map((r) => {
+    const baseRaw = r.raw_payload && typeof r.raw_payload === 'object'
+      ? r.raw_payload
+      : { scientific_name: r.source_scientific_name, common_name: r.source_common_name };
+
+    return {
       source_provider: r.source_provider,
       source_record_id: r.source_record_id,
-    },
-    normalization_warnings: [],
-  }));
+      canonical_id: r.canonical_id,
+      match_type: r.match_type,
+      match_score: r.match_score,
+      normalized: normalizeProviderPayload(baseRaw),
+      raw: {
+        source_provider: r.source_provider,
+        source_record_id: r.source_record_id,
+        payload: baseRaw,
+      },
+      normalization_warnings: [],
+    };
+  });
 
   if (!dryRun) {
     await fsp.mkdir('data/catalog', { recursive: true });

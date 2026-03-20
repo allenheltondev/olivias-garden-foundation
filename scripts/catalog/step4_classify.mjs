@@ -52,7 +52,7 @@ export function classifyCanonical(records) {
   if (WEED_TERMS.test(lowerWarning) && !strongFoodEvidence) relevance_class = 'weed_or_invasive';
   else if (coniferGuardrail || industrialGuardrail) relevance_class = 'non_food';
   else if (hasOpenFarmSupport && (edibleEvidenceSources.size > 0 || FOOD_TERMS.test(lowerUtility))) relevance_class = 'food_crop_core';
-  else if (strongFoodEvidence) relevance_class = 'food_crop_niche';
+  else if (!hasOpenFarmSupport && strongFoodEvidence) relevance_class = 'food_crop_niche';
   else if (INDUSTRIAL_TERMS.test(lowerUtility)) relevance_class = 'industrial_crop';
 
   const catalog_status = relevance_class === 'food_crop_core'
@@ -69,9 +69,11 @@ export function classifyCanonical(records) {
   const review_status =
     catalog_status === 'excluded'
       ? 'rejected'
-      : ((hasOpenFarmSupport || strongFoodEvidence) && source_confidence >= 0.65 && source_agreement_score >= 0.5
-        ? 'auto_approved'
-        : 'needs_review');
+      : (!hasOpenFarmSupport
+        ? 'needs_review'
+        : ((hasOpenFarmSupport || strongFoodEvidence) && source_confidence >= 0.65 && source_agreement_score >= 0.5
+          ? 'auto_approved'
+          : 'needs_review'));
 
   const lead = records[0] || {};
 

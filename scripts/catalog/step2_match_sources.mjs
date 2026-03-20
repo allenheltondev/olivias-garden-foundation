@@ -72,7 +72,22 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
   const openfarm = await readHeaderlessCsv(PATHS.openfarmCrops, ['scientific_name', 'common_name']);
   const allRecords = [];
 
-  for (const c of canonicalRows) {
+  const fetchLimit = Number.isFinite(limit) && limit > 0 ? limit : null;
+  const canonicalForFetch = fetchLimit ? canonicalRows.slice(0, fetchLimit) : canonicalRows;
+  const openfarmForFetch = fetchLimit ? openfarm.slice(0, fetchLimit) : openfarm;
+
+  // OpenFarm-first ordering to ensure practical grower context exists in limited smoke runs.
+  openfarmForFetch.forEach((r, i) => {
+    allRecords.push({
+      source_provider: 'openfarm',
+      source_record_id: `openfarm:${i}`,
+      scientific_name: r.scientific_name ?? null,
+      common_name: r.common_name ?? null,
+      raw_payload: r,
+    });
+  });
+
+  for (const c of canonicalForFetch) {
     const sci = c.scientific_name_normalized || c.accepted_scientific_name;
     const ppA = await searchPlant(sci);
     let hits = Array.isArray(ppA?.hits) ? ppA.hits : [];
@@ -87,28 +102,35 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
         source_record_id: String(hit.id ?? `${sci}:${Math.random().toString(16).slice(2, 8)}`),
         scientific_name: hit.scientific_name ?? null,
         common_name: hit.name ?? null,
+        raw_payload: hit,
       });
     }
   }
 
-  openfarm.forEach((r, i) => {
-    allRecords.push({
-      source_provider: 'openfarm',
-      source_record_id: `openfarm:${i}`,
-      scientific_name: r.scientific_name ?? null,
-      common_name: r.common_name ?? null,
-    });
-  });
+  let selected = allRecords;
+  if (fetchLimit) {
+    const openfarmRecords = allRecords.filter((r) => r.source_provider === 'openfarm');
+    const otherRecords = allRecords.filter((r) => r.source_provider !== 'openfarm');
+    const openfarmQuota = Math.min(openfarmRecords.length, Math.ceil(fetchLimit / 2));
+    const otherQuota = Math.min(otherRecords.length, fetchLimit - openfarmQuota);
+    selected = [
+      ...openfarmRecords.slice(0, openfarmQuota),
+      ...otherRecords.slice(0, otherQuota),
+    ];
+  }
 
   const progress = await readProgress(2);
   const startIndex = progress ? progress.lastProcessedIndex + 1 : 0;
-  const slice = allRecords.slice(startIndex, limit ? startIndex + limit : undefined);
+  const slice = selected.slice(startIndex, fetchLimit ? startIndex + fetchLimit : undefined);
 
   const out = slice.map((r) => {
     const m = matchRecord(r, indexes);
     return {
       source_provider: r.source_provider,
       source_record_id: r.source_record_id,
+      source_scientific_name: r.scientific_name ?? null,
+      source_common_name: r.common_name ?? null,
+      raw_payload: r.raw_payload ?? null,
       canonical_id: m.canonical_id,
       match_type: m.match_type,
       match_score: m.match_score,
