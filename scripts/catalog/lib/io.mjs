@@ -10,8 +10,12 @@ export async function* readJsonl(filePath) {
 }
 
 export async function appendJsonl(filePath, records) {
-  if (!records?.length) return;
   await fsp.mkdir(new URL('.', `file://${filePath}`), { recursive: true }).catch(() => {});
+  if (!records?.length) {
+    // Keep queue/report files present even when there are zero rows.
+    if (!fs.existsSync(filePath)) await fsp.writeFile(filePath, '', 'utf8');
+    return;
+  }
   const payload = records.map((r) => JSON.stringify(r)).join('\n') + '\n';
   await fsp.appendFile(filePath, payload, 'utf8');
 }
