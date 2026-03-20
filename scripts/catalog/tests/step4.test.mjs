@@ -31,4 +31,18 @@ test('step4 enforces openfarm-first and guardrails', () => {
   assert.equal(openFarmSupported.relevance_class, 'food_crop_core');
   assert.equal(openFarmSupported.catalog_status, 'core');
   assert.equal(openFarmSupported.has_openfarm_support, true);
+
+  const fuzzyMatched = classifyCanonical([
+    {
+      canonical_id: 'C',
+      source_provider: 'openfarm',
+      source_record_id: 'o2',
+      match_type: 'fuzzy_fallback',
+      match_score: 0.55,
+      needs_review: true,
+      normalized: { scientific_name: 'Ocimum basilicum', common_names: ['basil'], edible: true, edible_parts: ['leaf'] },
+    },
+  ]);
+
+  assert.equal(fuzzyMatched.review_status, 'needs_review');
 });

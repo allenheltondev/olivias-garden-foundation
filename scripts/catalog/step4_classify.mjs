@@ -66,14 +66,18 @@ export function classifyCanonical(records) {
   const source_confidence = Math.max(0, Math.min(1, ...records.map((r) => Number(r.match_score ?? 0)), 0));
   const source_agreement_score = providers.size > 0 ? edibleEvidenceSources.size / providers.size : 0;
 
+  const hasFuzzyFallback = records.some((r) => r.match_type === 'fuzzy_fallback' || r.needs_review === true);
+
   const review_status =
     catalog_status === 'excluded'
       ? 'rejected'
-      : (!hasOpenFarmSupport
+      : (hasFuzzyFallback
         ? 'needs_review'
-        : ((hasOpenFarmSupport || strongFoodEvidence) && source_confidence >= 0.65 && source_agreement_score >= 0.5
-          ? 'auto_approved'
-          : 'needs_review'));
+        : (!hasOpenFarmSupport
+          ? 'needs_review'
+          : ((hasOpenFarmSupport || strongFoodEvidence) && source_confidence >= 0.65 && source_agreement_score >= 0.5
+            ? 'auto_approved'
+            : 'needs_review')));
 
   const lead = records[0] || {};
 

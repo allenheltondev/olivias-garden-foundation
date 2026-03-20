@@ -32,7 +32,7 @@ export const PROGRESS_PATHS = {
 };
 
 export const ENUMS = {
-  matchType: ['exact_scientific', 'normalized_scientific', 'synonym_match', 'common_name_fallback', 'ambiguous_common_name', 'unresolved'],
+  matchType: ['exact_scientific', 'normalized_scientific', 'synonym_match', 'common_name_fallback', 'fuzzy_fallback', 'ambiguous_common_name', 'unresolved'],
   relevanceClass: ['food_crop_core', 'food_crop_niche', 'edible_ornamental', 'medicinal_only', 'industrial_crop', 'weed_or_invasive', 'non_food'],
 };
 
@@ -41,6 +41,7 @@ export const MATCH_SCORES = {
   normalized_scientific: 0.95,
   synonym_match: 0.85,
   common_name_fallback: 0.7,
+  fuzzy_fallback: 0.55,
   ambiguous_common_name: 0.4,
   unresolved: 0,
 };
