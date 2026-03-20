@@ -2,13 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { runPromote } from '../promote.mjs';
+import { PATHS, PROGRESS_PATHS } from '../lib/config.mjs';
 
-const dataDir = path.resolve(process.cwd(), 'data/catalog');
-
-test('promote partitions records exhaustively and sets import fields', async () => {
+async function withTempCatalogPaths(fn) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'catalog-promote-test-'));
+  const dataDir = path.join(root, 'data', 'catalog');
   await fs.mkdir(dataDir, { recursive: true });
 
+  const oldPaths = { ...PATHS };
+  const oldProgress = { ...PROGRESS_PATHS };
+
+  PATHS.step6 = path.join(dataDir, 'step6_augmented_catalog.jsonl');
+  PATHS.promoted = path.join(dataDir, 'promoted_crops.jsonl');
+  PATHS.reviewNeedsReview = path.join(dataDir, 'review_queue_needs_review.jsonl');
+  PATHS.reviewUnresolved = path.join(dataDir, 'review_queue_unresolved.jsonl');
+  PATHS.reviewExcluded = path.join(dataDir, 'review_queue_excluded.jsonl');
+  PATHS.reviewSummary = path.join(dataDir, 'review_summary.json');
+  PROGRESS_PATHS[7] = path.join(dataDir, 'promote_progress.json');
+
+  try {
+    await fn(dataDir);
+  } finally {
+    Object.assign(PATHS, oldPaths);
+    Object.assign(PROGRESS_PATHS, oldProgress);
+    await fs.rm(root, { recursive: true, force: true });
+  }
+}
+
+test('promote partitions records exhaustively and sets import fields', async () => withTempCatalogPaths(async (dataDir) => {
   const paths = [
     'step6_augmented_catalog.jsonl',
     'promoted_crops.jsonl',
@@ -42,4 +65,4 @@ test('promote partitions records exhaustively and sets import fields', async () 
   assert.equal(needsReview.length, 1);
   assert.equal(unresolved.length, 1);
   assert.equal(excluded.length, 1);
-});
+}));

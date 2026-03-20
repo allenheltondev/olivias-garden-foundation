@@ -2,15 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { runStep6 } from '../step6_llm_augment.mjs';
+import { PATHS, PROGRESS_PATHS } from '../lib/config.mjs';
 
-const dataDir = path.resolve(process.cwd(), 'data/catalog');
-const step5Path = path.join(dataDir, 'step5_canonical_drafts.jsonl');
-const step6Path = path.join(dataDir, 'step6_augmented_catalog.jsonl');
-const progressPath = path.join(dataDir, 'step6_progress.json');
-
-test('step6 augments eligible records and leaves excluded unchanged', async () => {
+async function withTempCatalogPaths(fn) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'catalog-step6-test-'));
+  const dataDir = path.join(root, 'data', 'catalog');
   await fs.mkdir(dataDir, { recursive: true });
+
+  const oldPaths = { ...PATHS };
+  const oldProgress = { ...PROGRESS_PATHS };
+
+  PATHS.step5 = path.join(dataDir, 'step5_canonical_drafts.jsonl');
+  PATHS.step6 = path.join(dataDir, 'step6_augmented_catalog.jsonl');
+  PROGRESS_PATHS[6] = path.join(dataDir, 'step6_progress.json');
+
+  try {
+    await fn({
+      step5Path: PATHS.step5,
+      step6Path: PATHS.step6,
+      progressPath: PROGRESS_PATHS[6],
+    });
+  } finally {
+    Object.assign(PATHS, oldPaths);
+    Object.assign(PROGRESS_PATHS, oldProgress);
+    await fs.rm(root, { recursive: true, force: true });
+  }
+}
+
+test('step6 augments eligible records and leaves excluded unchanged', async () => withTempCatalogPaths(async ({ step5Path, step6Path, progressPath }) => {
   await fs.rm(step5Path, { force: true });
   await fs.rm(step6Path, { force: true });
   await fs.rm(progressPath, { force: true });
@@ -34,4 +55,4 @@ test('step6 augments eligible records and leaves excluded unchanged', async () =
   assert.equal(out.length, 2);
   assert.equal(out.find((r) => r.canonical_id === '1').description, 'Desc 1');
   assert.equal(out.find((r) => r.canonical_id === '2').description, undefined);
-});
+}));
