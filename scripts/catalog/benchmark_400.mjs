@@ -9,6 +9,7 @@ const STEP5_PATH = path.join(DATA_DIR, "step5_canonical_drafts.jsonl");
 const OUT_JSON = path.join(DATA_DIR, "metrics_400.json");
 const OUT_MD = path.join(DATA_DIR, "metrics_400.md");
 const OUT_SUSPICIOUS = path.join(DATA_DIR, "metrics_400_suspicious.jsonl");
+const OUT_UNRESOLVED_CSV = path.join(DATA_DIR, "metrics_400_unresolved_openfarm.csv");
 const BASELINE_PATH = process.env.BENCHMARK_BASELINE_JSON
   ? path.resolve(ROOT, process.env.BENCHMARK_BASELINE_JSON)
   : null;
@@ -196,6 +197,7 @@ const metrics = {
   source_coverage: sourceCoverage,
   unresolved_openfarm_examples: unresolvedOpenfarm,
   unresolved_openfarm_token_frequency: unresolvedTokenFreq,
+  unresolved_openfarm_csv: path.relative(ROOT, OUT_UNRESOLVED_CSV),
   suspicious: {
     count: suspicious.length,
     threshold_score: 4,
@@ -270,7 +272,14 @@ await writeFile(OUT_JSON, `${JSON.stringify(metrics, null, 2)}\n`, "utf8");
 await writeFile(OUT_MD, md, "utf8");
 await writeFile(OUT_SUSPICIOUS, suspicious.map((x) => JSON.stringify(x)).join("\n") + (suspicious.length ? "\n" : ""), "utf8");
 
+const unresolvedCsvHeader = "source_record_id,scientific_name,common_name,normalized_scientific,normalized_common";
+const unresolvedCsvRows = unresolvedOpenfarmAll.map((r) => [r.source_record_id, r.scientific_name, r.common_name, r.normalized_scientific, r.normalized_common]
+  .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+  .join(","));
+await writeFile(OUT_UNRESOLVED_CSV, [unresolvedCsvHeader, ...unresolvedCsvRows].join("\n") + "\n", "utf8");
+
 console.log(`Wrote ${path.relative(ROOT, OUT_JSON)}`);
 console.log(`Wrote ${path.relative(ROOT, OUT_MD)}`);
 console.log(`Wrote ${path.relative(ROOT, OUT_SUSPICIOUS)}`);
+console.log(`Wrote ${path.relative(ROOT, OUT_UNRESOLVED_CSV)}`);
 console.log(`Benchmark result: ${metrics.pass ? "PASS" : "FAIL"}`);
