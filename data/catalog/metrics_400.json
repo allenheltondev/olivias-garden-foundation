@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-21T17:45:13.712Z",
+  "generated_at": "2026-03-21T18:15:18.361Z",
   "sample_size": 400,
   "source_paths": {
     "step2": "..\\..\\data\\catalog\\step2_source_matches.jsonl",
@@ -36,6 +36,183 @@
     "openfarm_record_matched": 1,
     "unresolved_only": 369
   },
+  "unresolved_openfarm_examples": [
+    {
+      "source_record_id": "openfarm:quercus-durata-gabrielensis:leather-oak:74817",
+      "scientific_name": "Quercus durata var. gabrielensis",
+      "common_name": "leather oak",
+      "normalized_scientific": "quercus durata",
+      "normalized_common": "leather oak"
+    },
+    {
+      "source_record_id": "openfarm:melanthera-biflora:sea-daisy:56712",
+      "scientific_name": "Melanthera biflora",
+      "common_name": "Sea daisy",
+      "normalized_scientific": "melanthera biflora",
+      "normalized_common": "sea daisy"
+    },
+    {
+      "source_record_id": "openfarm:sparganium-fluctuans:water-burreed:84306",
+      "scientific_name": "Sparganium fluctuans",
+      "common_name": "Water burreed",
+      "normalized_scientific": "sparganium fluctuans",
+      "normalized_common": "water burreed"
+    },
+    {
+      "source_record_id": "openfarm:sambucus-racemosa:red-berried-elder-european-red-elder-sabugueiro-vermelho-europa:79483",
+      "scientific_name": "Sambucus racemosa",
+      "common_name": "red-berried elder, European red elder, sabugueiro vermelho da Europa",
+      "normalized_scientific": "sambucus racemosa",
+      "normalized_common": "red berried elder european red elder sabugueiro vermelho europa"
+    },
+    {
+      "source_record_id": "openfarm:moraea-debilis:unknown:58899",
+      "scientific_name": "Moraea debilis",
+      "common_name": "",
+      "normalized_scientific": "moraea debilis",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:chloris:unknown:19573",
+      "scientific_name": "Chloris sp.",
+      "common_name": "",
+      "normalized_scientific": "chloris",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:isolepis-verrucosula:unknown:48336",
+      "scientific_name": "Isolepis verrucosula",
+      "common_name": "",
+      "normalized_scientific": "isolepis verrucosula",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:rhynchosia-adenodes:unknown:76542",
+      "scientific_name": "Rhynchosia adenodes",
+      "common_name": "",
+      "normalized_scientific": "rhynchosia adenodes",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:astragalus:milk-vetch:9667",
+      "scientific_name": "Astragalus",
+      "common_name": "milk vetch",
+      "normalized_scientific": "astragalus",
+      "normalized_common": "milk vetch"
+    },
+    {
+      "source_record_id": "openfarm:asarum-caudatum-caudatum:british-columbia-wildginger:8602",
+      "scientific_name": "Asarum caudatum var. caudatum",
+      "common_name": "British Columbia wildginger",
+      "normalized_scientific": "asarum caudatum",
+      "normalized_common": "british columbia wildginger"
+    },
+    {
+      "source_record_id": "openfarm:kotschya-thymodora-thymodora:unknown:49830",
+      "scientific_name": "Kotschya thymodora ssp. thymodora",
+      "common_name": "",
+      "normalized_scientific": "kotschya thymodora",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:sechium-edule:machuchu-machiche-xuxu-chuchu-chocho-mirliton-christophine-gayota-cidrayota-cucuzza-spinusa:81338",
+      "scientific_name": "Sechium edule",
+      "common_name": "machuchu (Brazil), machiche, xuxu, chuchu, chocho, mirliton, christophine, gayota, cidrayota, cucuzza spinusa",
+      "normalized_scientific": "sechium edule",
+      "normalized_common": "machuchu machiche xuxu chuchu chocho mirliton christophine gayota cidrayota cucuzza spinusa"
+    },
+    {
+      "source_record_id": "openfarm:pteris-friesii:unknown:74001",
+      "scientific_name": "Pteris friesii",
+      "common_name": "",
+      "normalized_scientific": "pteris friesii",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:limonium-linifolium-linifolium:unknown:52762",
+      "scientific_name": "Limonium linifolium var. linifolium",
+      "common_name": "",
+      "normalized_scientific": "limonium linifolium",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:pinnularia-braunii:unknown:69381",
+      "scientific_name": "Pinnularia braunii",
+      "common_name": "",
+      "normalized_scientific": "pinnularia braunii",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:barbula-imshaugii:unknown:11398",
+      "scientific_name": "Barbula imshaugii",
+      "common_name": "",
+      "normalized_scientific": "barbula imshaugii",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:vanclevea-stylosa:pillar-false-gumweed:92890",
+      "scientific_name": "Vanclevea stylosa",
+      "common_name": "pillar false gumweed",
+      "normalized_scientific": "vanclevea stylosa",
+      "normalized_common": "pillar false gumweed"
+    },
+    {
+      "source_record_id": "openfarm:ranunculus-hispidus-hispidus:bristly-buttercup:75347",
+      "scientific_name": "Ranunculus hispidus var. hispidus",
+      "common_name": "bristly buttercup",
+      "normalized_scientific": "ranunculus hispidus",
+      "normalized_common": "bristly buttercup"
+    },
+    {
+      "source_record_id": "openfarm:cephalophyllum-serrulatum:unknown:17955",
+      "scientific_name": "Cephalophyllum serrulatum",
+      "common_name": "",
+      "normalized_scientific": "cephalophyllum serrulatum",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:phylica-purpurea-floccosa:unknown:68619",
+      "scientific_name": "Phylica purpurea var. floccosa",
+      "common_name": "",
+      "normalized_scientific": "phylica purpurea",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:lotus-scoparius-brevialatus:western-bird-foot-trefoil:54310",
+      "scientific_name": "Lotus scoparius var. brevialatus",
+      "common_name": "western bird's-foot trefoil",
+      "normalized_scientific": "lotus scoparius",
+      "normalized_common": "western bird foot trefoil"
+    },
+    {
+      "source_record_id": "openfarm:envy:unknown:32917",
+      "scientific_name": "Envy (apple)",
+      "common_name": "",
+      "normalized_scientific": "envy",
+      "normalized_common": null
+    },
+    {
+      "source_record_id": "openfarm:barbarea-verna:upland-cress-american-cress-land-cress-early-winter-cress-poor-man-cabbage-belle-isle-cress:11358",
+      "scientific_name": "Barbarea verna",
+      "common_name": "upland cress, American cress, land cress, early winter cress, poor man's cabbage, Belle-Isle cress",
+      "normalized_scientific": "barbarea verna",
+      "normalized_common": "upland cress american cress land cress early winter cress poor man cabbage belle isle cress"
+    },
+    {
+      "source_record_id": "openfarm:hesperolinon-micranthum:smallflower-dwarf-flax:44983",
+      "scientific_name": "Hesperolinon micranthum",
+      "common_name": "smallflower dwarf-flax",
+      "normalized_scientific": "hesperolinon micranthum",
+      "normalized_common": "smallflower dwarf flax"
+    },
+    {
+      "source_record_id": "openfarm:closterium-aciculare-aciculare:unknown:21510",
+      "scientific_name": "Closterium aciculare var. aciculare",
+      "common_name": "",
+      "normalized_scientific": "closterium aciculare",
+      "normalized_common": null
+    }
+  ],
   "suspicious": {
     "count": 0,
     "threshold_score": 4,

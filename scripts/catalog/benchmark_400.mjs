@@ -150,6 +150,17 @@ const sourceCoverage = {
   unresolved_only: sampledStep2.filter((r) => r.match_type === "unresolved").length,
 };
 
+const unresolvedOpenfarm = sampledStep2
+  .filter((r) => r.source_provider === "openfarm" && r.match_type === "unresolved")
+  .slice(0, 25)
+  .map((r) => ({
+    source_record_id: r.source_record_id,
+    scientific_name: r.source_scientific_name ?? null,
+    common_name: r.source_common_name ?? null,
+    normalized_scientific: r.match_diagnostics?.normalized_scientific ?? null,
+    normalized_common: r.match_diagnostics?.normalized_common ?? null,
+  }));
+
 const metrics = {
   generated_at: new Date().toISOString(),
   sample_size: sampledStep5.length,
@@ -170,6 +181,7 @@ const metrics = {
   },
   promotion_blockers: blockageCounts,
   source_coverage: sourceCoverage,
+  unresolved_openfarm_examples: unresolvedOpenfarm,
   suspicious: {
     count: suspicious.length,
     threshold_score: 4,
@@ -231,7 +243,9 @@ const md = `# Catalog 400-sample benchmark\n\n- Generated: ${metrics.generated_a
   .map(([k, v]) => `- ${k}: ${v} (${pct(v, total)}%)`)
   .join("\\n")}\n\n## Source coverage (diagnostic)\n${Object.entries(metrics.source_coverage)
   .map(([k, v]) => `- ${k}: ${v} (${pct(v, total)}%)`)
-  .join("\\n")}\n\n## Suspicious sample queue\n- flagged: ${metrics.suspicious.count} (${suspiciousPct}%)\n- file: ${path.relative(ROOT, OUT_SUSPICIOUS)}\n\n## Threshold checks\n${Object.entries(metrics.threshold_checks)
+  .join("\\n")}\n\n## Unresolved OpenFarm examples (first 25)\n${metrics.unresolved_openfarm_examples.length === 0
+  ? "- none"
+  : metrics.unresolved_openfarm_examples.map((x) => `- ${x.source_record_id} | sci=${x.scientific_name ?? ""} | common=${x.common_name ?? ""}`).join("\\n")}\n\n## Suspicious sample queue\n- flagged: ${metrics.suspicious.count} (${suspiciousPct}%)\n- file: ${path.relative(ROOT, OUT_SUSPICIOUS)}\n\n## Threshold checks\n${Object.entries(metrics.threshold_checks)
   .map(([k, v]) => `- ${k}: ${v.actual}% -> ${v.pass ? "PASS" : "FAIL"}`)
   .join("\n")}\n`;
 
