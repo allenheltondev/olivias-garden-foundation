@@ -1,11 +1,14 @@
 # Catalog 400-sample benchmark
 
-- Generated: 2026-03-21T15:45:20.400Z
+- Generated: 2026-03-21T16:15:49.466Z
 - Sample size: 400
 - Overall: **FAIL**
 
 ## Failure summary
 - promoted_pct: 0%
+
+## Baseline delta
+- none (set BENCHMARK_BASELINE_JSON to compare)
 
 ## Distributions
 

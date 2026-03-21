@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-21T15:45:20.400Z",
+  "generated_at": "2026-03-21T16:15:49.466Z",
   "sample_size": 400,
   "source_paths": {
     "step2": "..\\..\\data\\catalog\\step2_source_matches.jsonl",
@@ -58,5 +58,6 @@
       "pass": true
     }
   },
-  "pass": false
+  "pass": false,
+  "baseline": null
 }

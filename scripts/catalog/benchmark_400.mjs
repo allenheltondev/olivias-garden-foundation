@@ -9,6 +9,9 @@ const STEP5_PATH = path.join(DATA_DIR, "step5_canonical_drafts.jsonl");
 const OUT_JSON = path.join(DATA_DIR, "metrics_400.json");
 const OUT_MD = path.join(DATA_DIR, "metrics_400.md");
 const OUT_SUSPICIOUS = path.join(DATA_DIR, "metrics_400_suspicious.jsonl");
+const BASELINE_PATH = process.env.BENCHMARK_BASELINE_JSON
+  ? path.resolve(ROOT, process.env.BENCHMARK_BASELINE_JSON)
+  : null;
 const SAMPLE_SIZE = Number(process.env.BENCHMARK_SAMPLE_SIZE ?? 400);
 
 const THRESHOLDS = {
@@ -37,6 +40,11 @@ function countBy(items, keyFn) {
 
 function pct(n, total) {
   return total === 0 ? 0 : Number(((n / total) * 100).toFixed(2));
+}
+
+function safeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function scoreSuspicious(record, step4) {
@@ -153,7 +161,33 @@ const failingChecks = Object.entries(metrics.threshold_checks)
   .filter(([, check]) => !check.pass)
   .map(([name, check]) => ({ name, actual: check.actual }));
 
-const md = `# Catalog 400-sample benchmark\n\n- Generated: ${metrics.generated_at}\n- Sample size: ${metrics.sample_size}\n- Overall: **${metrics.pass ? "PASS" : "FAIL"}**\n\n## Failure summary\n${failingChecks.length === 0 ? "- none" : failingChecks.map((f) => `- ${f.name}: ${f.actual}%`).join("\\n")}\n\n## Distributions\n\n### Match type\n${Object.entries(metrics.distributions.match_type)
+let baseline = null;
+if (BASELINE_PATH) {
+  try {
+    baseline = JSON.parse(await readFile(BASELINE_PATH, "utf8"));
+  } catch {
+    baseline = null;
+  }
+}
+
+const deltas = baseline
+  ? {
+      promoted_pct_delta: safeNumber((promotedPct - Number(baseline?.threshold_checks?.promoted_pct?.actual ?? 0)).toFixed(2)),
+      needs_review_pct_delta: safeNumber((needsReviewPct - Number(baseline?.threshold_checks?.needs_review_pct?.actual ?? 0)).toFixed(2)),
+      suspicious_pct_delta: safeNumber((suspiciousPct - Number(baseline?.threshold_checks?.suspicious_pct?.actual ?? 0)).toFixed(2)),
+      fuzzy_match_pct_delta: safeNumber((fuzzyPct - Number(baseline?.threshold_checks?.fuzzy_match_pct?.actual ?? 0)).toFixed(2)),
+    }
+  : null;
+
+metrics.baseline = baseline ? {
+  path: path.relative(ROOT, BASELINE_PATH),
+  generated_at: baseline.generated_at ?? null,
+  deltas,
+} : null;
+
+const md = `# Catalog 400-sample benchmark\n\n- Generated: ${metrics.generated_at}\n- Sample size: ${metrics.sample_size}\n- Overall: **${metrics.pass ? "PASS" : "FAIL"}**\n\n## Failure summary\n${failingChecks.length === 0 ? "- none" : failingChecks.map((f) => `- ${f.name}: ${f.actual}%`).join("\\n")}\n\n## Baseline delta\n${metrics.baseline?.deltas
+  ? Object.entries(metrics.baseline.deltas).map(([k, v]) => `- ${k}: ${v > 0 ? "+" : ""}${v}%`).join("\\n")
+  : "- none (set BENCHMARK_BASELINE_JSON to compare)"}\n\n## Distributions\n\n### Match type\n${Object.entries(metrics.distributions.match_type)
   .map(([k, v]) => `- ${k}: ${v} (${pct(v, total)}%)`)
   .join("\n")}\n\n### Relevance class\n${Object.entries(metrics.distributions.relevance_class)
   .map(([k, v]) => `- ${k}: ${v} (${pct(v, total)}%)`)

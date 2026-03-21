@@ -21,6 +21,15 @@ This produces:
 - `data/catalog/metrics_400.md` (human-readable)
 - `data/catalog/metrics_400_suspicious.jsonl` (manual-review queue)
 
+Optional baseline compare:
+
+```bash
+BENCHMARK_BASELINE_JSON=../../data/catalog/metrics_400.baseline.json \
+bun run benchmark:400
+```
+
+When provided, benchmark output includes before/after delta metrics in both JSON and markdown.
+
 ## Current review thresholds
 
 - promoted_pct >= 5%
