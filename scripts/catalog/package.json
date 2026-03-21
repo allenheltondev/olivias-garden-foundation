@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "typecheck": "node --eval \"console.log('No static typecheck configured')\""
+    "typecheck": "node --eval \"console.log('No static typecheck configured')\"",
+    "benchmark:400": "node benchmark_400.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.901.0",

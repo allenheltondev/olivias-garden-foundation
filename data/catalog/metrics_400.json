@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-03-21T15:16:38.657Z",
+  "sample_size": 400,
+  "source_paths": {
+    "step2": "..\\..\\data\\catalog\\step2_source_matches.jsonl",
+    "step4": "..\\..\\data\\catalog\\step4_relevance_classified.jsonl",
+    "step5": "..\\..\\data\\catalog\\step5_canonical_drafts.jsonl"
+  },
+  "distributions": {
+    "match_type": {
+      "unresolved": 330,
+      "common_name_fallback": 2,
+      "ambiguous_common_name": 26,
+      "normalized_scientific": 12,
+      "synonym_match": 30
+    },
+    "relevance_class": {
+      "non_food": 382,
+      "weed_or_invasive": 5,
+      "food_crop_core": 13
+    },
+    "catalog_status": {
+      "excluded": 387,
+      "core": 13
+    }
+  },
+  "queue_counts": {
+    "promoted": 0,
+    "needs_review": 0,
+    "excluded": 387
+  },
+  "suspicious": {
+    "count": 0,
+    "threshold_score": 4,
+    "output": "..\\..\\data\\catalog\\metrics_400_suspicious.jsonl"
+  },
+  "thresholds": {
+    "min_promoted_pct": 5,
+    "max_needs_review_pct": 35,
+    "max_suspicious_pct": 20,
+    "max_fuzzy_match_pct": 25
+  },
+  "threshold_checks": {
+    "promoted_pct": {
+      "actual": 0,
+      "pass": false
+    },
+    "needs_review_pct": {
+      "actual": 0,
+      "pass": true
+    },
+    "suspicious_pct": {
+      "actual": 0,
+      "pass": true
+    },
+    "fuzzy_match_pct": {
+      "actual": 0,
+      "pass": true
+    }
+  },
+  "pass": false
+}
