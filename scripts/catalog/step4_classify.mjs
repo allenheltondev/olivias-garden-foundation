@@ -13,6 +13,32 @@ function keyFor(rec) {
   return rec.canonical_id || `${rec.source_provider}:${rec.source_record_id}`;
 }
 
+function finiteScore(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function computeConfidenceBand(records, hasOpenFarmSupport) {
+  const scored = records
+    .map((r) => ({ ...r, score: finiteScore(r.match_score) }))
+    .filter((r) => r.score !== null);
+
+  const bestScore = scored.length > 0 ? Math.max(...scored.map((r) => r.score)) : 0;
+  const openFarmScored = scored.filter((r) => r.source_provider === 'openfarm' && r.match_type !== 'unresolved');
+  const openFarmBest = openFarmScored.length > 0 ? Math.max(...openFarmScored.map((r) => r.score)) : 0;
+
+  const hasHighPrecisionOpenFarm = openFarmScored.some((r) =>
+    (r.match_type === 'normalized_scientific' || r.match_type === 'synonym_match') && r.score >= 0.85);
+
+  const hasMediumOpenFarm = openFarmScored.some((r) =>
+    (r.match_type === 'common_name_fallback' || r.match_type === 'fuzzy_fallback') && r.score >= 0.7);
+
+  if (hasOpenFarmSupport && (hasHighPrecisionOpenFarm || openFarmBest >= 0.9)) return { source_confidence: openFarmBest || bestScore, match_confidence_band: 'high' };
+  if (hasOpenFarmSupport && (hasMediumOpenFarm || openFarmBest >= 0.7)) return { source_confidence: openFarmBest || bestScore, match_confidence_band: 'medium' };
+  if (bestScore >= 0.85) return { source_confidence: bestScore, match_confidence_band: 'medium' };
+  return { source_confidence: bestScore, match_confidence_band: 'low' };
+}
+
 export function classifyCanonical(records) {
   const providers = new Set(records.map((r) => r.source_provider).filter(Boolean));
 
@@ -63,7 +89,7 @@ export function classifyCanonical(records) {
         ? 'hidden'
         : 'excluded';
 
-  const source_confidence = Math.max(0, Math.min(1, ...records.map((r) => Number(r.match_score ?? 0)), 0));
+  const { source_confidence, match_confidence_band } = computeConfidenceBand(records, hasOpenFarmSupport);
   const source_agreement_score = providers.size > 0 ? edibleEvidenceSources.size / providers.size : 0;
 
   const hasFuzzyFallback = records.some((r) => r.match_type === 'fuzzy_fallback' || r.needs_review === true);
@@ -75,7 +101,7 @@ export function classifyCanonical(records) {
         ? 'needs_review'
         : (!hasOpenFarmSupport
           ? 'needs_review'
-          : ((hasOpenFarmSupport || strongFoodEvidence) && source_confidence >= 0.65 && source_agreement_score >= 0.5
+          : (match_confidence_band !== 'low' && source_agreement_score >= 0.34
             ? 'auto_approved'
             : 'needs_review')));
 
@@ -88,6 +114,7 @@ export function classifyCanonical(records) {
     edibility_status: edibleProviders.size > 0 ? 'food_crop' : 'unknown',
     review_status,
     source_confidence,
+    match_confidence_band,
     source_agreement_score,
     has_openfarm_support: hasOpenFarmSupport,
     strong_food_evidence: strongFoodEvidence,

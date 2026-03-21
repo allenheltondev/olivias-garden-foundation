@@ -60,14 +60,23 @@ export async function runPromote({ reset = false, dryRun = false, limit = null }
     const eligibleReview = rec.review_status === 'auto_approved';
     const hasOpenFarmSupport = rec.has_openfarm_support === true;
     const hasStrongFoodEvidence = rec.strong_food_evidence === true;
-    const edibleSignal = rec.edible === true || (Array.isArray(rec.edible_parts) && rec.edible_parts.length > 0);
+    const confidenceBand = rec.match_confidence_band || 'low';
+    const edibleSignal = rec.edible === true
+      || (Array.isArray(rec.edible_parts) && rec.edible_parts.length > 0)
+      || hasStrongFoodEvidence;
     const guardrailBlocked = Boolean(rec.guardrail_flags?.conifer || rec.guardrail_flags?.industrial);
 
     const candidate = mapToImportRecord(rec, import_batch_id, imported_at);
     const validation = validateRecord(['canonical_id', 'scientific_name', 'common_name', 'catalog_status', 'review_status'], candidate);
     const contentValid = Boolean(candidate.canonical_id && candidate.scientific_name && candidate.common_name);
 
-    const promotionGatePassed = (hasOpenFarmSupport || hasStrongFoodEvidence) && edibleSignal && !guardrailBlocked;
+    const confidenceGatePassed = confidenceBand === 'high'
+      || (confidenceBand === 'medium' && (hasOpenFarmSupport || hasStrongFoodEvidence));
+
+    const promotionGatePassed = confidenceGatePassed
+      && (hasOpenFarmSupport || hasStrongFoodEvidence)
+      && edibleSignal
+      && !guardrailBlocked;
 
     if (eligibleClass && eligibleReview && promotionGatePassed && validation.valid && contentValid) {
       promoted.push(candidate);

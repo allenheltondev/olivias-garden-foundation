@@ -45,7 +45,7 @@ test('promote partitions records exhaustively and sets import fields', async () 
   const step6 = [
     {
       canonical_id: '1', scientific_name: 'A', common_name: 'A', catalog_status: 'core', review_status: 'auto_approved',
-      has_openfarm_support: true, strong_food_evidence: false, edible: true, edible_parts: ['leaf'], guardrail_flags: { conifer: false, industrial: false },
+      has_openfarm_support: true, strong_food_evidence: false, edible: true, edible_parts: ['leaf'], match_confidence_band: 'high', guardrail_flags: { conifer: false, industrial: false },
     },
     { canonical_id: '2', scientific_name: 'B', common_name: 'B', catalog_status: 'extended', review_status: 'needs_review' },
     { canonical_id: '3', scientific_name: null, common_name: 'C', catalog_status: 'core', review_status: 'auto_approved', has_openfarm_support: true, edible: true },

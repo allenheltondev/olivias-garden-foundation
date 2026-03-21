@@ -31,6 +31,9 @@ test('step4 enforces openfarm-first and guardrails', () => {
   assert.equal(openFarmSupported.relevance_class, 'food_crop_core');
   assert.equal(openFarmSupported.catalog_status, 'core');
   assert.equal(openFarmSupported.has_openfarm_support, true);
+  assert.equal(openFarmSupported.match_confidence_band, 'high');
+  assert.equal(openFarmSupported.source_confidence, 0.95);
+  assert.equal(openFarmSupported.review_status, 'auto_approved');
 
   const fuzzyMatched = classifyCanonical([
     {

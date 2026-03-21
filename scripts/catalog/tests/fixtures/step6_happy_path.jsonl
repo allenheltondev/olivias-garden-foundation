@@ -1,3 +1,3 @@
-{"canonical_id":"crop-1","scientific_name":"Solanum lycopersicum","common_name":"Tomato","catalog_status":"core","review_status":"auto_approved","has_openfarm_support":true,"strong_food_evidence":false,"edible":true,"edible_parts":["fruit"],"guardrail_flags":{"conifer":false,"industrial":false}}
+{"canonical_id":"crop-1","scientific_name":"Solanum lycopersicum","common_name":"Tomato","catalog_status":"core","review_status":"auto_approved","has_openfarm_support":true,"strong_food_evidence":false,"edible":true,"edible_parts":["fruit"],"match_confidence_band":"high","guardrail_flags":{"conifer":false,"industrial":false}}
 {"canonical_id":"crop-2","scientific_name":"Ocimum basilicum","common_name":"Basil","catalog_status":"extended","review_status":"needs_review"}
 {"canonical_id":"crop-3","scientific_name":"Rosa canina","common_name":"Dog Rose","catalog_status":"excluded","review_status":"rejected"}

@@ -97,6 +97,7 @@ export function deriveCanonicalRecord(records, classificationMeta = null) {
     review_status: meta.review_status,
     relevance_class: meta.relevance_class,
     source_confidence: meta.source_confidence,
+    match_confidence_band: meta.match_confidence_band || 'low',
     source_agreement_score: meta.source_agreement_score,
     scientific_name: scientific.value,
     family: family.value,
