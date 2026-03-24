@@ -1,6 +1,7 @@
 import {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
+  AdminDeleteUserCommand,
   AdminSetUserPasswordCommand,
   AdminInitiateAuthCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -37,7 +38,23 @@ async function getOrCreateUser(label) {
   const email = `ci+${label}@example.com`;
   const password = deterministicPassword(label);
 
-  // Attempt to create; swallow UsernameExistsException for idempotency.
+  await ensureUser(email, password);
+
+  try {
+    return await authenticateUser(label, email, password);
+  } catch (err) {
+    if (err.name !== "NotAuthorizedException") throw err;
+
+    // User is in a bad state — delete and recreate.
+    await cognito.send(
+      new AdminDeleteUserCommand({ UserPoolId: USER_POOL_ID, Username: email })
+    );
+    await ensureUser(email, password);
+    return await authenticateUser(label, email, password);
+  }
+}
+
+async function ensureUser(email, password) {
   try {
     await cognito.send(
       new AdminCreateUserCommand({
@@ -54,7 +71,6 @@ async function getOrCreateUser(label) {
     if (err.name !== "UsernameExistsException") throw err;
   }
 
-  // Always reset password so we have a known credential for auth.
   await cognito.send(
     new AdminSetUserPasswordCommand({
       UserPoolId: USER_POOL_ID,
@@ -63,7 +79,9 @@ async function getOrCreateUser(label) {
       Permanent: true,
     })
   );
+}
 
+async function authenticateUser(label, email, password) {
   const authResult = await cognito.send(
     new AdminInitiateAuthCommand({
       UserPoolId: USER_POOL_ID,

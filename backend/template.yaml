@@ -430,6 +430,7 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminDeleteUser
                 - cognito-idp:AdminSetUserPassword
                 - cognito-idp:AdminInitiateAuth
               Resource: !GetAtt UserPool.Arn
