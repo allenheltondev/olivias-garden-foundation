@@ -89,6 +89,10 @@ async function getOrCreateUser(label) {
 async function upsertSubscriptionTier(client, userId, email, tier, subscriptionStatus) {
   const premiumExpires = tier === "premium" ? "now() + interval '365 days'" : "null";
 
+  // Remove any stale row with the same email but a different id (happens when
+  // Cognito recreates the user with a new sub).
+  await client.query(`DELETE FROM users WHERE email = $1 AND id != $2`, [email, userId]);
+
   await client.query(
     `INSERT INTO users (id, email, display_name, is_verified, tier, subscription_status, premium_expires_at)
      VALUES ($1, $2, $3, true, $4, $5, ${premiumExpires})
