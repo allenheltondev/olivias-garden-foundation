@@ -92,16 +92,15 @@ pub async fn upsert_current_user(
         .await
         .map_err(|error| db_error(&error))?;
 
-    let user_id_text = user_id.to_string();
-
     if let Some(grower_profile) = payload.grower_profile {
-        upsert_grower_profile(&client, &user_id_text, grower_profile, correlation_id).await?;
+        upsert_grower_profile(&client, user_id, grower_profile, correlation_id).await?;
     }
 
     if let Some(gatherer_profile) = payload.gatherer_profile {
-        upsert_gatherer_profile(&client, &user_id_text, gatherer_profile, correlation_id).await?;
+        upsert_gatherer_profile(&client, user_id, gatherer_profile, correlation_id).await?;
     }
 
+    let user_id_text = user_id.to_string();
     emit_profile_updated_event_best_effort(&user_id_text, correlation_id).await;
 
     Response::builder()
@@ -155,12 +154,13 @@ pub async fn get_public_user(user_id: &str) -> Result<Response<Body>, lambda_htt
 
 async fn upsert_grower_profile(
     client: &tokio_postgres::Client,
-    user_id_text: &str,
+    user_id: Uuid,
     profile: GrowerProfileInput,
     correlation_id: &str,
 ) -> Result<(), lambda_http::Error> {
     let address = location::normalize_address(&profile.address);
     let geocoded = location::geocode_address(&address, correlation_id).await?;
+
     let share_radius_km = format!("{:.3}", miles_to_km(profile.share_radius_miles));
 
     client
@@ -169,7 +169,7 @@ async fn upsert_grower_profile(
             insert into grower_profiles
                 (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, units, locale)
             values
-                ($1::uuid, $2, $3, $4, $5, $6, $7::numeric, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                ($1, $2, $3, $4, $5, $6, $7::numeric, coalesce($8::text::units_system, 'imperial'::units_system), $9)
             on conflict (user_id) do update
             set home_zone = excluded.home_zone,
                 address = excluded.address,
@@ -182,7 +182,7 @@ async fn upsert_grower_profile(
                 updated_at = now()
             ",
             &[
-                &user_id_text,
+                &user_id,
                 &profile.home_zone,
                 &address,
                 &geocoded.geo_key,
@@ -201,7 +201,7 @@ async fn upsert_grower_profile(
 
 async fn upsert_gatherer_profile(
     client: &tokio_postgres::Client,
-    user_id_text: &str,
+    user_id: Uuid,
     profile: GathererProfileInput,
     correlation_id: &str,
 ) -> Result<(), lambda_http::Error> {
@@ -215,7 +215,7 @@ async fn upsert_gatherer_profile(
             insert into gatherer_profiles
                 (user_id, address, geo_key, lat, lng, search_radius_km, organization_affiliation, units, locale)
             values
-                ($1::uuid, $2, $3, $4, $5, $6::numeric, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                ($1, $2, $3, $4, $5, $6::numeric, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
             on conflict (user_id) do update
             set address = excluded.address,
                 geo_key = excluded.geo_key,
@@ -228,7 +228,7 @@ async fn upsert_gatherer_profile(
                 updated_at = now()
             ",
             &[
-                &user_id_text,
+                &user_id,
                 &address,
                 &geocoded.geo_key,
                 &geocoded.lat,
