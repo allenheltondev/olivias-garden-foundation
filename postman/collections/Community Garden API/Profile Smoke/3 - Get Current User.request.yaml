@@ -2,12 +2,12 @@ $kind: http-request
 name: 'Get Current User (GET /me)'
 description: |-
   Retrieve the authenticated user's profile and validate the state after PUT /me.
-  
+
   This request verifies:
   - GET returns the updated profile data
   - All required fields are present with correct types
   - Onboarding status reflects completed state
-  - User ID is captured for downstream requests
+  - Captures myUserId for downstream requests
 method: GET
 url: '{{baseUrl}}/me'
 order: 3000
@@ -29,6 +29,15 @@ scripts:
 
       // --- Parse Response ---
       const jsonData = pm.response.json();
+
+      // --- Capture myUserId for downstream requests ---
+      pm.test("Capture myUserId from response", function () {
+          pm.expect(jsonData).to.have.property("id");
+          pm.expect(jsonData.id).to.be.a("string");
+          pm.collectionVariables.set("myUserId", jsonData.id);
+          pm.collectionVariables.set("userId", jsonData.id);
+          console.log("Captured myUserId:", jsonData.id);
+      });
 
       // --- Required Fields Existence Tests ---
       pm.test("Response has required field: id", function () {
@@ -109,14 +118,6 @@ scripts:
           });
       });
 
-      // --- Capture myUserId for downstream requests ---
-      pm.test("Capture myUserId from response", function () {
-          pm.expect(jsonData).to.have.property("id");
-          pm.expect(jsonData.id).to.be.a("string");
-          pm.collectionVariables.set("myUserId", jsonData.id);
-          pm.collectionVariables.set("userId", jsonData.id);
-          console.log("Captured myUserId:", jsonData.id);
-      });
 
       // --- Validate State After PUT ---
       pm.test("onboardingCompleted is true (reflects PUT update)", function () {

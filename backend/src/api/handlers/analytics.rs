@@ -36,21 +36,14 @@ pub async fn track_premium_event(
         return error_response(400, "Unsupported analytics event");
     }
 
-    let metadata = payload
-        .metadata
-        .as_ref()
-        .map(serde_json::to_string)
-        .transpose()
-        .map_err(|e| lambda_http::Error::from(format!("Invalid metadata JSON: {e}")))?;
-
     let client = db::connect().await?;
     client
         .execute(
             "
             insert into premium_analytics_events (user_id, event_name, event_source, metadata)
-            values ($1, $2, 'frontend', $3::jsonb)
+            values ($1, $2, 'frontend', $3)
             ",
-            &[&user_id, &payload.event_name, &metadata],
+            &[&user_id, &payload.event_name, &payload.metadata],
         )
         .await
         .map_err(|e| db_error(&e))?;
@@ -111,17 +104,11 @@ pub async fn log_backend_event(
     event_name: &str,
     metadata: Option<serde_json::Value>,
 ) -> Result<(), lambda_http::Error> {
-    let metadata = metadata
-        .as_ref()
-        .map(serde_json::to_string)
-        .transpose()
-        .map_err(|e| lambda_http::Error::from(format!("Invalid metadata JSON: {e}")))?;
-
     client
         .execute(
             "
             insert into premium_analytics_events (user_id, event_name, event_source, metadata)
-            values ($1, $2, 'backend', $3::jsonb)
+            values ($1, $2, 'backend', $3)
             ",
             &[&user_id, &event_name, &metadata],
         )

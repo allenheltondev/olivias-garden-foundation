@@ -533,7 +533,7 @@ async fn persist_ai_summary(
     signals: &[DerivedFeedSignal],
     artifact: &SummaryArtifact,
 ) -> Result<(), lambda_http::Error> {
-    let snapshot = serde_json::to_string(signals).map_err(|error| {
+    let snapshot: serde_json::Value = serde_json::to_value(signals).map_err(|error| {
         lambda_http::Error::from(format!("Failed to serialize signal snapshot: {error}"))
     })?;
 
@@ -553,7 +553,7 @@ async fn persist_ai_summary(
               created_at,
               updated_at
             )
-            values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, now(), now())
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
             on conflict (schema_version, geo_boundary_key, window_days)
             do update
               set summary_text = excluded.summary_text,

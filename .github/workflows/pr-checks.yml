@@ -814,7 +814,7 @@ jobs:
     name: Staging E2E API Tests
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke, contract-api-tests]
     env:
       AWS_REGION: us-east-1
 

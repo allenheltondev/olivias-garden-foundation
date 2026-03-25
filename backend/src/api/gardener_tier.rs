@@ -1,10 +1,6 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Client;
 use uuid::Uuid;
-
-const SHARING_OUTCOMES_WEIGHT: i32 = 20;
-const PHOTO_TRUST_WEIGHT: i32 = 15;
-const RELIABILITY_WEIGHT: i32 = 15;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
@@ -15,7 +11,7 @@ pub enum GardenerTier {
     Master,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::struct_field_names)]
 pub struct GardenerTierScoreBreakdown {
@@ -44,175 +40,83 @@ pub struct GardenerTierProfile {
     pub decision: GardenerTierDecision,
 }
 
-#[allow(clippy::too_many_lines, clippy::cast_possible_truncation)]
-pub async fn evaluate_and_record(
+/// Read-only tier query — no scoring, no promotion inserts.
+pub async fn load_tier_read_only(
     client: &Client,
     user_id: Uuid,
 ) -> Result<GardenerTierProfile, lambda_http::Error> {
-    let metrics = client
-        .query_one(
-            r"
-            with crop_metrics as (
-              select count(distinct gcl.crop_id)::int as diversity
-              from grower_crop_library gcl
-              where gcl.user_id = $1 and gcl.status in ('planning', 'growing')
-            ),
-            season_metrics as (
-              select count(distinct date_part('quarter', sl.created_at)::int)::int as active_quarters
-              from surplus_listings sl
-              where sl.user_id = $1 and sl.deleted_at is null and sl.created_at >= now() - interval '365 days'
-            ),
-            share_metrics as (
-              select count(*) filter (where c.status = 'completed')::int as completed_shares,
-                     count(*)::int as total_claims
-              from claims c
-              join surplus_listings sl on sl.id = c.listing_id
-              where sl.user_id = $1
-            ),
-            evidence_metrics as (
-              select coalesce(avg(trust_score), 0)::double precision as avg_trust
-              from badge_evidence_submissions
-              where user_id = $1 and status in ('auto_approved', 'needs_review')
-            )
-            select
-              cm.diversity,
-              sm.active_quarters,
-              shm.completed_shares,
-              shm.total_claims,
-              em.avg_trust
-            from crop_metrics cm
-            cross join season_metrics sm
-            cross join share_metrics shm
-            cross join evidence_metrics em
-            ",
-            &[&user_id],
-        )
-        .await
-        .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
-
-    let diversity = metrics.get::<_, i32>("diversity");
-    let active_quarters = metrics.get::<_, i32>("active_quarters");
-    let completed_shares = metrics.get::<_, i32>("completed_shares");
-    let total_claims = metrics.get::<_, i32>("total_claims");
-    let avg_trust = metrics.get::<_, f64>("avg_trust");
-
-    let crop_diversity_points = bucket_points(diversity, &[(1, 8), (3, 16), (5, 24), (8, 30)]);
-    let seasonal_consistency_points =
-        bucket_points(active_quarters, &[(1, 5), (2, 10), (3, 15), (4, 20)]);
-    let sharing_outcomes_points = bucket_points(
-        completed_shares,
-        &[(1, 6), (3, 12), (8, 16), (15, SHARING_OUTCOMES_WEIGHT)],
-    );
-
-    let reliability_ratio = if total_claims == 0 {
-        1.0
-    } else {
-        f64::from(completed_shares) / f64::from(total_claims)
-    }
-    .clamp(0.0, 1.0);
-
-    let reliability_points = (reliability_ratio * f64::from(RELIABILITY_WEIGHT)).round() as i32;
-    let photo_trust_points =
-        ((avg_trust / 100.0).clamp(0.0, 1.0) * f64::from(PHOTO_TRUST_WEIGHT)).round() as i32;
-
-    let total_points = crop_diversity_points
-        + seasonal_consistency_points
-        + sharing_outcomes_points
-        + photo_trust_points
-        + reliability_points;
-
-    let tier = if total_points >= 80 {
-        GardenerTier::Master
-    } else if total_points >= 60 {
-        GardenerTier::Pro
-    } else if total_points >= 35 {
-        GardenerTier::Intermediate
-    } else {
-        GardenerTier::Novice
-    };
-
-    let now = chrono::Utc::now();
-    let explanation = vec![
-        format!("Verified crop diversity observed: {diversity} unique crops."),
-        format!(
-            "Seasonal consistency observed: {active_quarters} active quarter(s) in trailing year."
-        ),
-        format!("Sharing outcomes: {completed_shares}/{total_claims} completed claims."),
-        format!("Photo evidence trust average: {:.1}.", avg_trust),
-        format!(
-            "Reliability completion ratio: {:.0}%.",
-            reliability_ratio * 100.0
-        ),
-    ];
-
-    let latest = client
+    let row = client
         .query_opt(
-            "select tier::text as tier, promoted_at from gardener_tier_promotions where user_id = $1 order by promoted_at desc limit 1",
+            "select tier::text as tier, promoted_at, explanation, score_breakdown from gardener_tier_promotions where user_id = $1 order by promoted_at desc limit 1",
             &[&user_id],
         )
         .await
         .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
 
-    let mut last_promotion_at = latest.as_ref().map(|row| {
-        row.get::<_, chrono::DateTime<chrono::Utc>>("promoted_at")
-            .to_rfc3339()
-    });
+    #[allow(clippy::option_if_let_else)]
+    match row {
+        Some(row) => {
+            let tier_str: String = row.get("tier");
+            let tier = parse_tier(&tier_str).unwrap_or(GardenerTier::Novice);
+            let promoted_at: chrono::DateTime<chrono::Utc> = row.get("promoted_at");
+            let breakdown_json: serde_json::Value = row.get("score_breakdown");
+            let breakdown: GardenerTierScoreBreakdown = serde_json::from_value(breakdown_json)
+                .unwrap_or(GardenerTierScoreBreakdown {
+                    crop_diversity_points: 0,
+                    seasonal_consistency_points: 0,
+                    sharing_outcomes_points: 0,
+                    photo_trust_points: 0,
+                    reliability_points: 0,
+                    total_points: 0,
+                });
+            let explanation_text: String = row.get("explanation");
+            let explanation: Vec<String> = explanation_text
+                .split(". ")
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    let trimmed = s.trim();
+                    if trimmed.ends_with('.') {
+                        trimmed.to_string()
+                    } else {
+                        format!("{trimmed}.")
+                    }
+                })
+                .collect();
 
-    let prior_tier = latest.and_then(|row| parse_tier(&row.get::<_, String>("tier")));
-
-    if prior_tier.as_ref().map_or(true, |prior| tier > *prior) {
-        client
-            .execute(
-                "insert into gardener_tier_promotions (user_id, tier, explanation, score_breakdown, total_score, promoted_at) values ($1, $2::gardener_tier, $3, $4::jsonb, $5, $6)",
-                &[
-                    &user_id,
-                    &tier_as_str(&tier),
-                    &explanation.join(" "),
-                    &serde_json::to_string(&GardenerTierScoreBreakdown {
-                        crop_diversity_points,
-                        seasonal_consistency_points,
-                        sharing_outcomes_points,
-                        photo_trust_points,
-                        reliability_points,
-                        total_points,
-                    })
-                    .map_err(|e| lambda_http::Error::from(format!("Serialize error: {e}")))?,
-                    &total_points,
-                    &now,
-                ],
-            )
-            .await
-            .map_err(|e| lambda_http::Error::from(format!("Database query error: {e}")))?;
-
-        last_promotion_at = Some(now.to_rfc3339());
+            Ok(GardenerTierProfile {
+                current_tier: tier.clone(),
+                last_promotion_at: Some(promoted_at.to_rfc3339()),
+                decision: GardenerTierDecision {
+                    tier,
+                    evaluated_at: promoted_at.to_rfc3339(),
+                    explanation,
+                    breakdown,
+                },
+            })
+        }
+        None => Ok(default_novice_profile()),
     }
-
-    Ok(GardenerTierProfile {
-        current_tier: tier.clone(),
-        last_promotion_at,
-        decision: GardenerTierDecision {
-            tier,
-            evaluated_at: now.to_rfc3339(),
-            explanation,
-            breakdown: GardenerTierScoreBreakdown {
-                crop_diversity_points,
-                seasonal_consistency_points,
-                sharing_outcomes_points,
-                photo_trust_points,
-                reliability_points,
-                total_points,
-            },
-        },
-    })
 }
 
-fn bucket_points(value: i32, steps: &[(i32, i32)]) -> i32 {
-    steps
-        .iter()
-        .filter(|(min, _)| value >= *min)
-        .map(|(_, pts)| *pts)
-        .max()
-        .unwrap_or(0)
+pub fn default_novice_profile() -> GardenerTierProfile {
+    let now = chrono::Utc::now().to_rfc3339();
+    GardenerTierProfile {
+        current_tier: GardenerTier::Novice,
+        last_promotion_at: None,
+        decision: GardenerTierDecision {
+            tier: GardenerTier::Novice,
+            evaluated_at: now,
+            explanation: vec!["No evaluation recorded yet.".to_string()],
+            breakdown: GardenerTierScoreBreakdown {
+                crop_diversity_points: 0,
+                seasonal_consistency_points: 0,
+                sharing_outcomes_points: 0,
+                photo_trust_points: 0,
+                reliability_points: 0,
+                total_points: 0,
+            },
+        },
+    }
 }
 
 fn parse_tier(value: &str) -> Option<GardenerTier> {
@@ -225,11 +129,49 @@ fn parse_tier(value: &str) -> Option<GardenerTier> {
     }
 }
 
-const fn tier_as_str(tier: &GardenerTier) -> &'static str {
-    match tier {
-        GardenerTier::Novice => "novice",
-        GardenerTier::Intermediate => "intermediate",
-        GardenerTier::Pro => "pro",
-        GardenerTier::Master => "master",
+#[cfg(test)]
+#[allow(clippy::panic)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_novice_profile_has_correct_tier_and_zero_breakdown() {
+        let profile = default_novice_profile();
+
+        assert_eq!(profile.current_tier, GardenerTier::Novice);
+        assert!(profile.last_promotion_at.is_none());
+        assert_eq!(profile.decision.tier, GardenerTier::Novice);
+        assert_eq!(
+            profile.decision.explanation,
+            vec!["No evaluation recorded yet."]
+        );
+
+        let b = &profile.decision.breakdown;
+        assert_eq!(b.crop_diversity_points, 0);
+        assert_eq!(b.seasonal_consistency_points, 0);
+        assert_eq!(b.sharing_outcomes_points, 0);
+        assert_eq!(b.photo_trust_points, 0);
+        assert_eq!(b.reliability_points, 0);
+        assert_eq!(b.total_points, 0);
+    }
+
+    #[test]
+    fn default_novice_profile_serializes_with_correct_json_shape() {
+        let profile = default_novice_profile();
+        let json =
+            serde_json::to_value(&profile).unwrap_or_else(|e| panic!("serialization failed: {e}"));
+
+        assert_eq!(json["currentTier"], "novice");
+        assert!(json["lastPromotionAt"].is_null());
+        assert_eq!(json["decision"]["tier"], "novice");
+        assert_eq!(json["decision"]["breakdown"]["cropDiversityPoints"], 0);
+        assert_eq!(
+            json["decision"]["breakdown"]["seasonalConsistencyPoints"],
+            0
+        );
+        assert_eq!(json["decision"]["breakdown"]["sharingOutcomesPoints"], 0);
+        assert_eq!(json["decision"]["breakdown"]["photoTrustPoints"], 0);
+        assert_eq!(json["decision"]["breakdown"]["reliabilityPoints"], 0);
+        assert_eq!(json["decision"]["breakdown"]["totalPoints"], 0);
     }
 }

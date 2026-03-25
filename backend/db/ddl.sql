@@ -230,7 +230,7 @@ create table if not exists grower_profiles (
   geo_key text,   -- geohash
   lat double precision,
   lng double precision,
-  share_radius_km numeric(8,3) not null default 5.000,
+  share_radius_km double precision not null default 5.0,
   units units_system not null default 'imperial',
   locale text,
   created_at timestamptz not null default now(),
@@ -253,7 +253,7 @@ create table if not exists gatherer_profiles (
   geo_key text not null,
   lat double precision not null,
   lng double precision not null,
-  search_radius_km numeric(8,3) not null default 10.000,
+  search_radius_km double precision not null default 10.0,
   organization_affiliation text,
   units units_system not null default 'imperial',
   locale text,

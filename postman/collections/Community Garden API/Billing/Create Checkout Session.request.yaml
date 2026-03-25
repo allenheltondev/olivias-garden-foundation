@@ -2,7 +2,7 @@ $kind: http-request
 name: Create Checkout Session
 description: |-
   Create a Stripe checkout session for premium subscription.
-  
+
   Redirects user to Stripe-hosted checkout page for payment processing.
 method: POST
 url: '{{baseUrl}}/billing/checkout-session'
@@ -23,16 +23,23 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test("Status code is 200", function () {
-          pm.response.to.have.status(200);
+      pm.test("Status code is 200 or 503 when Stripe is not configured", function () {
+          pm.expect([200, 503]).to.include(pm.response.code);
       });
 
-      pm.test("Response contains Stripe checkout session details", function () {
-          const response = pm.response.json();
-          pm.expect(response).to.have.property("checkoutUrl");
-          pm.expect(response.checkoutUrl).to.be.a("string").and.not.empty;
-          pm.expect(response.checkoutUrl.startsWith("https://")).to.be.true;
+      if (pm.response.code === 200) {
+          pm.test("Response contains Stripe checkout session details", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("checkoutUrl");
+              pm.expect(response.checkoutUrl).to.be.a("string").and.not.empty;
+              pm.expect(response.checkoutUrl.startsWith("https://")).to.be.true;
 
-          pm.expect(response).to.have.property("checkoutSessionId");
-          pm.expect(response.checkoutSessionId).to.be.a("string").and.not.empty;
-      });
+              pm.expect(response).to.have.property("checkoutSessionId");
+              pm.expect(response.checkoutSessionId).to.be.a("string").and.not.empty;
+          });
+      } else {
+          pm.test("503 response contains service unavailable error", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("error");
+          });
+      }

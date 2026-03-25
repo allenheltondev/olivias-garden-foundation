@@ -314,6 +314,10 @@ fn map_api_error_to_response(
         return crop::error_response(503, &message);
     }
 
+    if message.contains("is not configured") {
+        return crop::error_response(503, "Service not configured in this environment");
+    }
+
     if message.contains("Address could not be geocoded") {
         return crop::error_response(400, &message);
     }
@@ -429,6 +433,22 @@ mod tests {
             lambda_http::Error::from("user type not set, onboarding may be incomplete".to_string());
         let response = map_api_error_to_response(&error).unwrap();
         assert_eq!(response.status().as_u16(), 403);
+    }
+
+    #[test]
+    fn map_api_error_maps_not_configured_to_503() {
+        let error = lambda_http::Error::from("STRIPE_SECRET_KEY is not configured".to_string());
+        let response = map_api_error_to_response(&error).unwrap();
+        assert_eq!(response.status().as_u16(), 503);
+
+        let body = match response.body() {
+            Body::Text(text) => text.as_str(),
+            _ => "",
+        };
+        assert!(
+            body.contains("Service not configured"),
+            "503 body should use generic message, not leak env var names"
+        );
     }
 
     #[test]

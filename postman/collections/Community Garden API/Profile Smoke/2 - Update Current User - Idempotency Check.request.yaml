@@ -2,7 +2,13 @@ $kind: http-request
 name: 'Update Current User - Idempotency Check (PUT /me)'
 description: |-
   Idempotency verification: Re-run PUT /me with the exact same payload.
-  Verifies the API returns 204 on repeated calls with no side effects.
+  
+  This request verifies that:
+  - The API returns 204 on repeated calls
+  - No unintended side effects occur
+  
+  Per OpenAPI spec: "This endpoint uses upsert semantics. Repeated requests with
+  the same payload are safe and will not cause duplicate data."
 method: PUT
 url: '{{baseUrl}}/me'
 order: 2000

@@ -1,7 +1,12 @@
 $kind: http-request
 name: Update Current User
 description: |-
-  Create or update the authenticated user's profile. Returns 204 No Content on success.
+  Create or update the authenticated user's profile. Supports both grower and gatherer profile types.
+  Returns 204 No Content on success.
+  
+  User Types:
+  - grower: Users who grow food and share surplus
+  - gatherer: Users who look for and collect available food
 method: PUT
 url: '{{baseUrl}}/me'
 order: 2000

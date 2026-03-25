@@ -174,14 +174,14 @@ pub async fn handle_webhook(
     };
 
     if let Err(err) = result {
-        let payload_text = serde_json::to_string(&event).unwrap_or_default();
+        let payload_json: serde_json::Value = serde_json::to_value(&event).unwrap_or_default();
         let _ = client
             .execute(
                 "
                 insert into stripe_webhook_failures (event_id, event_type, reason, payload)
-                values ($1, $2, $3, $4::jsonb)
+                values ($1, $2, $3, $4)
                 ",
-                &[&event_id, &event_type, &err, &payload_text],
+                &[&event_id, &event_type, &err, &payload_json],
             )
             .await;
 
