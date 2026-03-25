@@ -161,7 +161,7 @@ async fn upsert_grower_profile(
     let address = location::normalize_address(&profile.address);
     let geocoded = location::geocode_address(&address, correlation_id).await?;
 
-    let share_radius_km = format!("{:.3}", miles_to_km(profile.share_radius_miles));
+    let share_radius_km = miles_to_km(profile.share_radius_miles);
 
     client
         .execute(
@@ -169,7 +169,7 @@ async fn upsert_grower_profile(
             insert into grower_profiles
                 (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, units, locale)
             values
-                ($1, $2, $3, $4, $5, $6, $7::numeric, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                ($1, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
             on conflict (user_id) do update
             set home_zone = excluded.home_zone,
                 address = excluded.address,
@@ -188,7 +188,7 @@ async fn upsert_grower_profile(
                 &geocoded.geo_key,
                 &geocoded.lat,
                 &geocoded.lng,
-                &share_radius_km as &(dyn tokio_postgres::types::ToSql + Sync),
+                &share_radius_km,
                 &profile.units,
                 &profile.locale,
             ],
@@ -207,7 +207,7 @@ async fn upsert_gatherer_profile(
 ) -> Result<(), lambda_http::Error> {
     let address = location::normalize_address(&profile.address);
     let geocoded = location::geocode_address(&address, correlation_id).await?;
-    let search_radius_km = format!("{:.3}", miles_to_km(profile.search_radius_miles));
+    let search_radius_km = miles_to_km(profile.search_radius_miles);
 
     client
         .execute(
@@ -215,7 +215,7 @@ async fn upsert_gatherer_profile(
             insert into gatherer_profiles
                 (user_id, address, geo_key, lat, lng, search_radius_km, organization_affiliation, units, locale)
             values
-                ($1, $2, $3, $4, $5, $6::numeric, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                ($1, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
             on conflict (user_id) do update
             set address = excluded.address,
                 geo_key = excluded.geo_key,
@@ -233,7 +233,7 @@ async fn upsert_gatherer_profile(
                 &geocoded.geo_key,
                 &geocoded.lat,
                 &geocoded.lng,
-                &search_radius_km as &(dyn tokio_postgres::types::ToSql + Sync),
+                &search_radius_km,
                 &profile.organization_affiliation,
                 &profile.units,
                 &profile.locale,
