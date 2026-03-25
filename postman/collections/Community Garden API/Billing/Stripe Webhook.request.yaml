@@ -2,7 +2,7 @@ $kind: http-request
 name: Stripe Webhook
 description: |-
   Handle Stripe webhook events for subscription lifecycle.
-  
+
   Note: This endpoint is called by Stripe, not by clients directly.
   Requires Stripe webhook signature verification.
 method: POST
@@ -36,14 +36,21 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      pm.test("Status code is 200", function () {
-          pm.response.to.have.status(200);
+      pm.test("Status code is 200 or 503 when Stripe is not configured", function () {
+          pm.expect([200, 503]).to.include(pm.response.code);
       });
 
-      pm.test("Response acknowledges webhook receipt", function () {
-          const response = pm.response.json();
-          pm.expect(response).to.have.property("received", true);
-          if (Object.prototype.hasOwnProperty.call(response, "duplicate")) {
-              pm.expect(response.duplicate).to.be.a("boolean");
-          }
-      });
+      if (pm.response.code === 200) {
+          pm.test("Response acknowledges webhook receipt", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("received", true);
+              if (Object.prototype.hasOwnProperty.call(response, "duplicate")) {
+                  pm.expect(response.duplicate).to.be.a("boolean");
+              }
+          });
+      } else {
+          pm.test("503 response contains service unavailable error", function () {
+              const response = pm.response.json();
+              pm.expect(response).to.have.property("error");
+          });
+      }
