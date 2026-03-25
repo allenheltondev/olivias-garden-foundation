@@ -124,8 +124,8 @@ pub async fn update_agent_task_status(
     task_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     let user_id = extract_user_id(request)?;
-    let task_uuid =
-        Uuid::parse_str(task_id).map_err(|_| lambda_http::Error::from("Invalid task id"))?;
+    let task_uuid = Uuid::parse_str(task_id)
+        .map_err(|_| lambda_http::Error::from("taskId must be a valid UUID"))?;
     let payload: UpdateAgentTaskStatusRequest = parse_json_body(request)?;
     let client = db::connect().await?;
     if let Err(feature_locked) = require_premium_automation(&client, user_id).await {

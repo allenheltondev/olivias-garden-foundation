@@ -20,6 +20,13 @@ body:
       "status": "paused"
     }
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const currentTaskId = pm.collectionVariables.get("taskId");
+      if (!currentTaskId) {
+          pm.collectionVariables.set("taskId", "00000000-0000-0000-0000-000000000000");
+      }
   - type: afterResponse
     language: text/javascript
     code: |-
