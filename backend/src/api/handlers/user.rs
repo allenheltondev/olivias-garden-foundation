@@ -6,8 +6,8 @@ use crate::location;
 use crate::middleware::entitlements;
 use crate::models::crop::ErrorResponse;
 use crate::models::profile::{
-    GrowerProfile, MeProfileResponse, PublicUserResponse, PutMeRequest, SeasonalTimelineEntry,
-    SubscriptionMetadata, UserRatingSummary, UserType,
+    GathererProfileInput, GrowerProfile, GrowerProfileInput, MeProfileResponse, PublicUserResponse,
+    PutMeRequest, SeasonalTimelineEntry, SubscriptionMetadata, UserRatingSummary, UserType,
 };
 use crate::tips_framework::{
     assign_experience_level, recommend_curated_tips, season_from_month, ExperienceSignals,
@@ -50,7 +50,6 @@ pub async fn get_current_user(
     )
 }
 
-#[allow(clippy::too_many_lines)]
 pub async fn upsert_current_user(
     request: &Request,
     correlation_id: &str,
@@ -96,81 +95,11 @@ pub async fn upsert_current_user(
     let user_id_text = user_id.to_string();
 
     if let Some(grower_profile) = payload.grower_profile {
-        let address = location::normalize_address(&grower_profile.address);
-        let geocoded = location::geocode_address(&address, correlation_id).await?;
-        let share_radius_km = miles_to_km(grower_profile.share_radius_miles);
-
-        client
-            .execute(
-                "
-                insert into grower_profiles
-                    (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, units, locale)
-                values
-                    ($1::uuid, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
-                on conflict (user_id) do update
-                set home_zone = excluded.home_zone,
-                    address = excluded.address,
-                    geo_key = excluded.geo_key,
-                    lat = excluded.lat,
-                    lng = excluded.lng,
-                    share_radius_km = excluded.share_radius_km,
-                    units = excluded.units,
-                    locale = excluded.locale,
-                    updated_at = now()
-                ",
-                &[
-                    &user_id_text,
-                    &grower_profile.home_zone,
-                    &address,
-                    &geocoded.geo_key,
-                    &geocoded.lat,
-                    &geocoded.lng,
-                    &share_radius_km,
-                    &grower_profile.units,
-                    &grower_profile.locale,
-                ],
-            )
-            .await
-            .map_err(|error| db_error(&error))?;
+        upsert_grower_profile(&client, &user_id_text, grower_profile, correlation_id).await?;
     }
 
     if let Some(gatherer_profile) = payload.gatherer_profile {
-        let address = location::normalize_address(&gatherer_profile.address);
-        let geocoded = location::geocode_address(&address, correlation_id).await?;
-        let search_radius_km = miles_to_km(gatherer_profile.search_radius_miles);
-
-        client
-            .execute(
-                "
-                insert into gatherer_profiles
-                    (user_id, address, geo_key, lat, lng, search_radius_km, organization_affiliation, units, locale)
-                values
-                    ($1::uuid, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
-                on conflict (user_id) do update
-                set address = excluded.address,
-                    geo_key = excluded.geo_key,
-                    lat = excluded.lat,
-                    lng = excluded.lng,
-                    search_radius_km = excluded.search_radius_km,
-                    organization_affiliation = excluded.organization_affiliation,
-                    units = excluded.units,
-                    locale = excluded.locale,
-                    updated_at = now()
-                ",
-                &[
-                    &user_id_text,
-                    &address,
-                    &geocoded.geo_key,
-                    &geocoded.lat,
-                    &geocoded.lng,
-                    &search_radius_km,
-                    &gatherer_profile.organization_affiliation,
-                    &gatherer_profile.units,
-                    &gatherer_profile.locale,
-                ],
-            )
-            .await
-            .map_err(|error| db_error(&error))?;
+        upsert_gatherer_profile(&client, &user_id_text, gatherer_profile, correlation_id).await?;
     }
 
     emit_profile_updated_event_best_effort(&user_id_text, correlation_id).await;
@@ -222,6 +151,98 @@ pub async fn get_public_user(user_id: &str) -> Result<Response<Body>, lambda_htt
             error: "User not found".to_string(),
         },
     )
+}
+
+async fn upsert_grower_profile(
+    client: &tokio_postgres::Client,
+    user_id_text: &str,
+    profile: GrowerProfileInput,
+    correlation_id: &str,
+) -> Result<(), lambda_http::Error> {
+    let address = location::normalize_address(&profile.address);
+    let geocoded = location::geocode_address(&address, correlation_id).await?;
+    let share_radius_km = miles_to_km(profile.share_radius_miles);
+
+    client
+        .execute(
+            "
+            insert into grower_profiles
+                (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, units, locale)
+            values
+                ($1::uuid, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+            on conflict (user_id) do update
+            set home_zone = excluded.home_zone,
+                address = excluded.address,
+                geo_key = excluded.geo_key,
+                lat = excluded.lat,
+                lng = excluded.lng,
+                share_radius_km = excluded.share_radius_km,
+                units = excluded.units,
+                locale = excluded.locale,
+                updated_at = now()
+            ",
+            &[
+                &user_id_text,
+                &profile.home_zone,
+                &address,
+                &geocoded.geo_key,
+                &geocoded.lat,
+                &geocoded.lng,
+                &share_radius_km,
+                &profile.units,
+                &profile.locale,
+            ],
+        )
+        .await
+        .map_err(|error| db_error(&error))?;
+
+    Ok(())
+}
+
+async fn upsert_gatherer_profile(
+    client: &tokio_postgres::Client,
+    user_id_text: &str,
+    profile: GathererProfileInput,
+    correlation_id: &str,
+) -> Result<(), lambda_http::Error> {
+    let address = location::normalize_address(&profile.address);
+    let geocoded = location::geocode_address(&address, correlation_id).await?;
+    let search_radius_km = miles_to_km(profile.search_radius_miles);
+
+    client
+        .execute(
+            "
+            insert into gatherer_profiles
+                (user_id, address, geo_key, lat, lng, search_radius_km, organization_affiliation, units, locale)
+            values
+                ($1::uuid, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+            on conflict (user_id) do update
+            set address = excluded.address,
+                geo_key = excluded.geo_key,
+                lat = excluded.lat,
+                lng = excluded.lng,
+                search_radius_km = excluded.search_radius_km,
+                organization_affiliation = excluded.organization_affiliation,
+                units = excluded.units,
+                locale = excluded.locale,
+                updated_at = now()
+            ",
+            &[
+                &user_id_text,
+                &address,
+                &geocoded.geo_key,
+                &geocoded.lat,
+                &geocoded.lng,
+                &search_radius_km,
+                &profile.organization_affiliation,
+                &profile.units,
+                &profile.locale,
+            ],
+        )
+        .await
+        .map_err(|error| db_error(&error))?;
+
+    Ok(())
 }
 
 async fn emit_profile_updated_event(

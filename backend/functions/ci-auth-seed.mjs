@@ -112,8 +112,8 @@ async function upsertSubscriptionTier(client, userId, email, tier, subscriptionS
   await client.query(`DELETE FROM users WHERE email = $1 AND id != $2`, [email, userId]);
 
   await client.query(
-    `INSERT INTO users (id, email, display_name, is_verified, tier, subscription_status, premium_expires_at)
-     VALUES ($1, $2, $3, true, $4, $5, ${premiumExpires})
+    `INSERT INTO users (id, email, display_name, is_verified, tier, subscription_status, premium_expires_at, user_type, onboarding_completed)
+     VALUES ($1, $2, $3, true, $4, $5, ${premiumExpires}, null, false)
      ON CONFLICT (id) DO UPDATE
        SET email            = EXCLUDED.email,
            display_name     = EXCLUDED.display_name,
@@ -121,6 +121,8 @@ async function upsertSubscriptionTier(client, userId, email, tier, subscriptionS
            tier             = EXCLUDED.tier,
            subscription_status = EXCLUDED.subscription_status,
            premium_expires_at  = EXCLUDED.premium_expires_at,
+           user_type        = null,
+           onboarding_completed = false,
            updated_at       = now(),
            deleted_at       = null`,
     [userId, email, `CI ${tier.charAt(0).toUpperCase() + tier.slice(1)} User`, tier, subscriptionStatus]

@@ -1,7 +1,10 @@
 $kind: http-request
 name: 'Update Current User (PUT /me)'
 description: |-
-  Create or update the authenticated user's profile. Returns 204 No Content on success.
+  Create or update the authenticated user's profile. This request:
+  - Updates user profile with grower configuration
+  - Returns 204 No Content on success
+  - Captures myUserId from a follow-up GET /me
 method: PUT
 url: '{{baseUrl}}/me'
 order: 1000

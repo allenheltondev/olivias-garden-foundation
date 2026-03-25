@@ -55,10 +55,7 @@ export function useOnboarding(onSuccess?: () => void) {
 
         logger.info('User type submitted successfully', { userType });
 
-        if (onSuccess) {
-          onSuccess();
-        }
-
+        onSuccess?.();
       } catch (error) {
         const err = error as ApiError;
         logger.error('Failed to submit user type', err, {
@@ -96,10 +93,7 @@ export function useOnboarding(onSuccess?: () => void) {
 
         logger.info('Grower profile submitted successfully');
 
-        if (onSuccess) {
-          onSuccess();
-        }
-
+        onSuccess?.();
       } catch (error) {
         const err = error as ApiError;
         logger.error('Failed to submit grower profile', err, {
@@ -136,10 +130,7 @@ export function useOnboarding(onSuccess?: () => void) {
 
         logger.info('Gatherer profile submitted successfully');
 
-        if (onSuccess) {
-          onSuccess();
-        }
-
+        onSuccess?.();
       } catch (error) {
         const err = error as ApiError;
         logger.error('Failed to submit gatherer profile', err, {
