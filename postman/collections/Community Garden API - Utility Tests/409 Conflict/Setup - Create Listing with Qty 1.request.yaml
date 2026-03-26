@@ -22,6 +22,7 @@ body:
       "availableStart": "2026-07-01T08:00:00Z",
       "availableEnd": "2026-07-03T18:00:00Z",
       "pickupLocationText": "Front porch",
+      "pickupAddress": "1600 Pennsylvania Avenue NW, Washington, DC 20500",
       "status": "active"
     }
 scripts:
