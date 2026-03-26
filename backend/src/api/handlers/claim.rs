@@ -129,6 +129,9 @@ pub async fn create_claim(
     let listing_crop_id: Uuid = listing.get("crop_id");
 
     if !is_claimable_listing_status(&listing_status) {
+        if listing_status == "claimed" {
+            return error_response(409, "Insufficient quantity remaining");
+        }
         return Err(lambda_http::Error::from(
             "Listing is not claimable in its current status",
         ));
