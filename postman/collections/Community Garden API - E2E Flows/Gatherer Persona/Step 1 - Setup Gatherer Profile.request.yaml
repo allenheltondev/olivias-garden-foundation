@@ -1,0 +1,35 @@
+$kind: http-request
+name: 'Step 1 - Setup Gatherer Profile'
+description: |-
+  Set up the gatherer user profile via PUT /me.
+
+  **Depends on**: `authToken` set to gatherer token in Step 0
+  **Asserts**: 204 response confirming profile update.
+method: PUT
+url: '{{baseUrl}}/me'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "CI Gatherer",
+      "userType": "gatherer",
+      "gathererProfile": {
+        "searchRadiusMiles": 10,
+        "address": "789 Gatherer Ave, Austin, TX 78701",
+        "units": "imperial",
+        "locale": "en-US"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 204", function () {
+          pm.response.to.have.status(204);
+      });

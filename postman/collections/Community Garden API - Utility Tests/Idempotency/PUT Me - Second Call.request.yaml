@@ -1,0 +1,44 @@
+$kind: http-request
+name: 'PUT /me - Second Call'
+description: |-
+  Second identical PUT /me request. Asserts the status code and response body
+  match the snapshot captured by the first call, verifying idempotency.
+method: PUT
+url: '{{baseUrl}}/me'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "Idempotency Test User",
+      "userType": "grower"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const expectedStatus = parseInt(pm.collectionVariables.get("putMeStatusSnapshot"), 10);
+      const expectedBody = pm.collectionVariables.get("putMeResponseSnapshot") || "";
+
+      pm.test("Status code matches first call snapshot", function () {
+          pm.expect(pm.response.code).to.eql(expectedStatus);
+      });
+
+      pm.test("Response body is equivalent to first call snapshot", function () {
+          const actualBody = pm.response.text();
+          if (expectedBody === "" && (actualBody === "" || actualBody === undefined)) {
+              // Both empty (e.g., 204 No Content) — equivalent
+              return;
+          }
+          // Compare as JSON if both are non-empty
+          if (expectedBody && actualBody) {
+              pm.expect(JSON.parse(actualBody)).to.deep.equal(JSON.parse(expectedBody));
+          } else {
+              pm.expect(actualBody || "").to.eql(expectedBody);
+          }
+      });

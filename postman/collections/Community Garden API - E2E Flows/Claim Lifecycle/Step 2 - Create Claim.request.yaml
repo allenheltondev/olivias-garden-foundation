@@ -1,0 +1,56 @@
+$kind: http-request
+name: 'Step 2 - Create Claim'
+description: |-
+  Create a claim against the listing from Step 1.
+
+  **Depends on**: `listingId` captured in Step 1
+  **Chaining**: Captures `claimId` from the response; asserts initial status is `pending`.
+method: POST
+url: '{{baseUrl}}/claims'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listingId": "{{listingId}}",
+      "quantityClaimed": 1,
+      "notes": "Claim lifecycle E2E test"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const listingId = pm.collectionVariables.get("listingId");
+      if (!listingId) {
+          console.error("listingId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Claim status is pending", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("status", "pending");
+      });
+
+      pm.test("Capture claimId for lifecycle transitions", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("id");
+
+          if (!claim.id) {
+              pm.expect.fail("Missing claim.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("claimId", claim.id);
+      });

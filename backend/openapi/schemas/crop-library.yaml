@@ -1,0 +1,69 @@
+GrowerCropItem:
+  type: object
+  required: [id, userId, cropId, status, visibility, surplusEnabled, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      format: uuid
+    cropId:
+      type: string
+      format: uuid
+    varietyId:
+      type: string
+      format: uuid
+      nullable: true
+    status:
+      type: string
+      enum: [interested, planning, growing, paused]
+    visibility:
+      type: string
+      enum: [private, local, public]
+    surplusEnabled:
+      type: boolean
+    nickname:
+      type: string
+      nullable: true
+    defaultUnit:
+      type: string
+      nullable: true
+    notes:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+UpsertGrowerCropRequest:
+  type: object
+  required: [cropId, status, visibility, surplusEnabled]
+  properties:
+    cropId:
+      type: string
+      format: uuid
+    varietyId:
+      type: string
+      format: uuid
+      nullable: true
+    status:
+      type: string
+      enum: [interested, planning, growing, paused]
+    visibility:
+      type: string
+      enum: [private, local, public]
+    surplusEnabled:
+      type: boolean
+    nickname:
+      type: string
+      nullable: true
+    defaultUnit:
+      type: string
+      nullable: true
+    notes:
+      type: string
+      nullable: true

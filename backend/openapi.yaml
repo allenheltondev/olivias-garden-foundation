@@ -1,786 +1,108 @@
 openapi: 3.1.0
 info:
   title: Community Garden API
-  version: 1.1.1
+  version: 2.0.0
   description: |
-    REST API for authenticated user profile management, user crop library CRUD,
-    and synchronous catalog reads.
+    REST API for the community food coordination platform. Covers user profiles,
+    crop libraries, surplus listings, gatherer requests, claims, reminders,
+    AI-assisted guidance, premium analytics, and billing.
 servers:
   - url: https://api.example.com
 security:
   - bearerAuth: []
+tags:
+  - name: Profile
+    description: Authenticated user profile and onboarding
+  - name: Entitlements
+    description: Tier and entitlement introspection
+  - name: Billing
+    description: Stripe checkout and webhook lifecycle
+  - name: Crop Library
+    description: Per-user grower crop library CRUD
+  - name: Catalog
+    description: Public read-only crop and variety catalog
+  - name: Listings
+    description: Surplus listing creation, discovery, and management
+  - name: Requests
+    description: Gatherer food requests
+  - name: Claims
+    description: Claim lifecycle between gatherers and growers
+  - name: Reminders
+    description: Deterministic reminder scheduling
+  - name: Feed
+    description: Derived feed with signals, AI summaries, and guidance
+  - name: AI
+    description: Premium AI-assisted copilot features
+  - name: Agent Tasks
+    description: Premium agentic automation tasks
+  - name: Analytics
+    description: Premium analytics event tracking and KPIs
+  - name: Idempotent
+    description: Safe to retry; repeated calls produce the same result
+  - name: Premium
+    description: Requires premium tier entitlement; free-tier callers receive 403 feature_locked
+  - name: Grower Only
+    description: Requires user_type grower; other types receive 403
+  - name: Gatherer Only
+    description: Requires user_type gatherer; other types receive 403
+  - name: Public
+    description: No authentication required
 paths:
   /me:
-    get:
-      summary: Get current authenticated user's profile with onboarding status
-      description: |
-        Returns the authenticated user's profile including user type (grower or gatherer),
-        onboarding completion status, and role-specific profile data.
-
-        **Authorization**: Requires valid JWT token
-
-        **Onboarding Support**: Returns userType even when onboardingCompleted is false
-        to support resumable onboarding flows.
-      operationId: getMe
-      responses:
-        '200':
-          description: Profile payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MeProfileResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-    put:
-      summary: Update user profile, user type, and role-specific configuration
-      description: |
-        Updates the authenticated user's profile. This single endpoint handles:
-        - User type selection (grower or gatherer)
-        - Grower-specific profile data (homeZone, location, shareRadiusMiles, etc.)
-        - Gatherer-specific profile data (location, searchRadiusMiles, organizationAffiliation, etc.)
-        - Onboarding completion (automatically set when required profile data is provided)
-
-        **Authorization**: Requires valid JWT token. Users can only update their own profile.
-
-        **Validation Rules**:
-        - Exactly one of growerProfile or gathererProfile should be provided per request
-        - Profile type must match userType
-        - shareRadiusMiles and searchRadiusMiles must be > 0
-        - lat must be in range [-90, 90]
-        - lng must be in range [-180, 180]
-        - units must be 'metric' or 'imperial'
-        - homeZone format must be valid (for growers)
-
-        **Idempotency**: This endpoint uses upsert semantics. Repeated requests with
-        the same payload are safe and will not cause duplicate data.
-
-        **Server-side Processing**: The server computes geoKey (geohash) from lat/lng
-        and persists it automatically.
-      operationId: putMe
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PutMeRequest'
-      responses:
-        '200':
-          description: Updated profile payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MeProfileResponse'
-        '400':
-          description: |
-            Validation error. Possible causes:
-            - Invalid userType value (must be 'grower' or 'gatherer')
-            - Missing required fields for selected userType
-            - Both growerProfile and gathererProfile provided
-            - Profile type doesn't match userType
-            - Radius values <= 0
-            - Latitude outside [-90, 90]
-            - Longitude outside [-180, 180]
-            - Invalid homeZone format
-            - Invalid units value
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '403':
-          description: |
-            Authorization error. User attempted to update another user's profile.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/profile.yaml#/~1me'
+  /me/entitlements:
+    $ref: 'openapi/paths/profile.yaml#/~1me~1entitlements'
   /users/{userId}:
-    get:
-      summary: Get public user profile
-      operationId: getPublicUser
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Public user profile
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PublicUserResponse'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/profile.yaml#/~1users~1{userId}'
   /billing/checkout-session:
-    post:
-      summary: Create a Stripe checkout session for premium upgrade
-      operationId: createCheckoutSession
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateCheckoutSessionRequest'
-      responses:
-        '200':
-          description: Created checkout session and redirect URL
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreateCheckoutSessionResponse'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/billing.yaml#/~1billing~1checkout-session'
   /billing/webhook:
-    post:
-      summary: Receive Stripe webhook events for subscription lifecycle updates
-      operationId: handleStripeWebhook
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        '200':
-          description: Webhook acknowledged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookAckResponse'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/billing.yaml#/~1billing~1webhook'
   /crops:
-    get:
-      summary: List current user's grower crop library entries
-      operationId: listMyCropLibrary
-      responses:
-        '200':
-          description: Crop library rows
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/GrowerCropItem'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-    post:
-      summary: Create a crop library entry for current user
-      operationId: createMyCropLibraryItem
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpsertGrowerCropRequest'
-      responses:
-        '201':
-          description: Created crop library row
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GrowerCropItem'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/crop-library.yaml#/~1crops'
   /crops/{cropLibraryId}:
-    parameters:
-      - in: path
-        name: cropLibraryId
-        required: true
-        schema:
-          type: string
-          format: uuid
-    get:
-      summary: Read one crop library row by id
-      operationId: getMyCropLibraryItem
-      responses:
-        '200':
-          description: Crop library row
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GrowerCropItem'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-    put:
-      summary: Update one crop library row
-      operationId: updateMyCropLibraryItem
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpsertGrowerCropRequest'
-      responses:
-        '200':
-          description: Updated crop library row
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GrowerCropItem'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-    delete:
-      summary: Delete one crop library row
-      operationId: deleteMyCropLibraryItem
-      responses:
-        '204':
-          description: Deleted
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '401':
-          $ref: '#/components/responses/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/crop-library.yaml#/~1crops~1{cropLibraryId}'
   /catalog/crops:
-    get:
-      security: []
-      summary: List catalog crops
-      operationId: listCatalogCrops
-      responses:
-        '200':
-          description: Catalog crops
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/CatalogCrop'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/catalog.yaml#/~1catalog~1crops'
   /catalog/crops/{cropId}/varieties:
-    get:
-      security: []
-      summary: List catalog varieties for a crop
-      operationId: listCatalogCropVarieties
-      parameters:
-        - in: path
-          name: cropId
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Catalog varieties for crop
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/CatalogVariety'
-        '400':
-          $ref: '#/components/responses/ErrorResponse'
-        '404':
-          $ref: '#/components/responses/ErrorResponse'
-        '500':
-          $ref: '#/components/responses/ErrorResponse'
-
+    $ref: 'openapi/paths/catalog.yaml#/~1catalog~1crops~1{cropId}~1varieties'
+  /listings:
+    $ref: 'openapi/paths/listings.yaml#/~1listings'
+  /listings/{listingId}:
+    $ref: 'openapi/paths/listings.yaml#/~1listings~1{listingId}'
+  /my/listings:
+    $ref: 'openapi/paths/listings.yaml#/~1my~1listings'
+  /my/listings/{listingId}:
+    $ref: 'openapi/paths/listings.yaml#/~1my~1listings~1{listingId}'
+  /listings/discover:
+    $ref: 'openapi/paths/listings.yaml#/~1listings~1discover'
+  /requests:
+    $ref: 'openapi/paths/requests.yaml#/~1requests'
+  /requests/{requestId}:
+    $ref: 'openapi/paths/requests.yaml#/~1requests~1{requestId}'
+  /claims:
+    $ref: 'openapi/paths/claims.yaml#/~1claims'
+  /claims/{claimId}:
+    $ref: 'openapi/paths/claims.yaml#/~1claims~1{claimId}'
+  /reminders:
+    $ref: 'openapi/paths/reminders.yaml#/~1reminders'
+  /reminders/{reminderId}:
+    $ref: 'openapi/paths/reminders.yaml#/~1reminders~1{reminderId}'
+  /feed/derived:
+    $ref: 'openapi/paths/feed.yaml#/~1feed~1derived'
+  /ai/copilot/weekly-plan:
+    $ref: 'openapi/paths/premium.yaml#/~1ai~1copilot~1weekly-plan'
+  /agent-tasks:
+    $ref: 'openapi/paths/premium.yaml#/~1agent-tasks'
+  /agent-tasks/{taskId}:
+    $ref: 'openapi/paths/premium.yaml#/~1agent-tasks~1{taskId}'
+  /analytics/premium/events:
+    $ref: 'openapi/paths/premium.yaml#/~1analytics~1premium~1events'
+  /analytics/premium/kpis:
+    $ref: 'openapi/paths/premium.yaml#/~1analytics~1premium~1kpis'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  responses:
-    ErrorResponse:
-      description: Error payload
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-  schemas:
-    UserType:
-      type: string
-      enum: [grower, gatherer]
-      description: |
-        User participation mode:
-        - grower: Users who grow food and share surplus with the community
-        - gatherer: Users (individuals, non-profits, social workers, organizations) who look for and collect available food
-
-    GrowerProfile:
-      type: object
-      required: [share_radius_miles, units]
-      properties:
-        home_zone:
-          type: string
-          nullable: true
-          description: USDA hardiness zone or equivalent growing zone identifier
-        geo_key:
-          type: string
-          nullable: true
-          description: Geohash computed from lat/lng for proximity queries (server-generated)
-        lat:
-          type: number
-          format: double
-          nullable: true
-          minimum: -90
-          maximum: 90
-          description: Latitude of grower's location
-        lng:
-          type: number
-          format: double
-          nullable: true
-          minimum: -180
-          maximum: 180
-          description: Longitude of grower's location
-        share_radius_miles:
-          type: string
-          description: Maximum distance (in miles) the grower is willing to share within
-        units:
-          type: string
-          enum: [imperial, metric]
-          description: Preferred unit system for measurements
-        locale:
-          type: string
-          nullable: true
-          description: Locale preference (e.g., 'en-US', 'es-MX')
-
-    GathererProfile:
-      type: object
-      required: [geoKey, lat, lng, searchRadiusMiles, units]
-      properties:
-        geoKey:
-          type: string
-          description: Geohash computed from lat/lng for proximity queries (server-generated)
-        lat:
-          type: number
-          format: double
-          minimum: -90
-          maximum: 90
-          description: Latitude of gatherer's location
-        lng:
-          type: number
-          format: double
-          minimum: -180
-          maximum: 180
-          description: Longitude of gatherer's location
-        searchRadiusMiles:
-          type: string
-          description: Maximum search distance (in miles) for finding available food
-        organizationAffiliation:
-          type: string
-          nullable: true
-          description: Optional organization name (e.g., 'SF Food Bank', 'Community Kitchen')
-        units:
-          type: string
-          enum: [imperial, metric]
-          description: Preferred unit system for measurements
-        locale:
-          type: string
-          nullable: true
-          description: Locale preference (e.g., 'en-US', 'es-MX')
-
-    UserRatingSummary:
-      type: object
-      required: [avg_score, rating_count]
-      properties:
-        avg_score:
-          type: string
-        rating_count:
-          type: integer
-
-    SubscriptionMetadata:
-      type: object
-      required: [tier, subscriptionStatus]
-      properties:
-        tier:
-          type: string
-          enum: [free, premium]
-        subscriptionStatus:
-          type: string
-          description: Subscription lifecycle state (none, active, past_due, canceled)
-        premiumExpiresAt:
-          type: string
-          format: date-time
-          nullable: true
-
-    CreateCheckoutSessionRequest:
-      type: object
-      required: [successUrl, cancelUrl]
-      properties:
-        successUrl:
-          type: string
-          format: uri
-        cancelUrl:
-          type: string
-          format: uri
-
-    CreateCheckoutSessionResponse:
-      type: object
-      required: [checkoutUrl, checkoutSessionId]
-      properties:
-        checkoutUrl:
-          type: string
-          format: uri
-        checkoutSessionId:
-          type: string
-
-    WebhookAckResponse:
-      type: object
-      required: [received]
-      properties:
-        received:
-          type: boolean
-        duplicate:
-          type: boolean
-          nullable: true
-
-    MeProfileResponse:
-      type: object
-      required: [id, isVerified, createdAt, onboardingCompleted, subscription]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Unique user identifier
-        email:
-          type: string
-          format: email
-          nullable: true
-          description: User's email address
-        displayName:
-          type: string
-          nullable: true
-          description: User's display name
-        userType:
-          allOf:
-            - $ref: '#/components/schemas/UserType'
-          nullable: true
-          description: User participation mode (grower or gatherer). May be null for users who haven't completed onboarding.
-        onboardingCompleted:
-          type: boolean
-          description: Whether the user has completed the onboarding flow
-        isVerified:
-          type: boolean
-          description: Whether the user's email has been verified
-        createdAt:
-          type: string
-          format: date-time
-          description: Account creation timestamp
-        subscription:
-          $ref: '#/components/schemas/SubscriptionMetadata'
-          description: Current account tier and billing status metadata
-        growerProfile:
-          allOf:
-            - $ref: '#/components/schemas/GrowerProfile'
-          nullable: true
-          description: Grower-specific profile data (present only for growers)
-        gathererProfile:
-          allOf:
-            - $ref: '#/components/schemas/GathererProfile'
-          nullable: true
-          description: Gatherer-specific profile data (present only for gatherers)
-        ratingSummary:
-          $ref: '#/components/schemas/UserRatingSummary'
-          nullable: true
-          description: User rating summary (if available)
-
-    PublicUserResponse:
-      type: object
-      required: [id, created_at]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Unique user identifier
-        display_name:
-          type: string
-          nullable: true
-          description: User's display name
-        created_at:
-          type: string
-          format: date-time
-          description: Account creation timestamp
-        grower_profile:
-          allOf:
-            - $ref: '#/components/schemas/GrowerProfile'
-          nullable: true
-          description: Grower-specific profile data (present only for growers)
-        rating_summary:
-          $ref: '#/components/schemas/UserRatingSummary'
-          nullable: true
-          description: User rating summary (if available)
-
-    PutMeRequest:
-      type: object
-      properties:
-        displayName:
-          type: string
-          nullable: true
-          description: User's display name
-        userType:
-          allOf:
-            - $ref: '#/components/schemas/UserType'
-          nullable: true
-          description: |
-            User participation mode. Required if onboarding is incomplete.
-            Once set, determines which profile type should be provided.
-        growerProfile:
-          type: object
-          nullable: true
-          description: |
-            Grower-specific profile data. Should only be provided when userType is 'grower'.
-            Providing both growerProfile and gathererProfile in the same request will result in a 400 error.
-          required: [homeZone, address, shareRadiusMiles, units, locale]
-          properties:
-            homeZone:
-              type: string
-              description: USDA hardiness zone or equivalent
-            address:
-              type: string
-              description: Mailing address used for geocoding and pickup context
-            shareRadiusMiles:
-              type: number
-              format: double
-              description: Maximum sharing distance in miles (must be > 0)
-              minimum: 0
-              exclusiveMinimum: true
-            units:
-              type: string
-              enum: [imperial, metric]
-              description: Preferred unit system
-            locale:
-              type: string
-              description: Locale preference (e.g., 'en-US')
-        gathererProfile:
-          type: object
-          nullable: true
-          description: |
-            Gatherer-specific profile data. Should only be provided when userType is 'gatherer'.
-            Providing both growerProfile and gathererProfile in the same request will result in a 400 error.
-          required: [address, searchRadiusMiles, units, locale]
-          properties:
-            address:
-              type: string
-              description: Mailing address used for geocoding and discovery context
-            searchRadiusMiles:
-              type: number
-              format: double
-              minimum: 0
-              exclusiveMinimum: true
-              description: Maximum search distance in miles (must be > 0)
-            organizationAffiliation:
-              type: string
-              nullable: true
-              description: Optional organization name
-            units:
-              type: string
-              enum: [imperial, metric]
-              description: Preferred unit system
-            locale:
-              type: string
-              description: Locale preference (e.g., 'en-US')
-
-    GrowerCropItem:
-      type: object
-      required:
-        - id
-        - user_id
-        - crop_id
-        - status
-        - visibility
-        - surplus_enabled
-        - created_at
-        - updated_at
-      properties:
-        id:
-          type: string
-          format: uuid
-        user_id:
-          type: string
-          format: uuid
-        crop_id:
-          type: string
-          format: uuid
-        variety_id:
-          type: string
-          format: uuid
-          nullable: true
-        status:
-          type: string
-          enum: [interested, planning, growing, paused]
-        visibility:
-          type: string
-          enum: [private, local, public]
-        surplus_enabled:
-          type: boolean
-        nickname:
-          type: string
-          nullable: true
-        default_unit:
-          type: string
-          nullable: true
-        notes:
-          type: string
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    UpsertGrowerCropRequest:
-      type: object
-      required: [crop_id, status, visibility, surplus_enabled]
-      properties:
-        crop_id:
-          type: string
-          format: uuid
-        variety_id:
-          type: string
-          format: uuid
-          nullable: true
-        status:
-          type: string
-          enum: [interested, planning, growing, paused]
-        visibility:
-          type: string
-          enum: [private, local, public]
-        surplus_enabled:
-          type: boolean
-        nickname:
-          type: string
-          nullable: true
-        default_unit:
-          type: string
-          nullable: true
-        notes:
-          type: string
-          nullable: true
-
-    SourceAttribution:
-      type: object
-      required: [source]
-      properties:
-        source:
-          type: string
-          description: Source provider key (for example `internal_seed`, `permapeople`, `usda`).
-        source_id:
-          type: string
-          nullable: true
-          description: Provider-specific stable identifier for this record.
-        source_url:
-          type: string
-          nullable: true
-          description: Canonical source URL for attribution and audits.
-        license:
-          type: string
-          nullable: true
-          description: License text or SPDX-style short identifier when available.
-        attribution:
-          type: string
-          nullable: true
-          description: Required attribution copy to display in UI where applicable.
-        import_batch_id:
-          type: string
-          nullable: true
-          description: Batch ID used during import for replay/debug purposes.
-        imported_at:
-          type: string
-          nullable: true
-          description: ISO-8601 timestamp when this record was imported.
-        last_verified_at:
-          type: string
-          nullable: true
-          description: ISO-8601 timestamp when source/license were last re-verified.
-
-    CatalogCrop:
-      type: object
-      required: [id, slug, common_name, source_attribution]
-      properties:
-        id:
-          type: string
-          format: uuid
-        slug:
-          type: string
-        common_name:
-          type: string
-        scientific_name:
-          type: string
-          nullable: true
-        category:
-          type: string
-          nullable: true
-        description:
-          type: string
-          nullable: true
-        source_attribution:
-          $ref: '#/components/schemas/SourceAttribution'
-
-    CatalogVariety:
-      type: object
-      required: [id, crop_id, slug, name, source_attribution]
-      properties:
-        id:
-          type: string
-          format: uuid
-        crop_id:
-          type: string
-          format: uuid
-        slug:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        source_attribution:
-          $ref: '#/components/schemas/SourceAttribution'
-
-    ErrorResponse:
-      type: object
-      required: [error]
-      properties:
-        error:
-          type: string

@@ -1,0 +1,61 @@
+$kind: http-request
+name: 'POST /listings - Create for Re-read'
+description: |-
+  Creates a listing and captures its ID and key fields into collection variables.
+  The subsequent GET /my/listings request verifies the data is consistent on re-read.
+method: POST
+url: '{{baseUrl}}/listings'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Idempotency Test Listing",
+      "cropId": "{{defaultCatalogCropId}}",
+      "quantityTotal": 3,
+      "unit": "lb",
+      "availableStart": "2026-07-01T08:00:00Z",
+      "availableEnd": "2026-07-03T18:00:00Z",
+      "pickupLocationText": "Side gate",
+      "pickupAddress": "1600 Pennsylvania Avenue NW, Washington, DC 20500",
+      "status": "active"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Ensure catalogCropId falls back to defaultCatalogCropId if not set
+      let cropId = pm.collectionVariables.get("catalogCropId");
+      const fallback = pm.collectionVariables.get("defaultCatalogCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if ((!cropId || !uuidRe.test(cropId)) && fallback && uuidRe.test(fallback)) {
+          pm.collectionVariables.set("catalogCropId", fallback);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture listing ID and key fields for re-read verification", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id");
+
+          if (!listing.id) {
+              pm.expect.fail("Missing listing.id; aborting to prevent cascade failures.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("idempotencyListingId", listing.id);
+          pm.collectionVariables.set("idempotencyListingTitle", listing.title || "");
+          pm.collectionVariables.set("idempotencyListingStatus", listing.status || "");
+          pm.collectionVariables.set("idempotencyListingQty", String(listing.quantityTotal));
+      });

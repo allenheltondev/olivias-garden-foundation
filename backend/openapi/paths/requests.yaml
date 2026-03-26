@@ -1,0 +1,61 @@
+/requests:
+  post:
+    tags: [Requests, Idempotent, Gatherer Only]
+    summary: Create a gatherer food request
+    operationId: createRequest
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/requests.yaml#/UpsertRequestPayload'
+    responses:
+      '201':
+        description: Created request
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/requests.yaml#/RequestResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '409':
+        description: Idempotency key collision
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/requests/{requestId}:
+  parameters:
+    - in: path
+      name: requestId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  put:
+    tags: [Requests, Gatherer Only]
+    summary: Update a gatherer food request
+    operationId: updateRequest
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/requests.yaml#/UpsertRequestPayload'
+    responses:
+      '200':
+        description: Updated request
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/requests.yaml#/RequestResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

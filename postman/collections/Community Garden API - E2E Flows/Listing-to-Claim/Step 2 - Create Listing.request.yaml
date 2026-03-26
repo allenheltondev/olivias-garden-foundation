@@ -1,0 +1,48 @@
+$kind: http-request
+name: 'Step 2 - Create Listing'
+description: |-
+  Grower creates a listing using the crop from Step 1.
+
+  **Depends on**: `authToken` set to grower token, `catalogCropId` available
+  **Chaining**: Captures `listingId` from the response for subsequent claim steps.
+method: POST
+url: '{{baseUrl}}/listings'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Listing-to-Claim E2E Listing",
+      "cropId": "{{catalogCropId}}",
+      "quantityTotal": 3,
+      "unit": "lb",
+      "availableStart": "2026-07-01T08:00:00Z",
+      "availableEnd": "2026-07-03T18:00:00Z",
+      "pickupLocationText": "Side gate",
+      "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture listingId for claim flow", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id");
+
+          if (!listing.id) {
+              pm.expect.fail("Missing listing.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("listingId", listing.id);
+      });

@@ -1,0 +1,50 @@
+$kind: collection
+name: Community Garden API - E2E Flows
+description: |-
+  Ordered, stateful, multi-step business workflow tests for the Community Garden API.
+
+  Exercises end-to-end scenarios with variable chaining between steps: claim lifecycle
+  state transitions, grower-to-gatherer listing-to-claim flows, gatherer persona coverage,
+  and cross-endpoint data consistency verification.
+
+  ## Authentication
+  Steps swap the active Bearer token between grower and gatherer via pre-request scripts.
+variables:
+  - key: baseUrl
+    value: 'https://api.example.com'
+    description: API base URL
+  - key: growerAuthToken
+    value: ''
+    description: Premium grower token for grower-side operations
+  - key: gathererAuthToken
+    value: ''
+    description: Gatherer token for gatherer-side operations
+  - key: authToken
+    value: ''
+    description: Active token (swapped per step via pre-request scripts)
+  - key: catalogCropId
+    value: ''
+    description: Catalog crop ID captured from catalog list
+  - key: defaultCatalogCropId
+    value: '8e7139d1-8aed-4228-bd5e-ff38c1311765'
+    description: Stable fallback crop ID for CI when catalog chaining has not run yet
+  - key: cropLibraryId
+    value: ''
+    description: Grower crop library entry ID
+  - key: listingId
+    value: ''
+    description: Listing ID for claim flows
+  - key: requestId
+    value: ''
+    description: Gatherer request ID
+  - key: claimId
+    value: ''
+    description: Claim ID for transition flows
+  - key: reminderId
+    value: ''
+    description: Reminder ID for consistency checks
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'

@@ -1,0 +1,55 @@
+$kind: http-request
+name: 'Step 4 - Create Request'
+description: |-
+  Gatherer creates a request for a crop via POST /requests.
+
+  **Depends on**: `authToken` set to gatherer token, `defaultCatalogCropId` available
+  **Chaining**: Captures `requestId` from the response.
+method: POST
+url: '{{baseUrl}}/requests'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "cropId": "{{defaultCatalogCropId}}",
+      "quantity": 2,
+      "neededBy": "2026-08-01T00:00:00Z",
+      "notes": "Gatherer persona E2E test request"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      let cropId = pm.collectionVariables.get("catalogCropId");
+      const fallbackCropId = pm.collectionVariables.get("defaultCatalogCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if ((!cropId || !uuidRe.test(cropId)) && fallbackCropId && uuidRe.test(fallbackCropId)) {
+          cropId = fallbackCropId;
+          pm.collectionVariables.set("catalogCropId", cropId);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture requestId", function () {
+          const req = pm.response.json();
+          pm.expect(req).to.have.property("id");
+
+          if (!req.id) {
+              pm.expect.fail("Missing request.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("requestId", req.id);
+      });

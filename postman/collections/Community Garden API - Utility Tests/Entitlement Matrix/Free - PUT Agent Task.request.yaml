@@ -1,0 +1,34 @@
+$kind: http-request
+name: 'Free - PUT /agent-tasks/{id} → 403'
+description: |-
+  Verifies that a free-tier token is rejected with 403 feature_locked
+  when calling the premium agent task update endpoint.
+method: PUT
+url: '{{baseUrl}}/agent-tasks/00000000-0000-4000-a000-000000000000'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{freeAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 403", function () {
+          pm.response.to.have.status(403);
+      });
+
+      pm.test("Response contains feature_locked error with correct entitlement fields", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error", "feature_locked");
+          pm.expect(body).to.have.property("entitlementKey").that.is.a("string");
+          pm.expect(body).to.have.property("requiredTier", "premium");
+          pm.expect(body).to.have.property("upgradeHintKey").that.is.a("string");
+      });

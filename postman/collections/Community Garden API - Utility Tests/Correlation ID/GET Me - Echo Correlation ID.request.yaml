@@ -1,0 +1,26 @@
+$kind: http-request
+name: 'GET /me - Echo Correlation ID'
+description: |-
+  Sends a GET /me request with an explicit X-Correlation-Id header.
+  Asserts the response echoes the same correlation ID value back
+  and returns a successful 200 status code.
+method: GET
+url: '{{baseUrl}}/me'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: X-Correlation-Id
+    value: 'test-corr-id-12345'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response echoes X-Correlation-Id", function () {
+          const corrId = pm.response.headers.get("X-Correlation-Id");
+          pm.expect(corrId).to.eql("test-corr-id-12345");
+      });

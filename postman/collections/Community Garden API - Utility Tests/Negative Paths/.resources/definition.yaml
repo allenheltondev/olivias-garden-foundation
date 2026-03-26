@@ -1,0 +1,4 @@
+$kind: collection
+name: Negative Paths
+description: 400 validation error assertions for write endpoints receiving invalid or missing input.
+order: 1000

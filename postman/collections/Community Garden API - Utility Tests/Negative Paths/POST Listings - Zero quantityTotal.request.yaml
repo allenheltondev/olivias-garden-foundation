@@ -1,0 +1,38 @@
+$kind: http-request
+name: 'POST /listings - Zero quantityTotal'
+description: |-
+  Sends a POST /listings request with `quantityTotal` set to 0.
+  Expects a 400 status code because quantityTotal must be greater than 0.
+method: POST
+url: '{{baseUrl}}/listings'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Negative Path Test Listing",
+      "cropId": "{{defaultCatalogCropId}}",
+      "quantityTotal": 0,
+      "unit": "lb",
+      "availableStart": "2026-07-01T08:00:00Z",
+      "availableEnd": "2026-07-03T18:00:00Z",
+      "pickupLocationText": "Front porch",
+      "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

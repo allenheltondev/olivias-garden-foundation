@@ -1,0 +1,4 @@
+$kind: collection
+name: Cross-Endpoint Consistency
+description: Write-then-read round trips verifying data created by one endpoint appears correctly through another.
+order: 4000

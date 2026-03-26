@@ -1,0 +1,71 @@
+/reminders:
+  get:
+    tags: [Reminders, Idempotent]
+    summary: List current user's reminders
+    operationId: listReminders
+    responses:
+      '200':
+        description: Reminder list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/reminders.yaml#/ReminderListResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  post:
+    tags: [Reminders]
+    summary: Create a deterministic reminder
+    operationId: createReminder
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/reminders.yaml#/CreateReminderRequest'
+    responses:
+      '201':
+        description: Created reminder
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/reminders.yaml#/ReminderResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/reminders/{reminderId}:
+  parameters:
+    - in: path
+      name: reminderId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  put:
+    tags: [Reminders]
+    summary: Update reminder status (active/paused)
+    operationId: updateReminderStatus
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/reminders.yaml#/UpdateReminderStatusRequest'
+    responses:
+      '200':
+        description: Updated reminder
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/reminders.yaml#/ReminderResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

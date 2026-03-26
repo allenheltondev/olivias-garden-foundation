@@ -1,0 +1,32 @@
+$kind: http-request
+name: 'PUT /reminders/{id} - Non-existent ID'
+description: |-
+  Sends a PUT request to update a reminder with a valid-format UUID that does not exist.
+  Includes a valid update body. Expects a 404 status code and an `error` property.
+method: PUT
+url: '{{baseUrl}}/reminders/00000000-0000-4000-a000-000000000000'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Updated reminder",
+      "status": "paused"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 404", function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

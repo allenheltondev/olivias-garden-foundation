@@ -1,0 +1,36 @@
+$kind: http-request
+name: 'GET /feed/derived?offset=999999 - High Offset'
+description: |-
+  Calls the derived feed endpoint with an offset far beyond available data.
+  Asserts the response returns an empty items array and hasMore equals false.
+method: GET
+url: '{{baseUrl}}/feed/derived'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+queryParams:
+  - key: geoKey
+    value: '9v6kn7'
+  - key: limit
+    value: '20'
+  - key: offset
+    value: '999999'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Items array is empty", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("items").that.is.an("array");
+          pm.expect(body.items).to.have.lengthOf(0);
+      });
+
+      pm.test("hasMore is false", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("hasMore", false);
+      });

@@ -129,6 +129,9 @@ pub async fn create_claim(
     let listing_crop_id: Uuid = listing.get("crop_id");
 
     if !is_claimable_listing_status(&listing_status) {
+        if listing_status == "claimed" {
+            return error_response(409, "Insufficient quantity remaining");
+        }
         return Err(lambda_http::Error::from(
             "Listing is not claimable in its current status",
         ));
@@ -150,7 +153,7 @@ pub async fn create_claim(
             insert into claims
                 (listing_id, request_id, claimer_id, quantity_claimed, status, notes)
             values
-                ($1, $2, $3, $4, 'pending'::claim_status, $5)
+                ($1, $2, $3, $4::double precision, 'pending'::claim_status, $5)
             returning id, listing_id, request_id, claimer_id,
                       quantity_claimed::text as quantity_claimed,
                       status::text as status, notes,
@@ -166,6 +169,14 @@ pub async fn create_claim(
         )
         .await
         .map_err(|error| db_error(&error))?;
+
+    adjust_listing_quantity_if_needed(
+        &tx,
+        normalized.listing_id,
+        normalized.quantity_claimed,
+        ListingQuantityAdjustment::Decrement,
+    )
+    .await?;
 
     tx.commit().await.map_err(|error| db_error(&error))?;
 
@@ -465,16 +476,16 @@ async fn adjust_listing_quantity_if_needed(
                     update surplus_listings
                     set quantity_remaining = case
                             when quantity_remaining is null then null
-                            else quantity_remaining - $1
+                            else quantity_remaining - $1::double precision
                         end,
                         status = case
-                            when quantity_remaining is not null and quantity_remaining - $1 <= 0
+                            when quantity_remaining is not null and quantity_remaining - $1::double precision <= 0
                                 then 'claimed'::listing_status
                             else status
                         end
                     where id = $2
                       and deleted_at is null
-                      and (quantity_remaining is null or quantity_remaining >= $1)
+                      and (quantity_remaining is null or quantity_remaining >= $1::double precision)
                     ",
                     &[&quantity_claimed, &listing_id],
                 )
@@ -493,7 +504,7 @@ async fn adjust_listing_quantity_if_needed(
                 update surplus_listings
                 set quantity_remaining = case
                         when quantity_remaining is null then null
-                        else quantity_remaining + $1
+                        else quantity_remaining + $1::double precision
                     end,
                     status = case
                         when status = 'claimed'::listing_status then 'active'::listing_status

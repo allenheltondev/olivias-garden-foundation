@@ -1,0 +1,4 @@
+$kind: collection
+name: Gatherer Persona
+description: Gatherer-token tests covering profile setup, discovery, requests, and claims under the gatherer user type.
+order: 3000

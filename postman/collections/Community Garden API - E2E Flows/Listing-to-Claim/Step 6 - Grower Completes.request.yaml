@@ -1,0 +1,41 @@
+$kind: http-request
+name: 'Step 6 - Grower Completes'
+description: |-
+  Grower completes the claim, finishing the listing-to-claim value chain.
+
+  **Depends on**: `claimId` captured in Step 4
+  **Asserts**: Response status is `completed` — the final state of the flow.
+method: PUT
+url: '{{baseUrl}}/claims/{{claimId}}'
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "completed"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const claimId = pm.collectionVariables.get("claimId");
+      if (!claimId) {
+          console.error("claimId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Claim status is completed", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("status", "completed");
+      });

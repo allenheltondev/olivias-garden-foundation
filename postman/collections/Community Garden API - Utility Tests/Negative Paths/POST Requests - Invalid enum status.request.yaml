@@ -1,0 +1,35 @@
+$kind: http-request
+name: 'POST /requests - Invalid enum status'
+description: |-
+  Sends a POST /requests request with `status` set to "bogus", which is not
+  a valid request status enum value (allowed: open, matched, closed).
+  Expects a 400 status code.
+method: POST
+url: '{{baseUrl}}/requests'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{gathererAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "crop_id": "{{defaultCatalogCropId}}",
+      "quantity": 5,
+      "neededBy": "2026-08-01T00:00:00Z",
+      "status": "bogus"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

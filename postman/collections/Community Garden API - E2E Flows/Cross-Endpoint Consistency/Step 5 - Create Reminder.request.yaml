@@ -1,0 +1,47 @@
+$kind: http-request
+name: 'Step 5 - Create Reminder'
+description: |-
+  Grower creates a reminder for the cross-endpoint consistency flow.
+
+  **Depends on**: `authToken` set to grower token
+  **Chaining**: Captures `consistencyReminderId`, `consistencyReminderTitle`, and `consistencyReminderStatus` from the response.
+method: POST
+url: '{{baseUrl}}/reminders'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Consistency E2E reminder",
+      "reminderType": "watering",
+      "cadenceDays": 5,
+      "startDate": "2026-07-15",
+      "timezone": "America/Chicago"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture consistencyReminderId, title, and status", function () {
+          const reminder = pm.response.json();
+          pm.expect(reminder).to.have.property("id");
+
+          if (!reminder.id) {
+              pm.expect.fail("Missing reminder.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("consistencyReminderId", reminder.id);
+          pm.collectionVariables.set("consistencyReminderTitle", reminder.title || "Consistency E2E reminder");
+          pm.collectionVariables.set("consistencyReminderStatus", reminder.status || "active");
+      });

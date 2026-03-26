@@ -1,0 +1,4 @@
+$kind: collection
+name: 409 Conflict
+description: Quantity conflict detection asserting 409 responses when claims exceed available listing quantity.
+order: 7000

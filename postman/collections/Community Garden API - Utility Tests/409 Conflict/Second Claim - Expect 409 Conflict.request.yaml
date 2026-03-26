@@ -1,0 +1,42 @@
+$kind: http-request
+name: 'Second Claim - Expect 409 Conflict'
+description: |-
+  Attempts to claim the same listing after quantity has been exhausted.
+  Expects a 409 Conflict response with an error describing insufficient quantity.
+method: POST
+url: '{{baseUrl}}/claims'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{gathererAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listingId": "{{conflictListingId}}",
+      "quantityClaimed": 1,
+      "notes": "409 conflict test claim"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const listingId = pm.collectionVariables.get("conflictListingId");
+      if (!listingId) {
+          console.error("conflictListingId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 409", function () {
+          pm.response.to.have.status(409);
+      });
+
+      pm.test("Response contains insufficient quantity error", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+          pm.expect(body.error.toLowerCase()).to.include("insufficient quantity");
+      });

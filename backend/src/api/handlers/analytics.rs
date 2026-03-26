@@ -1,5 +1,6 @@
 use crate::auth::extract_auth_context;
 use crate::db;
+use crate::middleware::entitlements;
 use lambda_http::{Body, Request, Response};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -27,6 +28,14 @@ pub async fn track_premium_event(
     let auth = extract_auth_context(request)?;
     let user_id = Uuid::parse_str(&auth.user_id)
         .map_err(|_| lambda_http::Error::from("Invalid user ID format"))?;
+
+    let client = db::connect().await?;
+    if let Err(feature_locked) =
+        entitlements::require_entitlement(&client, user_id, "premium.analytics.read").await
+    {
+        return json_response(403, &feature_locked.to_response());
+    }
+
     let payload: TrackEventRequest = parse_json_body(request)?;
 
     if !matches!(
@@ -36,7 +45,6 @@ pub async fn track_premium_event(
         return error_response(400, "Unsupported analytics event");
     }
 
-    let client = db::connect().await?;
     client
         .execute(
             "
@@ -55,10 +63,18 @@ pub async fn get_premium_kpis(
     request: &Request,
     _correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
-    let _ = extract_auth_context(request)?;
+    let auth = extract_auth_context(request)?;
+    let user_id = Uuid::parse_str(&auth.user_id)
+        .map_err(|_| lambda_http::Error::from("Invalid user ID format"))?;
 
     let window_days = parse_window_days(request).unwrap_or(7);
     let client = db::connect().await?;
+
+    if let Err(feature_locked) =
+        entitlements::require_entitlement(&client, user_id, "premium.analytics.read").await
+    {
+        return json_response(403, &feature_locked.to_response());
+    }
 
     let rows = client
         .query(

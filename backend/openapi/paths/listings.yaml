@@ -1,0 +1,170 @@
+/listings:
+  post:
+    tags: [Listings, Idempotent, Grower Only]
+    summary: Create a surplus listing
+    operationId: createListing
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/listings.yaml#/UpsertListingRequest'
+    responses:
+      '201':
+        description: Created listing
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/listings.yaml#/ListingItem'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '409':
+        description: Idempotency key collision
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/listings/{listingId}:
+  parameters:
+    - in: path
+      name: listingId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  put:
+    tags: [Listings, Grower Only]
+    summary: Update a surplus listing
+    operationId: updateListing
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/listings.yaml#/UpsertListingRequest'
+    responses:
+      '200':
+        description: Updated listing
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/listings.yaml#/ListingItem'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/my/listings:
+  get:
+    tags: [Listings, Idempotent, Grower Only]
+    summary: List current user's listings
+    operationId: listMyListings
+    parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [active, claimed, expired]
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+    responses:
+      '200':
+        description: Paginated listings
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/listings.yaml#/PaginatedListings'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/my/listings/{listingId}:
+  parameters:
+    - in: path
+      name: listingId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  get:
+    tags: [Listings, Idempotent, Grower Only]
+    summary: Get one of current user's listings
+    operationId: getMyListing
+    responses:
+      '200':
+        description: Listing detail
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/listings.yaml#/ListingItem'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/listings/discover:
+  get:
+    tags: [Listings, Idempotent]
+    summary: Discover listings by geo context
+    operationId: discoverListings
+    parameters:
+      - in: query
+        name: geoKey
+        required: true
+        schema:
+          type: string
+        description: Geohash prefix for geographic scoping
+      - in: query
+        name: radiusMiles
+        schema:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [active]
+          default: active
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+    responses:
+      '200':
+        description: Paginated discoverable listings
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/listings.yaml#/PaginatedListings'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

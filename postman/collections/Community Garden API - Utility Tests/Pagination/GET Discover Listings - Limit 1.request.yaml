@@ -1,0 +1,32 @@
+$kind: http-request
+name: 'GET /listings/discover?limit=1 - Limit 1'
+description: |-
+  Calls the discover listings endpoint with limit=1.
+  Asserts the response items array contains at most 1 element,
+  verifying pagination limit enforcement.
+method: GET
+url: '{{baseUrl}}/listings/discover'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+queryParams:
+  - key: geoKey
+    value: '9v6kn7'
+  - key: limit
+    value: '1'
+  - key: offset
+    value: '0'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Items array has at most 1 element", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("items").that.is.an("array");
+          pm.expect(body.items.length).to.be.at.most(1);
+      });

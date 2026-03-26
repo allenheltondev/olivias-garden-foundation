@@ -1,0 +1,4 @@
+$kind: collection
+name: Correlation ID
+description: X-Correlation-Id header propagation verification for end-to-end request traceability.
+order: 5000

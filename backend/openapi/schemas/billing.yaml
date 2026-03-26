@@ -1,0 +1,30 @@
+CreateCheckoutSessionRequest:
+  type: object
+  required: [successUrl, cancelUrl]
+  properties:
+    successUrl:
+      type: string
+      format: uri
+    cancelUrl:
+      type: string
+      format: uri
+
+CreateCheckoutSessionResponse:
+  type: object
+  required: [checkoutUrl, checkoutSessionId]
+  properties:
+    checkoutUrl:
+      type: string
+      format: uri
+    checkoutSessionId:
+      type: string
+
+WebhookAckResponse:
+  type: object
+  required: [received]
+  properties:
+    received:
+      type: boolean
+    duplicate:
+      type: boolean
+      nullable: true

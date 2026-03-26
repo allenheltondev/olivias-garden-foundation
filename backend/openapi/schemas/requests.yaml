@@ -1,0 +1,74 @@
+UpsertRequestPayload:
+  type: object
+  required: [cropId, quantity, neededBy]
+  properties:
+    cropId:
+      type: string
+      format: uuid
+    varietyId:
+      type: string
+      format: uuid
+      nullable: true
+    unit:
+      type: string
+      nullable: true
+    quantity:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    neededBy:
+      type: string
+      format: date-time
+    notes:
+      type: string
+      nullable: true
+    status:
+      type: string
+      enum: [open, matched, closed]
+      nullable: true
+
+RequestResponse:
+  type: object
+  required: [id, userId, cropId, quantity, neededBy, status, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      format: uuid
+    cropId:
+      type: string
+      format: uuid
+    varietyId:
+      type: string
+      format: uuid
+      nullable: true
+    unit:
+      type: string
+      nullable: true
+    quantity:
+      type: string
+    neededBy:
+      type: string
+      format: date-time
+    notes:
+      type: string
+      nullable: true
+    geoKey:
+      type: string
+      nullable: true
+    lat:
+      type: number
+      format: double
+      nullable: true
+    lng:
+      type: number
+      format: double
+      nullable: true
+    status:
+      type: string
+      enum: [open, matched, closed]
+    createdAt:
+      type: string
+      format: date-time

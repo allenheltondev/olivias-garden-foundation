@@ -1,0 +1,23 @@
+$kind: http-request
+name: 'GET /users/{userId} - Non-existent ID'
+description: |-
+  Sends a GET request for a public user profile with a valid-format UUID that does not exist.
+  Expects a 404 status code and an `error` property in the response body.
+method: GET
+url: '{{baseUrl}}/users/00000000-0000-4000-a000-000000000000'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 404", function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

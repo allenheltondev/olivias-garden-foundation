@@ -1,0 +1,70 @@
+CatalogCrop:
+  type: object
+  required: [id, slug, commonName, sourceAttribution]
+  properties:
+    id:
+      type: string
+      format: uuid
+    slug:
+      type: string
+    commonName:
+      type: string
+    scientificName:
+      type: string
+      nullable: true
+    category:
+      type: string
+      nullable: true
+    description:
+      type: string
+      nullable: true
+    sourceAttribution:
+      $ref: '#/SourceAttribution'
+
+CatalogVariety:
+  type: object
+  required: [id, cropId, slug, name, sourceAttribution]
+  properties:
+    id:
+      type: string
+      format: uuid
+    cropId:
+      type: string
+      format: uuid
+    slug:
+      type: string
+    name:
+      type: string
+    description:
+      type: string
+      nullable: true
+    sourceAttribution:
+      $ref: '#/SourceAttribution'
+
+SourceAttribution:
+  type: object
+  required: [source]
+  properties:
+    source:
+      type: string
+    sourceId:
+      type: string
+      nullable: true
+    sourceUrl:
+      type: string
+      nullable: true
+    license:
+      type: string
+      nullable: true
+    attribution:
+      type: string
+      nullable: true
+    importBatchId:
+      type: string
+      nullable: true
+    importedAt:
+      type: string
+      nullable: true
+    lastVerifiedAt:
+      type: string
+      nullable: true

@@ -102,9 +102,10 @@ async function authenticateUser(label, email, password) {
 
 /**
  * Upsert the user row in Postgres so the API's authorizer/handlers
- * find a valid profile with the expected tier.
+ * find a valid profile with the expected tier and role.
  */
-async function upsertSubscriptionTier(client, userId, email, tier, subscriptionStatus) {
+async function upsertUser(client, userId, email, { role, tier }) {
+  const subscriptionStatus = tier === "premium" ? "active" : "none";
   const premiumExpires = tier === "premium" ? "now() + interval '365 days'" : "null";
 
   // Remove any stale row with the same email but a different id (happens when
@@ -113,7 +114,7 @@ async function upsertSubscriptionTier(client, userId, email, tier, subscriptionS
 
   await client.query(
     `INSERT INTO users (id, email, display_name, is_verified, tier, subscription_status, premium_expires_at, user_type, onboarding_completed)
-     VALUES ($1, $2, $3, true, $4, $5, ${premiumExpires}, null, false)
+     VALUES ($1, $2, $3, true, $4, $5, ${premiumExpires}, $6, true)
      ON CONFLICT (id) DO UPDATE
        SET email            = EXCLUDED.email,
            display_name     = EXCLUDED.display_name,
@@ -121,39 +122,78 @@ async function upsertSubscriptionTier(client, userId, email, tier, subscriptionS
            tier             = EXCLUDED.tier,
            subscription_status = EXCLUDED.subscription_status,
            premium_expires_at  = EXCLUDED.premium_expires_at,
-           user_type        = null,
-           onboarding_completed = false,
+           user_type        = EXCLUDED.user_type,
+           onboarding_completed = true,
            updated_at       = now(),
            deleted_at       = null`,
-    [userId, email, `CI ${tier.charAt(0).toUpperCase() + tier.slice(1)} User`, tier, subscriptionStatus]
+    [userId, email, `CI ${role} (${tier})`, tier, subscriptionStatus, role]
   );
 }
 
-export async function handler() {
-  const [growerFree, growerPremium, gatherer] = await Promise.all([
-    getOrCreateUser("grower-free"),
-    getOrCreateUser("grower-premium"),
-    getOrCreateUser("gatherer"),
-  ]);
+/**
+ * Provision a single named user: create/reuse in Cognito, upsert in Postgres,
+ * return tokens keyed by the caller-supplied name.
+ */
+async function provisionUser(client, { name, role, tier }) {
+  const tokens = await getOrCreateUser(name);
+  const userId = decodeSubFromJwt(tokens.id_token);
+  await upsertUser(client, userId, tokens.email, { role, tier });
+  return { name, ...tokens };
+}
+
+/**
+ * Default user specs used when the Lambda is invoked with an empty payload.
+ * Preserves backward compatibility with callers that don't send a `users` array.
+ */
+const LEGACY_USERS = [
+  { name: "grower-free",    role: "grower",   tier: "free" },
+  { name: "grower-premium", role: "grower",   tier: "premium" },
+  { name: "gatherer",       role: "gatherer", tier: "free" },
+];
+
+export async function handler(event) {
+  const userSpecs = Array.isArray(event?.users) && event.users.length > 0
+    ? event.users
+    : LEGACY_USERS;
+
+  // Validate each spec
+  for (const spec of userSpecs) {
+    if (!spec.name || !spec.role || !spec.tier) {
+      return {
+        statusCode: 400,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: "Each user must have name, role, and tier" }),
+      };
+    }
+  }
 
   const client = new pg.Client({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
   await client.connect();
   try {
-    await upsertSubscriptionTier(client, decodeSubFromJwt(growerFree.id_token), growerFree.email, "free", "none");
-    await upsertSubscriptionTier(client, decodeSubFromJwt(growerPremium.id_token), growerPremium.email, "premium", "active");
-    await upsertSubscriptionTier(client, decodeSubFromJwt(gatherer.id_token), gatherer.email, "free", "none");
+    const results = await Promise.all(
+      userSpecs.map((spec) => provisionUser(client, spec))
+    );
+
+    // Build a map keyed by user name for easy extraction in CI scripts
+    const users = {};
+    for (const result of results) {
+      const { name, ...tokens } = result;
+      users[name] = tokens;
+    }
+
+    // Legacy shape: include top-level aliases so existing callers don't break
+    const legacy = {};
+    if (users["grower-free"])    legacy.grower_free = users["grower-free"];
+    if (users["grower-premium"]) legacy.grower_premium = users["grower-premium"];
+    if (users["grower-premium"]) legacy.grower = users["grower-premium"];
+    if (users["gatherer"])       legacy.gatherer = users["gatherer"];
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ users, ...legacy }),
+    };
   } finally {
     await client.end();
   }
-
-  return {
-    statusCode: 200,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      grower: growerPremium,
-      grower_free: growerFree,
-      grower_premium: growerPremium,
-      gatherer,
-    }),
-  };
 }
