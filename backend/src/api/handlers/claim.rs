@@ -167,6 +167,14 @@ pub async fn create_claim(
         .await
         .map_err(|error| db_error(&error))?;
 
+    adjust_listing_quantity_if_needed(
+        &tx,
+        normalized.listing_id,
+        normalized.quantity_claimed,
+        ListingQuantityAdjustment::Decrement,
+    )
+    .await?;
+
     tx.commit().await.map_err(|error| db_error(&error))?;
 
     let response = row_to_claim_response(&claim_row, listing_owner_id);
