@@ -1,0 +1,68 @@
+CreateReminderRequest:
+  type: object
+  required: [title, reminderType, cadenceDays, startDate]
+  properties:
+    title:
+      type: string
+    reminderType:
+      type: string
+      enum: [watering, harvest, checkin, custom]
+    cadenceDays:
+      type: integer
+      minimum: 1
+      maximum: 365
+    startDate:
+      type: string
+      format: date
+    timezone:
+      type: string
+      nullable: true
+
+UpdateReminderStatusRequest:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [active, paused]
+
+ReminderResponse:
+  type: object
+  required: [id, title, reminderType, cadenceDays, startDate, timezone, status, nextRunAt, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    reminderType:
+      type: string
+    cadenceDays:
+      type: integer
+    startDate:
+      type: string
+      format: date
+    timezone:
+      type: string
+    status:
+      type: string
+      enum: [active, paused]
+    nextRunAt:
+      type: string
+      format: date-time
+    lastRunAt:
+      type: string
+      format: date-time
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+
+ReminderListResponse:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ReminderResponse'

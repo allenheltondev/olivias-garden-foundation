@@ -1,0 +1,76 @@
+/me:
+  get:
+    tags: [Profile, Idempotent]
+    summary: Get current user profile
+    operationId: getMe
+    responses:
+      '200':
+        description: Profile payload
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/profile.yaml#/MeProfileResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  put:
+    tags: [Profile, Idempotent]
+    summary: Update user profile and role-specific configuration
+    operationId: putMe
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/profile.yaml#/PutMeRequest'
+    responses:
+      '204':
+        description: Profile updated
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/me/entitlements:
+  get:
+    tags: [Entitlements, Idempotent]
+    summary: Get current user entitlements snapshot
+    operationId: getMyEntitlements
+    responses:
+      '200':
+        description: Entitlements snapshot
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/profile.yaml#/EntitlementsResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/users/{userId}:
+  get:
+    tags: [Profile, Idempotent]
+    summary: Get public user profile
+    operationId: getPublicUser
+    parameters:
+      - in: path
+        name: userId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Public user profile
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/profile.yaml#/PublicUserResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

@@ -1,0 +1,110 @@
+/claims:
+  get:
+    tags: [Claims, Idempotent]
+    summary: List claims (filterable by listing or request)
+    operationId: listClaims
+    parameters:
+      - in: query
+        name: listingId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: requestId
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [pending, confirmed, completed, cancelled, no_show]
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+    responses:
+      '200':
+        description: Paginated claims
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/claims.yaml#/PaginatedClaims'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  post:
+    tags: [Claims, Gatherer Only]
+    summary: Create a claim on a listing
+    operationId: createClaim
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/claims.yaml#/CreateClaimRequest'
+    responses:
+      '201':
+        description: Created claim
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/claims.yaml#/ClaimResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '404':
+        description: Listing not found
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '409':
+        description: Insufficient quantity remaining
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/claims/{claimId}:
+  parameters:
+    - in: path
+      name: claimId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  put:
+    tags: [Claims]
+    summary: Transition claim status
+    operationId: transitionClaim
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/claims.yaml#/TransitionClaimRequest'
+    responses:
+      '200':
+        description: Updated claim
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/claims.yaml#/ClaimResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

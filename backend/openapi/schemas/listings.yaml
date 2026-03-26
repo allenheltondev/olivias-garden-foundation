@@ -1,0 +1,141 @@
+ListingItem:
+  type: object
+  required: [id, userId, cropId, status, pickupDisclosurePolicy, contactPref, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      type: string
+      format: uuid
+    growerCropId:
+      type: string
+      format: uuid
+      nullable: true
+    cropId:
+      type: string
+      format: uuid
+    varietyId:
+      type: string
+      format: uuid
+      nullable: true
+    title:
+      type: string
+      nullable: true
+    unit:
+      type: string
+      nullable: true
+    quantityTotal:
+      type: string
+      nullable: true
+    quantityRemaining:
+      type: string
+      nullable: true
+    availableStart:
+      type: string
+      format: date-time
+      nullable: true
+    availableEnd:
+      type: string
+      format: date-time
+      nullable: true
+    status:
+      type: string
+      enum: [active, claimed, expired]
+    pickupLocationText:
+      type: string
+      nullable: true
+    pickupAddress:
+      type: string
+      nullable: true
+    effectivePickupAddress:
+      type: string
+      nullable: true
+    pickupDisclosurePolicy:
+      type: string
+      enum: [address_visible, after_confirmed, never]
+    pickupNotes:
+      type: string
+      nullable: true
+    contactPref:
+      type: string
+      enum: [in_app, email, either]
+    geoKey:
+      type: string
+      nullable: true
+    lat:
+      type: number
+      format: double
+      nullable: true
+    lng:
+      type: number
+      format: double
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+
+UpsertListingRequest:
+  type: object
+  required: [title, cropId, quantityTotal, unit, availableStart, availableEnd]
+  properties:
+    title:
+      type: string
+    cropId:
+      type: string
+      format: uuid
+    varietyId:
+      type: string
+      format: uuid
+      nullable: true
+    quantityTotal:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    unit:
+      type: string
+    availableStart:
+      type: string
+      format: date-time
+    availableEnd:
+      type: string
+      format: date-time
+    pickupLocationText:
+      type: string
+      nullable: true
+    pickupAddress:
+      type: string
+      nullable: true
+    pickupDisclosurePolicy:
+      type: string
+      enum: [address_visible, after_confirmed, never]
+      nullable: true
+    pickupNotes:
+      type: string
+      nullable: true
+    contactPref:
+      type: string
+      enum: [in_app, email, either]
+      nullable: true
+    status:
+      type: string
+      enum: [active]
+      nullable: true
+
+PaginatedListings:
+  type: object
+  required: [items, limit, offset, hasMore]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ListingItem'
+    limit:
+      type: integer
+    offset:
+      type: integer
+    hasMore:
+      type: boolean
+    nextOffset:
+      type: integer
+      nullable: true

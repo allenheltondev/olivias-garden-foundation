@@ -1,0 +1,91 @@
+CreateClaimRequest:
+  type: object
+  required: [listingId, quantityClaimed]
+  properties:
+    listingId:
+      type: string
+      format: uuid
+    requestId:
+      type: string
+      format: uuid
+      nullable: true
+    quantityClaimed:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    notes:
+      type: string
+      nullable: true
+
+TransitionClaimRequest:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [confirmed, completed, cancelled, no_show]
+    notes:
+      type: string
+      nullable: true
+
+ClaimResponse:
+  type: object
+  required: [id, listingId, claimerId, listingOwnerId, quantityClaimed, status, claimedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    listingId:
+      type: string
+      format: uuid
+    requestId:
+      type: string
+      format: uuid
+      nullable: true
+    claimerId:
+      type: string
+      format: uuid
+    listingOwnerId:
+      type: string
+      format: uuid
+    quantityClaimed:
+      type: string
+    status:
+      type: string
+      enum: [pending, confirmed, completed, cancelled, no_show]
+    notes:
+      type: string
+      nullable: true
+    claimedAt:
+      type: string
+      format: date-time
+    confirmedAt:
+      type: string
+      format: date-time
+      nullable: true
+    completedAt:
+      type: string
+      format: date-time
+      nullable: true
+    cancelledAt:
+      type: string
+      format: date-time
+      nullable: true
+
+PaginatedClaims:
+  type: object
+  required: [items, limit, offset, hasMore]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ClaimResponse'
+    limit:
+      type: integer
+    offset:
+      type: integer
+    hasMore:
+      type: boolean
+    nextOffset:
+      type: integer
+      nullable: true

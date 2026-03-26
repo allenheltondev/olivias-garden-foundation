@@ -1,0 +1,145 @@
+DerivedFeedResponse:
+  type: object
+  required: [items, signals, freshness, limit, offset, hasMore]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: 'listings.yaml#/ListingItem'
+    signals:
+      type: array
+      items:
+        $ref: '#/DerivedFeedSignal'
+    freshness:
+      $ref: '#/DerivedFeedFreshness'
+    aiSummary:
+      $ref: '#/DerivedFeedAiSummary'
+      nullable: true
+    growerGuidance:
+      $ref: '#/GrowerGuidance'
+      nullable: true
+    limit:
+      type: integer
+    offset:
+      type: integer
+    hasMore:
+      type: boolean
+    nextOffset:
+      type: integer
+      nullable: true
+
+DerivedFeedSignal:
+  type: object
+  required: [geoBoundaryKey, windowDays, listingCount, requestCount, supplyQuantity, demandQuantity, scarcityScore, abundanceScore, computedAt, expiresAt]
+  properties:
+    geoBoundaryKey:
+      type: string
+    cropId:
+      type: string
+      format: uuid
+      nullable: true
+    windowDays:
+      type: integer
+    listingCount:
+      type: integer
+    requestCount:
+      type: integer
+    supplyQuantity:
+      type: string
+    demandQuantity:
+      type: string
+    scarcityScore:
+      type: number
+      format: double
+    abundanceScore:
+      type: number
+      format: double
+    computedAt:
+      type: string
+      format: date-time
+    expiresAt:
+      type: string
+      format: date-time
+
+DerivedFeedFreshness:
+  type: object
+  required: [asOf, isStale, staleFallbackUsed]
+  properties:
+    asOf:
+      type: string
+      format: date-time
+    isStale:
+      type: boolean
+    staleFallbackUsed:
+      type: boolean
+    staleReason:
+      type: string
+      nullable: true
+
+DerivedFeedAiSummary:
+  type: object
+  required: [summaryText, modelId, modelVersion, generatedAt, expiresAt, fromCache]
+  properties:
+    summaryText:
+      type: string
+    modelId:
+      type: string
+    modelVersion:
+      type: string
+    generatedAt:
+      type: string
+      format: date-time
+    expiresAt:
+      type: string
+      format: date-time
+    fromCache:
+      type: boolean
+
+GrowerGuidance:
+  type: object
+  required: [guidanceText, explanation]
+  properties:
+    guidanceText:
+      type: string
+    explanation:
+      $ref: '#/GrowerGuidanceExplanation'
+
+GrowerGuidanceExplanation:
+  type: object
+  required: [season, strategy, windowDays, sourceSignalCount]
+  properties:
+    season:
+      type: string
+    strategy:
+      type: string
+    windowDays:
+      type: integer
+    sourceSignalCount:
+      type: integer
+    strongestScarcitySignal:
+      $ref: '#/GrowerGuidanceSignalRef'
+      nullable: true
+    strongestAbundanceSignal:
+      $ref: '#/GrowerGuidanceSignalRef'
+      nullable: true
+
+GrowerGuidanceSignalRef:
+  type: object
+  required: [geoBoundaryKey, scarcityScore, abundanceScore, listingCount, requestCount]
+  properties:
+    geoBoundaryKey:
+      type: string
+    cropId:
+      type: string
+      format: uuid
+      nullable: true
+    scarcityScore:
+      type: number
+      format: double
+    abundanceScore:
+      type: number
+      format: double
+    listingCount:
+      type: integer
+    requestCount:
+      type: integer

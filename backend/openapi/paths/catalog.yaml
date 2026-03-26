@@ -1,0 +1,44 @@
+/catalog/crops:
+  get:
+    tags: [Catalog, Idempotent, Public]
+    summary: List catalog crops
+    operationId: listCatalogCrops
+    security: []
+    responses:
+      '200':
+        description: Catalog crops
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/catalog.yaml#/CatalogCrop'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/catalog/crops/{cropId}/varieties:
+  get:
+    tags: [Catalog, Idempotent, Public]
+    summary: List catalog varieties for a crop
+    operationId: listCatalogVarieties
+    security: []
+    parameters:
+      - in: path
+        name: cropId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Catalog varieties
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/catalog.yaml#/CatalogVariety'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

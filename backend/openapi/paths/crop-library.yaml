@@ -1,0 +1,99 @@
+/crops:
+  get:
+    tags: [Crop Library, Idempotent]
+    summary: List current user's crop library entries
+    operationId: listMyCrops
+    responses:
+      '200':
+        description: Crop library rows
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/crop-library.yaml#/GrowerCropItem'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  post:
+    tags: [Crop Library]
+    summary: Create a crop library entry
+    operationId: createMyCrop
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/crop-library.yaml#/UpsertGrowerCropRequest'
+    responses:
+      '201':
+        description: Created crop library row
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/crop-library.yaml#/GrowerCropItem'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/crops/{cropLibraryId}:
+  parameters:
+    - in: path
+      name: cropLibraryId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  get:
+    tags: [Crop Library, Idempotent]
+    summary: Get one crop library entry
+    operationId: getMyCrop
+    responses:
+      '200':
+        description: Crop library row
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/crop-library.yaml#/GrowerCropItem'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  put:
+    tags: [Crop Library]
+    summary: Update one crop library entry
+    operationId: updateMyCrop
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/crop-library.yaml#/UpsertGrowerCropRequest'
+    responses:
+      '200':
+        description: Updated crop library row
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/crop-library.yaml#/GrowerCropItem'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  delete:
+    tags: [Crop Library]
+    summary: Delete one crop library entry
+    operationId: deleteMyCrop
+    responses:
+      '204':
+        description: Deleted
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
