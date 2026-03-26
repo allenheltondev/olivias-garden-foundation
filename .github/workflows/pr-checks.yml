@@ -458,7 +458,7 @@ jobs:
 
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
           role-session-name: GitHubActions-PR-${{ github.event.pull_request.number }}
@@ -625,7 +625,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
           role-session-name: GitHubActions-Frontend-PR-${{ github.event.pull_request.number }}
@@ -737,7 +737,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
           role-session-name: GitHubActions-Contract-PR-${{ github.event.pull_request.number }}
@@ -748,7 +748,7 @@ jobs:
         run: |
           FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
 
-          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
             echo "CiAuthSeedUsersFunctionName stack output is required for Postman contract auth."
             exit 1
           fi
@@ -826,7 +826,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
           role-session-name: GitHubActions-Utility-PR-${{ github.event.pull_request.number }}
@@ -837,7 +837,7 @@ jobs:
         run: |
           FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
 
-          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
             echo "CiAuthSeedUsersFunctionName stack output is required for Postman utility auth."
             exit 1
           fi
@@ -907,7 +907,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
           role-session-name: GitHubActions-E2E-PR-${{ github.event.pull_request.number }}
@@ -918,7 +918,7 @@ jobs:
         run: |
           FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
 
-          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
             echo "CiAuthSeedUsersFunctionName stack output is required for Postman E2E auth."
             exit 1
           fi
@@ -1017,7 +1017,7 @@ jobs:
 
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
           role-session-name: GitHubActions-Cleanup-PR-${{ github.event.pull_request.number }}

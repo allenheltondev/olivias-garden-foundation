@@ -633,7 +633,7 @@ Outputs:
     Value: !If
       - DeployCiAuthSeedFunction
       - !Ref CiAuthSeedUsersFunction
-      - ""
+      - "NONE"
     Export:
       Name: !Sub "${AWS::StackName}-CiAuthSeedUsersFunctionName"
 
