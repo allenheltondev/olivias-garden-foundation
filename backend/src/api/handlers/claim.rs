@@ -150,7 +150,7 @@ pub async fn create_claim(
             insert into claims
                 (listing_id, request_id, claimer_id, quantity_claimed, status, notes)
             values
-                ($1, $2, $3, $4, 'pending'::claim_status, $5)
+                ($1, $2, $3, $4::double precision, 'pending'::claim_status, $5)
             returning id, listing_id, request_id, claimer_id,
                       quantity_claimed::text as quantity_claimed,
                       status::text as status, notes,
