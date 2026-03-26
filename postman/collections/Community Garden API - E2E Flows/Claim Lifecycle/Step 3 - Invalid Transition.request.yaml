@@ -1,0 +1,37 @@
+$kind: http-request
+name: 'Step 3 - Invalid Transition'
+description: |-
+  Attempt an invalid claim state transition: pending → completed (skipping confirmed).
+
+  The API should reject this with a 400 status code.
+
+  **Depends on**: `claimId` captured in Step 2
+method: PUT
+url: '{{baseUrl}}/claims/{{claimId}}'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "completed"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const claimId = pm.collectionVariables.get("claimId");
+      if (!claimId) {
+          console.error("claimId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400 for invalid transition", function () {
+          pm.response.to.have.status(400);
+      });

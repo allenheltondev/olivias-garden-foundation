@@ -1,0 +1,44 @@
+$kind: http-request
+name: 'GET /my/listings - Re-read Verification'
+description: |-
+  Re-reads the user's listings and verifies the listing created in the previous step
+  appears with consistent key field values, confirming write-then-read idempotency.
+method: GET
+url: '{{baseUrl}}/my/listings'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const listingId = pm.collectionVariables.get("idempotencyListingId");
+      if (!listingId) {
+          console.warn("idempotencyListingId not set; skipping re-read verification.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const expectedId = pm.collectionVariables.get("idempotencyListingId");
+      const expectedTitle = pm.collectionVariables.get("idempotencyListingTitle");
+      const expectedStatus = pm.collectionVariables.get("idempotencyListingStatus");
+      const expectedQty = pm.collectionVariables.get("idempotencyListingQty");
+
+      pm.test("Response is successful", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Created listing appears in my listings with matching fields", function () {
+          const body = pm.response.json();
+          const items = body.items || body;
+          const arr = Array.isArray(items) ? items : [];
+
+          const match = arr.find(item => item.id === expectedId);
+          pm.expect(match, "Listing with captured ID not found in response").to.not.be.undefined;
+
+          pm.expect(match.title).to.eql(expectedTitle);
+          pm.expect(match.status).to.eql(expectedStatus);
+          pm.expect(String(match.quantityTotal)).to.eql(expectedQty);
+      });

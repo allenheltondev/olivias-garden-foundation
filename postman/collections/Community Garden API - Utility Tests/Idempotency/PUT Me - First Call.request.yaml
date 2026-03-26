@@ -1,0 +1,41 @@
+$kind: http-request
+name: 'PUT /me - First Call'
+description: |-
+  First of two identical PUT /me requests to verify idempotency.
+  Captures the response status code and body snapshot into collection variables
+  for comparison by the second call.
+method: PUT
+url: '{{baseUrl}}/me'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "Idempotency Test User",
+      "userType": "grower",
+      "growerProfile": {
+        "homeZone": "8a",
+        "address": "456 Idempotency St, Austin, TX 78701",
+        "shareRadiusMiles": 5,
+        "units": "imperial",
+        "locale": "en-US"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 204", function () {
+          pm.response.to.have.status(204);
+      });
+
+      // Capture status code and body snapshot for the second call to compare
+      pm.collectionVariables.set("putMeStatusSnapshot", pm.response.code.toString());
+
+      const bodyText = pm.response.text();
+      pm.collectionVariables.set("putMeResponseSnapshot", bodyText || "");

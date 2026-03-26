@@ -1,0 +1,36 @@
+$kind: http-request
+name: 'POST /crops - Server Generated Correlation ID'
+description: |-
+  Sends a POST /crops request without an X-Correlation-Id header.
+  Asserts the response contains a server-generated non-empty
+  X-Correlation-Id header for traceability.
+method: POST
+url: '{{baseUrl}}/crops'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "crop_id": "{{defaultCatalogCropId}}",
+      "status": "growing",
+      "visibility": "local",
+      "surplus_enabled": false,
+      "nickname": "Correlation ID test crop"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201 or 400", function () {
+          pm.expect(pm.response.code).to.be.oneOf([201, 400]);
+      });
+
+      pm.test("Response contains non-empty X-Correlation-Id", function () {
+          const corrId = pm.response.headers.get("X-Correlation-Id");
+          pm.expect(corrId).to.be.a("string").and.not.empty;
+      });

@@ -1,0 +1,33 @@
+$kind: http-request
+name: 'Step 4 - Verify Listing in My Listings'
+description: |-
+  Verify the listing created in Step 3 appears in GET /my/listings with matching id and status.
+
+  **Depends on**: `consistencyListingId` and `consistencyListingStatus` captured in Step 3
+  **Validates**: Requirement 12.2 — write-then-read consistency for listings
+method: GET
+url: '{{baseUrl}}/my/listings'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Created listing appears in my listings with matching fields", function () {
+          const body = pm.response.json();
+          const items = body.items || body;
+          const arr = Array.isArray(items) ? items : [];
+          const expectedId = pm.collectionVariables.get("consistencyListingId");
+
+          pm.expect(expectedId, "consistencyListingId must be set").to.be.a("string").and.not.empty;
+
+          const match = arr.find(item => item.id === expectedId);
+          pm.expect(match, "Listing with captured ID not found in my listings").to.not.be.undefined;
+          pm.expect(match.status).to.eql(pm.collectionVariables.get("consistencyListingStatus"));
+      });

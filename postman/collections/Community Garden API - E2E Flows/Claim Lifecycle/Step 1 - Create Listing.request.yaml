@@ -1,0 +1,65 @@
+$kind: http-request
+name: 'Step 1 - Create Listing'
+description: |-
+  Create a listing for the claim lifecycle flow.
+
+  **Depends on**: `authToken` set to grower token in Step 0
+  **Chaining**: Captures `listingId` from the response for subsequent claim steps.
+method: POST
+url: '{{baseUrl}}/listings'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Claim Lifecycle Test Listing",
+      "cropId": "{{catalogCropId}}",
+      "quantityTotal": 5,
+      "unit": "lb",
+      "availableStart": "2026-07-01T08:00:00Z",
+      "availableEnd": "2026-07-03T18:00:00Z",
+      "pickupLocationText": "Front porch",
+      "status": "active"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Validate catalogCropId with fallback to defaultCatalogCropId
+      let cropId = pm.collectionVariables.get("catalogCropId");
+      const fallbackCropId = pm.collectionVariables.get("defaultCatalogCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if ((!cropId || !uuidRe.test(cropId)) && fallbackCropId && uuidRe.test(fallbackCropId)) {
+          cropId = fallbackCropId;
+          pm.collectionVariables.set("catalogCropId", cropId);
+      }
+
+      pm.test("catalogCropId is set and valid UUID", function () {
+          pm.expect(cropId, "catalogCropId is required").to.be.a("string").and.not.empty;
+          pm.expect(cropId).to.match(uuidRe);
+      });
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture listingId for claim lifecycle", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id");
+
+          if (!listing.id) {
+              pm.expect.fail("Missing listing.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("listingId", listing.id);
+      });

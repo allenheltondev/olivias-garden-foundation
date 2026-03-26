@@ -1,0 +1,4 @@
+$kind: collection
+name: Entitlement Matrix
+description: Premium endpoint gating verification across free and premium tiers, asserting 403 feature_locked for free-tier callers.
+order: 3000

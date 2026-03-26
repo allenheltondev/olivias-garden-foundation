@@ -1,0 +1,33 @@
+$kind: http-request
+name: 'POST /crops - Missing crop_id'
+description: |-
+  Sends a POST /crops request with the required `crop_id` field omitted.
+  Expects a 400 status code and an `error` property in the response body.
+method: POST
+url: '{{baseUrl}}/crops'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "growing",
+      "visibility": "local",
+      "surplus_enabled": false
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

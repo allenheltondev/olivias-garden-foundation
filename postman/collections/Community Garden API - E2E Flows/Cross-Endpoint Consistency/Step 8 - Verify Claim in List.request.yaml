@@ -1,0 +1,35 @@
+$kind: http-request
+name: 'Step 8 - Verify Claim in List'
+description: |-
+  Verify the claim created in Step 7 appears in GET /claims with matching id and listingId.
+
+  Still running as gatherer (token swapped in Step 7).
+
+  **Depends on**: `consistencyClaimId` and `consistencyListingId` captured in previous steps
+  **Validates**: Requirement 12.4 — write-then-read consistency for claims
+method: GET
+url: '{{baseUrl}}/claims'
+order: 8000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Created claim appears in list with matching fields", function () {
+          const body = pm.response.json();
+          const items = body.items || body;
+          const arr = Array.isArray(items) ? items : [];
+          const expectedId = pm.collectionVariables.get("consistencyClaimId");
+
+          pm.expect(expectedId, "consistencyClaimId must be set").to.be.a("string").and.not.empty;
+
+          const match = arr.find(item => item.id === expectedId);
+          pm.expect(match, "Claim with captured ID not found in list").to.not.be.undefined;
+          pm.expect(match.listingId).to.eql(pm.collectionVariables.get("consistencyListingId"));
+      });

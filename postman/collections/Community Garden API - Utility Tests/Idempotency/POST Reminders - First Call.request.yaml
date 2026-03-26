@@ -1,0 +1,44 @@
+$kind: http-request
+name: 'POST /reminders - First Call'
+description: |-
+  First POST /reminders call. Captures the created reminder ID and status code
+  for comparison by the second call to verify no duplicate creation.
+method: POST
+url: '{{baseUrl}}/reminders'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Idempotency test reminder",
+      "reminderType": "watering",
+      "cadenceDays": 7,
+      "startDate": "2026-07-10",
+      "timezone": "America/Chicago"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture first reminder ID and status code", function () {
+          const reminder = pm.response.json();
+          pm.expect(reminder).to.have.property("id");
+
+          if (!reminder.id) {
+              pm.expect.fail("Missing reminder.id; aborting to prevent cascade failures.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("idempotencyReminderId1", reminder.id);
+          pm.collectionVariables.set("idempotencyReminderStatus1", pm.response.code.toString());
+      });

@@ -1,0 +1,26 @@
+$kind: http-request
+name: 'Step 3 - Verify Discovery'
+description: |-
+  Verify the listing discovery endpoint returns results.
+
+  **Depends on**: `authToken` set to grower token
+  **Asserts**: Response contains an `items` array (endpoint works for the grower).
+method: GET
+url: '{{baseUrl}}/listings/discover'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response contains items array", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("items");
+          pm.expect(body.items).to.be.an("array");
+      });

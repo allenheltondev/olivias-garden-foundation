@@ -1,0 +1,46 @@
+$kind: http-request
+name: 'Setup - Create Listing with Qty 1'
+description: |-
+  Creates a listing with quantityTotal of 1 to set up the 409 conflict scenario.
+  Captures the listing ID into conflictListingId for subsequent claim requests.
+method: POST
+url: '{{baseUrl}}/listings'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "409 Conflict Test - Qty 1",
+      "cropId": "{{defaultCatalogCropId}}",
+      "quantityTotal": 1,
+      "unit": "each",
+      "availableStart": "2026-07-01T08:00:00Z",
+      "availableEnd": "2026-07-03T18:00:00Z",
+      "pickupLocationText": "Front porch",
+      "status": "active"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture listing ID for conflict test sequence", function () {
+          const listing = pm.response.json();
+          pm.expect(listing).to.have.property("id");
+
+          if (!listing.id) {
+              pm.expect.fail("Missing listing.id; aborting.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("conflictListingId", listing.id);
+      });

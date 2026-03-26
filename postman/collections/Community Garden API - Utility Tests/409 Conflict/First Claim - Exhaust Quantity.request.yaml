@@ -1,0 +1,45 @@
+$kind: http-request
+name: 'First Claim - Exhaust Quantity'
+description: |-
+  Claims the full quantity (1) on the conflict test listing, exhausting available stock.
+  This sets up the 409 conflict for the subsequent second claim attempt.
+method: POST
+url: '{{baseUrl}}/claims'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listingId": "{{conflictListingId}}",
+      "quantityClaimed": 1,
+      "notes": "409 conflict test claim"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const listingId = pm.collectionVariables.get("conflictListingId");
+      if (!listingId) {
+          console.error("conflictListingId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture first claim ID", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("id");
+
+          if (claim.id) {
+              pm.collectionVariables.set("conflictFirstClaimId", claim.id);
+          }
+      });

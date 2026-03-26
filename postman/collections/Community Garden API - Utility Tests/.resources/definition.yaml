@@ -1,0 +1,44 @@
+$kind: collection
+name: Community Garden API - Utility Tests
+description: |-
+  Stateless and minimally stateful infrastructure-level tests for the Community Garden API.
+
+  Covers negative path validation (400), non-existent resource lookups (404),
+  entitlement matrix verification (403), idempotency safety, correlation ID propagation,
+  pagination boundaries, and quantity conflict detection (409).
+
+  ## Authentication
+  Most requests use a premium-tier Bearer token. Entitlement matrix tests swap to a free-tier token.
+variables:
+  - key: baseUrl
+    value: 'https://api.example.com'
+    description: Base URL for the Community Garden API
+  - key: authToken
+    value: ''
+    description: Active JWT Bearer token (swapped between free/premium per subfolder run)
+  - key: freeAuthToken
+    value: ''
+    description: Free-tier grower token for entitlement gating tests
+  - key: premiumAuthToken
+    value: ''
+    description: Premium-tier grower token for write and setup operations
+  - key: catalogCropId
+    value: ''
+    description: Catalog crop ID captured from catalog list
+  - key: defaultCatalogCropId
+    value: '8e7139d1-8aed-4228-bd5e-ff38c1311765'
+    description: Stable fallback crop ID for CI when catalog chaining has not run yet
+  - key: listingId
+    value: ''
+    description: Captured listing ID for 409 conflict tests
+  - key: claimId
+    value: ''
+    description: Captured claim ID for idempotency tests
+  - key: reminderId
+    value: ''
+    description: Captured reminder ID for idempotency tests
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'

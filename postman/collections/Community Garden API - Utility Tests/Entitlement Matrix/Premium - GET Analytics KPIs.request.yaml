@@ -1,0 +1,22 @@
+$kind: http-request
+name: 'Premium - GET /analytics/premium/kpis → non-403'
+description: |-
+  Verifies that a premium-tier token is NOT rejected with 403
+  when calling the premium analytics KPIs endpoint.
+method: GET
+url: '{{baseUrl}}/analytics/premium/kpis'
+order: 10000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set("authToken", pm.collectionVariables.get("premiumAuthToken"));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is not 403", function () {
+          pm.expect(pm.response.code).to.not.equal(403);
+      });

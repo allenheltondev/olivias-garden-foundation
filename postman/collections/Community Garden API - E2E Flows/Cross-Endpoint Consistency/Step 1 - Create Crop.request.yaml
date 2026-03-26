@@ -1,0 +1,63 @@
+$kind: http-request
+name: 'Step 1 - Create Crop'
+description: |-
+  Grower creates a crop in their library for the cross-endpoint consistency flow.
+
+  **Depends on**: `authToken` set to grower token in Step 0
+  **Chaining**: Captures `consistencyCropId` and `consistencyCropNickname` from the response.
+method: POST
+url: '{{baseUrl}}/crops'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "crop_id": "{{catalogCropId}}",
+      "status": "growing",
+      "visibility": "local",
+      "surplus_enabled": true,
+      "nickname": "Consistency E2E crop"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Validate catalogCropId with fallback to defaultCatalogCropId
+      let cropId = pm.collectionVariables.get("catalogCropId");
+      const fallbackCropId = pm.collectionVariables.get("defaultCatalogCropId");
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if ((!cropId || !uuidRe.test(cropId)) && fallbackCropId && uuidRe.test(fallbackCropId)) {
+          cropId = fallbackCropId;
+          pm.collectionVariables.set("catalogCropId", cropId);
+      }
+
+      pm.test("catalogCropId is set and valid UUID", function () {
+          pm.expect(cropId, "catalogCropId is required").to.be.a("string").and.not.empty;
+          pm.expect(cropId).to.match(uuidRe);
+      });
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture consistencyCropId and consistencyCropNickname", function () {
+          const crop = pm.response.json();
+          pm.expect(crop).to.have.property("id");
+
+          if (!crop.id) {
+              pm.expect.fail("Missing crop.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("consistencyCropId", crop.id);
+          pm.collectionVariables.set("consistencyCropNickname", crop.nickname || "Consistency E2E crop");
+      });

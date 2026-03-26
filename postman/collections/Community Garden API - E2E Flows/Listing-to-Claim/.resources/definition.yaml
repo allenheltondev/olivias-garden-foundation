@@ -1,0 +1,4 @@
+$kind: collection
+name: Listing-to-Claim
+description: Grower creates crop and listing, gatherer claims it, grower confirms and completes — full value chain.
+order: 2000

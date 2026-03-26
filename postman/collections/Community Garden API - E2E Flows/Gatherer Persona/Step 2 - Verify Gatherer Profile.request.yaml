@@ -1,0 +1,31 @@
+$kind: http-request
+name: 'Step 2 - Verify Gatherer Profile'
+description: |-
+  Verify the gatherer profile was saved correctly via GET /me.
+
+  **Depends on**: Profile set up in Step 1
+  **Asserts**: 200 response with `userType` equal to `gatherer` and `gathererProfile` object present.
+method: GET
+url: '{{baseUrl}}/me'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("userType is gatherer", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("userType", "gatherer");
+      });
+
+      pm.test("gathererProfile is an object", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("gathererProfile");
+          pm.expect(body.gathererProfile).to.be.an("object");
+      });

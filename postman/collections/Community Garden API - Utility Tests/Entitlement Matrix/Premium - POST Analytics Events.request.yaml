@@ -1,0 +1,31 @@
+$kind: http-request
+name: 'Premium - POST /analytics/premium/events → non-403'
+description: |-
+  Verifies that a premium-tier token is NOT rejected with 403
+  when calling the premium analytics event tracking endpoint.
+method: POST
+url: '{{baseUrl}}/analytics/premium/events'
+order: 9000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "eventType": "test_event",
+      "payload": {}
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set("authToken", pm.collectionVariables.get("premiumAuthToken"));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is not 403", function () {
+          pm.expect(pm.response.code).to.not.equal(403);
+      });

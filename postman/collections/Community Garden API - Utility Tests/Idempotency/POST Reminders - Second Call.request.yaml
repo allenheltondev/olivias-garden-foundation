@@ -1,0 +1,41 @@
+$kind: http-request
+name: 'POST /reminders - Second Call'
+description: |-
+  Second POST /reminders call with the same body. Asserts the API returns 201
+  (creating a new reminder is acceptable) and that the new reminder ID differs
+  from the first, confirming no duplicate ID reuse.
+method: POST
+url: '{{baseUrl}}/reminders'
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Idempotency test reminder",
+      "reminderType": "watering",
+      "cadenceDays": 7,
+      "startDate": "2026-07-10",
+      "timezone": "America/Chicago"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Second reminder has a different ID (no duplicate ID reuse)", function () {
+          const reminder = pm.response.json();
+          pm.expect(reminder).to.have.property("id");
+
+          const firstId = pm.collectionVariables.get("idempotencyReminderId1");
+          pm.expect(reminder.id, "Second reminder ID should differ from first").to.not.eql(firstId);
+
+          pm.collectionVariables.set("idempotencyReminderId2", reminder.id);
+      });

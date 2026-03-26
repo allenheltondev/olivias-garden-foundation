@@ -1,0 +1,4 @@
+$kind: collection
+name: Idempotency
+description: Repeated write safety verification ensuring duplicate requests produce consistent responses without creating duplicate resources.
+order: 4000

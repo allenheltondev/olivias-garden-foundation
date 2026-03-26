@@ -1,0 +1,39 @@
+$kind: http-request
+name: 'PUT /me - Negative shareRadiusMiles'
+description: |-
+  Sends a PUT /me request with `shareRadiusMiles` set to -1 in the grower profile.
+  Expects a 400 status code because shareRadiusMiles must be greater than 0.
+method: PUT
+url: '{{baseUrl}}/me'
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "displayName": "Negative Path Test User",
+      "userType": "grower",
+      "growerProfile": {
+        "homeZone": "8a",
+        "address": "123 Test St, Austin, TX 78701",
+        "shareRadiusMiles": -1,
+        "units": "imperial",
+        "locale": "en-US"
+      }
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

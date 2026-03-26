@@ -1,0 +1,33 @@
+$kind: http-request
+name: 'Step 2 - Verify Crop in List'
+description: |-
+  Verify the crop created in Step 1 appears in the GET /crops list with matching fields.
+
+  **Depends on**: `consistencyCropId` and `consistencyCropNickname` captured in Step 1
+  **Validates**: Requirement 12.1 — write-then-read consistency for crops
+method: GET
+url: '{{baseUrl}}/crops'
+order: 2000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Created crop appears in list with matching fields", function () {
+          const body = pm.response.json();
+          const items = body.items || body;
+          const arr = Array.isArray(items) ? items : [];
+          const expectedId = pm.collectionVariables.get("consistencyCropId");
+
+          pm.expect(expectedId, "consistencyCropId must be set").to.be.a("string").and.not.empty;
+
+          const match = arr.find(item => item.id === expectedId);
+          pm.expect(match, "Crop with captured ID not found in list").to.not.be.undefined;
+          pm.expect(match.nickname).to.eql(pm.collectionVariables.get("consistencyCropNickname"));
+      });

@@ -1,0 +1,4 @@
+$kind: collection
+name: Claim Lifecycle
+description: Full claim state machine exercise: pending → confirmed → completed, plus invalid transition rejection.
+order: 1000

@@ -811,11 +811,11 @@ jobs:
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
             --env-var "stripeWebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
-  e2e-api-tests:
-    name: Staging E2E API Tests
+  utility-api-tests:
+    name: Staging Utility API Tests
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke, contract-api-tests]
+    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     env:
       AWS_REGION: us-east-1
 
@@ -827,16 +827,16 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-E2E-PR-${{ github.event.pull_request.number }}
+          role-session-name: GitHubActions-Utility-PR-${{ github.event.pull_request.number }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Generate grower auth token for Postman
+      - name: Generate auth tokens for Postman
         id: ci-auth
         run: |
           FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
 
           if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
-            echo "CiAuthSeedUsersFunctionName stack output is required for Postman E2E auth."
+            echo "CiAuthSeedUsersFunctionName stack output is required for Postman utility auth."
             exit 1
           fi
 
@@ -865,7 +865,84 @@ jobs:
           echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
           echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
           echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Install Postman CLI
+        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
+      - name: Login to Postman CLI
+        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
+
+      - name: Run utility collection (premium token)
+        run: |
+          postman collection run "postman/collections/Community Garden API - Utility Tests" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "premiumAuthToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "freeAuthToken=${{ steps.ci-auth.outputs.free-auth-token }}"
+
+  e2e-api-tests:
+    name: Staging E2E API Tests
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-E2E-PR-${{ github.event.pull_request.number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Generate auth tokens for Postman
+        id: ci-auth
+        run: |
+          FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
+
+          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+            echo "CiAuthSeedUsersFunctionName stack output is required for Postman E2E auth."
+            exit 1
+          fi
+
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-auth-seed-response.json > /dev/null
+
+          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower_free.access_token' ci-auth-seed-response.json)
+          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .grower_premium.access_token' ci-auth-seed-response.json)
+          GATHERER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .gatherer.access_token' ci-auth-seed-response.json)
+
+          if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower_free.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract grower_premium.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          if [ -z "$GATHERER_ACCESS_TOKEN" ] || [ "$GATHERER_ACCESS_TOKEN" = "null" ]; then
+            echo "Failed to extract gatherer.access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
+          echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
+          echo "::add-mask::$GATHERER_ACCESS_TOKEN"
+          echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "gatherer-auth-token=$GATHERER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Install Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
@@ -875,9 +952,11 @@ jobs:
 
       - name: Run E2E collection
         run: |
-          postman collection run "postman/collections/E2E - Search veggie and add to garden" \
+          postman collection run "postman/collections/Community Garden API - E2E Flows" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}"
+            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "growerAuthToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
   staging-validation-summary:
     name: Staging Validation Summary
@@ -887,6 +966,7 @@ jobs:
       - deploy-staging-frontend
       - staging-public-api-smoke
       - contract-api-tests
+      - utility-api-tests
       - e2e-api-tests
     if: always() && github.event.action != 'closed'
 
@@ -906,6 +986,7 @@ jobs:
           check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
           check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
           check_result "contract-api-tests" "${{ needs.contract-api-tests.result }}"
+          check_result "utility-api-tests" "${{ needs.utility-api-tests.result }}"
           check_result "e2e-api-tests" "${{ needs.e2e-api-tests.result }}"
 
           echo "Staging validation passed"

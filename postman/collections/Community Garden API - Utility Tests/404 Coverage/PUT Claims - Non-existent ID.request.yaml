@@ -1,0 +1,31 @@
+$kind: http-request
+name: 'PUT /claims/{id} - Non-existent ID'
+description: |-
+  Sends a PUT request to transition a claim with a valid-format UUID that does not exist.
+  Includes a valid transition body. Expects a 404 status code and an `error` property.
+method: PUT
+url: '{{baseUrl}}/claims/00000000-0000-4000-a000-000000000000'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{premiumAuthToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "confirmed"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 404", function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test("Response contains error property", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("error");
+      });

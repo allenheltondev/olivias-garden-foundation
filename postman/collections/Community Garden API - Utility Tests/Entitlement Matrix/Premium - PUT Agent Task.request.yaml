@@ -1,0 +1,31 @@
+$kind: http-request
+name: 'Premium - PUT /agent-tasks/{id} → non-403'
+description: |-
+  Verifies that a premium-tier token is NOT rejected with 403
+  when calling the agent task update endpoint.
+  A placeholder UUID is used; a 404 is acceptable — the key assertion is no 403.
+method: PUT
+url: '{{baseUrl}}/agent-tasks/00000000-0000-4000-a000-000000000000'
+order: 8000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "cancelled"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set("authToken", pm.collectionVariables.get("premiumAuthToken"));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is not 403", function () {
+          pm.expect(pm.response.code).to.not.equal(403);
+      });

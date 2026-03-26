@@ -1,0 +1,60 @@
+$kind: http-request
+name: 'Step 4 - Gatherer Claims'
+description: |-
+  Swap to gatherer token and create a claim against the grower's listing.
+
+  **Depends on**: `listingId` captured in Step 2
+  **Chaining**: Sets `authToken` to `{{gathererAuthToken}}`, captures `claimId` from the response.
+method: POST
+url: '{{baseUrl}}/claims'
+order: 4000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listingId": "{{listingId}}",
+      "quantityClaimed": 1,
+      "notes": "Listing-to-Claim E2E test"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Swap authToken to gatherer for claiming
+      const gathererToken = pm.collectionVariables.get("gathererAuthToken");
+      if (gathererToken) {
+          pm.collectionVariables.set("authToken", gathererToken);
+      } else {
+          console.error("gathererAuthToken not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+
+      const listingId = pm.collectionVariables.get("listingId");
+      if (!listingId) {
+          console.error("listingId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture claimId for grower confirmation", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("id");
+
+          if (!claim.id) {
+              pm.expect.fail("Missing claim.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("claimId", claim.id);
+      });

@@ -1,0 +1,34 @@
+$kind: http-request
+name: 'Step 6 - Verify Reminder in List'
+description: |-
+  Verify the reminder created in Step 5 appears in GET /reminders with matching id, title, and status.
+
+  **Depends on**: `consistencyReminderId`, `consistencyReminderTitle`, `consistencyReminderStatus` captured in Step 5
+  **Validates**: Requirement 12.3 — write-then-read consistency for reminders
+method: GET
+url: '{{baseUrl}}/reminders'
+order: 6000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Created reminder appears in list with matching fields", function () {
+          const body = pm.response.json();
+          const items = body.items || body;
+          const arr = Array.isArray(items) ? items : [];
+          const expectedId = pm.collectionVariables.get("consistencyReminderId");
+
+          pm.expect(expectedId, "consistencyReminderId must be set").to.be.a("string").and.not.empty;
+
+          const match = arr.find(item => item.id === expectedId);
+          pm.expect(match, "Reminder with captured ID not found in list").to.not.be.undefined;
+          pm.expect(match.title).to.eql(pm.collectionVariables.get("consistencyReminderTitle"));
+          pm.expect(match.status).to.eql(pm.collectionVariables.get("consistencyReminderStatus"));
+      });

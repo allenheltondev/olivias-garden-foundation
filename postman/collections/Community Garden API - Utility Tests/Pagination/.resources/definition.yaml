@@ -1,0 +1,4 @@
+$kind: collection
+name: Pagination
+description: Limit, offset, and hasMore boundary testing for paginated list endpoints.
+order: 6000

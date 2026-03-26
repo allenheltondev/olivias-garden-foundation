@@ -1,0 +1,4 @@
+$kind: collection
+name: 404 Coverage
+description: Non-existent resource lookup assertions ensuring 404 responses instead of 500 errors or empty 200s.
+order: 2000
