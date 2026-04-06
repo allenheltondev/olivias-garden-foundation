@@ -19,7 +19,7 @@ export function TipsModule({ tips = [], experienceLevel }: TipsModuleProps) {
     [dismissedTipIds, tips]
   );
 
-  if (!tips.length || !visibleTips.length) {
+  if (!tips.length) {
     return null;
   }
 
@@ -51,40 +51,55 @@ export function TipsModule({ tips = [], experienceLevel }: TipsModuleProps) {
         </div>
       </div>
 
-      <ul className="space-y-3">
-        {visibleTips.map((tip) => {
-          const isSaved = savedTipIds.includes(tip.id);
+      {visibleTips.length === 0 ? (
+        <div className="rounded-md border border-dashed border-gray-300 p-3 text-sm text-gray-600">
+          <p>All current tips dismissed.</p>
+          <button
+            type="button"
+            onClick={() => setDismissedTipIds([])}
+            className="mt-2 text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
+          >
+            Restore tips
+          </button>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {visibleTips.map((tip) => {
+            const isSaved = savedTipIds.includes(tip.id);
 
-          return (
-            <li key={tip.id} className="rounded-md border border-gray-200 p-3">
-              <p className="text-sm font-medium text-gray-900">{tip.title}</p>
-              <p className="mt-1 text-sm text-gray-700">{tip.body}</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
-                <span className="rounded-full bg-gray-100 px-2 py-0.5">Why this tip: {tip.level}</span>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5">{tip.season}</span>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5">{tip.category}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => toggleSaveTip(tip.id)}
-                  className="text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
-                  aria-pressed={isSaved}
-                >
-                  {isSaved ? 'Saved' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => dismissTip(tip.id)}
-                  className="text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+            return (
+              <li key={tip.id} className="rounded-md border border-gray-200 p-3">
+                <p className="text-sm font-medium text-gray-900">{tip.title}</p>
+                <p className="mt-1 text-sm text-gray-700">{tip.body}</p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5">Why this tip: {tip.level}</span>
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5">{tip.season}</span>
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5">{tip.category}</span>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSaveTip(tip.id)}
+                    className="text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
+                    aria-pressed={isSaved}
+                    aria-label={isSaved ? `Unsave tip: ${tip.title}` : `Save tip: ${tip.title}`}
+                  >
+                    {isSaved ? 'Saved' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dismissTip(tip.id)}
+                    className="text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
+                    aria-label={`Dismiss tip: ${tip.title}`}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
