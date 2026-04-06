@@ -35,9 +35,9 @@ export function TipsModule({ tips = [], experienceLevel }: TipsModuleProps) {
 
   return (
     <section className="bg-white rounded-lg shadow-md p-4" aria-label="Personalized gardening tips">
-      <div className="flex items-center justify-between mb-3 gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
         <h2 className="text-base font-semibold text-gray-900">Recommended tips</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {savedTipIds.length > 0 ? (
             <span className="text-xs font-medium bg-amber-50 text-amber-800 rounded-full px-2 py-1">
               Saved: {savedTipIds.length}
@@ -76,11 +76,11 @@ export function TipsModule({ tips = [], experienceLevel }: TipsModuleProps) {
                   <span className="rounded-full bg-gray-100 px-2 py-0.5">{tip.season}</span>
                   <span className="rounded-full bg-gray-100 px-2 py-0.5">{tip.category}</span>
                 </div>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => toggleSaveTip(tip.id)}
-                    className="text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
+                    className="text-xs rounded border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
                     aria-pressed={isSaved}
                     aria-label={isSaved ? `Unsave tip: ${tip.title}` : `Save tip: ${tip.title}`}
                   >
@@ -89,7 +89,7 @@ export function TipsModule({ tips = [], experienceLevel }: TipsModuleProps) {
                   <button
                     type="button"
                     onClick={() => dismissTip(tip.id)}
-                    className="text-xs rounded border border-gray-300 px-2 py-1 text-gray-700 hover:bg-gray-50"
+                    className="text-xs rounded border border-gray-300 px-3 py-2 text-gray-700 hover:bg-gray-50"
                     aria-label={`Dismiss tip: ${tip.title}`}
                   >
                     Dismiss
