@@ -6,11 +6,12 @@ use crate::location;
 use crate::middleware::entitlements;
 use crate::models::crop::ErrorResponse;
 use crate::models::profile::{
-    GrowerProfile, MeProfileResponse, PublicUserResponse, PutMeRequest, SeasonalTimelineEntry,
-    SubscriptionMetadata, UserRatingSummary, UserType,
+    CuratedTipTraceEntry, GrowerProfile, MeProfileResponse, PublicUserResponse, PutMeRequest,
+    SeasonalTimelineEntry, SubscriptionMetadata, UserRatingSummary, UserType,
 };
 use crate::tips_framework::{
-    assign_experience_level, recommend_curated_tips, season_from_month, ExperienceSignals,
+    assign_experience_level, curated_tip_catalog, is_tip_eligible, recommend_curated_tips,
+    season_from_month, ExperienceSignals,
 };
 use chrono::Datelike;
 use lambda_http::{Body, Request, RequestExt, Response};
@@ -382,6 +383,27 @@ async fn to_me_response(
 
     let curated_tips = recommend_curated_tips(experience_level, season, zone, &[], 6);
 
+    let curated_tip_trace = curated_tip_catalog()
+        .iter()
+        .filter(|curated| {
+            is_tip_eligible(
+                experience_level,
+                season,
+                zone,
+                &[],
+                &curated.targeting,
+            )
+        })
+        .map(|curated| CuratedTipTraceEntry {
+            tip_id: curated.id.clone(),
+            minimum_level: curated.targeting.minimum_level,
+            matched_level: experience_level,
+            matched_season: season.to_string(),
+            matched_zone: zone.to_string(),
+        })
+        .take(6)
+        .collect::<Vec<_>>();
+
     let _ = analytics::log_backend_event(
         client,
         Some(user_id),
@@ -390,7 +412,8 @@ async fn to_me_response(
             "experienceLevel": experience_level,
             "season": season,
             "zone": zone,
-            "tipCount": curated_tips.len()
+            "tipCount": curated_tips.len(),
+            "traceCount": curated_tip_trace.len()
         })),
     )
     .await;
@@ -433,6 +456,7 @@ async fn to_me_response(
         experience_level,
         experience_signals,
         curated_tips,
+        curated_tip_trace,
         grower_profile,
         gatherer_profile: load_gatherer_profile(client, user_id).await?,
         rating_summary: load_rating_summary(client, user_id).await?,

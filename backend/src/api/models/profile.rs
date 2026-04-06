@@ -67,9 +67,20 @@ pub struct MeProfileResponse {
     pub experience_level: ExperienceLevel,
     pub experience_signals: ExperienceSignals,
     pub curated_tips: Vec<GardeningTip>,
+    pub curated_tip_trace: Vec<CuratedTipTraceEntry>,
     pub grower_profile: Option<GrowerProfile>,
     pub gatherer_profile: Option<GathererProfile>,
     pub rating_summary: Option<UserRatingSummary>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CuratedTipTraceEntry {
+    pub tip_id: String,
+    pub minimum_level: ExperienceLevel,
+    pub matched_level: ExperienceLevel,
+    pub matched_season: String,
+    pub matched_zone: String,
 }
 
 #[derive(Debug, Serialize)]
