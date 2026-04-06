@@ -215,12 +215,21 @@ pub const fn season_from_month(month: u32) -> &'static str {
 }
 
 fn validate_curated_tip_catalog(catalog: &[CuratedTip]) -> Result<(), String> {
+    use std::collections::{HashMap, HashSet};
+
+    let mut ids = HashSet::new();
+    let mut coverage: HashMap<(ExperienceLevel, TipCategory), usize> = HashMap::new();
+
     for tip in catalog {
         if tip.tip.schema_version != TIP_SCHEMA_VERSION_V1 {
             return Err(format!(
                 "tip {} has unsupported schema version {}",
                 tip.id, tip.tip.schema_version
             ));
+        }
+
+        if !ids.insert(tip.id.clone()) {
+            return Err(format!("tip {} is duplicated", tip.id));
         }
 
         if tip.targeting.seasons.is_empty()
@@ -231,6 +240,35 @@ fn validate_curated_tip_catalog(catalog: &[CuratedTip]) -> Result<(), String> {
                 "tip {} must include targeting seasons, zone tags, and crop tags",
                 tip.id
             ));
+        }
+
+        *coverage.entry((tip.tip.level, tip.tip.category)).or_insert(0) += 1;
+    }
+
+    const LEVELS: [ExperienceLevel; 3] = [
+        ExperienceLevel::Beginner,
+        ExperienceLevel::Intermediate,
+        ExperienceLevel::Advanced,
+    ];
+
+    const CATEGORIES: [TipCategory; 6] = [
+        TipCategory::Watering,
+        TipCategory::Pests,
+        TipCategory::Planting,
+        TipCategory::Soil,
+        TipCategory::Seasonal,
+        TipCategory::Harvest,
+    ];
+
+    for level in LEVELS {
+        for category in CATEGORIES {
+            let count = coverage.get(&(level, category)).copied().unwrap_or(0);
+            if count < 1 {
+                return Err(format!(
+                    "catalog must include at least 1 tip for level {:?} and category {:?}",
+                    level, category
+                ));
+            }
         }
     }
 
@@ -374,6 +412,41 @@ mod tests {
         assert!(catalog
             .iter()
             .all(|tip| !tip.targeting.crop_tags.is_empty()));
+    }
+
+    #[test]
+    fn curated_tip_catalog_has_level_category_coverage_and_unique_ids() {
+        use std::collections::HashSet;
+
+        let catalog = curated_tip_catalog();
+        let mut ids = HashSet::new();
+        let mut matrix = HashSet::new();
+
+        for tip in catalog {
+            assert!(ids.insert(tip.id.clone()));
+            matrix.insert((tip.tip.level, tip.tip.category));
+        }
+
+        let levels = [
+            ExperienceLevel::Beginner,
+            ExperienceLevel::Intermediate,
+            ExperienceLevel::Advanced,
+        ];
+
+        let categories = [
+            TipCategory::Watering,
+            TipCategory::Pests,
+            TipCategory::Planting,
+            TipCategory::Soil,
+            TipCategory::Seasonal,
+            TipCategory::Harvest,
+        ];
+
+        for level in levels {
+            for category in categories {
+                assert!(matrix.contains(&(level, category)));
+            }
+        }
     }
 
     #[test]
