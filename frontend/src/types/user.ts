@@ -1,3 +1,5 @@
+import type { GardeningTip, ExperienceLevel } from './tips';
+
 /**
  * User tier levels in the platform
  */
@@ -52,6 +54,8 @@ export interface UserProfile {
   tier: UserTier;
   userType: UserType | null;
   onboardingCompleted: boolean;
+  curatedTips?: GardeningTip[];
+  experienceLevel?: ExperienceLevel;
   growerProfile?: GrowerProfile | null;
   gathererProfile?: GathererProfile | null;
 }

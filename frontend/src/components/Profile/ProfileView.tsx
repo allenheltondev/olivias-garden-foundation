@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { GrowerListingPanel } from '../Listings/GrowerListingPanel';
 import { SearcherRequestPanel } from '../Listings/SearcherRequestPanel';
 import { ReminderPanel } from '../Reminders/ReminderPanel';
+import { TipsModule } from '../Tips/TipsModule';
 
 /**
  * ProfileView Component
@@ -183,6 +184,11 @@ export function ProfileView() {
               defaultRadiusMiles={profile.gathererProfile?.searchRadiusMiles}
             />
           )}
+
+          <TipsModule
+            tips={profile.curatedTips}
+            experienceLevel={profile.experienceLevel}
+          />
 
           <ReminderPanel />
 
