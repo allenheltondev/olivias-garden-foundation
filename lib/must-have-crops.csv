@@ -1,0 +1,55 @@
+scientific_name,common_name,category,edible_parts,life_cycle,source
+Brassica oleracea var. italica,Broccoli,vegetable,"flowers,leaves",annual,curated_seed
+Brassica oleracea var. botrytis,Cauliflower,vegetable,flowers,annual,curated_seed
+Brassica oleracea var. gemmifera,Brussels Sprouts,vegetable,leaves,annual,curated_seed
+Brassica oleracea var. acephala,Kale,vegetable,leaves,annual,curated_seed
+Brassica oleracea var. gongylodes,Kohlrabi,vegetable,"stem,leaves",annual,curated_seed
+Phaseolus vulgaris,Green Bean,vegetable,"seedpod,seed",annual,curated_seed
+Zea mays var. saccharata,Sweet Corn,grain,"seed,grain",annual,curated_seed
+Rubus idaeus,Raspberry,fruit_shrub,fruit,perennial,curated_seed
+Rubus fruticosus,Blackberry,fruit_shrub,fruit,perennial,curated_seed
+Mentha × piperita,Peppermint,herb,leaves,perennial,curated_seed
+Mentha spicata,Spearmint,herb,leaves,perennial,curated_seed
+Cucurbita pepo var. cylindrica,Zucchini,vegetable,fruit,annual,curated_seed
+Cucurbita maxima,Winter Squash,vegetable,"fruit,seed",annual,curated_seed
+Solanum lycopersicum,Tomato,vegetable,fruit,annual,curated_seed
+Capsicum annuum,Bell Pepper,vegetable,fruit,annual,curated_seed
+Capsicum chinense,Habanero Pepper,vegetable,fruit,annual,curated_seed
+Abelmoschus esculentus,Okra,vegetable,fruit,annual,curated_seed
+Cynara cardunculus var. scolymus,Artichoke,vegetable,flowers,perennial,curated_seed
+Brassica juncea,Mustard Greens,leafy_green,leaves,annual,curated_seed
+Eruca vesicaria,Arugula,leafy_green,leaves,annual,curated_seed
+Beta vulgaris subsp. cicla,Swiss Chard,leafy_green,"leaves,stem",annual,curated_seed
+Vigna unguiculata,Black-Eyed Pea,legume,"seed,seedpod",annual,curated_seed
+Glycine max,Edamame,legume,seed,annual,curated_seed
+Lens culinaris,Lentil,legume,seed,annual,curated_seed
+Cicer arietinum,Chickpea,legume,seed,annual,curated_seed
+Arachis hypogaea,Peanut,legume,seed,annual,curated_seed
+Helianthus annuus,Sunflower,nut_seed,seed,annual,curated_seed
+Sesamum indicum,Sesame,nut_seed,seed,annual,curated_seed
+Linum usitatissimum,Flax,nut_seed,seed,annual,curated_seed
+Foeniculum vulgare,Fennel,herb,"leaves,seed,bulb",perennial,curated_seed
+Lavandula angustifolia,Lavender,herb,"flowers,leaves",perennial,curated_seed
+Cymbopogon citratus,Lemongrass,herb,"leaves,stem",perennial,curated_seed
+Allium schoenoprasum,Chives,herb,leaves,perennial,curated_seed
+Artemisia dracunculus,Tarragon,herb,leaves,perennial,curated_seed
+Rheum rhabarbarum,Rhubarb,vegetable,stem,perennial,curated_seed
+Pastinaca sativa,Parsnip,root_tuber,root,biennial,curated_seed
+Brassica napus var. napobrassica,Rutabaga,root_tuber,root,biennial,curated_seed
+Zingiber officinale,Ginger,root_tuber,root,perennial,curated_seed
+Curcuma longa,Turmeric,root_tuber,root,perennial,curated_seed
+Colocasia esculenta,Taro,root_tuber,"root,leaves",perennial,curated_seed
+Vitis vinifera,Grape,fruit,fruit,perennial,curated_seed
+Prunus persica,Peach,fruit,fruit,perennial,curated_seed
+Prunus avium,Cherry,fruit,fruit,perennial,curated_seed
+Malus domestica,Apple,fruit,fruit,perennial,curated_seed
+Pyrus communis,Pear,fruit,fruit,perennial,curated_seed
+Prunus domestica,Plum,fruit,fruit,perennial,curated_seed
+Citrus × limon,Lemon,fruit,fruit,perennial,curated_seed
+Citrus × sinensis,Orange,fruit,fruit,perennial,curated_seed
+Ficus carica,Fig,fruit,fruit,perennial,curated_seed
+Actinidia deliciosa,Kiwi,fruit,fruit,perennial,curated_seed
+Morus alba,Mulberry,fruit,fruit,perennial,curated_seed
+Ribes nigrum,Blackcurrant,fruit_shrub,fruit,perennial,curated_seed
+Ribes rubrum,Redcurrant,fruit_shrub,fruit,perennial,curated_seed
+Sambucus nigra,Elderberry,fruit_shrub,"fruit,flowers",perennial,curated_seed

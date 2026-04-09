@@ -137,6 +137,9 @@ export function deriveCanonicalRecord(records, classificationMeta = null) {
     has_openfarm_support: hasOpenFarmSupport,
     strong_food_evidence: strongFoodEvidence,
     edible_evidence_sources: meta.edible_evidence_sources || [],
+    practical_food_score: meta.practical_food_score ?? 0,
+    practical_food_parts: meta.practical_food_parts || { strong: [], weak: [] },
+    cultivation_signal: meta.cultivation_signal ?? 0,
     guardrail_flags: meta.guardrail_flags || {},
     field_sources,
     source_records: records.map((r) => ({

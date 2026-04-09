@@ -719,6 +719,27 @@ jobs:
           HTTP_CODE=$(curl --silent --show-error --output /tmp/catalog.json --write-out "%{http_code}" "$API_URL/catalog/crops")
           test "$HTTP_CODE" = "401"
 
+  postman-public-smoke:
+    name: Public Catalog Smoke Test
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, staging-public-api-smoke]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Postman CLI
+        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
+      - name: Login to Postman CLI
+        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
+
+      - name: Run public catalog smoke collection
+        run: |
+          postman collection run "postman/collections/Public Catalog Smoke" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}"
+
   contract-api-tests:
     name: Staging Contract API Tests
     runs-on: ubuntu-latest
@@ -973,6 +994,7 @@ jobs:
       - deploy-staging-backend
       - deploy-staging-frontend
       - staging-public-api-smoke
+      - postman-public-smoke
       - contract-api-tests
       - utility-api-tests
       - e2e-api-tests
@@ -993,6 +1015,7 @@ jobs:
           check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
           check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
           check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
+          check_result "postman-public-smoke" "${{ needs.postman-public-smoke.result }}"
           check_result "contract-api-tests" "${{ needs.contract-api-tests.result }}"
           check_result "utility-api-tests" "${{ needs.utility-api-tests.result }}"
           check_result "e2e-api-tests" "${{ needs.e2e-api-tests.result }}"

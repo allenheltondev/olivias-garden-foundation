@@ -1,15 +1,78 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { PATHS } from './lib/config.mjs';
-import { readQuotedCsv, appendJsonl, computeChecksum } from './lib/io.mjs';
+import { readQuotedCsv, readHeaderlessCsv, appendJsonl, computeChecksum } from './lib/io.mjs';
 import { normalizeToNull } from './lib/normalize.mjs';
 import { writeProgress, readProgress, verifyChecksum, resetProgress } from './lib/progress.mjs';
 
-function normalizeScientificName(name) {
+export function normalizeScientificName(name) {
   const v = normalizeToNull(name);
   if (!v) return null;
   const parts = v.toLowerCase().split(/\s+/).filter(Boolean);
   return parts.slice(0, 2).join(' ');
+}
+
+function slugify(name) {
+  if (!name) return null;
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 96) || null;
+}
+
+/**
+ * Build OpenFarm-originated canonical identities for rows that have no USDA match.
+ * Deduplicates by scientific_name_normalized — first row wins.
+ * Skips rows lacking both a parseable scientific name and a common name.
+ */
+export function buildOpenFarmCanonicals(openfarmRows, usdaNormalizedSet) {
+  const seen = new Set();
+  const canonicals = [];
+
+  for (const row of openfarmRows) {
+    const sciNorm = normalizeScientificName(row.scientific_name);
+    const commonName = normalizeToNull(row.common_name);
+
+    // Skip rows lacking both parseable scientific name and common name
+    if (!sciNorm && !commonName) continue;
+
+    // Determine dedup key and canonical_id
+    let dedupKey;
+    let canonicalId;
+
+    if (sciNorm) {
+      dedupKey = sciNorm;
+      canonicalId = `openfarm:${sciNorm}`;
+    } else {
+      const slug = slugify(commonName);
+      if (!slug) continue;
+      dedupKey = `common:${slug}`;
+      canonicalId = `openfarm:common:${slug}`;
+    }
+
+    // Skip if USDA canonical already covers this normalized name
+    if (sciNorm && usdaNormalizedSet.has(sciNorm)) continue;
+
+    // Deduplicate — first OpenFarm row wins
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
+
+    canonicals.push({
+      canonical_id: canonicalId,
+      usda_symbol: null,
+      origin: 'openfarm',
+      accepted_scientific_name: row.scientific_name ?? null,
+      family: null,
+      scientific_name_normalized: sciNorm,
+      synonyms: [],
+      common_names: commonName
+        ? commonName.split(',').map((n) => n.trim()).filter(Boolean)
+        : [],
+    });
+  }
+
+  return canonicals;
 }
 
 function mapRow(row) {
@@ -47,11 +110,13 @@ export async function runStep1({ reset = false, dryRun = false, limit = null } =
 
   const out = [];
   const slice = accepted.slice(startIndex, limit ? startIndex + limit : undefined);
+  const usdaProcessedThisRun = slice.length;
   for (let i = 0; i < slice.length; i += 1) {
     const a = slice[i];
     out.push({
       canonical_id: a.symbol,
       usda_symbol: a.symbol,
+      origin: 'usda',
       accepted_scientific_name: a.scientificName,
       family: a.family,
       scientific_name_normalized: normalizeScientificName(a.scientificName),
@@ -60,11 +125,30 @@ export async function runStep1({ reset = false, dryRun = false, limit = null } =
     });
   }
 
+  // --- Second pass: OpenFarm-originated canonicals ---
+  let openFarmCanonicalCount = 0;
+  const shouldAppendOpenFarmCanonicals = fs.existsSync(PATHS.openfarmCrops)
+    && (
+      (accepted.length === 0 && startIndex === 0)
+      || (startIndex < accepted.length && startIndex + usdaProcessedThisRun >= accepted.length)
+    );
+  if (shouldAppendOpenFarmCanonicals) {
+    const usdaNormalizedSet = new Set(
+      accepted
+        .map((a) => normalizeScientificName(a.scientificName))
+        .filter(Boolean),
+    );
+    const openfarmRows = await readHeaderlessCsv(PATHS.openfarmCrops, ['scientific_name', 'common_name']);
+    const openfarmCanonicals = buildOpenFarmCanonicals(openfarmRows, usdaNormalizedSet);
+    out.push(...openfarmCanonicals);
+    openFarmCanonicalCount = openfarmCanonicals.length;
+  }
+
   if (!dryRun) {
     await fsp.mkdir('data/catalog', { recursive: true });
     await appendJsonl(PATHS.step1, out);
-    if (out.length > 0) {
-      await writeProgress(1, startIndex + out.length - 1, checksum);
+    if (usdaProcessedThisRun > 0) {
+      await writeProgress(1, startIndex + usdaProcessedThisRun - 1, checksum);
     }
   }
 
@@ -73,6 +157,7 @@ export async function runStep1({ reset = false, dryRun = false, limit = null } =
     processedThisRun: out.length,
     totalSynonymsIndexed: synonymRows.length,
     totalCommonNamesIndexed: accepted.filter((a) => a.commonName).length,
+    openFarmCanonicalCount,
   };
 }
 

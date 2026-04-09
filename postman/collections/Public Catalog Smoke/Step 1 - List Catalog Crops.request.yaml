@@ -1,0 +1,42 @@
+$kind: http-request
+name: Step 1 - List Catalog Crops
+description: |-
+  Fetch the public catalog of crops. No authentication required.
+  Captures the first crop ID for the variety lookup in Step 2.
+method: GET
+url: '{{baseUrl}}/catalog/crops'
+order: 1000
+auth:
+  type: none
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const uuidV4Like = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is JSON", function () {
+          pm.response.to.have.header("Content-Type", /application\/json/);
+      });
+
+      const crops = pm.response.json();
+
+      pm.test("Response is a non-empty array", function () {
+          pm.expect(Array.isArray(crops)).to.be.true;
+          pm.expect(crops.length).to.be.greaterThan(0);
+      });
+
+      pm.test("First crop has valid id and common_name", function () {
+          const first = crops[0];
+          pm.expect(first).to.have.property("id");
+          pm.expect(first.id).to.match(uuidV4Like);
+          pm.expect(first).to.have.property("common_name");
+          pm.expect(first.common_name).to.be.a("string").and.not.empty;
+      });
+
+      if (crops.length > 0) {
+          pm.collectionVariables.set("catalogCropId", crops[0].id);
+      }

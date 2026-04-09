@@ -32,6 +32,47 @@ function applyAugmentation(record, augmentation) {
     out.field_sources.hardiness_zones = 'llm';
   }
 
+  // New garden planning fields — always apply from LLM since these don't exist in source data
+  if (augmentation.frost_tolerance) {
+    out.frost_tolerance = augmentation.frost_tolerance;
+    out.field_sources.frost_tolerance = 'llm';
+  }
+
+  if (augmentation.days_to_maturity) {
+    out.days_to_maturity = augmentation.days_to_maturity;
+    out.field_sources.days_to_maturity = 'llm';
+  }
+
+  if (augmentation.sowing_months?.length) {
+    out.sowing_months = augmentation.sowing_months;
+    out.field_sources.sowing_months = 'llm';
+  }
+
+  if (augmentation.harvest_months?.length) {
+    out.harvest_months = augmentation.harvest_months;
+    out.field_sources.harvest_months = 'llm';
+  }
+
+  if (augmentation.spacing) {
+    out.spacing = augmentation.spacing;
+    out.field_sources.spacing = 'llm';
+  }
+
+  if (augmentation.soil_ph) {
+    out.soil_ph = augmentation.soil_ph;
+    out.field_sources.soil_ph = 'llm';
+  }
+
+  if (augmentation.companion_plants?.length) {
+    out.companion_plants = augmentation.companion_plants;
+    out.field_sources.companion_plants = 'llm';
+  }
+
+  if (augmentation.antagonist_plants?.length) {
+    out.antagonist_plants = augmentation.antagonist_plants;
+    out.field_sources.antagonist_plants = 'llm';
+  }
+
   if (augmentation.display_notes) {
     out.display_notes = augmentation.display_notes;
     out.field_sources.display_notes = 'llm';

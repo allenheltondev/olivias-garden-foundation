@@ -1,0 +1,30 @@
+$kind: http-request
+name: Step 2 - List Crop Varieties
+description: |-
+  Fetch varieties for the crop captured in Step 1. No authentication required.
+method: GET
+url: '{{baseUrl}}/catalog/crops/:cropId/varieties'
+order: 2000
+auth:
+  type: none
+pathVariables:
+  - key: cropId
+    value: '{{catalogCropId}}'
+    description: UUID of the catalog crop from Step 1
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is JSON", function () {
+          pm.response.to.have.header("Content-Type", /application\/json/);
+      });
+
+      const varieties = pm.response.json();
+
+      pm.test("Response is an array", function () {
+          pm.expect(Array.isArray(varieties)).to.be.true;
+      });

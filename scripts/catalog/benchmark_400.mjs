@@ -6,6 +6,7 @@ const DATA_DIR = path.resolve(ROOT, "..", "..", "data", "catalog");
 const STEP2_PATH = path.join(DATA_DIR, "step2_source_matches.jsonl");
 const STEP4_PATH = path.join(DATA_DIR, "step4_relevance_classified.jsonl");
 const STEP5_PATH = path.join(DATA_DIR, "step5_canonical_drafts.jsonl");
+const PROMOTED_PATH = path.join(DATA_DIR, "promoted_crops.jsonl");
 const OUT_JSON = path.join(DATA_DIR, "metrics_400.json");
 const OUT_MD = path.join(DATA_DIR, "metrics_400.md");
 const OUT_SUSPICIOUS = path.join(DATA_DIR, "metrics_400_suspicious.jsonl");
@@ -82,7 +83,7 @@ function scoreSuspicious(record, step4) {
     score += 2;
     reasons.push("promoted_low_confidence");
   }
-  if (step4?.catalog_status === "needs_review") {
+  if (step4?.review_status === "needs_review") {
     score += 2;
     reasons.push("needs_review");
   }
@@ -97,6 +98,13 @@ function scoreSuspicious(record, step4) {
   return { score, reasons };
 }
 
+let promotedRaw = "";
+try {
+  promotedRaw = await readFile(PROMOTED_PATH, "utf8");
+} catch {
+  promotedRaw = "";
+}
+
 const [step2Raw, step4Raw, step5Raw] = await Promise.all([
   readFile(STEP2_PATH, "utf8"),
   readFile(STEP4_PATH, "utf8"),
@@ -106,6 +114,8 @@ const [step2Raw, step4Raw, step5Raw] = await Promise.all([
 const step2 = parseJsonl(step2Raw).sort((a, b) => String(a.source_record_id).localeCompare(String(b.source_record_id)));
 const step4 = parseJsonl(step4Raw).sort((a, b) => String(a.canonical_id).localeCompare(String(b.canonical_id)));
 const step5 = parseJsonl(step5Raw).sort((a, b) => String(a.canonical_id).localeCompare(String(b.canonical_id)));
+const promotedRecords = promotedRaw ? parseJsonl(promotedRaw) : [];
+const promotedCanonicalIds = new Set(promotedRecords.map((r) => r.canonical_id));
 
 const sampledStep2 = sampleStable(step2, SAMPLE_SIZE, (r) => r.source_record_id);
 const sampledStep4 = sampleStable(step4, SAMPLE_SIZE, (r) => r.canonical_id);
@@ -209,8 +219,8 @@ const metrics = {
     catalog_status: countBy(sampledStep5, (r) => r.catalog_status),
   },
   queue_counts: {
-    promoted: sampledStep5.filter((r) => r.catalog_status === "promoted").length,
-    needs_review: sampledStep5.filter((r) => r.catalog_status === "needs_review").length,
+    promoted: sampledStep5.filter((r) => promotedCanonicalIds.has(r.canonical_id)).length,
+    needs_review: sampledStep5.filter((r) => r.review_status === "needs_review" && !promotedCanonicalIds.has(r.canonical_id)).length,
     excluded: sampledStep5.filter((r) => r.catalog_status === "excluded").length,
   },
   promotion_blockers: blockageCounts,

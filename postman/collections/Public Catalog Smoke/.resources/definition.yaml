@@ -1,0 +1,21 @@
+$kind: collection
+name: Public Catalog Smoke
+description: |-
+  No-auth smoke test for the public catalog API.
+
+  Verifies that the catalog crops endpoint returns data and that
+  a variety lookup succeeds for the first returned crop.
+
+  ## Steps
+  1. List catalog crops — assert 200, non-empty array, valid crop shape
+  2. List varieties for the first crop — assert 200, array response
+
+  ## Authentication
+  None required. Both endpoints are public.
+variables:
+  - key: baseUrl
+    value: 'https://api.example.com'
+    description: API base URL
+  - key: catalogCropId
+    value: ''
+    description: Captured from Step 1 response
