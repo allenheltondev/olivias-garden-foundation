@@ -19,11 +19,12 @@ const STEPS = {
 };
 
 function parseArgs(argv) {
-  const args = { step: null, reset: false, dryRun: false, limit: null, profile: null };
+  const args = { step: null, reset: false, dryRun: false, limit: null, profile: null, skipLlm: false };
   for (let i = 2; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--reset') args.reset = true;
     else if (token === '--dry-run') args.dryRun = true;
+    else if (token === '--skip-llm') args.skipLlm = true;
     else if (token === '--step') args.step = Number(argv[++i]);
     else if (token === '--limit') args.limit = Number(argv[++i]);
     else if (token === '--profile') args.profile = argv[++i];
@@ -42,6 +43,18 @@ async function cleanStep(step) {
   }
 }
 
+function elapsed(startMs) {
+  const s = (Date.now() - startMs) / 1000;
+  return s < 60 ? `${s.toFixed(1)}s` : `${(s / 60).toFixed(1)}m`;
+}
+
+async function fileLines(path) {
+  try {
+    const txt = await fs.readFile(path, 'utf8');
+    return txt.trim().split('\n').length;
+  } catch { return 0; }
+}
+
 async function runOne(stepNumber, options) {
   const step = STEPS[stepNumber];
   if (!step) throw new Error(`Unknown step: ${stepNumber}`);
@@ -49,30 +62,86 @@ async function runOne(stepNumber, options) {
     throw new Error(`Missing prerequisite input for step ${stepNumber}: ${step.input}`);
   }
   if (options.reset) await cleanStep(stepNumber);
+
+  const label = `Step ${stepNumber} (${step.name})`;
+  process.stdout.write(`▶ ${label} ...`);
+  const t0 = Date.now();
   const startedAt = new Date().toISOString();
   const result = await step.run(options);
-  return { step: stepNumber, name: step.name, startedAt, finishedAt: new Date().toISOString(), result };
+  const finishedAt = new Date().toISOString();
+
+  const outputLines = step.output ? await fileLines(step.output) : 0;
+  const processed = result?.processedThisRun ?? result?.promotedCount ?? '?';
+  const extra = result?.cacheHits != null ? ` (cache: ${result.cacheHits} hits, ${result.cacheMisses} misses)` : '';
+  const promoted = result?.promotedCount != null ? ` → ${result.promotedCount} promoted` : '';
+  console.log(`\r✔ ${label}  ${elapsed(t0)}  |  ${processed} processed  |  ${outputLines} output rows${extra}${promoted}`);
+
+  return { step: stepNumber, name: step.name, startedAt, finishedAt, result };
 }
 
 export async function runPipeline(options = {}) {
-  const { step, ...rest } = options;
+  const { step, skipLlm, ...rest } = options;
   if (step) return [await runOne(step, rest)];
 
+  const steps = skipLlm ? [1, 2, 3, 4, 5, 7] : [1, 2, 3, 4, 5, 6, 7];
+
+  // When running the full pipeline with --reset, clean ALL steps upfront
+  // so downstream steps don't see stale output files from previous runs.
+  if (rest.reset) {
+    console.log('--reset: cleaning all output and progress files before running');
+    for (const n of [1, 2, 3, 4, 5, 6, 7]) await cleanStep(n);
+    // Also clean promote-specific review files
+    for (const key of ['reviewNeedsReview', 'reviewUnresolved', 'reviewExcluded', 'reviewSummary']) {
+      if (PATHS[key]) try { await fs.unlink(PATHS[key]); } catch {}
+    }
+  }
+
+  if (skipLlm) {
+    console.log('--skip-llm: will copy step5 output to step6 path (bypassing LLM augmentation)');
+  }
+
   const summaries = [];
-  for (const n of [1, 2, 3, 4, 5, 6, 7]) {
+  for (const n of steps) {
+    if (skipLlm && n === 7) {
+      // Copy step5 → step6 before promote runs
+      await fs.copyFile(PATHS.step5, PATHS.step6);
+      console.log(`Copied ${PATHS.step5} → ${PATHS.step6}`);
+    }
     // limit only controls initial input (steps 1-2); downstream steps process all records
-    const stepOpts = n <= 2 ? rest : { ...rest, limit: null };
+    // Don't pass reset to individual steps — we already cleaned everything upfront
+    const stepOpts = n <= 2 ? { ...rest, reset: false } : { ...rest, reset: false, limit: null };
     summaries.push(await runOne(n, stepOpts));
   }
   return summaries;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+import { pathToFileURL } from 'node:url';
+
+const isMain = import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
   const args = parseArgs(process.argv);
+  const pipelineStart = Date.now();
   runPipeline(args)
-    .then((summaries) => console.log(JSON.stringify({ summaries }, null, 2)))
+    .then((summaries) => {
+      const total = elapsed(pipelineStart);
+      console.log('');
+      console.log(`Pipeline complete in ${total}  (${summaries.length} steps)`);
+      // Show promoted count if promote ran
+      const promoteStep = summaries.find(s => s.name === 'promote');
+      if (promoteStep?.result?.promotedCount != null) {
+        const r = promoteStep.result;
+        const seedNote = r.seedInjectedCount ? ` (${r.seedInjectedCount} from seed list)` : '';
+        console.log(`  Promoted: ${r.promotedCount}${seedNote}  |  Review: ${r.reviewNeedsReviewCount ?? 0}  |  Excluded: ${r.reviewExcludedCount ?? 0}`);
+      }
+    })
     .catch((error) => {
-      console.error(error.message);
+      console.error('');
+      if (error.code === 'RATE_LIMITED_ABORT') {
+        console.error(`⚠ ${error.message}`);
+        console.error('  Re-run without --reset to resume from where it left off.');
+      } else {
+        console.error(`✖ ${error.message}`);
+      }
       process.exit(1);
     });
 }

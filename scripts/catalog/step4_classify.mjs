@@ -1,6 +1,13 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
-import { PATHS } from './lib/config.mjs';
+import {
+  PATHS,
+  EDIBLE_PART_TIERS,
+  PRACTICAL_FOOD_SCORE,
+  CULTIVATION_CATEGORIES,
+  CULTIVATED_LIFE_CYCLES,
+  INDUSTRIAL_SPECIES_PATTERNS,
+} from './lib/config.mjs';
 import { readJsonl, appendJsonl, computeChecksum } from './lib/io.mjs';
 import { readProgress, writeProgress, verifyChecksum, resetProgress } from './lib/progress.mjs';
 
@@ -16,6 +23,61 @@ function keyFor(rec) {
 function finiteScore(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+export function computePracticalFoodScore(records) {
+  const allParts = new Set();
+  let hasEdibleFlag = false;
+
+  for (const rec of records) {
+    const normalized = rec.normalized || {};
+    if (normalized.edible === true) hasEdibleFlag = true;
+    for (const part of (normalized.edible_parts || [])) {
+      allParts.add(part.toLowerCase().trim());
+    }
+  }
+
+  let score = 0;
+  const strongParts = [];
+  const weakParts = [];
+
+  for (const part of allParts) {
+    if (EDIBLE_PART_TIERS.strong.has(part)) {
+      score += PRACTICAL_FOOD_SCORE.strongPartWeight;
+      strongParts.push(part);
+    } else if (EDIBLE_PART_TIERS.weak.has(part)) {
+      score += PRACTICAL_FOOD_SCORE.weakPartWeight;
+      weakParts.push(part);
+    }
+    // Unknown parts get 0 — conservative default
+  }
+
+  if (hasEdibleFlag && strongParts.length > 0) {
+    score += PRACTICAL_FOOD_SCORE.edibleFlagBonus;
+  }
+
+  return { score, strongParts, weakParts, hasEdibleFlag };
+}
+
+export function computeCultivationSignal(records, hasOpenFarmSupport) {
+  let signal = 0;
+  if (hasOpenFarmSupport) signal += 1;
+
+  const categories = new Set();
+  const lifeCycles = new Set();
+  for (const rec of records) {
+    const n = rec.normalized || {};
+    if (n.category) categories.add(n.category.toLowerCase().trim());
+    if (n.life_cycle) lifeCycles.add(n.life_cycle.toLowerCase().trim());
+  }
+
+  const hasCultivatedCategory = [...categories].some(c => CULTIVATION_CATEGORIES.has(c));
+  if (hasCultivatedCategory) signal += 1;
+
+  const hasCultivatedLifeCycle = [...lifeCycles].some(lc => CULTIVATED_LIFE_CYCLES.has(lc));
+  if (hasCultivatedLifeCycle) signal += 1;
+
+  return signal; // 0-3 range
 }
 
 function computeConfidenceBand(records, hasOpenFarmSupport) {
@@ -39,10 +101,27 @@ function computeConfidenceBand(records, hasOpenFarmSupport) {
   return { source_confidence: bestScore, match_confidence_band: 'low' };
 }
 
-export function classifyCanonical(records) {
+export function classifyCanonical(records, canonical = {}) {
   const providers = new Set(records.map((r) => r.source_provider).filter(Boolean));
 
-  const hasOpenFarmSupport = records.some((r) => r.source_provider === 'openfarm' && r.match_type !== 'unresolved');
+  // Compute practical food score early (Task 4.1)
+  const practicalFoodResult = computePracticalFoodScore(records);
+  const hasStrongEdiblePart = practicalFoodResult.strongParts.length > 0;
+
+  // Detect OpenFarm-originated canonical via explicit origin field or canonical_id prefix
+  const lead = records[0] || {};
+  const canonicalOrigin = canonical.origin || (lead.canonical_id && lead.canonical_id.startsWith('openfarm:') ? 'openfarm' : null);
+  const isOpenFarmCanonical = canonicalOrigin === 'openfarm';
+
+  // Original check: openfarm source with a resolved match
+  const hasResolvedOpenFarm = records.some((r) => r.source_provider === 'openfarm' && r.match_type !== 'unresolved');
+
+  // Enhancement: OpenFarm-originated canonicals with any openfarm source count as OpenFarm-supported
+  const hasOpenFarmSource = records.some((r) => r.source_provider === 'openfarm');
+  const hasOpenFarmSupport = hasResolvedOpenFarm || (isOpenFarmCanonical && hasOpenFarmSource);
+
+  // Compute cultivation signal after OpenFarm support is determined (Task 4.1)
+  const cultivationSignal = computeCultivationSignal(records, hasOpenFarmSupport);
 
   const edibleProviders = new Set();
   const foodUtilityProviders = new Set();
@@ -71,14 +150,43 @@ export function classifyCanonical(records) {
   const edibleEvidenceSources = new Set([...edibleProviders, ...foodUtilityProviders]);
   const strongFoodEvidence = edibleEvidenceSources.size >= 2 || (edibleProviders.size >= 1 && foodUtilityProviders.size >= 1);
 
-  const coniferGuardrail = CONIFER_TERMS.test(lowerName) && !strongFoodEvidence && !(hasOpenFarmSupport && edibleEvidenceSources.size > 0);
-  const industrialGuardrail = INDUSTRIAL_TERMS.test(lowerUtility) && !strongFoodEvidence && !(hasOpenFarmSupport && edibleEvidenceSources.size > 0);
+  // Edible evidence: any source has edible: true or non-empty edible_parts
+  const hasEdibleEvidence = edibleProviders.size > 0;
+
+  // Apply cultivation bonus when cultivationSignal >= 2 AND hasStrongEdiblePart (Task 4.1)
+  if (cultivationSignal >= 2 && hasStrongEdiblePart) {
+    practicalFoodResult.score += PRACTICAL_FOOD_SCORE.cultivationBonus;
+  }
+
+  // Apply multi-provider bonus when strongFoodEvidence (Task 4.1)
+  if (strongFoodEvidence) {
+    practicalFoodResult.score += PRACTICAL_FOOD_SCORE.multiProviderBonus;
+  }
+
+  // Strengthened conifer guardrail (Task 4.2)
+  // Override requires BOTH strongFoodEvidence AND at least one strong edible part
+  const coniferGuardrail = CONIFER_TERMS.test(lowerName)
+    && !(strongFoodEvidence && hasStrongEdiblePart);
+
+  // Strengthened industrial guardrail (Task 4.3)
+  // Also check name text against INDUSTRIAL_SPECIES_PATTERNS
+  const industrialNameMatch = INDUSTRIAL_SPECIES_PATTERNS.some(p => p.test(lowerName));
+  const industrialGuardrail = (INDUSTRIAL_TERMS.test(lowerUtility) || industrialNameMatch)
+    && !(strongFoodEvidence && hasStrongEdiblePart);
 
   let relevance_class = 'non_food';
   if (WEED_TERMS.test(lowerWarning) && !strongFoodEvidence && !hasOpenFarmSupport) relevance_class = 'weed_or_invasive';
   else if (WEED_TERMS.test(lowerWarning) && !strongFoodEvidence && hasOpenFarmSupport && edibleEvidenceSources.size === 0) relevance_class = 'weed_or_invasive';
   else if (coniferGuardrail || industrialGuardrail) relevance_class = 'non_food';
-  else if (hasOpenFarmSupport && (edibleEvidenceSources.size > 0 || FOOD_TERMS.test(lowerUtility))) relevance_class = 'food_crop_core';
+  else if (hasOpenFarmSupport && (edibleEvidenceSources.size > 0 || FOOD_TERMS.test(lowerUtility))) {
+    // Task 4.4: cultivationSignal === 0 AND no strongFoodEvidence → niche instead of core
+    if (cultivationSignal === 0 && !strongFoodEvidence) {
+      relevance_class = 'food_crop_niche';
+    } else {
+      relevance_class = 'food_crop_core';
+    }
+  }
+  else if (hasEdibleEvidence && !hasOpenFarmSupport && !coniferGuardrail && !industrialGuardrail) relevance_class = 'food_crop_niche';
   else if (!hasOpenFarmSupport && strongFoodEvidence) relevance_class = 'food_crop_niche';
   else if (INDUSTRIAL_TERMS.test(lowerUtility)) relevance_class = 'industrial_crop';
 
@@ -100,13 +208,11 @@ export function classifyCanonical(records) {
       ? 'rejected'
       : (hasFuzzyFallback
         ? 'needs_review'
-        : (!hasOpenFarmSupport
+        : ((!hasOpenFarmSupport && !strongFoodEvidence && edibleEvidenceSources.size === 0)
           ? 'needs_review'
           : (match_confidence_band !== 'low' && source_agreement_score >= 0.34
             ? 'auto_approved'
             : 'needs_review')));
-
-  const lead = records[0] || {};
 
   return {
     canonical_id: keyFor(lead),
@@ -124,6 +230,9 @@ export function classifyCanonical(records) {
       conifer: coniferGuardrail,
       industrial: industrialGuardrail,
     },
+    practical_food_score: practicalFoodResult.score,
+    practical_food_parts: { strong: practicalFoodResult.strongParts, weak: practicalFoodResult.weakParts },
+    cultivation_signal: cultivationSignal,
     classification_reason: `Merged canonical classification (${relevance_class}; openfarm=${hasOpenFarmSupport}; strongFoodEvidence=${strongFoodEvidence})`,
     source_records: records.map((r) => ({
       source_provider: r.source_provider,

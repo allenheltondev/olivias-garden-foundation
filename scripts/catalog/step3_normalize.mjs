@@ -38,19 +38,26 @@ export async function runStep3({ reset = false, dryRun = false, limit = null } =
   const checksum = await computeChecksum(PATHS.step2);
   await verifyChecksum(3, checksum);
 
-  const step2 = [];
-  for await (const r of readJsonl(PATHS.step2)) step2.push(r);
-
   const progress = await readProgress(3);
   const startIndex = progress ? progress.lastProcessedIndex + 1 : 0;
-  const slice = step2.slice(startIndex, limit ? startIndex + limit : undefined);
 
-  const out = slice.map((r) => {
+  if (!dryRun) await fsp.mkdir('data/catalog', { recursive: true });
+
+  let index = 0;
+  let processed = 0;
+  const BATCH_SIZE = 500;
+  let batch = [];
+  const endIndex = limit ? startIndex + limit : Infinity;
+
+  for await (const r of readJsonl(PATHS.step2)) {
+    if (index < startIndex) { index += 1; continue; }
+    if (index >= endIndex) break;
+
     const baseRaw = r.raw_payload && typeof r.raw_payload === 'object'
       ? r.raw_payload
       : { scientific_name: r.source_scientific_name, common_name: r.source_common_name };
 
-    return {
+    batch.push({
       source_provider: r.source_provider,
       source_record_id: r.source_record_id,
       canonical_id: r.canonical_id,
@@ -63,16 +70,26 @@ export async function runStep3({ reset = false, dryRun = false, limit = null } =
         payload: baseRaw,
       },
       normalization_warnings: [],
-    };
-  });
+    });
 
-  if (!dryRun) {
-    await fsp.mkdir('data/catalog', { recursive: true });
-    await appendJsonl(PATHS.step3, out);
-    if (out.length > 0) await writeProgress(3, startIndex + out.length - 1, checksum);
+    if (batch.length >= BATCH_SIZE) {
+      if (!dryRun) await appendJsonl(PATHS.step3, batch);
+      processed += batch.length;
+      batch = [];
+    }
+    index += 1;
   }
 
-  return { processedThisRun: out.length };
+  if (batch.length > 0) {
+    if (!dryRun) await appendJsonl(PATHS.step3, batch);
+    processed += batch.length;
+  }
+
+  if (!dryRun && processed > 0) {
+    await writeProgress(3, startIndex + processed - 1, checksum);
+  }
+
+  return { processedThisRun: processed };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

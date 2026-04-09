@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
-import { PATHS } from './lib/config.mjs';
-import { readJsonl, appendJsonl, computeChecksum } from './lib/io.mjs';
+import { PATHS, PRACTICAL_FOOD_SCORE } from './lib/config.mjs';
+import { readJsonl, appendJsonl, readQuotedCsv, computeChecksum } from './lib/io.mjs';
 import { validateRecord } from './lib/schemas.mjs';
 import { readProgress, writeProgress, verifyChecksum, resetProgress } from './lib/progress.mjs';
 
@@ -70,13 +70,26 @@ export async function runPromote({ reset = false, dryRun = false, limit = null }
     const validation = validateRecord(['canonical_id', 'scientific_name', 'common_name', 'catalog_status', 'review_status'], candidate);
     const contentValid = Boolean(candidate.canonical_id && candidate.scientific_name && candidate.common_name);
 
-    const confidenceGatePassed = confidenceBand === 'high'
-      || (confidenceBand === 'medium' && (hasOpenFarmSupport || hasStrongFoodEvidence));
+    // Explicitly reject low-confidence records (Requirements 4.4)
+    if (confidenceBand === 'low') {
+      if (rec.catalog_status === 'excluded') {
+        reviewExcluded.push(rec);
+      } else if (rec.review_status === 'needs_review') {
+        reviewNeedsReview.push({ ...rec, validation_errors: [] });
+      } else {
+        reviewUnresolved.push({ ...rec, validation_errors: [] });
+      }
+      continue;
+    }
 
+    const confidenceGatePassed = confidenceBand === 'high'
+      || (confidenceBand === 'medium' && (hasOpenFarmSupport || hasStrongFoodEvidence || edibleSignal));
+
+    const practicalFoodScore = rec.practical_food_score ?? 0;
     const promotionGatePassed = confidenceGatePassed
-      && (hasOpenFarmSupport || hasStrongFoodEvidence)
       && edibleSignal
-      && !guardrailBlocked;
+      && !guardrailBlocked
+      && practicalFoodScore >= PRACTICAL_FOOD_SCORE.minimumForPromotion;
 
     if (eligibleClass && eligibleReview && promotionGatePassed && validation.valid && contentValid) {
       promoted.push(candidate);
@@ -92,9 +105,43 @@ export async function runPromote({ reset = false, dryRun = false, limit = null }
     }
   }
 
+  // Inject must-have crops that aren't already promoted
+  let seedInjectedCount = 0;
+  if (fs.existsSync(PATHS.mustHaveCrops)) {
+    const promotedSciNames = new Set(promoted.map(r => (r.scientific_name || '').toLowerCase()));
+    const seedRows = await readQuotedCsv(PATHS.mustHaveCrops);
+    for (const row of seedRows) {
+      if (!row.scientific_name) continue;
+      if (promotedSciNames.has(row.scientific_name.toLowerCase())) continue;
+      const parts = (row.edible_parts || '').split(',').map(p => p.trim().toLowerCase()).filter(Boolean);
+      promoted.push({
+        canonical_id: `curated:${row.scientific_name.toLowerCase().replace(/\s+/g, '_')}`,
+        scientific_name: row.scientific_name,
+        common_name: row.common_name,
+        family: null,
+        category: row.category || null,
+        description: null,
+        edible: true,
+        edible_parts: parts,
+        water_requirement: null,
+        light_requirements: [],
+        life_cycle: row.life_cycle || null,
+        hardiness_zones: [],
+        catalog_status: 'core',
+        review_status: 'auto_approved',
+        field_sources: { source: 'curated_seed' },
+        import_batch_id,
+        imported_at,
+        last_verified_at: null,
+      });
+      seedInjectedCount += 1;
+    }
+  }
+
   const summary = {
     import_batch_id,
     promotedCount: promoted.length,
+    seedInjectedCount,
     reviewNeedsReviewCount: reviewNeedsReview.length,
     reviewUnresolvedCount: reviewUnresolved.length,
     reviewExcludedCount: reviewExcluded.length,

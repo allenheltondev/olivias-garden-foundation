@@ -95,7 +95,13 @@ async function apiSearch(searchTerm, config = {}) {
 export async function readCache(searchTerm, config = {}) {
   const p = cachePath(searchTerm, config);
   if (!fs.existsSync(p)) return null;
-  return JSON.parse(await fsp.readFile(p, 'utf8'));
+  try {
+    return JSON.parse(await fsp.readFile(p, 'utf8'));
+  } catch {
+    // Corrupted cache file (e.g. partial write from interrupted run) — delete and retry from API
+    try { await fsp.unlink(p); } catch {}
+    return null;
+  }
 }
 
 export async function writeCache(searchTerm, result, config = {}) {
@@ -141,6 +147,9 @@ export function getCacheStats() {
   };
 }
 
+let consecutive429s = 0;
+const MAX_CONSECUTIVE_429S = 3;
+
 async function searchWithCache(searchTerm, config = {}) {
   if (!searchTerm) return { hits: [] };
 
@@ -150,8 +159,27 @@ async function searchWithCache(searchTerm, config = {}) {
     return cached.result;
   }
 
+  // Circuit breaker: abort if we've hit too many consecutive 429s
+  if (consecutive429s >= MAX_CONSECUTIVE_429S) {
+    const err = new Error(
+      `Aborting: ${MAX_CONSECUTIVE_429S} consecutive 429 rate-limit responses from Permapeople API. `
+      + 'Re-run the pipeline to resume from where it left off (cached results will be reused).',
+    );
+    err.code = 'RATE_LIMITED_ABORT';
+    throw err;
+  }
+
   runStats.misses += 1;
   const apiResult = await apiSearch(searchTerm, config);
+
+  // Don't cache rate-limited or server error responses — we want to retry on resume
+  if (apiResult.error === 'rate_limited' || (apiResult.error && apiResult.error.startsWith('http_5'))) {
+    consecutive429s = apiResult.error === 'rate_limited' ? consecutive429s + 1 : consecutive429s;
+    return apiResult;
+  }
+
+  // Successful response — reset circuit breaker and cache
+  consecutive429s = 0;
   await writeCache(searchTerm, apiResult, config);
   return apiResult;
 }
