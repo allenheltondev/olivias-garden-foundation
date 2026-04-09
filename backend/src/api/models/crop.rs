@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct GrowerCropItem {
     pub id: String,
     pub user_id: String,
-    pub crop_id: String,
+    pub canonical_id: Option<String>,
+    pub crop_name: String,
     pub variety_id: Option<String>,
     pub status: String,
     pub visibility: String,
@@ -18,7 +19,8 @@ pub struct GrowerCropItem {
 
 #[derive(Debug, Deserialize)]
 pub struct UpsertGrowerCropRequest {
-    pub crop_id: String,
+    pub canonical_id: Option<String>,
+    pub crop_name: String,
     pub variety_id: Option<String>,
     pub status: String,
     pub visibility: String,

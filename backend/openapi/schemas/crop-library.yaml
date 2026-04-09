@@ -1,6 +1,6 @@
 GrowerCropItem:
   type: object
-  required: [id, userId, cropId, status, visibility, surplusEnabled, createdAt, updatedAt]
+  required: [id, userId, canonicalId, cropName, status, visibility, surplusEnabled, createdAt, updatedAt]
   properties:
     id:
       type: string
@@ -8,9 +8,14 @@ GrowerCropItem:
     userId:
       type: string
       format: uuid
-    cropId:
+    canonicalId:
       type: string
       format: uuid
+      nullable: true
+      description: "Links to catalog crop when available, null for user-defined crops"
+    cropName:
+      type: string
+      description: "User-defined crop name or catalog crop name"
     varietyId:
       type: string
       format: uuid
@@ -41,11 +46,16 @@ GrowerCropItem:
 
 UpsertGrowerCropRequest:
   type: object
-  required: [cropId, status, visibility, surplusEnabled]
+  required: [cropName, status, visibility, surplusEnabled]
   properties:
-    cropId:
+    canonicalId:
       type: string
       format: uuid
+      nullable: true
+      description: "Optional link to catalog crop. If provided, cropName should match catalog name"
+    cropName:
+      type: string
+      description: "The crop name to display and use for this entry"
     varietyId:
       type: string
       format: uuid

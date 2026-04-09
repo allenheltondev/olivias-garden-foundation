@@ -394,7 +394,8 @@ create unique index if not exists idx_crop_zone_suitability_crop_system_null_var
 create table if not exists grower_crop_library (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
-  crop_id uuid not null references crops(id) on delete restrict,
+  canonical_id uuid references crops(id) on delete restrict,  -- nullable: links to catalog crop when available
+  crop_name text not null,                                   -- required: user-defined or catalog crop name
   variety_id uuid references crop_varieties(id) on delete restrict,
 
   status grower_crop_status not null default 'interested',
@@ -409,11 +410,15 @@ create table if not exists grower_crop_library (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
-  unique (user_id, crop_id, variety_id)
+  unique (user_id, canonical_id, variety_id),  -- updated: canonical_id can be null
+  constraint grower_crop_library_crop_link_check check (
+    (canonical_id is null and crop_name is not null) or  -- user-defined crop
+    (canonical_id is not null)                           -- catalog crop (crop_name will be populated from catalog)
+  )
 );
 
 create index if not exists idx_grower_crop_library_user on grower_crop_library(user_id);
-create index if not exists idx_grower_crop_library_crop on grower_crop_library(crop_id);
+create index if not exists idx_grower_crop_library_canonical on grower_crop_library(canonical_id) where canonical_id is not null;
 
 -- ============================
 -- SURPLUS LISTINGS

@@ -18,7 +18,8 @@ export interface CatalogVariety {
 export interface GrowerCropItem {
   id: string;
   userId: string;
-  cropId: string;
+  canonicalId: string | null;
+  cropName: string;
   varietyId: string | null;
   status: string;
   visibility: string;

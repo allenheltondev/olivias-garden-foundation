@@ -219,7 +219,8 @@ interface RawCatalogVariety {
 interface RawGrowerCropItem {
   id: string;
   user_id: string;
-  crop_id: string;
+  canonical_id: string | null;
+  crop_name: string;
   variety_id: string | null;
   status: string;
   visibility: string;
@@ -394,7 +395,8 @@ function mapGrowerCropItem(raw: RawGrowerCropItem): GrowerCropItem {
   return {
     id: raw.id,
     userId: raw.user_id,
-    cropId: raw.crop_id,
+    canonicalId: raw.canonical_id,
+    cropName: raw.crop_name,
     varietyId: raw.variety_id,
     status: raw.status,
     visibility: raw.visibility,
