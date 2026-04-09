@@ -67,8 +67,8 @@ Configure these in your repository settings under Settings → Secrets and varia
 
 ### Required for all environments:
 
-**For staging/PR deployments (separate AWS account recommended):**
-- `AWS_STAGING_ROLE_ARN` - ARN of the IAM role for PR/staging deployments
+**For shared staging deployments used by PR validation (separate AWS account recommended):**
+- `AWS_STAGING_ROLE_ARN` - ARN of the IAM role for the shared staging environment
   - Example: `arn:aws:iam::111111111111:role/GitHubActionsDeploymentRole`
   - Used by: PR checks workflow
 
@@ -89,12 +89,12 @@ Configure these in your repository settings under Settings → Secrets and varia
 
 The workflows support deploying to different AWS accounts:
 
-- **PR environments** → `AWS_STAGING_ROLE_ARN` (ephemeral test environments)
-- **Dev/Staging** → `AWS_DEV_ROLE_ARN` (persistent non-prod environments)
-- **Production** → `AWS_PROD_ROLE_ARN` (production account with strict controls)
+- **Shared staging PR validation** -> `AWS_STAGING_ROLE_ARN` (persistent non-prod environment)
+- **Dev/Staging** -> `AWS_DEV_ROLE_ARN` (persistent non-prod environments)
+- **Production** -> `AWS_PROD_ROLE_ARN` (production account with strict controls)
 
 This separation provides:
-- Cost isolation (PR environments in separate account)
+- Cost isolation (shared staging in separate account)
 - Security boundaries (production in isolated account)
 - Independent IAM policies per environment type
 
@@ -118,7 +118,7 @@ Run this script for each AWS account to create the OIDC provider and deployment 
 export GITHUB_ORG="your-org"
 export GITHUB_REPO="your-repo"
 
-# For staging account (handles dev, staging, and PR environments)
+# For staging account (handles the shared PR-validation staging environment plus other non-prod deploys)
 export ROLE_NAME="GitHubActionsStagingRole"
 bash .github/setup-oidc-role.sh
 # Save output as AWS_STAGING_ROLE_ARN
@@ -294,7 +294,7 @@ The workflow installs cargo-lambda via a GitHub release action. Ensure the insta
 
 ### SAM deployment fails
 - Check AWS credentials are valid
-- Verify the stack name doesn't conflict with existing stacks
+- Verify the shared staging stack is not locked by an in-progress CloudFormation update
 - Check CloudFormation console for detailed error messages
 
 ### Frontend deployment fails
@@ -341,4 +341,3 @@ Future improvements:
 - Implement blue-green deployments
 - Add rollback capability
 - Integrate with monitoring/alerting
-
