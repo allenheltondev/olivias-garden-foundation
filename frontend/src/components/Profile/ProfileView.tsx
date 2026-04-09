@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { GrowerListingPanel } from '../Listings/GrowerListingPanel';
 import { SearcherRequestPanel } from '../Listings/SearcherRequestPanel';
 import { ReminderPanel } from '../Reminders/ReminderPanel';
+import { CropLibraryPanel } from './CropLibraryPanel';
 
 /**
  * ProfileView Component
@@ -167,11 +168,14 @@ export function ProfileView() {
           </div>
 
           {profile.userType === 'grower' && (
-            <GrowerListingPanel
-              viewerUserId={profile.userId}
-              defaultLat={profile.growerProfile?.lat}
-              defaultLng={profile.growerProfile?.lng}
-            />
+            <>
+              <CropLibraryPanel viewerUserId={profile.userId} />
+              <GrowerListingPanel
+                viewerUserId={profile.userId}
+                defaultLat={profile.growerProfile?.lat}
+                defaultLng={profile.growerProfile?.lng}
+              />
+            </>
           )}
 
           {profile.userType === 'gatherer' && (

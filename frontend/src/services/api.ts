@@ -635,6 +635,40 @@ export async function listMyCrops(): Promise<GrowerCropItem[]> {
   return response.map(mapGrowerCropItem);
 }
 
+export interface UpsertGrowerCropRequest {
+  canonicalId?: string;
+  cropName: string;
+  varietyId?: string;
+  status: string;
+  visibility: string;
+  surplusEnabled: boolean;
+  nickname?: string;
+  defaultUnit?: string;
+  notes?: string;
+}
+
+export async function createMyCrop(data: UpsertGrowerCropRequest): Promise<GrowerCropItem> {
+  const response = await apiFetch<RawGrowerCropItem>('/crops', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return mapGrowerCropItem(response);
+}
+
+export async function updateMyCrop(cropId: string, data: UpsertGrowerCropRequest): Promise<GrowerCropItem> {
+  const response = await apiFetch<RawGrowerCropItem>(`/crops/${cropId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  return mapGrowerCropItem(response);
+}
+
+export async function deleteMyCrop(cropId: string): Promise<void> {
+  await apiFetch(`/crops/${cropId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function listMyListings(
   limit = 20,
   offset = 0,
