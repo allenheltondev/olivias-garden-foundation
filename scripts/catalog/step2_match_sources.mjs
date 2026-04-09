@@ -306,6 +306,8 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
   if (reset) await resetProgress(2);
   const checksum = await computeChecksum(PATHS.step1);
   await verifyChecksum(2, checksum);
+  const progress = await readProgress(2);
+  const startIndex = progress ? progress.lastProcessedIndex + 1 : 0;
 
   const canonicalRows = [];
   for await (const r of readJsonl(PATHS.step1)) canonicalRows.push(r);
@@ -366,14 +368,38 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
   if (!dryRun) await fsp.mkdir('data/catalog', { recursive: true });
 
   let totalWritten = 0;
+  let absoluteIndex = 0;
   const BATCH_SIZE = 500;
   let batch = [];
+  const matchedCanonicalIds = new Set();
+  const unmatchedCommonNames = [];
 
   async function flushBatch() {
     if (batch.length === 0) return;
     if (!dryRun) await appendJsonl(PATHS.step2, batch);
     totalWritten += batch.length;
     batch = [];
+  }
+
+  async function enqueueMatchedRecord(record, matched = null) {
+    const resolved = matched ?? matchAndFormat(record);
+
+    if (record.source_provider === 'openfarm' && resolved.canonical_id) {
+      matchedCanonicalIds.add(resolved.canonical_id);
+    }
+    if (record.source_provider === 'openfarm' && !resolved.canonical_id && record.common_name) {
+      const key = normCommon(record.common_name);
+      if (key) unmatchedCommonNames.push({ common_name: record.common_name, key });
+    }
+
+    if (absoluteIndex < startIndex) {
+      absoluteIndex += 1;
+      return;
+    }
+
+    batch.push(resolved);
+    absoluteIndex += 1;
+    if (batch.length >= BATCH_SIZE) await flushBatch();
   }
 
   // 1. Match and write OpenFarm records
@@ -385,24 +411,12 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
       common_name: r.common_name ?? null,
       raw_payload: r,
     };
-    batch.push(matchAndFormat(rec));
-    if (batch.length >= BATCH_SIZE) await flushBatch();
+    await enqueueMatchedRecord(rec);
   }
   await flushBatch();
   process.stderr.write(`  OpenFarm: ${totalWritten} records written\n`);
 
   // 2. Query Permapeople for each unique matched canonical, stream hits to disk
-  // Re-read the OpenFarm matches we just wrote to get canonical IDs without holding them in memory
-  const matchedCanonicalIds = new Set();
-  const unmatchedCommonNames = [];
-  for await (const r of readJsonl(PATHS.step2)) {
-    if (r.source_provider === 'openfarm' && r.canonical_id) matchedCanonicalIds.add(r.canonical_id);
-    if (r.source_provider === 'openfarm' && !r.canonical_id && r.source_common_name) {
-      const key = normCommon(r.source_common_name);
-      if (key) unmatchedCommonNames.push({ common_name: r.source_common_name, key });
-    }
-  }
-
   const queriedCanonicals = new Set();
   let ppHitCount = 0;
   let queryCount = 0;
@@ -424,16 +438,15 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
     }
     for (const hit of hits) {
       const slim = slimHit(hit);
-      batch.push(matchAndFormat({
+      await enqueueMatchedRecord({
         source_provider: 'permapeople',
         source_record_id: String(slim.id ?? `${sci}:${Math.random().toString(16).slice(2, 8)}`),
         scientific_name: slim.scientific_name,
         common_name: slim.name,
         raw_payload: slim,
-      }));
+      });
       ppHitCount += 1;
     }
-    if (batch.length >= BATCH_SIZE) await flushBatch();
   }
 
   // Unmatched common name queries
@@ -446,22 +459,21 @@ export async function runStep2({ reset = false, dryRun = false, limit = null } =
     const hits = Array.isArray(ppC?.hits) ? ppC.hits : [];
     for (const hit of hits) {
       const slim = slimHit(hit);
-      batch.push(matchAndFormat({
+      await enqueueMatchedRecord({
         source_provider: 'permapeople',
         source_record_id: String(slim.id ?? `common:${common_name}:${Math.random().toString(16).slice(2, 8)}`),
         scientific_name: slim.scientific_name,
         common_name: slim.name,
         raw_payload: slim,
-      }));
+      });
       ppHitCount += 1;
     }
-    if (batch.length >= BATCH_SIZE) await flushBatch();
   }
   await flushBatch();
   process.stderr.write(`\r  Permapeople: ${queriedCanonicals.size} queries done, ${ppHitCount} hits total                    \n`);
 
   if (!dryRun && totalWritten > 0) {
-    await writeProgress(2, totalWritten - 1, checksum);
+    await writeProgress(2, startIndex + totalWritten - 1, checksum);
     await updateManifest();
   }
 

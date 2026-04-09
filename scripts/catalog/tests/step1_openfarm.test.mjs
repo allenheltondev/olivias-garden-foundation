@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fsp from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { buildOpenFarmCanonicals, normalizeScientificName } from '../step1_canonical_identity.mjs';
+import { runStep1 } from '../step1_canonical_identity.mjs';
+import { PATHS, PROGRESS_PATHS } from '../lib/config.mjs';
+import { readJsonl, computeChecksum } from '../lib/io.mjs';
+import { readProgress } from '../lib/progress.mjs';
 
 // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.2
 
@@ -82,4 +89,58 @@ test('USDA canonicals are skipped: OpenFarm row matching USDA normalized name is
   const result = buildOpenFarmCanonicals(rows, usdaSet);
 
   assert.equal(result.length, 0);
+});
+
+test('runStep1 final USDA slice uses full USDA set and checkpoints USDA rows only', async () => {
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'step1-openfarm-'));
+  const originalPaths = { ...PATHS };
+  const originalProgressPaths = { ...PROGRESS_PATHS };
+
+  try {
+    PATHS.usdaPlants = path.join(root, 'usda-plants.txt');
+    PATHS.openfarmCrops = path.join(root, 'openfarm-crops.csv');
+    PATHS.step1 = path.join(root, 'step1.jsonl');
+    PROGRESS_PATHS[1] = path.join(root, 'step1-progress.json');
+
+    await fsp.writeFile(
+      PATHS.usdaPlants,
+      [
+        'Symbol,Synonym Symbol,Scientific Name with Author,Common Name,Family',
+        'TOMA,,Solanum lycopersicum L.,Tomato,Solanaceae',
+        'MANG,,Mangifera indica L.,Mango,Anacardiaceae',
+      ].join('\n'),
+      'utf8',
+    );
+    await fsp.writeFile(
+      PATHS.openfarmCrops,
+      [
+        'Solanum lycopersicum,Tomato',
+        'Carica papaya,Papaya',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const checksum = await computeChecksum(PATHS.usdaPlants);
+    await fsp.writeFile(
+      PROGRESS_PATHS[1],
+      JSON.stringify({ step: 1, lastProcessedIndex: 0, inputChecksum: checksum, updatedAt: new Date().toISOString() }),
+      'utf8',
+    );
+
+    const summary = await runStep1({ limit: 1 });
+    const rows = [];
+    for await (const row of readJsonl(PATHS.step1)) rows.push(row);
+    const progress = await readProgress(1);
+
+    assert.equal(summary.openFarmCanonicalCount, 1);
+    assert.deepEqual(
+      rows.map((row) => row.canonical_id),
+      ['MANG', 'openfarm:carica papaya'],
+    );
+    assert.equal(progress.lastProcessedIndex, 1);
+  } finally {
+    Object.assign(PATHS, originalPaths);
+    Object.assign(PROGRESS_PATHS, originalProgressPaths);
+    await fsp.rm(root, { recursive: true, force: true });
+  }
 });

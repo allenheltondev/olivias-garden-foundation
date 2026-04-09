@@ -77,7 +77,7 @@ function buildCropProfileInsert(rec) {
 
   return `INSERT INTO crop_profiles (crop_id, variety_id, sun_requirement, water_requirement, attributes)
 VALUES (${cropIdSubquery}, NULL, ${sunReq}, ${waterReq}, ${attrsJson}::jsonb)
-ON CONFLICT (crop_id, variety_id) DO UPDATE SET
+ON CONFLICT (crop_id) WHERE variety_id IS NULL DO UPDATE SET
   sun_requirement = EXCLUDED.sun_requirement,
   water_requirement = EXCLUDED.water_requirement,
   attributes = EXCLUDED.attributes,
@@ -93,7 +93,7 @@ function buildZoneSuitabilityInsert(rec, minZone, maxZone) {
 
   return `INSERT INTO crop_zone_suitability (crop_id, variety_id, system, min_zone, max_zone)
 VALUES (${cropIdSubquery}, NULL, 'USDA', ${minZone}, ${maxZone})
-ON CONFLICT (crop_id, variety_id, system) DO UPDATE SET
+ON CONFLICT (crop_id, system) WHERE variety_id IS NULL DO UPDATE SET
   min_zone = EXCLUDED.min_zone,
   max_zone = EXCLUDED.max_zone,
   updated_at = now();`;

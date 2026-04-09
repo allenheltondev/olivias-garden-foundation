@@ -357,6 +357,9 @@ create table if not exists crop_profiles (
 
 create index if not exists idx_crop_profiles_crop on crop_profiles(crop_id);
 create index if not exists idx_crop_profiles_variety on crop_profiles(variety_id);
+create unique index if not exists idx_crop_profiles_crop_null_variety
+  on crop_profiles(crop_id)
+  where variety_id is null;
 
 create table if not exists crop_zone_suitability (
   id uuid primary key default gen_random_uuid(),
@@ -381,6 +384,9 @@ create table if not exists crop_zone_suitability (
 );
 
 create index if not exists idx_crop_zone_suitability_crop on crop_zone_suitability(crop_id);
+create unique index if not exists idx_crop_zone_suitability_crop_system_null_variety
+  on crop_zone_suitability(crop_id, system)
+  where variety_id is null;
 
 -- ============================
 -- GROWER CROP LIBRARY

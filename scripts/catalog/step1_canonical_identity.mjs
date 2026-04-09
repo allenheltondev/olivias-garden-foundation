@@ -110,6 +110,7 @@ export async function runStep1({ reset = false, dryRun = false, limit = null } =
 
   const out = [];
   const slice = accepted.slice(startIndex, limit ? startIndex + limit : undefined);
+  const usdaProcessedThisRun = slice.length;
   for (let i = 0; i < slice.length; i += 1) {
     const a = slice[i];
     out.push({
@@ -126,9 +127,16 @@ export async function runStep1({ reset = false, dryRun = false, limit = null } =
 
   // --- Second pass: OpenFarm-originated canonicals ---
   let openFarmCanonicalCount = 0;
-  if (fs.existsSync(PATHS.openfarmCrops)) {
+  const shouldAppendOpenFarmCanonicals = fs.existsSync(PATHS.openfarmCrops)
+    && (
+      (accepted.length === 0 && startIndex === 0)
+      || (startIndex < accepted.length && startIndex + usdaProcessedThisRun >= accepted.length)
+    );
+  if (shouldAppendOpenFarmCanonicals) {
     const usdaNormalizedSet = new Set(
-      out.map((c) => c.scientific_name_normalized).filter(Boolean),
+      accepted
+        .map((a) => normalizeScientificName(a.scientificName))
+        .filter(Boolean),
     );
     const openfarmRows = await readHeaderlessCsv(PATHS.openfarmCrops, ['scientific_name', 'common_name']);
     const openfarmCanonicals = buildOpenFarmCanonicals(openfarmRows, usdaNormalizedSet);
@@ -139,8 +147,8 @@ export async function runStep1({ reset = false, dryRun = false, limit = null } =
   if (!dryRun) {
     await fsp.mkdir('data/catalog', { recursive: true });
     await appendJsonl(PATHS.step1, out);
-    if (out.length > 0) {
-      await writeProgress(1, startIndex + out.length - 1, checksum);
+    if (usdaProcessedThisRun > 0) {
+      await writeProgress(1, startIndex + usdaProcessedThisRun - 1, checksum);
     }
   }
 

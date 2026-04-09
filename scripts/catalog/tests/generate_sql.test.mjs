@@ -103,7 +103,7 @@ test('crop_profiles generated when growing attributes present', async () => {
   const { sql, summary } = await runWithRecords([rec]);
 
   assert.ok(sql.includes('INSERT INTO crop_profiles'), 'should generate crop_profiles INSERT');
-  assert.ok(sql.includes('ON CONFLICT (crop_id, variety_id)'), 'crop_profiles should have ON CONFLICT');
+  assert.ok(sql.includes('ON CONFLICT (crop_id) WHERE variety_id IS NULL'), 'crop_profiles should target the null-variety unique index');
   assert.equal(summary.profilesCount, 1);
 });
 
@@ -126,7 +126,7 @@ test('crop_zone_suitability generated when hardiness_zones non-empty', async () 
   const { sql, summary } = await runWithRecords([rec]);
 
   assert.ok(sql.includes('INSERT INTO crop_zone_suitability'), 'should generate zone suitability INSERT');
-  assert.ok(sql.includes('ON CONFLICT'), 'zone suitability should have ON CONFLICT');
+  assert.ok(sql.includes('ON CONFLICT (crop_id, system) WHERE variety_id IS NULL'), 'zone suitability should target the null-variety unique index');
   assert.equal(summary.zonesCount, 1);
 });
 
