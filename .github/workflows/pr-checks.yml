@@ -10,7 +10,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-      - closed
 
 permissions:
   id-token: write
@@ -442,7 +441,6 @@ jobs:
 
   deploy-staging-backend:
     name: Deploy Staging Backend
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [ci-summary]
     environment:
@@ -450,7 +448,7 @@ jobs:
       url: ${{ steps.get-outputs.outputs.frontend-url }}
     env:
       AWS_REGION: us-east-1
-      STACK_NAME: community-garden-staging-pr-${{ github.event.pull_request.number }}
+      STACK_NAME: community-garden-staging
 
     steps:
       - name: Checkout code
@@ -614,7 +612,6 @@ jobs:
 
   deploy-staging-frontend:
     name: Deploy Staging Frontend
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [deploy-staging-backend]
     env:
@@ -685,7 +682,6 @@ jobs:
 
   comment-staging-deployment:
     name: Comment Staging Deployment
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [deploy-staging-backend, deploy-staging-frontend]
 
@@ -696,13 +692,13 @@ jobs:
           script: |
             const output = `#### Staging Deployment Complete
 
-            **Environment:** \`staging-pr-${{ github.event.pull_request.number }}\`
-            **Stack:** \`community-garden-staging-pr-${{ github.event.pull_request.number }}\`
+            **Environment:** \`staging\`
+            **Stack:** \`community-garden-staging\`
 
             **Frontend URL:** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
             **API URL:** ${{ needs.deploy-staging-backend.outputs.api-url }}
 
-            The staging environment will be automatically cleaned up when the PR is closed.`;
+            This PR updated the shared staging environment.`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -713,7 +709,6 @@ jobs:
 
   staging-public-api-smoke:
     name: Staging Unauthorized API Smoke Test
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [deploy-staging-backend]
 
@@ -726,7 +721,6 @@ jobs:
 
   contract-api-tests:
     name: Staging Contract API Tests
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     env:
@@ -815,7 +809,6 @@ jobs:
 
   utility-api-tests:
     name: Staging Utility API Tests
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     env:
@@ -896,7 +889,6 @@ jobs:
 
   e2e-api-tests:
     name: Staging E2E API Tests
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     env:
@@ -984,7 +976,7 @@ jobs:
       - contract-api-tests
       - utility-api-tests
       - e2e-api-tests
-    if: always() && github.event.action != 'closed'
+    if: always()
 
     steps:
       - name: Check staging validation jobs
@@ -1006,71 +998,4 @@ jobs:
           check_result "e2e-api-tests" "${{ needs.e2e-api-tests.result }}"
 
           echo "Staging validation passed"
-
-  cleanup-staging:
-    name: Cleanup Staging Environment
-    runs-on: ubuntu-latest
-    if: github.event.action == 'closed'
-    env:
-      AWS_REGION: us-east-1
-      STACK_NAME: community-garden-staging-pr-${{ github.event.pull_request.number }}
-
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-Cleanup-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Empty frontend bucket
-        run: |
-          if ! aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} &>/dev/null; then
-            echo "Stack ${{ env.STACK_NAME }} does not exist, nothing to clean up"
-            exit 0
-          fi
-
-          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucket'].OutputValue" \
-            --output text)
-
-          if [ -z "$FRONTEND_BUCKET" ] || [ "$FRONTEND_BUCKET" = "None" ]; then
-            echo "No FrontendBucket output found; skipping bucket cleanup"
-            exit 0
-          fi
-
-          if ! command -v jq >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y jq
-          fi
-
-          echo "Emptying s3://$FRONTEND_BUCKET ..."
-          aws s3 rm "s3://$FRONTEND_BUCKET" --recursive || true
-
-          while true; do
-            VERSIONS_JSON=$(aws s3api list-object-versions --bucket "$FRONTEND_BUCKET" --output json)
-            VERSION_COUNT=$(echo "$VERSIONS_JSON" | jq '[.Versions[]?, .DeleteMarkers[]?] | length')
-
-            if [ "$VERSION_COUNT" -eq 0 ]; then
-              break
-            fi
-
-            DELETE_PAYLOAD=$(echo "$VERSIONS_JSON" | jq '{Objects: ([.Versions[]? | {Key, VersionId}] + [.DeleteMarkers[]? | {Key, VersionId}]), Quiet: true}')
-            echo "$DELETE_PAYLOAD" > /tmp/delete-objects.json
-            aws s3api delete-objects --bucket "$FRONTEND_BUCKET" --delete file:///tmp/delete-objects.json >/dev/null
-          done
-
-          echo "Frontend bucket is empty"
-
-      - name: Delete CloudFormation stack
-        run: |
-          if aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }} &>/dev/null; then
-            echo "Deleting stack ${{ env.STACK_NAME }}..."
-            aws cloudformation delete-stack --stack-name ${{ env.STACK_NAME }} --region ${{ env.AWS_REGION }}
-            echo "Stack deletion initiated"
-          else
-            echo "Stack ${{ env.STACK_NAME }} does not exist, nothing to clean up"
-          fi
 

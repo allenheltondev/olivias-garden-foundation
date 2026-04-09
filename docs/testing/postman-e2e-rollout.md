@@ -2,7 +2,7 @@
 
 Phased CI rollout for Postman/Newman E2E automation. Each phase adds coverage incrementally, gated on the previous phase passing.
 
-> **Current state**: Phases 1–5 are already implemented in `pr-checks.yml` and run on every PR against staging. This document formalizes the rollout, defines the gating policy, and captures flake-mitigation notes for ongoing maintenance.
+> **Current state**: Phases 1–5 are already implemented in `pr-checks.yml` and run on every PR against the shared staging stack. This document formalizes the rollout, defines the gating policy, and captures flake-mitigation notes for ongoing maintenance.
 
 ---
 
