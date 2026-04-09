@@ -286,7 +286,7 @@ pub async fn create_listing(
     });
 
     let client = db::connect().await?;
-    
+
     // Only validate catalog links if crop_id is provided
     if let Some(crop_id_str) = &payload.crop_id {
         validate_catalog_links(
@@ -431,7 +431,7 @@ pub async fn update_listing(
     let payload: UpsertListingRequest = parse_json_body(request)?;
 
     let client = db::connect().await?;
-    
+
     // Only validate catalog links if crop_id is provided
     if let Some(crop_id_str) = &payload.crop_id {
         validate_catalog_links(
