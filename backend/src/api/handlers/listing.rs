@@ -21,27 +21,28 @@ const ALLOWED_LISTING_READ_STATUS: [&str; 3] = ["active", "expired", "completed"
 const UPDATE_LISTING_SQL: &str = "
             update surplus_listings
             set crop_id = $1,
-                variety_id = $2,
-                title = $3,
-                unit = $4,
-                quantity_total = $5::double precision,
-                quantity_remaining = least(coalesce(quantity_remaining, $5::double precision), $5::double precision),
-                available_start = $6,
-                available_end = $7,
-                status = $8::text::listing_status,
-                pickup_location_text = $9,
-                pickup_address = $10,
-                effective_pickup_address = $11,
-                pickup_disclosure_policy = $12::text::pickup_disclosure_policy,
-                pickup_notes = $13,
-                contact_pref = $14::text::contact_preference,
-                geo_key = $15,
-                lat = $16,
-                lng = $17
-            where id = $18
-              and user_id = $19
+                grower_crop_id = $2,
+                variety_id = $3,
+                title = $4,
+                unit = $5,
+                quantity_total = $6::double precision,
+                quantity_remaining = least(coalesce(quantity_remaining, $6::double precision), $6::double precision),
+                available_start = $7,
+                available_end = $8,
+                status = $9::text::listing_status,
+                pickup_location_text = $10,
+                pickup_address = $11,
+                effective_pickup_address = $12,
+                pickup_disclosure_policy = $13::text::pickup_disclosure_policy,
+                pickup_notes = $14,
+                contact_pref = $15::text::contact_preference,
+                geo_key = $16,
+                lat = $17,
+                lng = $18
+            where id = $19
+              and user_id = $20
               and deleted_at is null
-            returning id, user_id, crop_id, variety_id, title,
+            returning id, user_id, crop_id, grower_crop_id, variety_id, title,
                       quantity_total::text as quantity_total,
                       quantity_remaining::text as quantity_remaining,
                       unit, available_start, available_end, status::text,
@@ -55,7 +56,8 @@ const UPDATE_LISTING_SQL: &str = "
 #[serde(rename_all = "camelCase")]
 pub struct UpsertListingRequest {
     pub title: String,
-    pub crop_id: String,
+    pub crop_id: Option<String>,  // Optional for user-defined crops
+    pub grower_crop_id: Option<String>,  // For user-defined crops
     pub variety_id: Option<String>,
     pub quantity_total: f64,
     pub unit: String,
@@ -79,7 +81,8 @@ struct ResolvedLocationInput {
 
 #[derive(Debug)]
 struct NormalizedListingInput {
-    crop_id: Uuid,
+    crop_id: Option<Uuid>,
+    grower_crop_id: Option<Uuid>,
     variety_id: Option<Uuid>,
     available_start: DateTime<Utc>,
     available_end: DateTime<Utc>,
@@ -283,12 +286,21 @@ pub async fn create_listing(
     });
 
     let client = db::connect().await?;
-    validate_catalog_links(
-        &client,
-        parse_uuid(&payload.crop_id, "crop_id")?,
-        parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?,
-    )
-    .await?;
+    
+    // Only validate catalog links if crop_id is provided
+    if let Some(crop_id_str) = &payload.crop_id {
+        validate_catalog_links(
+            &client,
+            parse_uuid(crop_id_str, "crop_id")?,
+            parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?,
+        )
+        .await?;
+    }
+
+    // Validate that we have either crop_id or grower_crop_id
+    if payload.crop_id.is_none() && payload.grower_crop_id.is_none() {
+        return error_response(400, "Either crop_id or grower_crop_id must be provided");
+    }
 
     let effective_pickup_address =
         resolve_effective_pickup_address(&client, user_id, payload.pickup_address.as_deref())
@@ -309,21 +321,21 @@ pub async fn create_listing(
         .query_opt(
             "
             insert into surplus_listings
-                (id, user_id, crop_id, variety_id, title, unit,
+                (id, user_id, crop_id, grower_crop_id, variety_id, title, unit,
                  quantity_total, quantity_remaining,
                  available_start, available_end, status,
                  pickup_location_text, pickup_address, effective_pickup_address,
                  pickup_disclosure_policy, pickup_notes,
                  contact_pref, geo_key, lat, lng)
             values
-                ($1, $2, $3, $4, $5, $6,
-                 $7::double precision, $7::double precision,
-                 $8, $9, $10::text::listing_status,
-                 $11, $12, $13,
-                 $14::text::pickup_disclosure_policy, $15,
-                 $16::text::contact_preference, $17, $18, $19)
+                ($1, $2, $3, $4, $5, $6, $7,
+                 $8::double precision, $8::double precision,
+                 $9, $10, $11::text::listing_status,
+                 $12, $13, $14,
+                 $15::text::pickup_disclosure_policy, $16,
+                 $17::text::contact_preference, $18, $19, $20)
             on conflict (id) do nothing
-            returning id, user_id, crop_id, variety_id, title,
+            returning id, user_id, crop_id, grower_crop_id, variety_id, title,
                       quantity_total::text as quantity_total,
                       quantity_remaining::text as quantity_remaining,
                       unit, available_start, available_end, status::text,
@@ -336,6 +348,7 @@ pub async fn create_listing(
                 &listing_id,
                 &user_id,
                 &normalized.crop_id,
+                &normalized.grower_crop_id,
                 &normalized.variety_id,
                 &payload.title,
                 &payload.unit,
@@ -418,12 +431,21 @@ pub async fn update_listing(
     let payload: UpsertListingRequest = parse_json_body(request)?;
 
     let client = db::connect().await?;
-    validate_catalog_links(
-        &client,
-        parse_uuid(&payload.crop_id, "crop_id")?,
-        parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?,
-    )
-    .await?;
+    
+    // Only validate catalog links if crop_id is provided
+    if let Some(crop_id_str) = &payload.crop_id {
+        validate_catalog_links(
+            &client,
+            parse_uuid(crop_id_str, "crop_id")?,
+            parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?,
+        )
+        .await?;
+    }
+
+    // Validate that we have either crop_id or grower_crop_id
+    if payload.crop_id.is_none() && payload.grower_crop_id.is_none() {
+        return error_response(400, "Either crop_id or grower_crop_id must be provided");
+    }
 
     let effective_pickup_address =
         resolve_effective_pickup_address(&client, user_id, payload.pickup_address.as_deref())
@@ -445,6 +467,7 @@ pub async fn update_listing(
             UPDATE_LISTING_SQL,
             &[
                 &normalized.crop_id,
+                &normalized.grower_crop_id,
                 &normalized.variety_id,
                 &payload.title,
                 &payload.unit,
@@ -547,11 +570,13 @@ fn normalize_payload(
         )));
     }
 
-    let crop_id = parse_uuid(&payload.crop_id, "crop_id")?;
+    let crop_id = parse_optional_uuid(payload.crop_id.as_deref(), "crop_id")?;
+    let grower_crop_id = parse_optional_uuid(payload.grower_crop_id.as_deref(), "grower_crop_id")?;
     let variety_id = parse_optional_uuid(payload.variety_id.as_deref(), "variety_id")?;
 
     Ok(NormalizedListingInput {
         crop_id,
+        grower_crop_id,
         variety_id,
         available_start,
         available_end,
@@ -817,7 +842,9 @@ fn row_to_listing_item(row: &Row) -> ListingItem {
         grower_crop_id: row
             .get::<_, Option<Uuid>>("grower_crop_id")
             .map(|id| id.to_string()),
-        crop_id: row.get::<_, Uuid>("crop_id").to_string(),
+        crop_id: row
+            .get::<_, Option<Uuid>>("crop_id")
+            .map(|id| id.to_string()),
         variety_id: row
             .get::<_, Option<Uuid>>("variety_id")
             .map(|id| id.to_string()),
@@ -908,7 +935,8 @@ mod tests {
     fn valid_payload() -> UpsertListingRequest {
         UpsertListingRequest {
             title: "Fresh Tomatoes".to_string(),
-            crop_id: "5df666d4-f6b1-4e6f-97d6-321e531ad7ca".to_string(),
+            crop_id: Some("5df666d4-f6b1-4e6f-97d6-321e531ad7ca".to_string()),
+            grower_crop_id: None,
             variety_id: None,
             quantity_total: 12.5,
             unit: "lb".to_string(),
@@ -986,7 +1014,7 @@ mod tests {
     #[test]
     fn update_listing_sql_preserves_existing_remaining_inventory() {
         assert!(UPDATE_LISTING_SQL.contains("quantity_remaining = least("));
-        assert!(UPDATE_LISTING_SQL.contains("coalesce(quantity_remaining, $5::double precision)"));
+        assert!(UPDATE_LISTING_SQL.contains("coalesce(quantity_remaining, $6::double precision)"));
         assert!(!UPDATE_LISTING_SQL.contains("quantity_remaining = $5,"));
     }
 

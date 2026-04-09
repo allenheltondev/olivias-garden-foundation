@@ -73,7 +73,8 @@ export interface DiscoverListingsResponse {
 
 export interface UpsertListingRequest {
   title: string;
-  cropId: string;
+  cropId?: string;  // For catalog crops
+  growerCropId?: string;  // For user-defined crops
   varietyId?: string;
   quantityTotal: number;
   unit: string;

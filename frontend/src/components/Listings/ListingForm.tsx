@@ -12,6 +12,7 @@ export interface ListingQuickPickOption {
   id: string;
   label: string;
   cropId: string;
+  growerCropId?: string;  // For user-defined crops
   varietyId?: string;
   defaultUnit?: string;
   suggestedTitle: string;
@@ -38,6 +39,7 @@ interface ListingFormProps {
 interface ListingFormState {
   title: string;
   cropId: string;
+  growerCropId: string;
   varietyId: string;
   quantityTotal: string;
   unit: string;
@@ -94,6 +96,7 @@ function buildDefaultForm(defaultLat?: number, defaultLng?: number): ListingForm
   return {
     title: '',
     cropId: '',
+    growerCropId: '',
     varietyId: '',
     quantityTotal: '',
     unit: 'lb',
@@ -110,6 +113,7 @@ function buildEditForm(listing: Listing): ListingFormState {
   return {
     title: listing.title,
     cropId: listing.cropId,
+    growerCropId: listing.growerCropId ?? '',
     varietyId: listing.varietyId ?? '',
     quantityTotal: listing.quantityTotal,
     unit: listing.unit,
@@ -158,7 +162,7 @@ export function ListingForm({
       nextErrors.title = 'Title is required';
     }
 
-    if (!formState.cropId) {
+    if (!formState.cropId && !selectedGrowerCropId) {
       nextErrors.cropId = 'Crop is required';
     }
 
@@ -218,12 +222,16 @@ export function ListingForm({
     setFormState((current) => ({
       ...current,
       title: selected.suggestedTitle,
-      cropId: selected.cropId,
+      cropId: selected.cropId || '',  // Empty for user-defined crops
+      growerCropId: selected.growerCropId || selected.id,  // Use growerCropId if available, otherwise the option id
       varietyId: selected.varietyId ?? '',
       unit: selected.defaultUnit ?? current.unit,
     }));
 
-    onCropChange(selected.cropId);
+    // For catalog crops, trigger variety loading
+    if (selected.cropId) {
+      onCropChange(selected.cropId);
+    }
 
     setErrors((current) => ({
       ...current,
@@ -246,7 +254,8 @@ export function ListingForm({
 
     const request: UpsertListingRequest = {
       title: formState.title.trim(),
-      cropId: formState.cropId,
+      cropId: formState.cropId || undefined,  // Only include if we have a catalog crop
+      growerCropId: formState.growerCropId || undefined,  // Include for user-defined crops
       quantityTotal: Number(formState.quantityTotal),
       unit: formState.unit,
       availableStart: new Date(formState.availableStart).toISOString(),

@@ -358,21 +358,22 @@ export function GrowerListingPanel({ viewerUserId, defaultLat, defaultLng }: Gro
     const items = growerCropsQuery.data ?? [];
 
     return [...items]
-      .filter((item) => item.canonicalId !== null)  // Only include catalog crops for listings
       .sort((left, right) => {
         const leftRank = quickPickRank[left.status] ?? 99;
         const rightRank = quickPickRank[right.status] ?? 99;
         return leftRank - rightRank;
       })
       .map((item) => {
-        const cropName = cropNameById.get(item.canonicalId!) ?? 'Saved crop';
+        // Use catalog name if available, otherwise use the stored crop name
+        const cropName = item.canonicalId ? (cropNameById.get(item.canonicalId) ?? 'Unknown crop') : item.cropName;
         const baseTitle = item.nickname?.trim() || cropName;
         const statusTag = item.status === 'growing' ? '' : ` (${item.status})`;
 
         return {
           id: item.id,
           label: `${baseTitle}${statusTag}`,
-          cropId: item.canonicalId!,  // Non-null assertion since we filtered for non-null
+          cropId: item.canonicalId || '',  // Empty string for user-defined crops
+          growerCropId: item.id,  // Include the grower crop library ID
           varietyId: item.varietyId ?? undefined,
           defaultUnit: item.defaultUnit ?? undefined,
           suggestedTitle: baseTitle,
