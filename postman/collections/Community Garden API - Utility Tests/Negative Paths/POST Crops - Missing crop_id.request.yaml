@@ -1,8 +1,8 @@
 $kind: http-request
-name: 'POST /crops - Missing crop_id'
+name: 'POST /crops - Missing crop reference'
 description: |-
-  Sends a POST /crops request with the required `crop_id` field omitted.
-  Expects a 400 status code and an `error` property in the response body.
+  Sends a POST /crops request with both `canonical_id` and `crop_name` omitted.
+  Expects a 400 status code and the current validation message in the response body.
 method: POST
 url: '{{baseUrl}}/crops'
 order: 1000
@@ -30,4 +30,5 @@ scripts:
       pm.test("Response contains error property", function () {
           const body = pm.response.json();
           pm.expect(body).to.have.property("error");
+          pm.expect(body.error).to.include("crop_name is required when canonical_id is not provided");
       });

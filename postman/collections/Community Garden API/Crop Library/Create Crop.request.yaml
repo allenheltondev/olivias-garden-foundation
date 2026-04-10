@@ -1,6 +1,6 @@
 $kind: http-request
 name: Create Crop
-description: Add a new crop to the user's crop library.
+description: Add a catalog-linked crop to the user's crop library using the backward-compatible `crop_id` request alias.
 method: POST
 url: '{{baseUrl}}/crops'
 order: 2000
@@ -44,10 +44,12 @@ scripts:
           pm.response.to.have.status(201);
       });
 
-      pm.test("Response matches grower crop contract", function () {
+      pm.test("Response matches catalog-linked grower crop contract", function () {
           const crop = pm.response.json();
           pm.expect(crop).to.have.property("id");
-          pm.expect(crop).to.have.property("crop_id");
+          pm.expect(crop).to.have.property("crop_id", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(crop).to.have.property("canonical_id", pm.collectionVariables.get("catalogCropId"));
+          pm.expect(crop).to.have.property("crop_name");
           pm.expect(crop).to.have.property("status", "growing");
           pm.expect(crop).to.have.property("visibility", "local");
           pm.expect(crop).to.have.property("surplus_enabled", true);

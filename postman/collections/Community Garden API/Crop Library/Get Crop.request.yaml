@@ -35,7 +35,6 @@ scripts:
       pm.test("Response matches requested crop", function () {
           const crop = pm.response.json();
           pm.expect(crop).to.have.property("id", pm.collectionVariables.get("cropLibraryId"));
-          pm.expect(crop).to.have.property("crop_id");
+          pm.expect(crop).to.have.property("crop_name");
           pm.expect(crop).to.have.property("status");
       });
-

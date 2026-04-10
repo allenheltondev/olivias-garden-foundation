@@ -1,22 +1,34 @@
 GrowerCropItem:
   type: object
-  required: [id, userId, canonicalId, cropName, status, visibility, surplusEnabled, createdAt, updatedAt]
+  description: |
+    Grower crop-library record.
+
+    This endpoint currently returns snake_case fields. `crop_id` is a backward-compatible
+    alias of `canonical_id` and will be present with the same value when the crop is linked
+    to the public catalog.
+  required: [id, user_id, crop_name, status, visibility, surplus_enabled, created_at, updated_at]
   properties:
     id:
       type: string
       format: uuid
-    userId:
+    user_id:
       type: string
       format: uuid
-    canonicalId:
+    crop_id:
+      type: string
+      format: uuid
+      nullable: true
+      deprecated: true
+      description: "Backward-compatible alias of canonical_id"
+    canonical_id:
       type: string
       format: uuid
       nullable: true
       description: "Links to catalog crop when available, null for user-defined crops"
-    cropName:
+    crop_name:
       type: string
       description: "User-defined crop name or catalog crop name"
-    varietyId:
+    variety_id:
       type: string
       format: uuid
       nullable: true
@@ -26,37 +38,46 @@ GrowerCropItem:
     visibility:
       type: string
       enum: [private, local, public]
-    surplusEnabled:
+    surplus_enabled:
       type: boolean
     nickname:
       type: string
       nullable: true
-    defaultUnit:
+    default_unit:
       type: string
       nullable: true
     notes:
       type: string
       nullable: true
-    createdAt:
+    created_at:
       type: string
       format: date-time
-    updatedAt:
+    updated_at:
       type: string
       format: date-time
 
 UpsertGrowerCropRequest:
   type: object
-  required: [cropName, status, visibility, surplusEnabled]
+  description: |
+    Create or update a grower crop-library record.
+
+    The request is valid when either `canonical_id` or `crop_name` is provided.
+    The API also accepts the compatibility aliases `canonicalId`, `crop_id`, `cropId`,
+    `cropName`, `surplusEnabled`, and `defaultUnit`.
+  required: [status, visibility, surplus_enabled]
+  anyOf:
+    - required: [canonical_id]
+    - required: [crop_name]
   properties:
-    canonicalId:
+    canonical_id:
       type: string
       format: uuid
       nullable: true
-      description: "Optional link to catalog crop. If provided, cropName should match catalog name"
-    cropName:
+      description: "Optional link to catalog crop"
+    crop_name:
       type: string
       description: "The crop name to display and use for this entry"
-    varietyId:
+    variety_id:
       type: string
       format: uuid
       nullable: true
@@ -66,12 +87,12 @@ UpsertGrowerCropRequest:
     visibility:
       type: string
       enum: [private, local, public]
-    surplusEnabled:
+    surplus_enabled:
       type: boolean
     nickname:
       type: string
       nullable: true
-    defaultUnit:
+    default_unit:
       type: string
       nullable: true
     notes:

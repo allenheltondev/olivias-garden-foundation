@@ -1,0 +1,44 @@
+$kind: http-request
+name: Create Custom Crop
+description: Add a user-defined crop to the user's crop library without a catalog link.
+method: POST
+url: '{{baseUrl}}/crops'
+order: 2100
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "crop_name": "Mystery Squash",
+      "status": "planning",
+      "visibility": "local",
+      "surplus_enabled": false,
+      "nickname": "Back fence volunteer",
+      "notes": "User-defined crop with no catalog link"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response matches user-defined grower crop contract", function () {
+          const crop = pm.response.json();
+          pm.expect(crop).to.have.property("id");
+          pm.expect(crop).to.have.property("canonical_id", null);
+          pm.expect(crop).to.have.property("crop_name", "Mystery Squash");
+          pm.expect(crop).to.have.property("status", "planning");
+          pm.expect(crop).to.have.property("visibility", "local");
+          pm.expect(crop).to.have.property("surplus_enabled", false);
+      });
+
+      if (pm.response.code === 201) {
+          const crop = pm.response.json();
+          pm.collectionVariables.set("customCropLibraryId", crop.id);
+      }
