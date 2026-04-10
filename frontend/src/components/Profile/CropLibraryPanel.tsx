@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listMyCrops,
@@ -6,10 +7,9 @@ import {
   updateMyCrop,
   deleteMyCrop,
   listCatalogCrops,
-  UpsertGrowerCropRequest,
-  type GrowerCropItem,
-  type CatalogCrop,
 } from '../../services/api';
+import type { UpsertGrowerCropRequest } from '../../services/api';
+import type { GrowerCropItem } from '../../types/listing';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -19,7 +19,7 @@ import { createLogger } from '../../utils/logging';
 const logger = createLogger('crop-library');
 
 interface CropLibraryPanelProps {
-  viewerUserId: string;
+  viewerUserId?: string;
 }
 
 export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
@@ -35,6 +35,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     defaultUnit: '',
     notes: '',
   });
+  void viewerUserId;
 
   const queryClient = useQueryClient();
 
@@ -57,7 +58,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
       logger.info('Crop added to library');
     },
     onError: (error) => {
-      logger.error('Failed to add crop', { error });
+      logger.error('Failed to add crop', error instanceof Error ? error : undefined);
     },
   });
 
@@ -71,7 +72,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
       logger.info('Crop updated');
     },
     onError: (error) => {
-      logger.error('Failed to update crop', { error });
+      logger.error('Failed to update crop', error instanceof Error ? error : undefined);
     },
   });
 
@@ -82,7 +83,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
       logger.info('Crop removed from library');
     },
     onError: (error) => {
-      logger.error('Failed to remove crop', { error });
+      logger.error('Failed to remove crop', error instanceof Error ? error : undefined);
     },
   });
 
@@ -99,7 +100,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     const data: UpsertGrowerCropRequest = {
@@ -151,6 +152,8 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     label: crop.commonName,
   })) || [];
 
+  const getInputValue = (event: ChangeEvent<HTMLInputElement>) => event.target.value;
+
   const statusOptions = [
     { value: 'interested', label: 'Interested' },
     { value: 'planning', label: 'Planning' },
@@ -199,7 +202,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
               <Input
                 label="Crop Name"
                 value={formData.cropName}
-                onChange={(value) => setFormData(prev => ({ ...prev, cropName: value }))}
+                onChange={(event) => setFormData(prev => ({ ...prev, cropName: getInputValue(event) }))}
                 placeholder="e.g., Heirloom Tomatoes, Mystery Squash"
                 required
               />
@@ -247,21 +250,21 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
               <Input
                 label="Nickname (Optional)"
                 value={formData.nickname}
-                onChange={(value) => setFormData(prev => ({ ...prev, nickname: value }))}
+                onChange={(event) => setFormData(prev => ({ ...prev, nickname: getInputValue(event) }))}
                 placeholder="e.g., Big Boy, Sweet 100s"
               />
 
               <Input
                 label="Default Unit (Optional)"
                 value={formData.defaultUnit}
-                onChange={(value) => setFormData(prev => ({ ...prev, defaultUnit: value }))}
+                onChange={(event) => setFormData(prev => ({ ...prev, defaultUnit: getInputValue(event) }))}
                 placeholder="e.g., lb, bunch, each"
               />
 
               <Input
                 label="Notes (Optional)"
                 value={formData.notes}
-                onChange={(value) => setFormData(prev => ({ ...prev, notes: value }))}
+                onChange={(event) => setFormData(prev => ({ ...prev, notes: getInputValue(event) }))}
                 placeholder="Any additional notes about this crop"
               />
             </div>

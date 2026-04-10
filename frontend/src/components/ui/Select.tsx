@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useId } from 'react';
 import { FormField } from './FormField';
 
 export interface SelectOption {
@@ -33,7 +33,8 @@ export const Select: React.FC<SelectProps> = ({
   disabled = false,
   className = '',
 }) => {
-  const id = `select-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const id = useMemo(() => `select-${generatedId}`, [generatedId]);
 
   return (
     <FormField

@@ -162,7 +162,7 @@ export function ListingForm({
       nextErrors.title = 'Title is required';
     }
 
-    if (!formState.cropId && !selectedGrowerCropId) {
+    if (!formState.cropId && !formState.growerCropId) {
       nextErrors.cropId = 'Crop is required';
     }
 

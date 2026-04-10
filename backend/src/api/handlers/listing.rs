@@ -56,8 +56,8 @@ const UPDATE_LISTING_SQL: &str = "
 #[serde(rename_all = "camelCase")]
 pub struct UpsertListingRequest {
     pub title: String,
-    pub crop_id: Option<String>,  // Optional for user-defined crops
-    pub grower_crop_id: Option<String>,  // For user-defined crops
+    pub crop_id: Option<String>,        // Optional for user-defined crops
+    pub grower_crop_id: Option<String>, // For user-defined crops
     pub variety_id: Option<String>,
     pub quantity_total: f64,
     pub unit: String,
