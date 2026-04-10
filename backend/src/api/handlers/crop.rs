@@ -491,4 +491,12 @@ mod tests {
         payload.visibility = "team".to_string();
         assert!(validate_upsert_payload(&payload).is_err());
     }
+
+    #[test]
+    fn payload_validation_rejects_missing_crop_name_and_canonical_id() {
+        let mut payload = valid_payload();
+        payload.crop_name = None;
+        payload.canonical_id = None;
+        assert!(validate_upsert_payload(&payload).is_err());
+    }
 }

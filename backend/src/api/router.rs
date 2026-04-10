@@ -278,6 +278,7 @@ fn map_api_error_to_response(
         || message.contains("neededBy must be")
         || message.contains("title is required")
         || message.contains("unit is required")
+        || message.contains("crop_name is required")
         || message.contains("does not reference an existing catalog crop")
         || message.contains("must belong to the specified crop_id")
         || message.contains("must belong to the specified cropId")
