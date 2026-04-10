@@ -13,17 +13,29 @@ alter table grower_crop_library
 alter table grower_crop_library
   alter column crop_name set default '';
 
--- Populate canonical_id / crop_name for existing catalog-linked entries.
-update grower_crop_library
-set canonical_id = coalesce(grower_crop_library.canonical_id, grower_crop_library.crop_id),
-    crop_name = coalesce(nullif(grower_crop_library.crop_name, ''), crops.common_name, '')
-from crops
-where grower_crop_library.crop_id = crops.id
-  and (
-    grower_crop_library.canonical_id is null
-    or grower_crop_library.crop_name is null
-    or grower_crop_library.crop_name = ''
-  );
+-- Populate canonical_id / crop_name for existing catalog-linked entries when the
+-- legacy crop_id column is still present.
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'grower_crop_library'
+      and column_name = 'crop_id'
+  ) then
+    update grower_crop_library
+    set canonical_id = coalesce(grower_crop_library.canonical_id, grower_crop_library.crop_id),
+        crop_name = coalesce(nullif(grower_crop_library.crop_name, ''), crops.common_name, '')
+    from crops
+    where grower_crop_library.crop_id = crops.id
+      and (
+        grower_crop_library.canonical_id is null
+        or grower_crop_library.crop_name is null
+        or grower_crop_library.crop_name = ''
+      );
+  end if;
+end $$;
 
 -- Enforce the new shape once data is backfilled.
 alter table grower_crop_library
@@ -74,5 +86,16 @@ alter table grower_crop_library
   alter column crop_name drop default;
 
 -- crop_id remains nullable for backward compatibility during transition.
-alter table grower_crop_library
-  alter column crop_id drop not null;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'grower_crop_library'
+      and column_name = 'crop_id'
+  ) then
+    alter table grower_crop_library
+      alter column crop_id drop not null;
+  end if;
+end $$;
