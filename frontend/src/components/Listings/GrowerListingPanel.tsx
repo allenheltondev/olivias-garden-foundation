@@ -364,14 +364,16 @@ export function GrowerListingPanel({ viewerUserId, defaultLat, defaultLng }: Gro
         return leftRank - rightRank;
       })
       .map((item) => {
-        const cropName = cropNameById.get(item.cropId) ?? 'Saved crop';
+        // Use catalog name if available, otherwise use the stored crop name
+        const cropName = item.canonicalId ? (cropNameById.get(item.canonicalId) ?? 'Unknown crop') : item.cropName;
         const baseTitle = item.nickname?.trim() || cropName;
         const statusTag = item.status === 'growing' ? '' : ` (${item.status})`;
 
         return {
           id: item.id,
           label: `${baseTitle}${statusTag}`,
-          cropId: item.cropId,
+          cropId: item.canonicalId || '',  // Empty string for user-defined crops
+          growerCropId: item.id,  // Include the grower crop library ID
           varietyId: item.varietyId ?? undefined,
           defaultUnit: item.defaultUnit ?? undefined,
           suggestedTitle: baseTitle,

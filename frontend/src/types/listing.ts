@@ -18,7 +18,8 @@ export interface CatalogVariety {
 export interface GrowerCropItem {
   id: string;
   userId: string;
-  cropId: string;
+  canonicalId: string | null;
+  cropName: string;
   varietyId: string | null;
   status: string;
   visibility: string;
@@ -72,7 +73,8 @@ export interface DiscoverListingsResponse {
 
 export interface UpsertListingRequest {
   title: string;
-  cropId: string;
+  cropId?: string;  // For catalog crops
+  growerCropId?: string;  // For user-defined crops
   varietyId?: string;
   quantityTotal: number;
   unit: string;

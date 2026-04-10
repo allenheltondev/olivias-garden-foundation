@@ -6,7 +6,7 @@ pub struct ListingItem {
     pub id: String,
     pub user_id: String,
     pub grower_crop_id: Option<String>,
-    pub crop_id: String,
+    pub crop_id: Option<String>,
     pub variety_id: Option<String>,
     pub title: Option<String>,
     pub unit: Option<String>,

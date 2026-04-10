@@ -249,7 +249,9 @@ fn row_to_listing_item(row: &Row) -> ListingItem {
         grower_crop_id: row
             .get::<_, Option<Uuid>>("grower_crop_id")
             .map(|id| id.to_string()),
-        crop_id: row.get::<_, Uuid>("crop_id").to_string(),
+        crop_id: row
+            .get::<_, Option<Uuid>>("crop_id")
+            .map(|id| id.to_string()),
         variety_id: row
             .get::<_, Option<Uuid>>("variety_id")
             .map(|id| id.to_string()),

@@ -219,7 +219,8 @@ interface RawCatalogVariety {
 interface RawGrowerCropItem {
   id: string;
   user_id: string;
-  crop_id: string;
+  canonical_id: string | null;
+  crop_name: string;
   variety_id: string | null;
   status: string;
   visibility: string;
@@ -394,7 +395,8 @@ function mapGrowerCropItem(raw: RawGrowerCropItem): GrowerCropItem {
   return {
     id: raw.id,
     userId: raw.user_id,
-    cropId: raw.crop_id,
+    canonicalId: raw.canonical_id,
+    cropName: raw.crop_name,
     varietyId: raw.variety_id,
     status: raw.status,
     visibility: raw.visibility,
@@ -631,6 +633,40 @@ export async function listCatalogVarieties(cropId: string): Promise<CatalogVarie
 export async function listMyCrops(): Promise<GrowerCropItem[]> {
   const response = await apiFetch<RawGrowerCropItem[]>('/crops');
   return response.map(mapGrowerCropItem);
+}
+
+export interface UpsertGrowerCropRequest {
+  canonicalId?: string;
+  cropName: string;
+  varietyId?: string;
+  status: string;
+  visibility: string;
+  surplusEnabled: boolean;
+  nickname?: string;
+  defaultUnit?: string;
+  notes?: string;
+}
+
+export async function createMyCrop(data: UpsertGrowerCropRequest): Promise<GrowerCropItem> {
+  const response = await apiFetch<RawGrowerCropItem>('/crops', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return mapGrowerCropItem(response);
+}
+
+export async function updateMyCrop(cropId: string, data: UpsertGrowerCropRequest): Promise<GrowerCropItem> {
+  const response = await apiFetch<RawGrowerCropItem>(`/crops/${cropId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  return mapGrowerCropItem(response);
+}
+
+export async function deleteMyCrop(cropId: string): Promise<void> {
+  await apiFetch(`/crops/${cropId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function listMyListings(
