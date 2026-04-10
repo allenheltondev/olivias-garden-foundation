@@ -60,7 +60,7 @@ pub async fn get_my_crop(
     let maybe_row = client
         .query_opt(
             "
-            select id, user_id, crop_id, variety_id, status::text, visibility::text,
+            select id, user_id, canonical_id, crop_name, variety_id, status::text, visibility::text,
                    surplus_enabled, nickname, default_unit, notes, created_at, updated_at
             from grower_crop_library
             where id = $1 and user_id = $2
@@ -106,6 +106,7 @@ pub async fn create_my_crop(
     if let Some(crop_id) = canonical_id {
         validate_catalog_links(&client, crop_id, variety_id).await?;
     }
+    let crop_name = resolve_crop_name(&client, &payload, canonical_id).await?;
 
     let row = client
         .query_one(
@@ -120,7 +121,7 @@ pub async fn create_my_crop(
             &[
                 &user_id,
                 &canonical_id_text,
-                &payload.crop_name,
+                &crop_name,
                 &variety_id_text,
                 &payload.status,
                 &payload.visibility,
@@ -169,6 +170,7 @@ pub async fn update_my_crop(
     if let Some(crop_id) = canonical_id {
         validate_catalog_links(&client, crop_id, variety_id).await?;
     }
+    let crop_name = resolve_crop_name(&client, &payload, canonical_id).await?;
 
     let maybe_row = client
         .query_opt(
@@ -190,7 +192,7 @@ pub async fn update_my_crop(
             ",
             &[
                 &canonical_id_text,
-                &payload.crop_name,
+                &crop_name,
                 &variety_id_text,
                 &payload.status,
                 &payload.visibility,
@@ -284,7 +286,49 @@ fn validate_upsert_payload(payload: &UpsertGrowerCropRequest) -> Result<(), lamb
         )));
     }
 
+    let has_crop_name = payload
+        .crop_name
+        .as_ref()
+        .is_some_and(|value| !value.trim().is_empty());
+    let has_canonical_id = payload
+        .canonical_id
+        .as_ref()
+        .is_some_and(|value| !value.trim().is_empty());
+
+    if !has_crop_name && !has_canonical_id {
+        return Err(lambda_http::Error::from(
+            "crop_name is required when canonical_id is not provided".to_string(),
+        ));
+    }
+
     Ok(())
+}
+
+async fn resolve_crop_name(
+    client: &Client,
+    payload: &UpsertGrowerCropRequest,
+    canonical_id: Option<Uuid>,
+) -> Result<String, lambda_http::Error> {
+    if let Some(name) = payload
+        .crop_name
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        return Ok(name.to_string());
+    }
+
+    if let Some(crop_id) = canonical_id {
+        let row = client
+            .query_one("select common_name from crops where id = $1", &[&crop_id])
+            .await
+            .map_err(|error| db_error(&error))?;
+        return Ok(row.get::<_, String>("common_name"));
+    }
+
+    Err(lambda_http::Error::from(
+        "crop_name is required when canonical_id is not provided".to_string(),
+    ))
 }
 
 async fn validate_catalog_links(
@@ -358,6 +402,9 @@ fn row_to_item(row: &Row) -> GrowerCropItem {
     GrowerCropItem {
         id: row.get::<_, Uuid>("id").to_string(),
         user_id: row.get::<_, Uuid>("user_id").to_string(),
+        crop_id: row
+            .get::<_, Option<Uuid>>("canonical_id")
+            .map(|v| v.to_string()),
         canonical_id: row
             .get::<_, Option<Uuid>>("canonical_id")
             .map(|v| v.to_string()),
@@ -414,7 +461,7 @@ mod tests {
     fn valid_payload() -> UpsertGrowerCropRequest {
         UpsertGrowerCropRequest {
             canonical_id: Some("5df666d4-f6b1-4e6f-97d6-321e531ad7ca".to_string()),
-            crop_name: "Tomato".to_string(),
+            crop_name: Some("Tomato".to_string()),
             variety_id: None,
             status: "growing".to_string(),
             visibility: "local".to_string(),
