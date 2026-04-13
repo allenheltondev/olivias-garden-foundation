@@ -112,7 +112,7 @@ jobs:
 
       - name: Frontend - Install dependencies
         working-directory: apps/grn
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Frontend - Run ESLint
         working-directory: apps/grn
@@ -322,7 +322,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/grn
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Create environment file
         working-directory: apps/grn

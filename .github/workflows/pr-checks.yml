@@ -262,7 +262,7 @@ jobs:
           cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Run ESLint
         run: npm run lint
@@ -287,7 +287,7 @@ jobs:
           cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Type check
         run: npx tsc --noEmit
@@ -314,7 +314,7 @@ jobs:
         run: npm install -g esbuild
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Run tests
         run: npm test
@@ -338,7 +338,7 @@ jobs:
           cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Build check
         run: npm run build
@@ -362,7 +362,7 @@ jobs:
           cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Build frontend for bundle analysis
         run: npm run build
@@ -637,7 +637,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: apps/grn
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Build frontend
         working-directory: apps/grn
