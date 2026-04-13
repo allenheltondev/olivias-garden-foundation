@@ -248,6 +248,7 @@ pub async fn transition_claim(
 
     let actor_role = determine_actor_role(actor_user_id, claimer_id, listing_owner_id)?;
     let decision = evaluate_transition(current_status, target_status, actor_role)?;
+    let target_status_db = target_status.as_db_value();
 
     adjust_listing_quantity_if_needed(
         &tx,
@@ -282,7 +283,7 @@ pub async fn transition_claim(
                       claimed_at, confirmed_at, completed_at, cancelled_at
             ",
             &[
-                &target_status.as_db_value(),
+                &target_status_db,
                 &notes,
                 &decision.stamp_confirmed_at,
                 &decision.stamp_completed_at,
