@@ -120,7 +120,7 @@ jobs:
 
       - name: Frontend - Type check
         working-directory: apps/grn
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       # Backend Node.js function lint & tests
       - name: Backend Functions - Install lint dependencies
