@@ -91,7 +91,7 @@ pub async fn create_request(
             insert into requests
                 (id, user_id, crop_id, variety_id, unit, quantity, needed_by, notes, geo_key, lat, lng, status)
             values
-                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::request_status)
+                ($1, $2, $3, $4, $5, $6::double precision, $7, $8, $9, $10, $11, $12::request_status)
             on conflict (id) do nothing
             returning id, user_id, crop_id, variety_id, unit,
                       quantity::text as quantity,
@@ -182,7 +182,7 @@ pub async fn update_request(
             set crop_id = $1,
                 variety_id = $2,
                 unit = $3,
-                quantity = $4,
+                quantity = $4::double precision,
                 needed_by = $5,
                 notes = $6,
                 geo_key = $7,

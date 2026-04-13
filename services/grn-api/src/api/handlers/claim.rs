@@ -248,7 +248,7 @@ pub async fn transition_claim(
 
     let actor_role = determine_actor_role(actor_user_id, claimer_id, listing_owner_id)?;
     let decision = evaluate_transition(current_status, target_status, actor_role)?;
-    let target_status_db = target_status.as_db_value();
+    let target_status_db = target_status.as_db_value().to_string();
 
     adjust_listing_quantity_if_needed(
         &tx,
