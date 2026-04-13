@@ -1,9 +1,9 @@
 $kind: http-request
 name: List Agent Tasks
 description: |-
-  List premium automation tasks for the authenticated user.
+  List pro automation tasks for the authenticated user.
   
-  Premium feature - requires active subscription.
+  Pro feature - requires active subscription.
 method: GET
 url: '{{baseUrl}}/agent-tasks'
 order: 2000
@@ -25,8 +25,8 @@ scripts:
               const response = pm.response.json();
               pm.expect(response).to.have.property("error", "feature_locked");
               pm.expect(response).to.have.property("entitlementKey", "agent.tasks.automation");
-              pm.expect(response).to.have.property("requiredTier", "premium");
-              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.premium");
+              pm.expect(response).to.have.property("requiredTier", "pro");
+              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.pro");
           });
       } else {
           pm.test("Status code is 200", function () {

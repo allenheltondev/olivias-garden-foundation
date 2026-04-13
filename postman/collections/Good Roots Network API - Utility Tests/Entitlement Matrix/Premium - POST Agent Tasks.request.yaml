@@ -1,7 +1,7 @@
 $kind: http-request
 name: 'Premium - POST /agent-tasks → non-403'
 description: |-
-  Verifies that a premium-tier token is NOT rejected with 403
+  Verifies that a pro-tier token is NOT rejected with 403
   when calling the agent tasks creation endpoint.
 method: POST
 url: '{{baseUrl}}/agent-tasks'

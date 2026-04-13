@@ -1005,7 +1005,6 @@ jobs:
         run: |
           postman collection run "postman/collections/Good Roots Network API - E2E Flows" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "growerAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 

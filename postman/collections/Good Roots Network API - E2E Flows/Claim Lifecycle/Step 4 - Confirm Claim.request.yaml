@@ -4,6 +4,7 @@ description: |-
   Transition the claim from pending → confirmed.
 
   **Depends on**: `claimId` captured in Step 2
+  **Chaining**: Sets `authToken` back to `{{growerAuthToken}}`.
   **Asserts**: Response status is `confirmed`.
 method: PUT
 url: '{{baseUrl}}/claims/{{claimId}}'
@@ -23,6 +24,14 @@ scripts:
   - type: beforeRequest
     language: text/javascript
     code: |-
+      const growerToken = pm.variables.get("growerAuthToken");
+      if (growerToken) {
+          pm.collectionVariables.set("authToken", growerToken);
+      } else {
+          console.error("growerAuthToken not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+
       const claimId = pm.collectionVariables.get("claimId");
       if (!claimId) {
           console.error("claimId not set; aborting.");

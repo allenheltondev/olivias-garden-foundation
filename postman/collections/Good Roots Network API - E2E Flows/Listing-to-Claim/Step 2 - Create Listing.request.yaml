@@ -24,6 +24,10 @@ body:
       "availableStart": "2026-07-01T08:00:00Z",
       "availableEnd": "2026-07-03T18:00:00Z",
       "pickupLocationText": "Side gate",
+      "pickupAddress": "1100 Congress Ave, Austin, TX 78701",
+      "pickupDisclosurePolicy": "after_confirmed",
+      "pickupNotes": "Ring doorbell, produce will be in cooler on porch",
+      "contactPref": "app_message",
       "status": "active"
     }
 scripts:
@@ -45,4 +49,5 @@ scripts:
           }
 
           pm.collectionVariables.set("listingId", listing.id);
+          pm.collectionVariables.set("listingGeoKey", listing.geoKey);
       });

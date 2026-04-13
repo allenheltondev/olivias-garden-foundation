@@ -1,11 +1,11 @@
 $kind: http-request
 name: Get KPIs
 description: |-
-  Retrieve premium analytics KPIs for the recent rolling window.
+  Retrieve pro analytics KPIs for the recent rolling window.
   
-  Premium feature - requires active subscription.
+  Pro feature - requires active subscription.
 method: GET
-url: '{{baseUrl}}/analytics/premium/kpis'
+url: '{{baseUrl}}/analytics/pro/kpis'
 order: 2000
 headers:
   - key: Authorization
@@ -22,7 +22,7 @@ scripts:
           pm.response.to.have.status(200);
       });
 
-      pm.test("Response matches premium KPI contract", function () {
+      pm.test("Response matches pro KPI contract", function () {
           const response = pm.response.json();
           pm.expect(response).to.have.property("windowDays");
           pm.expect(response).to.have.property("funnel");

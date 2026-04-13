@@ -11,7 +11,18 @@ order: 3000
 headers:
   - key: Authorization
     value: 'Bearer {{authToken}}'
+queryParams:
+  - key: geoKey
+    value: '{{gathererGeoKey}}'
 scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const geoKey = pm.collectionVariables.get("gathererGeoKey");
+      if (!geoKey) {
+          console.error("gathererGeoKey not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
   - type: afterResponse
     language: text/javascript
     code: |-

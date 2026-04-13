@@ -2,9 +2,9 @@ $kind: http-request
 name: 'Free - POST /analytics/premium/events → 403'
 description: |-
   Verifies that a free-tier token is rejected with 403 feature_locked
-  when calling the premium analytics event tracking endpoint.
+  when calling the pro analytics event tracking endpoint.
 method: POST
-url: '{{baseUrl}}/analytics/premium/events'
+url: '{{baseUrl}}/analytics/pro/events'
 order: 4000
 headers:
   - key: Authorization
@@ -30,6 +30,6 @@ scripts:
           const body = pm.response.json();
           pm.expect(body).to.have.property("error", "feature_locked");
           pm.expect(body).to.have.property("entitlementKey").that.is.a("string");
-          pm.expect(body).to.have.property("requiredTier", "premium");
+          pm.expect(body).to.have.property("requiredTier", "pro");
           pm.expect(body).to.have.property("upgradeHintKey").that.is.a("string");
       });

@@ -30,8 +30,8 @@ scripts:
 
           pm.expect(response).to.have.property("policy");
           pm.expect(response.policy).to.be.an("object");
-          pm.expect(response.policy).to.have.property("aiIsPremiumOnly");
-          pm.expect(response.policy.aiIsPremiumOnly).to.be.a("boolean");
+          pm.expect(response.policy).to.have.property("aiIsProOnly");
+          pm.expect(response.policy.aiIsProOnly).to.be.a("boolean");
           pm.expect(response.policy).to.have.property("freeRemindersDeterministicOnly");
           pm.expect(response.policy.freeRemindersDeterministicOnly).to.be.a("boolean");
       });

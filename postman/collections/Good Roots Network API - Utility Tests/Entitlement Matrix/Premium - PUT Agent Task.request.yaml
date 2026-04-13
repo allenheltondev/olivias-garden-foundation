@@ -1,7 +1,7 @@
 $kind: http-request
 name: 'Premium - PUT /agent-tasks/{id} → non-403'
 description: |-
-  Verifies that a premium-tier token is NOT rejected with 403
+  Verifies that a pro-tier token is NOT rejected with 403
   when calling the agent task update endpoint.
   A placeholder UUID is used; a 404 is acceptable — the key assertion is no 403.
 method: PUT

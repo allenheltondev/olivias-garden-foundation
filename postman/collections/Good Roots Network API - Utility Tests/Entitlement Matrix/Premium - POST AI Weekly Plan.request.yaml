@@ -1,7 +1,7 @@
 $kind: http-request
 name: 'Premium - POST /ai/copilot/weekly-plan → non-403'
 description: |-
-  Verifies that a premium-tier token is NOT rejected with 403
+  Verifies that a pro-tier token is NOT rejected with 403
   when calling the AI weekly plan endpoint.
 method: POST
 url: '{{baseUrl}}/ai/copilot/weekly-plan'

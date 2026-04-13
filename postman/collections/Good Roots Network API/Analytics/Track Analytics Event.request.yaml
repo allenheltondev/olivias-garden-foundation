@@ -1,11 +1,11 @@
 $kind: http-request
 name: Track Analytics Event
 description: |-
-  Track a premium analytics event.
+  Track a pro analytics event.
   
-  Premium feature - requires active subscription.
+  Pro feature - requires active subscription.
 method: POST
-url: '{{baseUrl}}/analytics/premium/events'
+url: '{{baseUrl}}/analytics/pro/events'
 order: 1000
 headers:
   - key: Authorization
