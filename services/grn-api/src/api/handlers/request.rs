@@ -325,11 +325,13 @@ async fn load_gatherer_geo_context(
         .map_err(|error| db_error(&error))?;
 
     if let Some(gatherer) = row {
-        return Ok(GathererGeoContext {
-            geo_key: gatherer.get("geo_key"),
-            lat: gatherer.get("lat"),
-            lng: gatherer.get("lng"),
-        });
+        let geo_key = gatherer.get::<_, Option<String>>("geo_key");
+        let lat = gatherer.get::<_, Option<f64>>("lat");
+        let lng = gatherer.get::<_, Option<f64>>("lng");
+
+        if let (Some(geo_key), Some(lat), Some(lng)) = (geo_key, lat, lng) {
+            return Ok(GathererGeoContext { geo_key, lat, lng });
+        }
     }
 
     Err(lambda_http::Error::from(

@@ -262,7 +262,7 @@ pub async fn transition_claim(
             "
             update claims
             set status = $1::claim_status,
-                notes = coalesce($2, notes),
+                notes = coalesce($2::text, notes),
                 confirmed_at = case
                     when $3 then coalesce(confirmed_at, now())
                     else confirmed_at
