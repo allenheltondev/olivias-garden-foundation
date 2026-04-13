@@ -45,10 +45,10 @@ flowchart LR
 
 ### Rust API Changes
 
-#### `badge_cabinet.rs` — New read-only function
+#### `badge_cabinet.rs` â€” New read-only function
 
 ```rust
-/// Read-only badge query — no evaluation, no inserts.
+/// Read-only badge query â€” no evaluation, no inserts.
 pub async fn load_badges_read_only(
     client: &Client,
     user_id: Uuid,
@@ -57,10 +57,10 @@ pub async fn load_badges_read_only(
 
 Executes the same SELECT query as the tail of `load_and_sync_badges` but skips all `maybe_award_*` calls.
 
-#### `gardener_tier.rs` — New read-only function
+#### `gardener_tier.rs` â€” New read-only function
 
 ```rust
-/// Read-only tier query — no scoring, no promotion inserts.
+/// Read-only tier query â€” no scoring, no promotion inserts.
 pub async fn load_tier_read_only(
     client: &Client,
     user_id: Uuid,
@@ -69,14 +69,14 @@ pub async fn load_tier_read_only(
 
 Reads the latest row from `gardener_tier_promotions` and deserializes it into `GardenerTierProfile`. Returns a default novice profile when no row exists.
 
-#### `handlers/user.rs` — Refactored `to_me_response`
+#### `handlers/user.rs` â€” Refactored `to_me_response`
 
 The `to_me_response` function changes from:
 
-1. `badge_cabinet::load_and_sync_badges` → `badge_cabinet::load_badges_read_only`
-2. `load_experience_signals` + `assign_experience_level` + `persist_experience_level` → single read from `user_experience_levels`
-3. `gardener_tier::evaluate_and_record` → `gardener_tier::load_tier_read_only`
-4. `analytics::log_backend_event` call → removed entirely
+1. `badge_cabinet::load_and_sync_badges` â†’ `badge_cabinet::load_badges_read_only`
+2. `load_experience_signals` + `assign_experience_level` + `persist_experience_level` â†’ single read from `user_experience_levels`
+3. `gardener_tier::evaluate_and_record` â†’ `gardener_tier::load_tier_read_only`
+4. `analytics::log_backend_event` call â†’ removed entirely
 
 New helper function:
 
@@ -100,10 +100,10 @@ These functions remain in the codebase but are no longer invoked by `to_me_respo
 ### Worker Changes (Minimal)
 
 The worker (`profile-derived-worker.mjs`) already implements all required computation:
-- `syncBadges` — evaluates and awards all badge families
-- `evaluateGardenerTier` — scores and records tier promotions
-- `computeExperienceSignals` + `assignExperienceLevel` + `persistExperienceLevel` — computes and persists experience
-- Analytics logging via `premium_analytics_events` insert
+- `syncBadges` â€” evaluates and awards all badge families
+- `evaluateGardenerTier` â€” scores and records tier promotions
+- `computeExperienceSignals` + `assignExperienceLevel` + `persistExperienceLevel` â€” computes and persists experience
+- Analytics logging via `pro_analytics_events` insert
 
 No functional changes are needed to the worker. The worker already handles all five event types (`user.profile.updated`, `listing.created`, `listing.updated`, `claim.created`, `claim.updated`) and already processes both `claimerId` and `listingOwnerId` from claim events.
 
@@ -119,7 +119,7 @@ Events:
       EventBusName: !Ref EventBus
       Pattern:
         source:
-          - community-garden.api
+          - grn.api
         detail-type:
           - user.profile.updated
           - listing.created
@@ -152,7 +152,7 @@ No template changes are needed.
 | `gardener_tier_promotions` | INSERT (only on tier increase) | All domain events |
 | `user_experience_levels` | UPSERT | All domain events |
 | `user_experience_level_audit` | INSERT (on level/signal change) | All domain events |
-| `premium_analytics_events` | INSERT | All domain events |
+| `pro_analytics_events` | INSERT | All domain events |
 
 ### Default Values for Missing Pre-Computed Data
 
@@ -171,7 +171,7 @@ The `MeProfileResponse` struct and its JSON serialization remain identical. All 
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+*A property is a characteristic or behavior that should hold true across all valid executions of a system â€” essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
 
 ### Property 1: Read-only badge query returns exactly stored rows
 
@@ -212,7 +212,7 @@ tc.) or writing to `user_experience_levels` or `user_experience_level_audit`.
 
 ### Property 8: Monotonic tier progression
 
-*For any* user whose most recent recorded tier is T, when the worker computes a new tier T' where T' ≤ T, no new row should be inserted into `gardener_tier_promotions`.
+*For any* user whose most recent recorded tier is T, when the worker computes a new tier T' where T' â‰¤ T, no new row should be inserted into `gardener_tier_promotions`.
 
 **Validates: Requirements 6.3**
 
@@ -237,17 +237,17 @@ The existing error handling pattern in `to_me_response` already uses `match` wit
 
 ### Worker Error Handling (Unchanged)
 
-The worker's `refreshForUser` function processes badge sync, experience computation, tier evaluation, and analytics logging sequentially. If any step fails, the error propagates and the Lambda reports failure, triggering EventBridge retry. Badge evaluation within `syncBadges` processes each family independently — a failure in one family (e.g., fruit badges) does not prevent other families (e.g., sharing badges) from being evaluated, since each is a separate `await` call with its own error handling.
+The worker's `refreshForUser` function processes badge sync, experience computation, tier evaluation, and analytics logging sequentially. If any step fails, the error propagates and the Lambda reports failure, triggering EventBridge retry. Badge evaluation within `syncBadges` processes each family independently â€” a failure in one family (e.g., fruit badges) does not prevent other families (e.g., sharing badges) from being evaluated, since each is a separate `await` call with its own error handling.
 
 ## Testing Strategy
 
 ### Unit Tests (Rust)
 
-1. **`load_badges_read_only` returns empty vec for missing user** — edge case from Requirement 1.2
-2. **`load_tier_read_only` returns default novice profile for missing user** — edge case from Requirement 2.2
-3. **`load_experience_level_read_only` returns default beginner for missing user** — edge case from Requirement 3.2
-4. **`to_me_response` does not call `analytics::log_backend_event`** — verifies Requirement 4.1
-5. **Response shape validation** — verify `MeProfileResponse` serialization includes all expected fields
+1. **`load_badges_read_only` returns empty vec for missing user** â€” edge case from Requirement 1.2
+2. **`load_tier_read_only` returns default novice profile for missing user** â€” edge case from Requirement 2.2
+3. **`load_experience_level_read_only` returns default beginner for missing user** â€” edge case from Requirement 3.2
+4. **`to_me_response` does not call `analytics::log_backend_event`** â€” verifies Requirement 4.1
+5. **Response shape validation** â€” verify `MeProfileResponse` serialization includes all expected fields
 
 ### Unit Tests (JavaScript Worker)
 
@@ -269,7 +269,7 @@ Property-based tests should use `proptest` (Rust) and `fast-check` (JavaScript) 
 | Property 7: Experience level equivalence | `fast-check` | `backend/functions/tests/profile-derived-worker.test.mjs` | Feature: get-me-read-only-refactor, Property 7: Experience level algorithm equivalence |
 | Property 9: User ID extraction | `fast-check` | `backend/functions/tests/profile-derived-worker.test.mjs` | Feature: get-me-read-only-refactor, Property 9: User ID extraction covers all event shapes |
 
-Properties 1–5 and 8 require database interaction and are best validated through integration tests and the existing Postman API test suite rather than pure property-based tests. The read-only functions are thin SQL wrappers where the correctness guarantee is "returns what's in the table" — property-based testing adds most value for the algorithmic equivalence properties (6, 7) and the user ID extraction logic (9).
+Properties 1â€“5 and 8 require database interaction and are best validated through integration tests and the existing Postman API test suite rather than pure property-based tests. The read-only functions are thin SQL wrappers where the correctness guarantee is "returns what's in the table" â€” property-based testing adds most value for the algorithmic equivalence properties (6, 7) and the user ID extraction logic (9).
 
 ### Integration Tests
 

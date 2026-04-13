@@ -2,9 +2,9 @@
 
 ## Overview
 
-This design expands the Community Garden API's Postman test suite from a single contract collection into a three-collection architecture: the existing Contract Collection (unchanged), a new Utility Tests collection for stateless infrastructure-level assertions, and a new E2E Flows collection for ordered multi-step business workflows. Both new collections integrate into the CI pipeline as parallel jobs alongside the existing contract tests.
+This design expands the Good Roots Network API's Postman test suite from a single contract collection into a three-collection architecture: the existing Contract Collection (unchanged), a new Utility Tests collection for stateless infrastructure-level assertions, and a new E2E Flows collection for ordered multi-step business workflows. Both new collections integrate into the CI pipeline as parallel jobs alongside the existing contract tests.
 
-The CI auth seed Lambda already generates `grower_free`, `grower_premium`, and `gatherer` tokens. The existing `e2e-api-tests` job currently runs a single "Search veggie and add to garden" collection; this design replaces that with the new E2E Flows collection while preserving the existing collection on disk.
+The CI auth seed Lambda already generates `grower_free`, `grower_pro`, and `gatherer` tokens. The existing `e2e-api-tests` job currently runs a single "Search veggie and add to garden" collection; this design replaces that with the new E2E Flows collection while preserving the existing collection on disk.
 
 Key design decisions:
 - Each new collection is a top-level Postman collection folder under `postman/collections/` (matching the existing pattern)
@@ -28,9 +28,9 @@ graph TD
     end
 
     subgraph "Postman Collections"
-        C1["Community Garden API<br/>(Contract - existing)"]
-        C2["Community Garden API - Utility Tests<br/>(new)"]
-        C3["Community Garden API - E2E Flows<br/>(new)"]
+        C1["Good Roots Network API<br/>(Contract - existing)"]
+        C2["Good Roots Network API - Utility Tests<br/>(new)"]
+        C3["Good Roots Network API - E2E Flows<br/>(new)"]
     end
 
     CONTRACT -->|runs| C1
@@ -44,15 +44,15 @@ The three CI test jobs all depend on `staging-public-api-smoke` (which itself de
 
 | CI Job | Tokens Used | Purpose |
 |---|---|---|
-| `contract-api-tests` | `grower_premium`, `grower_free` | Happy-path contracts + entitlement negative checks (existing) |
-| `utility-api-tests` | `grower_premium`, `grower_free` | Negative paths, 404s, entitlement matrix, idempotency, correlation ID, pagination, 409 |
-| `e2e-api-tests` | `grower_premium`, `gatherer` | Claim lifecycle, listing-to-claim, gatherer persona, cross-endpoint consistency |
+| `contract-api-tests` | `grower_pro`, `grower_free` | Happy-path contracts + entitlement negative checks (existing) |
+| `utility-api-tests` | `grower_pro`, `grower_free` | Negative paths, 404s, entitlement matrix, idempotency, correlation ID, pagination, 409 |
+| `e2e-api-tests` | `grower_pro`, `gatherer` | Claim lifecycle, listing-to-claim, gatherer persona, cross-endpoint consistency |
 
 ## Components and Interfaces
 
 ### 1. Utility Tests Collection
 
-**Path:** `postman/collections/Community Garden API - Utility Tests/`
+**Path:** `postman/collections/Good Roots Network API - Utility Tests/`
 
 **Subfolders:**
 
@@ -60,26 +60,26 @@ The three CI test jobs all depend on `staging-public-api-smoke` (which itself de
 |---|---|---|
 | `Negative Paths/` | 2 | 400 validation errors on write endpoints |
 | `404 Coverage/` | 3 | Non-existent resource lookups |
-| `Entitlement Matrix/` | 4 | Premium endpoint gating for free vs premium tokens |
+| `Entitlement Matrix/` | 4 | Pro endpoint gating for free vs pro tokens |
 | `Idempotency/` | 5 | Repeated write safety verification |
 | `Correlation ID/` | 6 | X-Correlation-Id header propagation |
 | `Pagination/` | 7 | Limit, offset, hasMore boundary testing |
 | `409 Conflict/` | 8 | Quantity conflict on claims |
 
-Each subfolder contains YAML request files following the existing `$kind: http-request` convention. Tests are stateless or minimally stateful — they don't depend on variable chaining between subfolders.
+Each subfolder contains YAML request files following the existing `$kind: http-request` convention. Tests are stateless or minimally stateful â€” they don't depend on variable chaining between subfolders.
 
-**Collection definition** (`definition.yaml`) declares variables: `baseUrl`, `authToken`, `freeAuthToken`, `premiumAuthToken`, `catalogCropId`, `defaultCatalogCropId`.
+**Collection definition** (`definition.yaml`) declares variables: `baseUrl`, `authToken`, `freeAuthToken`, `proAuthToken`, `catalogCropId`, `defaultCatalogCropId`.
 
 ### 2. E2E Flows Collection
 
-**Path:** `postman/collections/Community Garden API - E2E Flows/`
+**Path:** `postman/collections/Good Roots Network API - E2E Flows/`
 
 **Subfolders:**
 
 | Subfolder | Req | Description |
 |---|---|---|
-| `Claim Lifecycle/` | 9 | Full claim state machine: pending → confirmed → completed, plus invalid transition |
-| `Listing-to-Claim/` | 10 | Grower creates crop → listing → gatherer claims → grower confirms → completes |
+| `Claim Lifecycle/` | 9 | Full claim state machine: pending â†’ confirmed â†’ completed, plus invalid transition |
+| `Listing-to-Claim/` | 10 | Grower creates crop â†’ listing â†’ gatherer claims â†’ grower confirms â†’ completes |
 | `
  declares variables: `baseUrl`, `growerAuthToken`, `gathererAuthToken`, `catalogCropId`, `defaultCatalogCropId`, `cropLibraryId`, `listingId`, `requestId`, `claimId`, `reminderId`.
 
@@ -89,13 +89,13 @@ Each subfolder contains YAML request files following the existing `$kind: http-r
 
 Changes to the pipeline:
 
-1. **New `utility-api-tests` job** — depends on `deploy-staging-backend`, `deploy-staging-frontend`, `staging-public-api-smoke`. Invokes CI auth seed, runs the Utility collection with both free and premium tokens.
+1. **New `utility-api-tests` job** â€” depends on `deploy-staging-backend`, `deploy-staging-frontend`, `staging-public-api-smoke`. Invokes CI auth seed, runs the Utility collection with both free and pro tokens.
 
-2. **Updated `e2e-api-tests` job** — remove dependency on `contract-api-tests` so it runs concurrently. Update to run the new E2E Flows collection instead of the old "Search veggie and add to garden" collection. Pass both `growerAuthToken` and `gathererAuthToken` as env vars.
+2. **Updated `e2e-api-tests` job** â€” remove dependency on `contract-api-tests` so it runs concurrently. Update to run the new E2E Flows collection instead of the old "Search veggie and add to garden" collection. Pass both `growerAuthToken` and `gathererAuthToken` as env vars.
 
-3. **Updated `staging-validation-summary` job** — add `utility-api-tests` to the `needs` list.
+3. **Updated `staging-validation-summary` job** â€” add `utility-api-tests` to the `needs` list.
 
-4. **Gatherer token extraction** — the CI auth seed Lambda already returns a `gatherer` key in its response. The `e2e-api-tests` job extracts `gatherer.access_token` alongside the grower tokens.
+4. **Gatherer token extraction** â€” the CI auth seed Lambda already returns a `gatherer` key in its response. The `e2e-api-tests` job extracts `gatherer.access_token` alongside the grower tokens.
 
 ### 4. CI Auth Seed Lambda
 
@@ -139,9 +139,9 @@ scripts:
 | Variable | Description |
 |---|---|
 | `baseUrl` | API base URL (set by CI `--env-var`) |
-| `authToken` | Current active token (swapped between free/premium per subfolder run) |
+| `authToken` | Current active token (swapped between free/pro per subfolder run) |
 | `freeAuthToken` | Free-tier grower token |
-| `premiumAuthToken` | Premium-tier grower token |
+| `proAuthToken` | Pro-tier grower token |
 | `catalogCropId` | Catalog crop ID for test data setup |
 | `defaultCatalogCropId` | Stable fallback crop ID (`8e7139d1-8aed-4228-bd5e-ff38c1311765`) |
 | `listingId` | Captured listing ID for 409 conflict tests |
@@ -153,7 +153,7 @@ scripts:
 | Variable | Description |
 |---|---|
 | `baseUrl` | API base URL |
-| `growerAuthToken` | Premium grower token for grower-side operations |
+| `growerAuthToken` | Pro grower token for grower-side operations |
 | `gathererAuthToken` | Gatherer token for gatherer-side operations |
 | `authToken` | Active token (swapped per step) |
 | `catalogCropId` | Catalog crop ID captured from catalog list |
@@ -178,8 +178,8 @@ Tests assert against these established response shapes:
 {
   "error": "feature_locked",
   "entitlementKey": "<key>",
-  "requiredTier": "premium",
-  "upgradeHintKey": "upgrade.premium"
+  "requiredTier": "pro",
+  "upgradeHintKey": "upgrade.pro"
 }
 ```
 
@@ -205,12 +205,12 @@ stateDiagram-v2
     confirmed --> no_show: PUT /claims/:id (listing owner)
 ```
 
-Invalid transitions (e.g., `pending → completed`) return 400.
+Invalid transitions (e.g., `pending â†’ completed`) return 400.
 
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+*A property is a characteristic or behavior that should hold true across all valid executions of a system â€” essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
 
 Since this feature is about Postman test collections (not application code), the correctness properties describe API behaviors that the tests must verify. These properties inform what each test asserts and ensure the test suite provides meaningful coverage.
 
@@ -228,7 +228,7 @@ Since this feature is about Postman test collections (not application code), the
 
 ### Property 3: Entitlement gating symmetry
 
-*For any* premium-only endpoint, a free-tier token SHALL receive a 403 response with `error` equal to `feature_locked`, a valid `entitlementKey`, `requiredTier` of `premium`, and an `upgradeHintKey`; and a premium-tier token SHALL receive a non-403 successful response for the same endpoint and valid payload.
+*For any* pro-only endpoint, a free-tier token SHALL receive a 403 response with `error` equal to `feature_locked`, a valid `entitlementKey`, `requiredTier` of `pro`, and an `upgradeHintKey`; and a pro-tier token SHALL receive a non-403 successful response for the same endpoint and valid payload.
 
 **Validates: Requirements 4.1, 4.3**
 
@@ -282,7 +282,7 @@ Tests must handle API errors gracefully to avoid cascade failures in ordered col
 
 This feature uses two complementary testing layers:
 
-1. **Postman collection tests (the primary deliverable)**: These are the tests themselves — YAML request files with JavaScript assertion scripts that run against the live staging API. They serve as both integration tests and regression guards.
+1. **Postman collection tests (the primary deliverable)**: These are the tests themselves â€” YAML request files with JavaScript assertion scripts that run against the live staging API. They serve as both integration tests and regression guards.
 
 2. **CI pipeline validation**: The GitHub Actions workflow configuration is validated by running the full pipeline on a PR. There are no separate unit tests for the workflow YAML.
 
@@ -300,21 +300,21 @@ However, the properties inform test design: each Postman test subfolder maps to 
 
 | Property | Utility Collection Subfolder | E2E Collection Subfolder |
 |---|---|---|
-| P1: Negative input → 400 | `Negative Paths/` | — |
-| P2: Non-existent → 404 | `404 Coverage/` | — |
-| P3: Entitlement gating | `Entitlement Matrix/` | — |
-| P4: Idempotency | `Idempotency/` | — |
-| P5: Correlation ID | `Correlation ID/` | — |
-| P6: Pagination | `Pagination/` | — |
-| P7: Write-then-read | — | `Cross-Endpoint Consistency/` |
-| Claim lifecycle (example) | — | `Claim Lifecycle/` |
-| Listing-to-claim (example) | — | `Listing-to-Claim/` |
-| Gatherer persona (example) | — | `Gatherer Persona/` |
-| 409 conflict (example) | `409 Conflict/` | — |
+| P1: Negative input â†’ 400 | `Negative Paths/` | â€” |
+| P2: Non-existent â†’ 404 | `404 Coverage/` | â€” |
+| P3: Entitlement gating | `Entitlement Matrix/` | â€” |
+| P4: Idempotency | `Idempotency/` | â€” |
+| P5: Correlation ID | `Correlation ID/` | â€” |
+| P6: Pagination | `Pagination/` | â€” |
+| P7: Write-then-read | â€” | `Cross-Endpoint Consistency/` |
+| Claim lifecycle (example) | â€” | `Claim Lifecycle/` |
+| Listing-to-claim (example) | â€” | `Listing-to-Claim/` |
+| Gatherer persona (example) | â€” | `Gatherer Persona/` |
+| 409 conflict (example) | `409 Conflict/` | â€” |
 
 ### Test Execution
 
-- **Utility collection**: Run as a single `postman collection run` invocation per token type. The CI job runs the full collection with the premium token first (for setup steps like creating listings needed by 409 tests), then runs specific entitlement subfolders with the free token.
+- **Utility collection**: Run as a single `postman collection run` invocation per token type. The CI job runs the full collection with the pro token first (for setup steps like creating listings needed by 409 tests), then runs specific entitlement subfolders with the free token.
 
 - **E2E collection**: Run as a single sequential `postman collection run`. Steps within each subfolder are ordered and use variable chaining. The CI job passes both `growerAuthToken` and `gathererAuthToken` as env vars; individual steps swap `authToken` via pre-request scripts.
 

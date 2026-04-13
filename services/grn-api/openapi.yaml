@@ -1,0 +1,108 @@
+openapi: 3.1.0
+info:
+  title: Good Roots Network API
+  version: 2.0.0
+  description: |
+    REST API for the community food coordination platform. Covers user profiles,
+    crop libraries, surplus listings, gatherer requests, claims, reminders,
+    AI-assisted guidance, pro analytics, and billing.
+servers:
+  - url: https://api.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Profile
+    description: Authenticated user profile and onboarding
+  - name: Entitlements
+    description: Tier and entitlement introspection
+  - name: Billing
+    description: Stripe checkout and webhook lifecycle
+  - name: Crop Library
+    description: Per-user grower crop library CRUD
+  - name: Catalog
+    description: Public read-only crop and variety catalog
+  - name: Listings
+    description: Surplus listing creation, discovery, and management
+  - name: Requests
+    description: Gatherer food requests
+  - name: Claims
+    description: Claim lifecycle between gatherers and growers
+  - name: Reminders
+    description: Deterministic reminder scheduling
+  - name: Feed
+    description: Derived feed with signals, AI summaries, and guidance
+  - name: AI
+    description: Pro AI-assisted copilot features
+  - name: Agent Tasks
+    description: Pro agentic automation tasks
+  - name: Analytics
+    description: Pro analytics event tracking and KPIs
+  - name: Idempotent
+    description: Safe to retry; repeated calls produce the same result
+  - name: Pro
+    description: Requires pro tier entitlement; free-tier callers receive 403 feature_locked
+  - name: Grower Only
+    description: Requires user_type grower; other types receive 403
+  - name: Gatherer Only
+    description: Requires user_type gatherer; other types receive 403
+  - name: Public
+    description: No authentication required
+paths:
+  /me:
+    $ref: 'openapi/paths/profile.yaml#/~1me'
+  /me/entitlements:
+    $ref: 'openapi/paths/profile.yaml#/~1me~1entitlements'
+  /users/{userId}:
+    $ref: 'openapi/paths/profile.yaml#/~1users~1{userId}'
+  /billing/checkout-session:
+    $ref: 'openapi/paths/billing.yaml#/~1billing~1checkout-session'
+  /billing/webhook:
+    $ref: 'openapi/paths/billing.yaml#/~1billing~1webhook'
+  /crops:
+    $ref: 'openapi/paths/crop-library.yaml#/~1crops'
+  /crops/{cropLibraryId}:
+    $ref: 'openapi/paths/crop-library.yaml#/~1crops~1{cropLibraryId}'
+  /catalog/crops:
+    $ref: 'openapi/paths/catalog.yaml#/~1catalog~1crops'
+  /catalog/crops/{cropId}/varieties:
+    $ref: 'openapi/paths/catalog.yaml#/~1catalog~1crops~1{cropId}~1varieties'
+  /listings:
+    $ref: 'openapi/paths/listings.yaml#/~1listings'
+  /listings/{listingId}:
+    $ref: 'openapi/paths/listings.yaml#/~1listings~1{listingId}'
+  /my/listings:
+    $ref: 'openapi/paths/listings.yaml#/~1my~1listings'
+  /my/listings/{listingId}:
+    $ref: 'openapi/paths/listings.yaml#/~1my~1listings~1{listingId}'
+  /listings/discover:
+    $ref: 'openapi/paths/listings.yaml#/~1listings~1discover'
+  /requests:
+    $ref: 'openapi/paths/requests.yaml#/~1requests'
+  /requests/{requestId}:
+    $ref: 'openapi/paths/requests.yaml#/~1requests~1{requestId}'
+  /claims:
+    $ref: 'openapi/paths/claims.yaml#/~1claims'
+  /claims/{claimId}:
+    $ref: 'openapi/paths/claims.yaml#/~1claims~1{claimId}'
+  /reminders:
+    $ref: 'openapi/paths/reminders.yaml#/~1reminders'
+  /reminders/{reminderId}:
+    $ref: 'openapi/paths/reminders.yaml#/~1reminders~1{reminderId}'
+  /feed/derived:
+    $ref: 'openapi/paths/feed.yaml#/~1feed~1derived'
+  /ai/copilot/weekly-plan:
+    $ref: 'openapi/paths/pro.yaml#/~1ai~1copilot~1weekly-plan'
+  /agent-tasks:
+    $ref: 'openapi/paths/pro.yaml#/~1agent-tasks'
+  /agent-tasks/{taskId}:
+    $ref: 'openapi/paths/pro.yaml#/~1agent-tasks~1{taskId}'
+  /analytics/pro/events:
+    $ref: 'openapi/paths/pro.yaml#/~1analytics~1pro~1events'
+  /analytics/pro/kpis:
+    $ref: 'openapi/paths/pro.yaml#/~1analytics~1pro~1kpis'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

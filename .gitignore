@@ -32,24 +32,23 @@ yarn-error.log*
 .env.*.local
 .env.production
 
-# Frontend (Node/React/Vite)
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-frontend/.cache/
-frontend/coverage/
-
-# Backend Functions (Node.js)
-backend/node_modules/
-
-# Backend (Rust)
-backend/target/
-backend/Cargo.lock
-backend/**/*.rs.bk
-backend/.cargo/
+# Workspaces
+node_modules/
+.turbo/
+apps/*/node_modules/
+apps/*/dist/
+apps/*/build/
+apps/*/.cache/
+apps/*/coverage/
+services/*/node_modules/
+services/*/target/
+services/*/**/*.rs.bk
+services/*/.cargo/
+services/*/Cargo.lock
+packages/*/node_modules/
 
 # AWS SAM
-backend/.aws-sam/
+services/*/.aws-sam/
 .aws-sam/
 samconfig.toml
 # Allow the template to be committed

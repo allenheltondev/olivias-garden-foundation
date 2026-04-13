@@ -2,19 +2,19 @@
 
 ## Introduction
 
-The Community Garden API has 26 endpoints across 14 handler domains, but the existing Postman test suite covers primarily happy-path contract assertions with limited negative testing, no gatherer persona coverage, incomplete entitlement matrix verification, and minimal cross-endpoint data consistency checks. This spec defines requirements for expanding Postman test coverage across two new collection categories — utility tests and E2E business flows — and integrating them into CI as parallel jobs to catch regressions, validate entitlement boundaries, and ensure the API behaves correctly under error conditions.
+The Good Roots Network API has 26 endpoints across 14 handler domains, but the existing Postman test suite covers primarily happy-path contract assertions with limited negative testing, no gatherer persona coverage, incomplete entitlement matrix verification, and minimal cross-endpoint data consistency checks. This spec defines requirements for expanding Postman test coverage across two new collection categories â€” utility tests and E2E business flows â€” and integrating them into CI as parallel jobs to catch regressions, validate entitlement boundaries, and ensure the API behaves correctly under error conditions.
 
 ## Glossary
 
 - **Test_Suite**: The complete set of Postman collections, folders, and request files under `postman/collections/`
-- **Contract_Collection**: The existing "Community Garden API" Postman collection that holds contract/happy-path tests for individual endpoints
-- **Utility_Collection**: A dedicated Postman collection ("Community Garden API - Utility Tests") containing stateless or minimally stateful tests that verify infrastructure-level API behaviors such as idempotency, entitlement gating, negative path validation, 404 handling, correlation ID propagation, pagination boundaries, and 409 conflict detection
-- **E2E_Collection**: A dedicated Postman collection ("Community Garden API - E2E Flows") containing ordered, stateful, multi-step business workflow tests that use variable chaining between steps
+- **Contract_Collection**: The existing "Good Roots Network API" Postman collection that holds contract/happy-path tests for individual endpoints
+- **Utility_Collection**: A dedicated Postman collection ("Good Roots Network API - Utility Tests") containing stateless or minimally stateful tests that verify infrastructure-level API behaviors such as idempotency, entitlement gating, negative path validation, 404 handling, correlation ID propagation, pagination boundaries, and 409 conflict detection
+- **E2E_Collection**: A dedicated Postman collection ("Good Roots Network API - E2E Flows") containing ordered, stateful, multi-step business workflow tests that use variable chaining between steps
 - **CI_Pipeline**: The GitHub Actions workflow (`pr-checks.yml`) that runs Postman collections against the staging environment after deployment
 - **Contract_Test**: A Postman request that validates a single endpoint's response schema, status code, and field values for a specific scenario
 - **E2E_Flow**: An ordered sequence of Postman requests that exercises a multi-step business workflow with variable chaining between steps
 - **Entitlement_Gate**: An API behavior where a request returns 403 with `feature_locked` error when the caller's tier lacks the required entitlement
-- **Grower_Token**: A JWT issued by the CI auth seed function representing a grower user (free or premium tier)
+- **Grower_Token**: A JWT issued by the CI auth seed function representing a grower user (free or pro tier)
 - **Gatherer_Token**: A JWT issued by the CI auth seed function representing a gatherer user
 - **Negative_Test**: A Postman request that sends intentionally invalid input and asserts the API returns the correct error status code and error response shape
 - **Idempotency_Check**: A test pattern where the same write request is sent twice and the second response is verified to be safe (no duplicate creation, consistent response)
@@ -29,9 +29,9 @@ The Community Garden API has 26 endpoints across 14 handler domains, but the exi
 
 #### Acceptance Criteria
 
-1. THE Test_Suite SHALL contain a Utility_Collection named "Community Garden API - Utility Tests" for stateless or minimally stateful infrastructure-level API behavior tests
-2. THE Test_Suite SHALL contain an E2E_Collection named "Community Garden API - E2E Flows" for ordered, stateful, multi-step business workflow tests that use Variable_Chain between steps
-3. THE Contract_Collection ("Community Garden API") SHALL continue to hold existing contract/happy-path tests and remain unchanged by this spec
+1. THE Test_Suite SHALL contain a Utility_Collection named "Good Roots Network API - Utility Tests" for stateless or minimally stateful infrastructure-level API behavior tests
+2. THE Test_Suite SHALL contain an E2E_Collection named "Good Roots Network API - E2E Flows" for ordered, stateful, multi-step business workflow tests that use Variable_Chain between steps
+3. THE Contract_Collection ("Good Roots Network API") SHALL continue to hold existing contract/happy-path tests and remain unchanged by this spec
 4. THE Utility_Collection SHALL organize tests into subfolders by concern (e.g., Negative Paths, 404 Coverage, Entitlement Matrix, Idempotency, Correlation ID, Pagination, 409 Conflict)
 5. THE E2E_Collection SHALL organize tests into subfolders by business flow (e.g., Claim Lifecycle, Listing-to-Claim, Gatherer Persona, Cross-Endpoint Consistency)
 
@@ -59,13 +59,13 @@ The Community Garden API has 26 endpoints across 14 handler domains, but the exi
 
 ### Requirement 4: Entitlement Matrix Verification Across Tiers (Utility)
 
-**User Story:** As a developer, I want Postman tests that verify premium-only endpoints return 403 `feature_locked` for free-tier users, so that I can catch entitlement regressions before they reach production.
+**User Story:** As a developer, I want Postman tests that verify pro-only endpoints return 403 `feature_locked` for free-tier users, so that I can catch entitlement regressions before they reach production.
 
 #### Acceptance Criteria
 
-1. WHEN a free-tier Grower_Token is used to call a premium-only endpoint, THE Utility_Collection SHALL assert a 403 status code with `error` equal to `feature_locked`, a valid `entitlementKey`, a `requiredTier` of `premium`, and an `upgradeHintKey`
-2. THE Utility_Collection SHALL verify entitlement gating for all premium endpoints: POST /ai/copilot/weekly-plan, POST /agent-tasks, PUT /agent-tasks/{id}, POST /analytics/premium/events, GET /analytics/premium/kpis
-3. WHEN a premium-tier Grower_Token is used to call the same premium endpoints, THE Utility_Collection SHALL assert a successful response (non-403)
+1. WHEN a free-tier Grower_Token is used to call a pro-only endpoint, THE Utility_Collection SHALL assert a 403 status code with `error` equal to `feature_locked`, a valid `entitlementKey`, a `requiredTier` of `pro`, and an `upgradeHintKey`
+2. THE Utility_Collection SHALL verify entitlement gating for all pro endpoints: POST /ai/copilot/weekly-plan, POST /agent-tasks, PUT /agent-tasks/{id}, POST /analytics/pro/events, GET /analytics/pro/kpis
+3. WHEN a pro-tier Grower_Token is used to call the same pro endpoints, THE Utility_Collection SHALL assert a successful response (non-403)
 4. THE CI_Pipeline SHALL run the entitlement negative checks as part of the utility-api-tests job using the free-tier token
 
 ### Requirement 5: Idempotency Verification for Write Endpoints (Utility)
@@ -113,8 +113,8 @@ The Community Garden API has 26 endpoints across 14 handler domains, but the exi
 
 #### Acceptance Criteria
 
-1. THE E2E_Collection SHALL contain a claim lifecycle flow that creates a listing, then creates a claim against the listing, then transitions the claim through pending → confirmed → completed
-2. WHEN a claim transition to an invalid status is attempted (e.g., pending → completed directly), THE E2E_Collection SHALL assert a 400 status code
+1. THE E2E_Collection SHALL contain a claim lifecycle flow that creates a listing, then creates a claim against the listing, then transitions the claim through pending â†’ confirmed â†’ completed
+2. WHEN a claim transition to an invalid status is attempted (e.g., pending â†’ completed directly), THE E2E_Collection SHALL assert a 400 status code
 3. WHEN a claim is transitioned to `confirmed`, THE E2E_Collection SHALL assert the response `status` field equals `confirmed`
 4. WHEN a claim is transitioned to `completed`, THE E2E_Collection SHALL assert the response `status` field equals `completed`
 
@@ -124,7 +124,7 @@ The Community Garden API has 26 endpoints across 14 handler domains, but the exi
 
 #### Acceptance Criteria
 
-1. THE E2E_Collection SHALL contain a listing-to-claim flow that executes the following ordered steps: grower creates crop → grower creates listing → listing appears in discovery → gatherer creates claim → grower confirms claim → grower completes claim
+1. THE E2E_Collection SHALL contain a listing-to-claim flow that executes the following ordered steps: grower creates crop â†’ grower creates listing â†’ listing appears in discovery â†’ gatherer creates claim â†’ grower confirms claim â†’ grower completes claim
 2. THE E2E_Collection SHALL use Variable_Chain to pass resource IDs between steps and abort the run if any chained ID is missing
 3. WHEN the listing-to-claim flow completes, THE E2E_Collection SHALL assert the final claim status is `completed`
 4. THE CI_Pipeline SHALL run the listing-to-claim E2E_Flow as part of the e2e-api-tests job

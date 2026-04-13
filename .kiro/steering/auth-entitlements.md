@@ -7,7 +7,7 @@ fileMatchPattern: "{**/auth/**,**/authorization/**,**/cognito/**,**/*auth*.{rs,m
 
 ## Design Philosophy
 
-Design the system to support member tiers from day one, even if premium features are defined later.
+Design the system to support member tiers from day one, even if pro features are defined later.
 
 ## Entitlements Approach
 

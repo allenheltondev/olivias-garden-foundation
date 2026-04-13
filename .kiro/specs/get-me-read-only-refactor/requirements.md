@@ -10,7 +10,7 @@ GET /me currently violates the architecture boundary "Rust API owns synchronous 
 s badge criteria and inserts awards into `badge_award_audit`.
 - **Gardener_Tier_Module**: The Rust module `backend/src/api/gardener_tier.rs` containing `evaluate_and_record` which computes tier scores and inserts promotions into `gardener_tier_promotions`.
 - **Experience_Level_Module**: The experience level computation logic in `backend/src/api/tips_framework.rs` and the `persist_experience_level` / `load_experience_signals` functions in `user.rs` that upsert into `user_experience_levels` and `user_experience_level_audit`.
-- **Analytics_Logger**: The `analytics::log_backend_event` function that writes `tips.curated.presented` events to `premium_analytics_events` on every GET /me call.
+- **Analytics_Logger**: The `analytics::log_backend_event` function that writes `tips.curated.presented` events to `pro_analytics_events` on every GET /me call.
 - **EventBridge_Bus**: The AWS EventBridge custom event bus that routes domain events (e.g., `user.profile.updated`, `claim.updated`) to subscribed worker Lambdas.
 - **MeProfileResponse**: The JSON response shape returned by GET /me, containing user profile, badge cabinet, gardener tier, experience level, curated tips, and related fields.
 
@@ -52,7 +52,7 @@ s badge criteria and inserts awards into `badge_award_audit`.
 
 #### Acceptance Criteria
 
-1. WHEN GET /me is called, THE GET_Me_Handler SHALL return curated tips without writing any rows to `premium_analytics_events`.
+1. WHEN GET /me is called, THE GET_Me_Handler SHALL return curated tips without writing any rows to `pro_analytics_events`.
 2. THE GET_Me_Handler SHALL continue to compute curated tips using the pre-computed experience level, current season, and user zone.
 
 ### Requirement 5: Worker Computes Badge Awards on Domain Events

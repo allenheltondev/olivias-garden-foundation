@@ -14,8 +14,8 @@
         "reminders.deterministic.manage"
       ]
     },
-    "premium": {
-      "name": "Premium",
+    "pro": {
+      "name": "Pro",
       "description": "Everything in Free plus AI and advanced automations.",
       "inherits": [
         "free"
@@ -24,12 +24,12 @@
         "ai.copilot.weekly_grow_plan",
         "ai.feed_insights.read",
         "agent.tasks.automation",
-        "premium.analytics.read"
+        "pro.analytics.read"
       ]
     }
   },
   "policies": {
-    "ai_is_premium_only": true,
+    "ai_is_pro_only": true,
     "free_reminders_are_deterministic_only": true
   },
   "feature_map": {
@@ -43,6 +43,6 @@
     "ai_copilot": "ai.copilot.weekly_grow_plan",
     "ai_feed_cards": "ai.feed_insights.read",
     "agentic_automations": "agent.tasks.automation",
-    "premium_dashboard": "premium.analytics.read"
+    "pro_dashboard": "pro.analytics.read"
   }
 }

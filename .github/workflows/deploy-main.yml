@@ -22,7 +22,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
-  STACK_NAME: community-garden-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  STACK_NAME: grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
-          POSTGRES_DB: community_garden_test
+          POSTGRES_DB: grn_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -77,29 +77,29 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
       - name: Run database migrations
-        working-directory: backend
+        working-directory: services/grn-api
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/community_garden_test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
         run: ./db/migrate.sh
 
       - name: Backend - Check formatting
-        working-directory: backend
+        working-directory: services/grn-api
         run: cargo fmt --all -- --check
 
       - name: Backend - Run Clippy
-        working-directory: backend
+        working-directory: services/grn-api
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Backend - Run tests
-        working-directory: backend
+        working-directory: services/grn-api
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/community_garden_test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
         run: cargo test --all-features
 
       # Frontend checks
@@ -108,31 +108,31 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Frontend - Install dependencies
-        working-directory: frontend
+        working-directory: apps/grn
         run: npm ci
 
       - name: Frontend - Run ESLint
-        working-directory: frontend
+        working-directory: apps/grn
         run: npm run lint
 
       - name: Frontend - Type check
-        working-directory: frontend
+        working-directory: apps/grn
         run: npx tsc --noEmit
 
       # Backend Node.js function lint & tests
       - name: Backend Functions - Install lint dependencies
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm install
 
       - name: Backend Functions - Lint
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm run lint
 
       - name: Backend Functions - Run tests
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm test
 
   deploy-backend:
@@ -191,8 +191,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -202,7 +202,7 @@ jobs:
           sudo apt-get install -y postgresql-client
 
       - name: Generate samconfig.toml from template
-        working-directory: backend
+        working-directory: services/grn-api
         env:
           DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
         run: |
@@ -212,13 +212,13 @@ jobs:
               -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|${{ env.ENVIRONMENT }}|g" \
               samconfig.template.toml > samconfig.toml
-          echo "✓ Generated samconfig.toml for CI"
+          echo "Ã¢Å“â€œ Generated samconfig.toml for CI"
 
       - name: Run database migrations
         run: |
           DATABASE_URL="${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}"
           export DATABASE_URL
-          cd backend
+          cd services/grn-api
           ./db/migrate.sh
 
       - name: Setup Node.js
@@ -230,12 +230,12 @@ jobs:
         run: npm install -g esbuild
 
       - name: Install backend Node.js dependencies
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm install
 
       - name: Deploy backend
         run: |
-          node deploy-and-configure.mjs \
+          node scripts/deploy-and-configure.mjs \
             --region ${{ env.AWS_REGION }} \
             --stack-name ${{ env.STACK_NAME }} \
             --ci
@@ -295,7 +295,7 @@ jobs:
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
 
-          echo "✓ Stack outputs retrieved successfully"
+          echo "Ã¢Å“â€œ Stack outputs retrieved successfully"
 
   deploy-frontend:
     name: Deploy Frontend
@@ -318,14 +318,14 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/grn
         run: npm ci
 
       - name: Create environment file
-        working-directory: frontend
+        working-directory: apps/grn
         run: |
           cat > .env << EOF
           VITE_USER_POOL_ID=${{ needs.deploy-backend.outputs.user-pool-id }}
@@ -336,16 +336,16 @@ jobs:
           VITE_AWS_REGION=${{ env.AWS_REGION }}
           EOF
 
-          echo "✓ Environment file created"
+          echo "Ã¢Å“â€œ Environment file created"
 
       - name: Build frontend
-        working-directory: frontend
+        working-directory: apps/grn
         run: npm run build
 
       - name: Deploy to S3
         run: |
           # Sync all files except index.html and manifest.json with long cache
-          aws s3 sync frontend/dist/ "s3://${{ needs.deploy-backend.outputs.frontend-bucket }}/" \
+          aws s3 sync apps/grn/dist/ "s3://${{ needs.deploy-backend.outputs.frontend-bucket }}/" \
             --region ${{ env.AWS_REGION }} \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
@@ -353,20 +353,20 @@ jobs:
             --exclude "manifest.json"
 
           # Upload index.html with no-cache
-          aws s3 cp frontend/dist/index.html "s3://${{ needs.deploy-backend.outputs.frontend-bucket }}/index.html" \
+          aws s3 cp apps/grn/dist/index.html "s3://${{ needs.deploy-backend.outputs.frontend-bucket }}/index.html" \
             --region ${{ env.AWS_REGION }} \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
 
           # Upload manifest.json with no-cache if it exists
-          if [ -f "frontend/dist/manifest.json" ]; then
-            aws s3 cp frontend/dist/manifest.json "s3://${{ needs.deploy-backend.outputs.frontend-bucket }}/manifest.json" \
+          if [ -f "apps/grn/dist/manifest.json" ]; then
+            aws s3 cp apps/grn/dist/manifest.json "s3://${{ needs.deploy-backend.outputs.frontend-bucket }}/manifest.json" \
               --region ${{ env.AWS_REGION }} \
               --cache-control "no-cache, no-store, must-revalidate" \
               --content-type "application/json"
           fi
 
-          echo "✓ Frontend deployed to S3"
+          echo "Ã¢Å“â€œ Frontend deployed to S3"
 
       - name: Invalidate CloudFront cache
         run: |
@@ -376,9 +376,9 @@ jobs:
             aws cloudfront create-invalidation \
               --distribution-id "$DISTRIBUTION_ID" \
               --paths "/*"
-            echo "✓ CloudFront cache invalidated for distribution $DISTRIBUTION_ID"
+            echo "Ã¢Å“â€œ CloudFront cache invalidated for distribution $DISTRIBUTION_ID"
           else
-            echo "⚠ CloudFront distribution ID not available"
+            echo "Ã¢Å¡Â  CloudFront distribution ID not available"
           fi
 
   deployment-summary:
@@ -403,8 +403,8 @@ jobs:
           echo "=========================================="
 
           if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ]; then
-            echo "❌ Deployment failed"
+            echo "Ã¢ÂÅ’ Deployment failed"
             exit 1
           fi
-          echo "✅ Deployment successful"
+          echo "Ã¢Å“â€¦ Deployment successful"
 

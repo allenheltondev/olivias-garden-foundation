@@ -1,0 +1,151 @@
+:root {
+  --og-color-soil: #4f3825;
+  --og-color-moss: #426b3f;
+  --og-color-sage: #6f8f5f;
+  --og-color-sunflower: #d8a741;
+  --og-color-cream: #f7f2e7;
+  --og-color-paper: #fffdf8;
+  --og-color-ink: #231b16;
+  --og-color-mist: #e8decb;
+  --og-radius-sm: 0.5rem;
+  --og-radius-md: 1rem;
+  --og-radius-lg: 1.5rem;
+  --og-radius-pill: 999px;
+  --og-shadow-card: 0 24px 48px rgba(35, 27, 22, 0.08);
+  --og-shadow-button: 0 10px 20px rgba(66, 107, 63, 0.18);
+  --og-font-display: "Georgia", "Times New Roman", serif;
+  --og-font-body: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(216, 167, 65, 0.18), transparent 34%),
+    linear-gradient(180deg, #fbf7ee 0%, #f5eedf 100%);
+  color: var(--og-color-ink);
+  font-family: var(--og-font-body);
+}
+
+.og-shell {
+  box-sizing: border-box;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.og-hero {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.og-hero-copy h1,
+.og-section-heading h2,
+.og-card-title {
+  font-family: var(--og-font-display);
+}
+
+.og-hero-copy h1 {
+  margin: 0;
+  font-size: clamp(2.75rem, 8vw, 5.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.og-eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--og-color-moss);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.og-lede {
+  max-width: 40rem;
+  margin: 1.5rem 0 0;
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+.og-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.og-button {
+  border: 0;
+  border-radius: var(--og-radius-pill);
+  padding: 0.9rem 1.25rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.og-button:hover {
+  transform: translateY(-1px);
+}
+
+.og-button--primary {
+  background: var(--og-color-moss);
+  color: var(--og-color-paper);
+  box-shadow: var(--og-shadow-button);
+}
+
+.og-button--secondary {
+  background: rgba(255, 253, 248, 0.75);
+  color: var(--og-color-soil);
+  border: 1px solid rgba(79, 56, 37, 0.18);
+}
+
+.og-card {
+  background: rgba(255, 253, 248, 0.88);
+  border: 1px solid rgba(79, 56, 37, 0.08);
+  border-radius: var(--og-radius-lg);
+  box-shadow: var(--og-shadow-card);
+  padding: 1.5rem;
+}
+
+.og-card-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.4rem;
+}
+
+.og-card-body > :first-child {
+  margin-top: 0;
+}
+
+.og-card-body > :last-child {
+  margin-bottom: 0;
+}
+
+.og-highlight ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.7;
+}
+
+.og-section {
+  margin-top: 3rem;
+}
+
+.og-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 800px) {
+  .og-hero {
+    grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.85fr);
+  }
+
+  .og-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

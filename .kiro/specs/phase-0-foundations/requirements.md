@@ -22,7 +22,7 @@ As a developer, I want structured logging with correlation IDs so that I can tra
 
 ### 1.1 Cognito Authentication
 - Cognito user pool is configured with email-based authentication
-- User pool has three tier groups: neighbor-tier, supporter-tier, caretaker-tier
+- User pool has three tier groups: free-tier, supporter-tier, pro-tier
 - JWT tokens include user tier information in claims
 - Password policy enforces minimum security requirements
 

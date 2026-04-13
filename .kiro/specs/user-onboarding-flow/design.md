@@ -1,4 +1,4 @@
-Got it — if you don’t want separate profile endpoints, the clean MVP move is:
+Got it â€” if you donâ€™t want separate profile endpoints, the clean MVP move is:
 
 * **Keep `GET /me`**
 * **Use a single `PUT /me`** for:
@@ -38,16 +38,16 @@ After considering options like "Recipient" and other domain labels, we've chosen
 ### High-Level Flow
 
 ```
-Auth → GET /me → onboardingCompleted?
-   ├─ true  → Main App
-   └─ false → Select Type (Grower/Gatherer)
-                 ↓
+Auth â†’ GET /me â†’ onboardingCompleted?
+   â”œâ”€ true  â†’ Main App
+   â””â”€ false â†’ Select Type (Grower/Gatherer)
+                 â†“
            Type-specific Wizard
-                 ↓
+                 â†“
             PUT /me (type + profile)
-                 ↓
+                 â†“
            Mark Complete
-                 ↓
+                 â†“
               Main App
 ```
 
@@ -214,7 +214,7 @@ function GathererWizard({ onComplete }: GathererWizardProps): JSX.Element {
   "displayName": "Jane Doe",
   "userType": "grower" | "gatherer" | null,
   "onboardingCompleted": true,
-  "tier": "neighbor" | "supporter" | "caretaker",
+  "tier": "free" | "supporter" | "pro",
   "growerProfile": {
     "homeZone": "8a",
     "geoKey": "9q8yy9",
@@ -277,7 +277,7 @@ Rules:
   "displayName": "Jane Doe",
   "userType": "grower" | "gatherer",
   "onboardingCompleted": true,
-  "tier": "neighbor",
+  "tier": "free",
   "growerProfile": { "...": "..." },
   "gathererProfile": null
 }
@@ -392,7 +392,7 @@ CREATE INDEX idx_gatherer_profiles_geo_key ON gatherer_profiles(geo_key);
   "userType": "grower" | "gatherer",
   "onboardingCompleted": true,
   "isVerified": false,
-  "tier": "neighbor",
+  "tier": "free",
   "createdAt": "2024-01-15T10:30:00Z",
   "deletedAt": null
 }
@@ -437,7 +437,7 @@ export interface User {
   displayName: string;
   userType: UserType | null;
   onboardingCompleted: boolean;
-  tier: 'neighbor' | 'supporter' | 'caretaker';
+  tier: 'free' | 'supporter' | 'pro';
   growerProfile?: GrowerProfile | null;
   gathererProfile?: GathererProfile | null;
 }
@@ -548,7 +548,7 @@ Key changes: profile submission is now via **PUT /me** for both roles.
 
 *For any* user, when their role-specific profile is successfully created via PUT /me, the system should set onboarding_completed = true on their user record.
 
-(Other properties remain the same with “gatherer” terminology; endpoint references should be updated from /me/*-profile to /me.)
+(Other properties remain the same with â€œgathererâ€ terminology; endpoint references should be updated from /me/*-profile to /me.)
 
 ---
 
@@ -571,8 +571,8 @@ Key changes: profile submission is now via **PUT /me** for both roles.
 * Gatherer attempting to create listing
 * Gatherer attempting to access grower-specific endpoints
 
-Error messages updated to “Gatherers”.
+Error messages updated to â€œGatherersâ€.
 
 ---
 
-If you want one more tightening pass: I’d recommend making **PUT /me** support *partial saves* during onboarding (e.g., userType only first), which will make the wizard resumable without needing extra endpoints. But the doc above already supports that shape with `user_type: Option<UserType>` and optional profile blocks.
+If you want one more tightening pass: Iâ€™d recommend making **PUT /me** support *partial saves* during onboarding (e.g., userType only first), which will make the wizard resumable without needing extra endpoints. But the doc above already supports that shape with `user_type: Option<UserType>` and optional profile blocks.

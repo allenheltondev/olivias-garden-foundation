@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD Workflows
 
-This directory contains the CI/CD pipelines for the Community Garden Platform.
+This directory contains the CI/CD pipelines for Good Roots Network.
 
 ## Workflows
 
@@ -63,7 +63,7 @@ Runs on:
 
 ## Required GitHub Secrets
 
-Configure these in your repository settings under Settings → Secrets and variables → Actions:
+Configure these in your repository settings under Settings â†’ Secrets and variables â†’ Actions:
 
 ### Required for all environments:
 
@@ -205,7 +205,7 @@ The workflows support three environments:
 - **staging** - Staging environment
 - **prod** - Production environment with custom domain
 
-Stack naming convention: `community-garden-{environment}`
+Stack naming convention: `grn-{environment}`
 
 ## Manual Deployment
 
@@ -313,7 +313,7 @@ To test the workflows locally before pushing:
 
 ### Backend checks:
 ```bash
-cd backend
+cd services/grn-api
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-features
@@ -321,7 +321,7 @@ cargo test --all-features
 
 ### Frontend checks:
 ```bash
-cd frontend
+cd apps/grn
 npm ci
 npm run lint
 npx tsc --noEmit
