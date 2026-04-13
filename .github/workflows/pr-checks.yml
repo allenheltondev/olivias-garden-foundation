@@ -776,8 +776,15 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["contract-grower-free"].access_token' ci-auth-seed-response.json)
-          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["contract-grower-pro"].access_token' ci-auth-seed-response.json)
+          RESPONSE_JSON=$(jq -c '
+            if .body == null then .
+            elif (.body | type) == "string" then (.body | fromjson)
+            else .body
+            end
+          ' ci-auth-seed-response.json)
+
+          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["contract-grower-free"].access_token')
+          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["contract-grower-pro"].access_token')
 
           if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
             echo "Failed to extract contract-grower-free access_token from CI auth seed response."
@@ -864,9 +871,16 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["util-grower-free"].access_token' ci-auth-seed-response.json)
-          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["util-grower-pro"].access_token' ci-auth-seed-response.json)
-          GATHERER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["util-gatherer"].access_token' ci-auth-seed-response.json)
+          RESPONSE_JSON=$(jq -c '
+            if .body == null then .
+            elif (.body | type) == "string" then (.body | fromjson)
+            else .body
+            end
+          ' ci-auth-seed-response.json)
+
+          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-grower-free"].access_token')
+          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-grower-pro"].access_token')
+          GATHERER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-gatherer"].access_token')
 
           if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
             echo "Failed to extract util-grower-free access_token from CI auth seed response."
@@ -944,9 +958,16 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["e2e-grower-free"].access_token' ci-auth-seed-response.json)
-          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["e2e-grower-pro"].access_token' ci-auth-seed-response.json)
-          GATHERER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["e2e-gatherer"].access_token' ci-auth-seed-response.json)
+          RESPONSE_JSON=$(jq -c '
+            if .body == null then .
+            elif (.body | type) == "string" then (.body | fromjson)
+            else .body
+            end
+          ' ci-auth-seed-response.json)
+
+          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-grower-free"].access_token')
+          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-grower-pro"].access_token')
+          GATHERER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-gatherer"].access_token')
 
           if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
             echo "Failed to extract e2e-grower-free access_token from CI auth seed response."
