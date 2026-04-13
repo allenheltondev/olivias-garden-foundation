@@ -919,6 +919,7 @@ jobs:
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
             --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "proAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "premiumAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "freeAuthToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
