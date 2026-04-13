@@ -80,6 +80,7 @@ pub async fn create_request(
         .status
         .clone()
         .unwrap_or_else(|| "open".to_string());
+    let status_db = status.as_str().to_owned();
 
     let client = db::connect().await?;
     validate_catalog_links(&client, normalized.crop_id, normalized.variety_id).await?;
@@ -91,7 +92,7 @@ pub async fn create_request(
             insert into requests
                 (id, user_id, crop_id, variety_id, unit, quantity, needed_by, notes, geo_key, lat, lng, status)
             values
-                ($1, $2, $3, $4, $5, $6::double precision, $7, $8, $9, $10, $11, $12::request_status)
+                ($1, $2, $3, $4, $5, $6::double precision, $7, $8, $9, $10, $11, $12::text::request_status)
             on conflict (id) do nothing
             returning id, user_id, crop_id, variety_id, unit,
                       quantity::text as quantity,
@@ -110,7 +111,7 @@ pub async fn create_request(
                 &geo_context.geo_key,
                 &geo_context.lat,
                 &geo_context.lng,
-                &status,
+                &status_db,
             ],
         )
         .await
@@ -188,7 +189,7 @@ pub async fn update_request(
                 geo_key = $7,
                 lat = $8,
                 lng = $9,
-                status = coalesce($10::request_status, status)
+                status = coalesce($10::text::request_status, status)
             where id = $11
               and user_id = $12
               and deleted_at is null

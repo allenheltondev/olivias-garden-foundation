@@ -87,6 +87,15 @@ struct TransitionDecision {
     stamp_cancelled_at: bool,
 }
 
+#[derive(Debug)]
+struct ClaimTransitionContext {
+    current_status: ClaimStatus,
+    claimer_id: Uuid,
+    listing_owner_id: Uuid,
+    listing_id: Uuid,
+    quantity_claimed: f64,
+}
+
 pub async fn create_claim(
     request: &Request,
     correlation_id: &str,
@@ -216,6 +225,49 @@ pub async fn transition_claim(
         .await
         .map_err(|error| db_error(&error))?;
 
+    let Some(claim_context) = load_claim_transition_context(&tx, id).await? else {
+        return error_response(404, "Claim not found");
+    };
+
+    let actor_role = determine_actor_role(
+        actor_user_id,
+        claim_context.claimer_id,
+        claim_context.listing_owner_id,
+    )?;
+    let decision = evaluate_transition(claim_context.current_status, target_status, actor_role)?;
+
+    adjust_listing_quantity_if_needed(
+        &tx,
+        claim_context.listing_id,
+        claim_context.quantity_claimed,
+        decision.quantity_adjustment,
+    )
+    .await?;
+
+    let updated_claim =
+        update_claim_transition(&tx, id, target_status, notes.as_ref(), decision).await?;
+
+    tx.commit().await.map_err(|error| db_error(&error))?;
+
+    let response = row_to_claim_response(&updated_claim, claim_context.listing_owner_id);
+    emit_claim_event_best_effort("claim.updated", &response, correlation_id).await;
+
+    info!(
+        correlation_id = correlation_id,
+        claim_id = response.id.as_str(),
+        actor_user_id = auth_context.user_id.as_str(),
+        previous_status = claim_context.current_status.as_db_value(),
+        new_status = response.status.as_str(),
+        "Updated claim state"
+    );
+
+    json_response(200, &response)
+}
+
+async fn load_claim_transition_context(
+    tx: &Transaction<'_>,
+    claim_id: Uuid,
+) -> Result<Option<ClaimTransitionContext>, lambda_http::Error> {
     let claim_context_row = tx
         .query_opt(
             "
@@ -231,84 +283,69 @@ pub async fn transition_claim(
               and l.deleted_at is null
             for update of c, l
             ",
-            &[&id],
+            &[&claim_id],
         )
         .await
         .map_err(|error| db_error(&error))?;
 
-    let Some(claim_context) = claim_context_row else {
-        return error_response(404, "Claim not found");
-    };
+    claim_context_row
+        .map(|row| {
+            Ok(ClaimTransitionContext {
+                current_status: parse_claim_status(&row.get::<_, String>("status"))?,
+                claimer_id: row.get("claimer_id"),
+                listing_owner_id: row.get("listing_owner_id"),
+                listing_id: row.get("listing_id"),
+                quantity_claimed: row.get("quantity_claimed_value"),
+            })
+        })
+        .transpose()
+}
 
-    let current_status = parse_claim_status(&claim_context.get::<_, String>("status"))?;
-    let claimer_id: Uuid = claim_context.get("claimer_id");
-    let listing_owner_id: Uuid = claim_context.get("listing_owner_id");
-    let listing_id: Uuid = claim_context.get("listing_id");
-    let quantity_claimed: f64 = claim_context.get("quantity_claimed_value");
-
-    let actor_role = determine_actor_role(actor_user_id, claimer_id, listing_owner_id)?;
-    let decision = evaluate_transition(current_status, target_status, actor_role)?;
-    let target_status_db = target_status.as_db_value().to_string();
-
-    adjust_listing_quantity_if_needed(
-        &tx,
-        listing_id,
-        quantity_claimed,
-        decision.quantity_adjustment,
-    )
-    .await?;
-
-    let updated_claim = tx
-        .query_one(
-            "
+async fn update_claim_transition(
+    tx: &Transaction<'_>,
+    claim_id: Uuid,
+    target_status: ClaimStatus,
+    notes: Option<&String>,
+    decision: TransitionDecision,
+) -> Result<Row, lambda_http::Error> {
+    let update_claim_sql = format!(
+        "
             update claims
-            set status = $1::claim_status,
-                notes = coalesce($2::text, notes),
+            set status = '{}'::claim_status,
+                notes = coalesce($1::text, notes),
                 confirmed_at = case
-                    when $3 then coalesce(confirmed_at, now())
+                    when $2 then coalesce(confirmed_at, now())
                     else confirmed_at
                 end,
                 completed_at = case
-                    when $4 then coalesce(completed_at, now())
+                    when $3 then coalesce(completed_at, now())
                     else completed_at
                 end,
                 cancelled_at = case
-                    when $5 then coalesce(cancelled_at, now())
+                    when $4 then coalesce(cancelled_at, now())
                     else cancelled_at
                 end
-            where id = $6
+            where id = $5
             returning id, listing_id, request_id, claimer_id,
                       quantity_claimed::text as quantity_claimed,
                       status::text as status, notes,
                       claimed_at, confirmed_at, completed_at, cancelled_at
             ",
-            &[
-                &target_status_db,
-                &notes,
-                &decision.stamp_confirmed_at,
-                &decision.stamp_completed_at,
-                &decision.stamp_cancelled_at,
-                &id,
-            ],
-        )
-        .await
-        .map_err(|error| db_error(&error))?;
-
-    tx.commit().await.map_err(|error| db_error(&error))?;
-
-    let response = row_to_claim_response(&updated_claim, listing_owner_id);
-    emit_claim_event_best_effort("claim.updated", &response, correlation_id).await;
-
-    info!(
-        correlation_id = correlation_id,
-        claim_id = response.id.as_str(),
-        actor_user_id = auth_context.user_id.as_str(),
-        previous_status = current_status.as_db_value(),
-        new_status = response.status.as_str(),
-        "Updated claim state"
+        target_status.as_db_value()
     );
 
-    json_response(200, &response)
+    tx.query_one(
+        &update_claim_sql,
+        &[
+            &notes,
+            &decision.stamp_confirmed_at,
+            &decision.stamp_completed_at,
+            &decision.stamp_cancelled_at,
+            &claim_id,
+        ],
+    )
+    .await
+    .map_err(|error| db_error(&error))
 }
 
 fn normalize_create_payload(
