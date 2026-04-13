@@ -212,7 +212,7 @@ jobs:
               -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|${{ env.ENVIRONMENT }}|g" \
               samconfig.template.toml > samconfig.toml
-          echo "Ã¢Å“â€œ Generated samconfig.toml for CI"
+          echo "Generated samconfig.toml for CI"
 
       - name: Run database migrations
         run: |
@@ -295,7 +295,7 @@ jobs:
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
 
-          echo "Ã¢Å“â€œ Stack outputs retrieved successfully"
+          echo "Stack outputs retrieved successfully"
 
   deploy-frontend:
     name: Deploy Frontend
@@ -336,7 +336,7 @@ jobs:
           VITE_AWS_REGION=${{ env.AWS_REGION }}
           EOF
 
-          echo "Ã¢Å“â€œ Environment file created"
+          echo "Environment file created"
 
       - name: Build frontend
         working-directory: apps/grn
@@ -366,7 +366,7 @@ jobs:
               --content-type "application/json"
           fi
 
-          echo "Ã¢Å“â€œ Frontend deployed to S3"
+          echo "Frontend deployed to S3"
 
       - name: Invalidate CloudFront cache
         run: |
@@ -376,9 +376,9 @@ jobs:
             aws cloudfront create-invalidation \
               --distribution-id "$DISTRIBUTION_ID" \
               --paths "/*"
-            echo "Ã¢Å“â€œ CloudFront cache invalidated for distribution $DISTRIBUTION_ID"
+            echo "CloudFront cache invalidated for distribution $DISTRIBUTION_ID"
           else
-            echo "Ã¢Å¡Â  CloudFront distribution ID not available"
+            echo "CloudFront distribution ID not available"
           fi
 
   deployment-summary:
@@ -403,8 +403,8 @@ jobs:
           echo "=========================================="
 
           if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ]; then
-            echo "Ã¢ÂÅ’ Deployment failed"
+            echo "Deployment failed"
             exit 1
           fi
-          echo "Ã¢Å“â€¦ Deployment successful"
+          echo "Deployment successful"
 
