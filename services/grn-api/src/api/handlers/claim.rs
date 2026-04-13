@@ -415,14 +415,14 @@ fn evaluate_transition(
                 ));
             }
             Ok(TransitionDecision {
-                quantity_adjustment: ListingQuantityAdjustment::Decrement,
+                quantity_adjustment: ListingQuantityAdjustment::None,
                 stamp_confirmed_at: true,
                 stamp_completed_at: false,
                 stamp_cancelled_at: false,
             })
         }
         (ClaimStatus::Pending, ClaimStatus::Cancelled) => Ok(TransitionDecision {
-            quantity_adjustment: ListingQuantityAdjustment::None,
+            quantity_adjustment: ListingQuantityAdjustment::Increment,
             stamp_confirmed_at: false,
             stamp_completed_at: false,
             stamp_cancelled_at: true,
@@ -434,7 +434,7 @@ fn evaluate_transition(
             stamp_cancelled_at: false,
         }),
         (ClaimStatus::Confirmed, ClaimStatus::Cancelled) => Ok(TransitionDecision {
-            quantity_adjustment: ListingQuantityAdjustment::Increment,
+            quantity_adjustment: ListingQuantityAdjustment::None,
             stamp_confirmed_at: false,
             stamp_completed_at: false,
             stamp_cancelled_at: true,
@@ -447,7 +447,7 @@ fn evaluate_transition(
             }
 
             Ok(TransitionDecision {
-                quantity_adjustment: ListingQuantityAdjustment::Increment,
+                quantity_adjustment: ListingQuantityAdjustment::None,
                 stamp_confirmed_at: false,
                 stamp_completed_at: false,
                 stamp_cancelled_at: true,
@@ -845,10 +845,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            result.quantity_adjustment,
-            ListingQuantityAdjustment::Decrement
-        );
+        assert_eq!(result.quantity_adjustment, ListingQuantityAdjustment::None);
         assert!(result.stamp_confirmed_at);
         assert!(!result.stamp_completed_at);
         assert!(!result.stamp_cancelled_at);
@@ -887,11 +884,11 @@ mod tests {
 
         assert_eq!(
             claimer_result.quantity_adjustment,
-            ListingQuantityAdjustment::None
+            ListingQuantityAdjustment::Increment
         );
         assert_eq!(
             owner_result.quantity_adjustment,
-            ListingQuantityAdjustment::None
+            ListingQuantityAdjustment::Increment
         );
         assert!(claimer_result.stamp_cancelled_at);
         assert!(owner_result.stamp_cancelled_at);
@@ -930,10 +927,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            result.quantity_adjustment,
-            ListingQuantityAdjustment::Increment
-        );
+        assert_eq!(result.quantity_adjustment, ListingQuantityAdjustment::None);
         assert!(result.stamp_cancelled_at);
     }
 
@@ -954,7 +948,7 @@ mod tests {
 
         assert_eq!(
             owner_result.quantity_adjustment,
-            ListingQuantityAdjustment::Increment
+            ListingQuantityAdjustment::None
         );
         assert!(claimer_result.is_err());
         assert!(claimer_result

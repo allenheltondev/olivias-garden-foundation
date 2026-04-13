@@ -28,4 +28,6 @@ scripts:
           const body = pm.response.json();
           pm.expect(body).to.have.property("gathererProfile");
           pm.expect(body.gathererProfile).to.be.an("object");
+          pm.expect(body.gathererProfile).to.have.property("geoKey");
+          pm.collectionVariables.set("gathererGeoKey", body.gathererProfile.geoKey);
       });
