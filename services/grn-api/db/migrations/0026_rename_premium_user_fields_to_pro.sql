@@ -25,10 +25,6 @@ end $$;
 alter table users
   add column if not exists pro_expires_at timestamptz;
 
-update users
-set tier = 'pro'
-where tier = 'premium';
-
 do $$
 begin
   if exists (
@@ -40,6 +36,10 @@ begin
     alter table users drop constraint users_tier_check;
   end if;
 end $$;
+
+update users
+set tier = 'pro'
+where tier = 'premium';
 
 alter table users
   add constraint users_tier_check
