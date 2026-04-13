@@ -1,0 +1,51 @@
+$kind: http-request
+name: 'Step 5 - Grower Confirms'
+description: |-
+  Swap back to grower token and confirm the gatherer's claim.
+
+  **Depends on**: `claimId` captured in Step 4
+  **Chaining**: Sets `authToken` back to `{{growerAuthToken}}`.
+  **Asserts**: Response status is `confirmed`.
+method: PUT
+url: '{{baseUrl}}/claims/{{claimId}}'
+order: 5000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "confirmed"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Swap authToken back to grower for confirmation
+      const growerToken = pm.variables.get("growerAuthToken");
+      if (growerToken) {
+          pm.collectionVariables.set("authToken", growerToken);
+      } else {
+          console.error("growerAuthToken not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+
+      const claimId = pm.collectionVariables.get("claimId");
+      if (!claimId) {
+          console.error("claimId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Claim status is confirmed", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("status", "confirmed");
+      });

@@ -119,11 +119,11 @@ API contract changes without corresponding Postman tests will be rejected.
 The full phased rollout plan, collection-to-job mapping, required secrets, gating policy, and flake mitigation notes live in [docs/testing/postman-e2e-rollout.md](docs/testing/postman-e2e-rollout.md). Consult that document when adding or modifying Postman CI jobs.
 
 CI phases in brief:
-1. **Public smoke** — unauthenticated 401 check (blocking, every PR)
-2. **Contract tests** — Community Garden API collection (blocking, every PR)
-3. **Utility tests** — Community Garden API - Utility Tests collection (blocking, every PR)
-4. **E2E flows** — Community Garden API - E2E Flows collection (blocking, every PR)
-5. **Onboarding flow** — E2E - Search veggie and add to garden (non-blocking, nightly — not yet wired)
+1. **Public smoke** â€” unauthenticated 401 check (blocking, every PR)
+2. **Contract tests** â€” Good Roots Network API collection (blocking, every PR)
+3. **Utility tests** â€” Good Roots Network API - Utility Tests collection (blocking, every PR)
+4. **E2E flows** â€” Good Roots Network API - E2E Flows collection (blocking, every PR)
+5. **Onboarding flow** â€” E2E - Search veggie and add to garden (non-blocking, nightly â€” not yet wired)
 
 ## Non-goals guardrails
 

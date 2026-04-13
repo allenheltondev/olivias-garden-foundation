@@ -1,0 +1,60 @@
+$kind: http-request
+name: 'Step 7 - Create Claim'
+description: |-
+  Swap to gatherer token and create a claim against the listing from Step 3.
+
+  **Depends on**: `consistencyListingId` captured in Step 3
+  **Chaining**: Sets `authToken` to `{{gathererAuthToken}}`, captures `consistencyClaimId` from the response.
+method: POST
+url: '{{baseUrl}}/claims'
+order: 7000
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listingId": "{{consistencyListingId}}",
+      "quantityClaimed": 1,
+      "notes": "Consistency E2E claim"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Swap authToken to gatherer for claiming
+      const gathererToken = pm.variables.get("gathererAuthToken");
+      if (gathererToken) {
+          pm.collectionVariables.set("authToken", gathererToken);
+      } else {
+          console.error("gathererAuthToken not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+
+      const listingId = pm.collectionVariables.get("consistencyListingId");
+      if (!listingId) {
+          console.error("consistencyListingId not set; aborting.");
+          pm.execution.setNextRequest(null);
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Capture consistencyClaimId", function () {
+          const claim = pm.response.json();
+          pm.expect(claim).to.have.property("id");
+
+          if (!claim.id) {
+              pm.expect.fail("Missing claim.id; aborting chained run.");
+              pm.execution.setNextRequest(null);
+              return;
+          }
+
+          pm.collectionVariables.set("consistencyClaimId", claim.id);
+      });

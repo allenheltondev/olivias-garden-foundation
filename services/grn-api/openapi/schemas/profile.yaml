@@ -1,0 +1,211 @@
+MeProfileResponse:
+  type: object
+  required: [id, isVerified, createdAt, onboardingCompleted, subscription]
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+      format: email
+      nullable: true
+    displayName:
+      type: string
+      nullable: true
+    userType:
+      type: string
+      enum: [grower, gatherer]
+      nullable: true
+    onboardingCompleted:
+      type: boolean
+    isVerified:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    subscription:
+      $ref: '#/SubscriptionMetadata'
+    growerProfile:
+      $ref: '#/GrowerProfile'
+      nullable: true
+    gathererProfile:
+      $ref: '#/GathererProfile'
+      nullable: true
+    ratingSummary:
+      $ref: '#/UserRatingSummary'
+      nullable: true
+
+PutMeRequest:
+  type: object
+  properties:
+    displayName:
+      type: string
+      nullable: true
+    userType:
+      type: string
+      enum: [grower, gatherer]
+      nullable: true
+    growerProfile:
+      $ref: '#/GrowerProfileInput'
+      nullable: true
+    gathererProfile:
+      $ref: '#/GathererProfileInput'
+      nullable: true
+
+EntitlementsResponse:
+  type: object
+  required: [tier, entitlementsVersion, entitlements, policy]
+  properties:
+    tier:
+      type: string
+    entitlementsVersion:
+      type: string
+    entitlements:
+      type: array
+      items:
+        type: string
+    policy:
+      $ref: '#/EntitlementsPolicy'
+
+EntitlementsPolicy:
+  type: object
+  required: [aiIsProOnly, freeRemindersDeterministicOnly]
+  properties:
+    aiIsProOnly:
+      type: boolean
+    freeRemindersDeterministicOnly:
+      type: boolean
+
+PublicUserResponse:
+  type: object
+  required: [id, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    displayName:
+      type: string
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    growerProfile:
+      $ref: '#/GrowerProfile'
+      nullable: true
+    ratingSummary:
+      $ref: '#/UserRatingSummary'
+      nullable: true
+
+SubscriptionMetadata:
+  type: object
+  required: [tier, subscriptionStatus]
+  properties:
+    tier:
+      type: string
+      enum: [free, pro]
+    subscriptionStatus:
+      type: string
+    proExpiresAt:
+      type: string
+      format: date-time
+      nullable: true
+
+GrowerProfile:
+  type: object
+  properties:
+    homeZone:
+      type: string
+      nullable: true
+    address:
+      type: string
+      nullable: true
+    geoKey:
+      type: string
+      nullable: true
+    lat:
+      type: number
+      format: double
+      nullable: true
+    lng:
+      type: number
+      format: double
+      nullable: true
+    shareRadiusMiles:
+      type: string
+    units:
+      type: string
+      enum: [imperial, metric]
+    locale:
+      type: string
+      nullable: true
+
+GrowerProfileInput:
+  type: object
+  required: [homeZone, address, shareRadiusMiles, units, locale]
+  properties:
+    homeZone:
+      type: string
+    address:
+      type: string
+    shareRadiusMiles:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    units:
+      type: string
+      enum: [imperial, metric]
+    locale:
+      type: string
+
+GathererProfile:
+  type: object
+  properties:
+    address:
+      type: string
+    geoKey:
+      type: string
+    lat:
+      type: number
+      format: double
+    lng:
+      type: number
+      format: double
+    searchRadiusMiles:
+      type: string
+    organizationAffiliation:
+      type: string
+      nullable: true
+    units:
+      type: string
+      enum: [imperial, metric]
+    locale:
+      type: string
+      nullable: true
+
+GathererProfileInput:
+  type: object
+  required: [address, searchRadiusMiles, units, locale]
+  properties:
+    address:
+      type: string
+    searchRadiusMiles:
+      type: number
+      format: double
+      exclusiveMinimum: 0
+    organizationAffiliation:
+      type: string
+      nullable: true
+    units:
+      type: string
+      enum: [imperial, metric]
+    locale:
+      type: string
+
+UserRatingSummary:
+  type: object
+  required: [avgScore, ratingCount]
+  properties:
+    avgScore:
+      type: string
+    ratingCount:
+      type: integer

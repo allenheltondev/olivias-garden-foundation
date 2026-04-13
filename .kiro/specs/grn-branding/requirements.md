@@ -6,7 +6,7 @@ This document defines the requirements for implementing Good Roots Network (GRN)
 
 ## Glossary
 
-- **GRN**: Good Roots Network - the brand name for the community-garden app
+- **GRN**: Good Roots Network - the brand name for the grn app
 Requirement 1: Brand Identity Display
 
 **User Story:** As a user, I want to see the Good Roots Network branding when I use the platform, so that I understand what service I'm using and feel connected to the community mission.

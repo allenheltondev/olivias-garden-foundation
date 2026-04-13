@@ -85,10 +85,10 @@
 
 ### 2.7 Update Lambda Authorizer - Tier Mapping
 - [x] Update `backend/src/auth/authorizer.rs` get_user_tier function
-- [x] Map "neighbor-tier" group to "neighbor"
+- [x] Map "free-tier" group to "free"
 - [x] Map "supporter-tier" group to "supporter"
-- [x] Map "caretaker-tier" group to "caretaker"
-- [x] Default to "neighbor" if no group found
+- [x] Map "pro-tier" group to "pro"
+- [x] Default to "free" if no group found
 - [x] Add unit tests for tier mapping
 
 ### 2.8 Backend Integration Tests
@@ -198,7 +198,7 @@
 ### 4.2 Create Test User
 - [ ] Create user in Cognito console with email/password
 - [ ] Verify email address
-- [ ] Add user to neighbor-tier group
+- [ ] Add user to free-tier group
 - [ ] Note credentials for testing
 
 ### 4.3 Configure Frontend with Deployed Values

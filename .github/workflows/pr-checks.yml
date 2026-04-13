@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: services/grn-api
 
     steps:
       - name: Checkout code
@@ -53,8 +53,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: services/grn-api
 
     steps:
       - name: Checkout code
@@ -88,8 +88,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: services/grn-api
 
     steps:
       - name: Checkout code
@@ -122,8 +122,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -140,7 +140,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: community_garden_ci
+          POSTGRES_DB: grn_ci
         ports:
           - 5432:5432
         options: >-
@@ -150,9 +150,9 @@ jobs:
           --health-retries 5
     defaults:
       run:
-        working-directory: backend
+        working-directory: services/grn-api
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/community_garden_ci
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_ci
 
     steps:
       - name: Checkout code
@@ -172,8 +172,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -196,7 +196,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: community_garden_ci
+          POSTGRES_DB: grn_ci
         ports:
           - 5432:5432
         options: >-
@@ -206,9 +206,9 @@ jobs:
           --health-retries 5
     defaults:
       run:
-        working-directory: backend
+        working-directory: services/grn-api
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/community_garden_ci
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_ci
 
     steps:
       - name: Checkout code
@@ -228,8 +228,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -248,7 +248,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/grn
 
     steps:
       - name: Checkout code
@@ -259,10 +259,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Run ESLint
         run: npm run lint
@@ -273,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/grn
 
     steps:
       - name: Checkout code
@@ -284,13 +284,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
   frontend-unit-tests:
     name: Frontend Unit Tests
@@ -298,7 +298,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/grn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -308,13 +308,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install esbuild
         run: npm install -g esbuild
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Run tests
         run: npm test
@@ -325,7 +325,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/grn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -335,10 +335,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Build check
         run: npm run build
@@ -349,7 +349,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/grn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -359,10 +359,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --workspaces=false
 
       - name: Build frontend for bundle analysis
         run: npm run build
@@ -385,15 +385,15 @@ jobs:
           node-version: '24'
 
       - name: Install lint dependencies
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm install
 
       - name: Lint backend functions
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm run lint
 
       - name: Run backend function tests
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm test
 
   ci-summary:
@@ -448,7 +448,7 @@ jobs:
       url: ${{ steps.get-outputs.outputs.frontend-url }}
     env:
       AWS_REGION: us-east-1
-      STACK_NAME: community-garden-staging
+      STACK_NAME: grn-staging
 
     steps:
       - name: Checkout code
@@ -493,8 +493,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -507,11 +507,11 @@ jobs:
         run: |
           DATABASE_URL="${{ secrets.DATABASE_URL_STAGING }}"
           export DATABASE_URL
-          cd backend
+          cd services/grn-api
           ./db/migrate.sh
 
       - name: Generate samconfig.toml from template
-        working-directory: backend
+        working-directory: services/grn-api
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
@@ -532,11 +532,11 @@ jobs:
         run: npm install -g esbuild
 
       - name: Install backend Node.js dependencies
-        working-directory: backend
+        working-directory: services/grn-api
         run: npm install
 
       - name: Deploy backend to staging
-        run: node deploy-and-configure.mjs --region ${{ env.AWS_REGION }} --stack-name ${{ env.STACK_NAME }} --ci
+        run: node scripts/deploy-and-configure.mjs --region ${{ env.AWS_REGION }} --stack-name ${{ env.STACK_NAME }} --ci
         env:
           SAM_CLI_TELEMETRY: "0"
 
@@ -633,14 +633,14 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/grn/package-lock.json
 
       - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
+        working-directory: apps/grn
+        run: npm ci --workspaces=false
 
       - name: Build frontend
-        working-directory: frontend
+        working-directory: apps/grn
         run: npm run build
         env:
           VITE_USER_POOL_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-id }}
@@ -652,20 +652,20 @@ jobs:
 
       - name: Deploy frontend to S3
         run: |
-          aws s3 sync frontend/dist/ "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/" \
+          aws s3 sync apps/grn/dist/ "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/" \
             --region ${{ env.AWS_REGION }} \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
             --exclude "manifest.json"
 
-          aws s3 cp frontend/dist/index.html "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/index.html" \
+          aws s3 cp apps/grn/dist/index.html "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/index.html" \
             --region ${{ env.AWS_REGION }} \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
 
-          if [ -f "frontend/dist/manifest.json" ]; then
-            aws s3 cp frontend/dist/manifest.json "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/manifest.json" \
+          if [ -f "apps/grn/dist/manifest.json" ]; then
+            aws s3 cp apps/grn/dist/manifest.json "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/manifest.json" \
               --region ${{ env.AWS_REGION }} \
               --cache-control "no-cache, no-store, must-revalidate" \
               --content-type "application/json"
@@ -693,7 +693,7 @@ jobs:
             const output = `#### Staging Deployment Complete
 
             **Environment:** \`staging\`
-            **Stack:** \`community-garden-staging\`
+            **Stack:** \`grn-staging\`
 
             **Frontend URL:** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
             **API URL:** ${{ needs.deploy-staging-backend.outputs.api-url }}
@@ -768,7 +768,7 @@ jobs:
             exit 1
           fi
 
-          PAYLOAD='{"users":[{"name":"contract-grower-free","role":"grower","tier":"free"},{"name":"contract-grower-premium","role":"grower","tier":"premium"}]}'
+          PAYLOAD='{"users":[{"name":"contract-grower-free","role":"grower","tier":"free"},{"name":"contract-grower-pro","role":"grower","tier":"pro"}]}'
 
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
@@ -776,8 +776,15 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["contract-grower-free"].access_token' ci-auth-seed-response.json)
-          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["contract-grower-premium"].access_token' ci-auth-seed-response.json)
+          RESPONSE_JSON=$(jq -c '
+            if .body == null then .
+            elif (.body | type) == "string" then (.body | fromjson)
+            else .body
+            end
+          ' ci-auth-seed-response.json)
+
+          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["contract-grower-free"].access_token')
+          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["contract-grower-pro"].access_token')
 
           if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
             echo "Failed to extract contract-grower-free access_token from CI auth seed response."
@@ -786,7 +793,7 @@ jobs:
           fi
 
           if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract contract-grower-premium access_token from CI auth seed response."
+            echo "Failed to extract contract-grower-pro access_token from CI auth seed response."
             cat ci-auth-seed-response.json
             exit 1
           fi
@@ -794,7 +801,7 @@ jobs:
           echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
           echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
           echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "pro-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
           echo "auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Install Postman CLI
@@ -803,16 +810,16 @@ jobs:
       - name: Login to Postman CLI
         run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
 
-      - name: Run contract collection (premium token)
+      - name: Run contract collection (pro token)
         run: |
-          postman collection run "postman/collections/Community Garden API" \
+          postman collection run "postman/collections/Good Roots Network API" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "expectFeatureLocked=false"
 
       - name: Run entitlement negative checks (free token)
         run: |
-          postman collection run "postman/collections/Community Garden API/AI Features" \
+          postman collection run "postman/collections/Good Roots Network API/AI Features" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
             --env-var "authToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
             --env-var "expectFeatureLocked=true"
@@ -824,7 +831,7 @@ jobs:
             exit 0
           fi
 
-          postman collection run "postman/collections/Community Garden API/Billing Webhook Reliability" \
+          postman collection run "postman/collections/Good Roots Network API/Billing Webhook Reliability" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
             --env-var "stripeWebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
@@ -856,7 +863,7 @@ jobs:
             exit 1
           fi
 
-          PAYLOAD='{"users":[{"name":"util-grower-free","role":"grower","tier":"free"},{"name":"util-grower-premium","role":"grower","tier":"premium"},{"name":"util-gatherer","role":"gatherer","tier":"free"}]}'
+          PAYLOAD='{"users":[{"name":"util-grower-free","role":"grower","tier":"free"},{"name":"util-grower-pro","role":"grower","tier":"pro"},{"name":"util-gatherer","role":"gatherer","tier":"free"}]}'
 
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
@@ -864,9 +871,16 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["util-grower-free"].access_token' ci-auth-seed-response.json)
-          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["util-grower-premium"].access_token' ci-auth-seed-response.json)
-          GATHERER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["util-gatherer"].access_token' ci-auth-seed-response.json)
+          RESPONSE_JSON=$(jq -c '
+            if .body == null then .
+            elif (.body | type) == "string" then (.body | fromjson)
+            else .body
+            end
+          ' ci-auth-seed-response.json)
+
+          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-grower-free"].access_token')
+          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-grower-pro"].access_token')
+          GATHERER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-gatherer"].access_token')
 
           if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
             echo "Failed to extract util-grower-free access_token from CI auth seed response."
@@ -875,7 +889,7 @@ jobs:
           fi
 
           if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract util-grower-premium access_token from CI auth seed response."
+            echo "Failed to extract util-grower-pro access_token from CI auth seed response."
             cat ci-auth-seed-response.json
             exit 1
           fi
@@ -890,7 +904,7 @@ jobs:
           echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
           echo "::add-mask::$GATHERER_ACCESS_TOKEN"
           echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "pro-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
           echo "gatherer-auth-token=$GATHERER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Install Postman CLI
@@ -899,12 +913,13 @@ jobs:
       - name: Login to Postman CLI
         run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
 
-      - name: Run utility collection (premium token)
+      - name: Run utility collection (pro token)
         run: |
-          postman collection run "postman/collections/Community Garden API - Utility Tests" \
+          postman collection run "postman/collections/Good Roots Network API - Utility Tests" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
-            --env-var "premiumAuthToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "proAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "premiumAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "freeAuthToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
@@ -936,7 +951,7 @@ jobs:
             exit 1
           fi
 
-          PAYLOAD='{"users":[{"name":"e2e-grower-free","role":"grower","tier":"free"},{"name":"e2e-grower-premium","role":"grower","tier":"premium"},{"name":"e2e-gatherer","role":"gatherer","tier":"free"}]}'
+          PAYLOAD='{"users":[{"name":"e2e-grower-free","role":"grower","tier":"free"},{"name":"e2e-grower-pro","role":"grower","tier":"pro"},{"name":"e2e-gatherer","role":"gatherer","tier":"free"}]}'
 
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
@@ -944,9 +959,16 @@ jobs:
             --cli-binary-format raw-in-base64-out \
             ci-auth-seed-response.json > /dev/null
 
-          FREE_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["e2e-grower-free"].access_token' ci-auth-seed-response.json)
-          PREMIUM_GROWER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["e2e-grower-premium"].access_token' ci-auth-seed-response.json)
-          GATHERER_ACCESS_TOKEN=$(jq -r '.body | fromjson | .users["e2e-gatherer"].access_token' ci-auth-seed-response.json)
+          RESPONSE_JSON=$(jq -c '
+            if .body == null then .
+            elif (.body | type) == "string" then (.body | fromjson)
+            else .body
+            end
+          ' ci-auth-seed-response.json)
+
+          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-grower-free"].access_token')
+          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-grower-pro"].access_token')
+          GATHERER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-gatherer"].access_token')
 
           if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
             echo "Failed to extract e2e-grower-free access_token from CI auth seed response."
@@ -955,7 +977,7 @@ jobs:
           fi
 
           if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract e2e-grower-premium access_token from CI auth seed response."
+            echo "Failed to extract e2e-grower-pro access_token from CI auth seed response."
             cat ci-auth-seed-response.json
             exit 1
           fi
@@ -970,7 +992,7 @@ jobs:
           echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
           echo "::add-mask::$GATHERER_ACCESS_TOKEN"
           echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "premium-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
+          echo "pro-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
           echo "gatherer-auth-token=$GATHERER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Install Postman CLI
@@ -981,10 +1003,10 @@ jobs:
 
       - name: Run E2E collection
         run: |
-          postman collection run "postman/collections/Community Garden API - E2E Flows" \
+          postman collection run "postman/collections/Good Roots Network API - E2E Flows" \
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
-            --env-var "growerAuthToken=${{ steps.ci-auth.outputs.premium-auth-token }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "growerAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
   staging-validation-summary:

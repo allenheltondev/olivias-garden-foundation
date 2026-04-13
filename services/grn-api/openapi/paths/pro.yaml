@@ -1,0 +1,155 @@
+# ── AI (Premium) ─────────────────────────────────────────
+/ai/copilot/weekly-plan:
+  post:
+    tags: [AI, Pro]
+    summary: Generate AI weekly grow plan
+    operationId: generateWeeklyPlan
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pro.yaml#/WeeklyPlanRequest'
+    responses:
+      '200':
+        description: Weekly plan recommendations
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pro.yaml#/WeeklyPlanResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/FeatureLockedResponse'
+      '429':
+        description: AI guardrail rate limit
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+# ── Agent Tasks (Premium) ────────────────────────────────
+/agent-tasks:
+  get:
+    tags: [Agent Tasks, Pro, Idempotent]
+    summary: List agent tasks
+    operationId: listAgentTasks
+    responses:
+      '200':
+        description: Agent task list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pro.yaml#/AgentTaskListResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/FeatureLockedResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+  post:
+    tags: [Agent Tasks, Pro]
+    summary: Create an agent task
+    operationId: createAgentTask
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pro.yaml#/CreateAgentTaskRequest'
+    responses:
+      '201':
+        description: Created agent task
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pro.yaml#/AgentTaskResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/FeatureLockedResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/agent-tasks/{taskId}:
+  parameters:
+    - in: path
+      name: taskId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  put:
+    tags: [Agent Tasks, Pro]
+    summary: Update agent task status
+    operationId: updateAgentTaskStatus
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pro.yaml#/UpdateAgentTaskStatusRequest'
+    responses:
+      '200':
+        description: Updated agent task
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pro.yaml#/AgentTaskResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/FeatureLockedResponse'
+      '404':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+# ── Analytics (Premium) ──────────────────────────────────
+/analytics/pro/events:
+  post:
+    tags: [Analytics, Pro]
+    summary: Track a pro analytics event
+    operationId: trackProEvent
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pro.yaml#/TrackEventRequest'
+    responses:
+      '202':
+        description: Event accepted
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accepted:
+                  type: boolean
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/FeatureLockedResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/analytics/pro/kpis:
+  get:
+    tags: [Analytics, Pro, Idempotent]
+    summary: Get pro analytics KPIs
+    operationId: getProKpis
+    parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+          default: 7
+    responses:
+      '200':
+        description: KPI funnel data
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pro.yaml#/ProKpiResponse'
+      '403':
+        $ref: '../schemas/_responses.yaml#/FeatureLockedResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

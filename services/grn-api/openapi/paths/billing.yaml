@@ -1,0 +1,49 @@
+/billing/checkout-session:
+  post:
+    tags: [Billing]
+    summary: Create a Stripe checkout session for pro upgrade
+    operationId: createCheckoutSession
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/billing.yaml#/CreateCheckoutSessionRequest'
+    responses:
+      '200':
+        description: Checkout session with redirect URL
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/billing.yaml#/CreateCheckoutSessionResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '401':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+
+/billing/webhook:
+  post:
+    tags: [Billing, Idempotent, Public]
+    summary: Receive Stripe webhook events
+    operationId: handleStripeWebhook
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    responses:
+      '200':
+        description: Webhook acknowledged
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/billing.yaml#/WebhookAckResponse'
+      '400':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '500':
+        $ref: '../schemas/_responses.yaml#/ErrorResponse'

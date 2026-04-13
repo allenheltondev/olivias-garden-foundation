@@ -1,0 +1,20 @@
+{
+  "name": "olivias-garden-foundation",
+  "private": true,
+  "packageManager": "npm@10.9.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "deploy:configure": "node scripts/deploy-and-configure.mjs"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.8"
+  }
+}

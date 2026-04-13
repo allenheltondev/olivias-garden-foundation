@@ -20,7 +20,7 @@ Phase 0 establishes the foundational infrastructure for the Community Food Coord
 - Auto-verified attributes: email
 - Password policy: 8+ chars, uppercase, lowercase, numbers
 - Three user groups for tier management:
-  - `neighbor-tier` (precedence 3) - free tier
+  - `free-tier` (precedence 3) - free tier
   - `supporter-tier` (precedence 2) - supporter tier
   - `caretake
 r.rs` (already exists, may need updates)
@@ -44,7 +44,7 @@ r.rs` (already exists, may need updates)
 - `tier`: User tier (neighbor/supporter/caretaker)
 
 **Updates needed:**
-- Map existing tier groups (neighbor-tier, supporter-tier, caretaker-tier) to tier values
+- Map existing tier groups (free-tier, supporter-tier, pro-tier) to tier values
 - Ensure correlation ID is extracted from headers and passed through
 
 ### 3. Rust API Lambda
@@ -58,14 +58,14 @@ r.rs` (already exists, may need updates)
 **File structure:**
 ```
 backend/src/api/
-├── main.rs           # Lambda entry point
-├── router.rs         # Route handling
-├── handlers/
-│   └── me.rs         # GET /me handler
-├── middleware/
-│   └── correlation.rs # Correlation ID middleware
-└── models/
-    └── user.rs       # User profile model
+â”œâ”€â”€ main.rs           # Lambda entry point
+â”œâ”€â”€ router.rs         # Route handling
+â”œâ”€â”€ handlers/
+â”‚   â””â”€â”€ me.rs         # GET /me handler
+â”œâ”€â”€ middleware/
+â”‚   â””â”€â”€ correlation.rs # Correlation ID middleware
+â””â”€â”€ models/
+    â””â”€â”€ user.rs       # User profile model
 ```
 
 **Request flow:**
@@ -84,7 +84,7 @@ backend/src/api/
   "email": "user@example.com",
   "firstName": "John",
   "lastName": "Doe",
-  "tier": "neighbor"
+  "tier": "free"
 }
 ```
 
@@ -211,28 +211,28 @@ backend/src/api/
 **Project Structure:**
 ```
 frontend/
-├── public/
-│   ├── manifest.json      # PWA manifest
-│   └── icons/             # App icons
-├── src/
-│   ├── main.tsx           # Entry point
-│   ├── App.tsx            # Root component
-│   ├── config/
-│   │   └── amplify.ts     # Amplify configuration
-│   ├── components/
-│   │   ├── Auth/
-│   │   │   └── SignIn.tsx # Sign-in component
-│   │   └── Profile/
-│   │       └── ProfileView.tsx # Profile display
-│   ├── hooks/
-│   │   └── useAuth.ts     # Auth hook
-│   ├── services/
-│   │   └── api.ts         # API client
-│   └── types/
-│       └── user.ts        # User type definitions
-├── vite.config.ts         # Vite configuration
-├── vite-plugin-pwa.config.ts # PWA plugin config
-└── package.json
+â”œâ”€â”€ public/
+â”‚   â”œâ”€â”€ manifest.json      # PWA manifest
+â”‚   â””â”€â”€ icons/             # App icons
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ main.tsx           # Entry point
+â”‚   â”œâ”€â”€ App.tsx            # Root component
+â”‚   â”œâ”€â”€ config/
+â”‚   â”‚   â””â”€â”€ amplify.ts     # Amplify configuration
+â”‚   â”œâ”€â”€ components/
+â”‚   â”‚   â”œâ”€â”€ Auth/
+â”‚   â”‚   â”‚   â””â”€â”€ SignIn.tsx # Sign-in component
+â”‚   â”‚   â””â”€â”€ Profile/
+â”‚   â”‚       â””â”€â”€ ProfileView.tsx # Profile display
+â”‚   â”œâ”€â”€ hooks/
+â”‚   â”‚   â””â”€â”€ useAuth.ts     # Auth hook
+â”‚   â”œâ”€â”€ services/
+â”‚   â”‚   â””â”€â”€ api.ts         # API client
+â”‚   â””â”€â”€ types/
+â”‚       â””â”€â”€ user.ts        # User type definitions
+â”œâ”€â”€ vite.config.ts         # Vite configuration
+â”œâ”€â”€ vite-plugin-pwa.config.ts # PWA plugin config
+â””â”€â”€ package.json
 ```
 
 **Key Features:**
@@ -269,7 +269,7 @@ frontend/
 **Configuration:**
 - Origin: S3 bucket with OAC
 - Default root object: index.html
-- Custom error responses: 403/404 → 200 /index.html (SPA routing)
+- Custom error responses: 403/404 â†’ 200 /index.html (SPA routing)
 - HTTPS only (redirect HTTP to HTTPS)
 - Security headers policy:
   - Strict-Transport-Security
@@ -320,31 +320,31 @@ frontend/
 
 ```
 1. User opens PWA on phone
-   ↓
+   â†“
 2. PWA checks for auth tokens
-   ↓
+   â†“
 3. If not authenticated, redirect to Cognito sign-in
-   ↓
+   â†“
 4. User enters email/password
-   ↓
+   â†“
 5. Cognito validates credentials
-   ↓
+   â†“
 6. Cognito redirects to PWA with authorization code
-   ↓
+   â†“
 7. PWA exchanges code for JWT tokens
-   ↓
+   â†“
 8. PWA calls GET /me with JWT in Authorization header
-   ↓
+   â†“
 9. API Gateway invokes Lambda Authorizer
-   ↓
+   â†“
 10. Authorizer validates JWT and returns policy with context
-    ↓
+    â†“
 11. API Gateway invokes Rust API Lambda
-    ↓
+    â†“
 12. Rust API extracts user info from authorizer context
-    ↓
+    â†“
 13. Rust API returns user profile JSON
-    ↓
+    â†“
 14. PWA displays profile information
 ```
 
@@ -352,21 +352,21 @@ frontend/
 
 ```
 1. PWA generates UUID for request
-   ↓
+   â†“
 2. PWA includes X-Correlation-Id header in API call
-   ↓
+   â†“
 3. API Gateway passes header to Lambda Authorizer
-   ↓
+   â†“
 4. Authorizer logs with correlation ID
-   ↓
+   â†“
 5. API Gateway passes header to Rust API Lambda
-   ↓
+   â†“
 6. Rust API extracts correlation ID
-   ↓
+   â†“
 7. Rust API includes correlation ID in all logs
-   ↓
+   â†“
 8. Rust API includes correlation ID in response header
-   ↓
+   â†“
 9. PWA receives response with correlation ID
 ```
 
@@ -499,7 +499,7 @@ frontend/
 ### Post-Deployment
 
 1. Create test user in Cognito console
-2. Assign user to neighbor-tier group
+2. Assign user to free-tier group
 3. Open PWA on phone
 4. Sign in with test user
 5. Verify profile displays correctly
