@@ -2,7 +2,7 @@ $kind: http-request
 name: 'Free - POST /ai/copilot/weekly-plan → 403'
 description: |-
   Verifies that a free-tier token is rejected with 403 feature_locked
-  when calling the premium AI weekly plan endpoint.
+  when calling the pro AI weekly plan endpoint.
 method: POST
 url: '{{baseUrl}}/ai/copilot/weekly-plan'
 order: 1000
@@ -30,6 +30,6 @@ scripts:
           const body = pm.response.json();
           pm.expect(body).to.have.property("error", "feature_locked");
           pm.expect(body).to.have.property("entitlementKey").that.is.a("string");
-          pm.expect(body).to.have.property("requiredTier", "premium");
+          pm.expect(body).to.have.property("requiredTier", "pro");
           pm.expect(body).to.have.property("upgradeHintKey").that.is.a("string");
       });

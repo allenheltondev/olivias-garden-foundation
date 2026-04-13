@@ -1,10 +1,10 @@
 $kind: http-request
 name: 'Premium - GET /analytics/premium/kpis → non-403'
 description: |-
-  Verifies that a premium-tier token is NOT rejected with 403
-  when calling the premium analytics KPIs endpoint.
+  Verifies that a pro-tier token is NOT rejected with 403
+  when calling the pro analytics KPIs endpoint.
 method: GET
-url: '{{baseUrl}}/analytics/premium/kpis'
+url: '{{baseUrl}}/analytics/pro/kpis'
 order: 10000
 headers:
   - key: Authorization

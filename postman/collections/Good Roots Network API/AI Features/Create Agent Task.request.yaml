@@ -1,9 +1,9 @@
 $kind: http-request
 name: Create Agent Task
 description: |-
-  Create a new premium automation task.
+  Create a new pro automation task.
   
-  Premium feature - requires active subscription.
+  Pro feature - requires active subscription.
 method: POST
 url: '{{baseUrl}}/agent-tasks'
 order: 3000
@@ -35,8 +35,8 @@ scripts:
               const response = pm.response.json();
               pm.expect(response).to.have.property("error", "feature_locked");
               pm.expect(response).to.have.property("entitlementKey", "agent.tasks.automation");
-              pm.expect(response).to.have.property("requiredTier", "premium");
-              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.premium");
+              pm.expect(response).to.have.property("requiredTier", "pro");
+              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.pro");
           });
       } else {
           pm.test("Status code is 201", function () {

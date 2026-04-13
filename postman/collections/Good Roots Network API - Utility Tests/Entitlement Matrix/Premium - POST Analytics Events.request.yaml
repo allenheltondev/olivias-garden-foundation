@@ -1,10 +1,10 @@
 $kind: http-request
 name: 'Premium - POST /analytics/premium/events → non-403'
 description: |-
-  Verifies that a premium-tier token is NOT rejected with 403
-  when calling the premium analytics event tracking endpoint.
+  Verifies that a pro-tier token is NOT rejected with 403
+  when calling the pro analytics event tracking endpoint.
 method: POST
-url: '{{baseUrl}}/analytics/premium/events'
+url: '{{baseUrl}}/analytics/pro/events'
 order: 9000
 headers:
   - key: Authorization

@@ -1,6 +1,6 @@
 $kind: http-request
 name: Update Agent Task
-description: Update the status of a premium automation task.
+description: Update the status of a pro automation task.
 method: PUT
 url: '{{baseUrl}}/agent-tasks/:taskId'
 order: 4000
@@ -41,8 +41,8 @@ scripts:
               const response = pm.response.json();
               pm.expect(response).to.have.property("error", "feature_locked");
               pm.expect(response).to.have.property("entitlementKey", "agent.tasks.automation");
-              pm.expect(response).to.have.property("requiredTier", "premium");
-              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.premium");
+              pm.expect(response).to.have.property("requiredTier", "pro");
+              pm.expect(response).to.have.property("upgradeHintKey", "upgrade.pro");
           });
       } else {
           pm.test("Status code is 200", function () {

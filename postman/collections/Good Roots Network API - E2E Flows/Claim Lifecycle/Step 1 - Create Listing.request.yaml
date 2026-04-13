@@ -24,6 +24,7 @@ body:
       "availableStart": "2026-07-01T08:00:00Z",
       "availableEnd": "2026-07-03T18:00:00Z",
       "pickupLocationText": "Front porch",
+      "pickupAddress": "123 Garden Way, Austin, TX 78702",
       "status": "active"
     }
 scripts:
