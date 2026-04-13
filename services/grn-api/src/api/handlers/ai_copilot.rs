@@ -57,6 +57,16 @@ pub async fn generate_weekly_plan(
     }
     let geo_prefix = geo_key[..4].to_string();
 
+    if !has_weekly_plan_access(&auth.tier) {
+        return json_response(
+            403,
+            &entitlements::FeatureLockedError {
+                entitlement_key: "ai.copilot.weekly_grow_plan".to_string(),
+            }
+            .to_response(),
+        );
+    }
+
     let client = db::connect().await?;
 
     if let Err(feature_locked) =
@@ -164,6 +174,10 @@ pub async fn generate_weekly_plan(
     }
 }
 
+fn has_weekly_plan_access(tier: &str) -> bool {
+    matches!(tier, "pro")
+}
+
 fn build_recommendations(rows: &[Row]) -> Vec<WeeklyPlanRecommendation> {
     if rows.is_empty() {
         return vec![WeeklyPlanRecommendation {
@@ -263,5 +277,13 @@ mod tests {
             window_days: None,
         };
         assert_eq!(payload.window_days.unwrap_or(DEFAULT_WINDOW_DAYS), 7);
+    }
+
+    #[test]
+    fn weekly_plan_access_requires_pro_tier() {
+        assert!(has_weekly_plan_access("pro"));
+        assert!(!has_weekly_plan_access("free"));
+        assert!(!has_weekly_plan_access("supporter"));
+        assert!(!has_weekly_plan_access(""));
     }
 }
