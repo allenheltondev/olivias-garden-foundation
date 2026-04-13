@@ -30,7 +30,7 @@ scripts:
     language: text/javascript
     code: |-
       // Swap authToken to grower to create a listing
-      const growerToken = pm.collectionVariables.get("growerAuthToken");
+      const growerToken = pm.variables.get("growerAuthToken");
       if (growerToken) {
           pm.collectionVariables.set("authToken", growerToken);
       } else {

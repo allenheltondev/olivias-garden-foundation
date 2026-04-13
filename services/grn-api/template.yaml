@@ -431,6 +431,9 @@ Resources:
               Action:
                 - cognito-idp:AdminCreateUser
                 - cognito-idp:AdminDeleteUser
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:AdminRemoveUserFromGroup
                 - cognito-idp:AdminSetUserPassword
                 - cognito-idp:AdminInitiateAuth
               Resource: !GetAtt UserPool.Arn

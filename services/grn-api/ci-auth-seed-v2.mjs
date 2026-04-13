@@ -2,6 +2,9 @@ import {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
   AdminDeleteUserCommand,
+  AdminListGroupsForUserCommand,
+  AdminAddUserToGroupCommand,
+  AdminRemoveUserFromGroupCommand,
   AdminSetUserPasswordCommand,
   AdminInitiateAuthCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -68,6 +71,54 @@ async function ensureUser(email, password) {
   );
 }
 
+function tierToGroupName(tier) {
+  switch (tier) {
+    case "pro":
+      return "pro-tier";
+    case "supporter":
+      return "supporter-tier";
+    default:
+      return "free-tier";
+  }
+}
+
+async function ensureTierGroup(email, tier) {
+  const targetGroup = tierToGroupName(tier);
+  const response = await cognito.send(
+    new AdminListGroupsForUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: email,
+    })
+  );
+
+  const currentGroups = response.groups?.flatMap((group) => group.group_name ?? []) ?? [];
+  const tierGroups = ["free-tier", "supporter-tier", "pro-tier"];
+
+  await Promise.all(
+    currentGroups
+      .filter((group) => tierGroups.includes(group) && group !== targetGroup)
+      .map((group) =>
+        cognito.send(
+          new AdminRemoveUserFromGroupCommand({
+            UserPoolId: USER_POOL_ID,
+            Username: email,
+            GroupName: group,
+          })
+        )
+      )
+  );
+
+  if (!currentGroups.includes(targetGroup)) {
+    await cognito.send(
+      new AdminAddUserToGroupCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: email,
+        GroupName: targetGroup,
+      })
+    );
+  }
+}
+
 async function authenticateUser(email, password) {
   const authResult = await cognito.send(
     new AdminInitiateAuthCommand({
@@ -113,6 +164,7 @@ async function upsertUser(client, userId, email, { role, tier }) {
 
 async function provisionUser(client, { name, role, tier }) {
   const tokens = await getOrCreateUser(name);
+  await ensureTierGroup(tokens.email, tier);
   const userId = decodeSubFromJwt(tokens.id_token);
   await upsertUser(client, userId, tokens.email, { role, tier });
   return { name, ...tokens };

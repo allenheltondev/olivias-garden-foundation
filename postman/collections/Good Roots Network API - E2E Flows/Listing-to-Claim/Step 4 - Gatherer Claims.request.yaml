@@ -26,7 +26,7 @@ scripts:
     language: text/javascript
     code: |-
       // Swap authToken to gatherer for claiming
-      const gathererToken = pm.collectionVariables.get("gathererAuthToken");
+      const gathererToken = pm.variables.get("gathererAuthToken");
       if (gathererToken) {
           pm.collectionVariables.set("authToken", gathererToken);
       } else {
