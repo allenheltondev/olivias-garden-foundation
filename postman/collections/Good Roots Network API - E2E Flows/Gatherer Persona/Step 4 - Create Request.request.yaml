@@ -18,9 +18,11 @@ body:
   content: |-
     {
       "cropId": "{{catalogCropId}}",
+      "unit": "lb",
       "quantity": 2,
       "neededBy": "{{neededByTs}}",
-      "notes": "Gatherer persona E2E test request"
+      "notes": "Gatherer persona E2E test request",
+      "status": "open"
     }
 scripts:
   - type: beforeRequest
