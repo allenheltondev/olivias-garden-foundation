@@ -639,12 +639,12 @@ Outputs:
 
   ProAgentTaskQueueUrl:
     Description: URL of the pro agent task queue in the nested pro stack
-    Value: !GetAtt ProStack.Outputs.ProAgentTaskQueueUrl
+    Value: !GetAtt ProStack.Outputs.PremiumAgentTaskQueueUrl
     Export:
       Name: !Sub "${AWS::StackName}-ProAgentTaskQueueUrl"
 
   ProAgentTaskQueueArn:
     Description: ARN of the pro agent task queue in the nested pro stack
-    Value: !GetAtt ProStack.Outputs.ProAgentTaskQueueArn
+    Value: !GetAtt ProStack.Outputs.PremiumAgentTaskQueueArn
     Export:
       Name: !Sub "${AWS::StackName}-ProAgentTaskQueueArn"
