@@ -1,0 +1,25 @@
+$kind: http-request
+name: 'Step 0a - Seed Catalog Crop ID'
+description: |-
+  Load a live catalog crop ID for the claim lifecycle flow.
+
+  This avoids relying on a baked fallback ID that may drift across environments.
+method: GET
+url: '{{baseUrl}}/catalog/crops'
+order: 750
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Capture a catalogCropId for claim lifecycle", function () {
+          const crops = pm.response.json();
+          pm.expect(Array.isArray(crops), "catalog response must be an array").to.eql(true);
+          pm.expect(crops.length, "catalog must contain at least one crop").to.be.above(0);
+          pm.expect(crops[0]).to.have.property("id");
+
+          pm.collectionVariables.set("catalogCropId", crops[0].id);
+      });
