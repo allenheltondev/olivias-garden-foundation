@@ -1,0 +1,502 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Okra backend + static hosting (Node.js 24, SAM + esbuild)
+
+Parameters:
+  SharedUserPoolId:
+    Type: String
+    Default: ''
+    Description: Optional existing Cognito User Pool ID (from Good Roots Network)
+  SharedUserPoolClientId:
+    Type: String
+    Default: ''
+    Description: Optional existing Cognito User Pool App Client ID
+  DatabaseUrl:
+    Type: String
+    Description: PostgreSQL connection string (e.g., from Neon)
+  CiAdminUsername:
+    Type: String
+    Default: ''
+    Description: CI admin username for integration test auth token Lambda
+  CiAdminPassword:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: CI admin password for integration test auth token Lambda
+
+Conditions:
+  HasSharedUserPool: !Not [!Equals [!Ref SharedUserPoolId, '']]
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Timeout: 10
+    MemorySize: 1024
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+        SHARED_USER_POOL_ID: !Ref SharedUserPoolId
+        SHARED_USER_POOL_CLIENT_ID: !Ref SharedUserPoolClientId
+        ADMIN_REQUIRED_GROUP: admin
+        DATABASE_URL: !Ref DatabaseUrl
+        MEDIA_BUCKET_NAME: !Ref MediaBucket
+        PHOTO_PROCESSING_EVENT_BUS_NAME: default
+        PHOTO_RATE_LIMIT_MAX_REQUESTS: '20'
+        PHOTO_RATE_LIMIT_WINDOW_SECONDS: '3600'
+
+
+Metadata:
+  esbuild-properties: &esbuild-properties
+    Format: esm
+    Minify: true
+    OutExtension:
+      - .js=.mjs
+    Target: es2020
+    Sourcemap: false
+    EntryPoints:
+      - index.mjs
+    Banner:
+      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      TracingEnabled: true
+      StageName: api
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  AdminApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      TracingEnabled: true
+      StageName: admin
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: AdminTokenAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          AdminTokenAuthorizer:
+            FunctionArn: !GetAtt AdminAuthorizerFunction.Arn
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - PUT
+              - POST
+              - GET
+              - HEAD
+            AllowedOrigins:
+              - '*'
+            AllowedHeaders:
+              - '*'
+            ExposedHeaders:
+              - ETag
+            MaxAge: 300
+
+  MediaOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-media-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  MediaDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: MediaS3Origin
+            DomainName: !GetAtt MediaBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !Ref MediaOriginAccessControl
+        DefaultCacheBehavior:
+          TargetOriginId: MediaS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  FrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-frontend-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: FrontendS3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !Ref FrontendOriginAccessControl
+        DefaultCacheBehavior:
+          TargetOriginId: FrontendS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt FrontendBucket.Arn
+              - !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub '${MediaBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${MediaDistribution}'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt MediaBucket.Arn
+              - !Sub '${MediaBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  PhotoProcessorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/photo-processor.mjs
+        External:
+          - '@napi-rs/image'
+          - '@napi-rs/image-linux-arm64-gnu'
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/photo-processor.handler
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource:
+                - !Sub '${MediaBucket.Arn}/*'
+      Events:
+        PhotoClaimedEvent:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - okra.photos
+              detail-type:
+                - photo.claimed
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/api.mjs
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/api.handler
+      Environment:
+        Variables:
+          MEDIA_CDN_DOMAIN: !GetAtt MediaDistribution.DomainName
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub '${MediaBucket.Arn}/temp-photos/*'
+      Events:
+        ApiProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /
+            Method: ANY
+
+  AdminAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/admin-authorizer.mjs
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/admin-authorizer.handler
+      Timeout: 5
+      MemorySize: 256
+
+  AdminApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/admin-api.mjs
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/admin-api.handler
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub '${MediaBucket.Arn}/*'
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+      Events:
+        AdminApiProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AdminApiGateway
+            Path: /{proxy+}
+            Method: ANY
+        AdminApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AdminApiGateway
+            Path: /
+            Method: ANY
+
+  DeniedPhotoCleanupFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/denied-photo-cleanup.mjs
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/denied-photo-cleanup.handler
+      Timeout: 60
+      Events:
+        SubmissionDeniedEvent:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - "okra.api"
+              detail-type:
+                - "SubmissionDenied"
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref MediaBucket
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+
+  AdminUserPoolGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Condition: HasSharedUserPool
+    Properties:
+      GroupName: admin
+      UserPoolId: !Ref SharedUserPoolId
+      Description: Admin group for authenticated admin API access
+
+  CiAuthTokenFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/ci-auth-token.mjs
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/ci-auth-token.handler
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          CI_ADMIN_USERNAME: !Ref CiAdminUsername
+          CI_ADMIN_PASSWORD: !Ref CiAdminPassword
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminSetUserPassword
+                - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:InitiateAuth
+              Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${SharedUserPoolId}'
+
+Outputs:
+  HttpApiUrl:
+    Description: Base URL for the HTTP API
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+  AdminApiUrl:
+    Description: Base URL for the Admin API
+    Value: !Sub 'https://${AdminApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+  FrontendBucketName:
+    Description: S3 bucket that stores frontend static assets
+    Value: !Ref FrontendBucket
+  FrontendDistributionId:
+    Description: CloudFront distribution ID for the frontend
+    Value: !Ref FrontendDistribution
+  FrontendDistributionDomainName:
+    Description: CloudFront domain for frontend access
+    Value: !GetAtt FrontendDistribution.DomainName
+  MediaBucketName:
+    Description: S3 bucket for uploaded/processed images
+    Value: !Ref MediaBucket
+  PhotoProcessingEventBusName:
+    Description: EventBridge bus used for claimed-photo processing events
+    Value: default
+  SharedUserPoolIdInUse:
+    Description: Passed-through shared User Pool ID
+    Value: !Ref SharedUserPoolId
+  SharedUserPoolClientIdInUse:
+    Description: Passed-through shared User Pool Client ID
+    Value: !Ref SharedUserPoolClientId
+  MediaDistributionDomainName:
+    Description: CloudFront domain for media assets (photos)
+    Value: !GetAtt MediaDistribution.DomainName
+  CiAuthTokenFunctionName:
+    Description: Lambda function name for CI auth token generation
+    Value: !Ref CiAuthTokenFunction

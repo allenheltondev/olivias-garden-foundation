@@ -1,0 +1,40 @@
+{
+  "name": "@olivias/okra-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "sam build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "node -e \"console.log('backend typecheck: no TypeScript files yet')\"",
+    "db:migrate": "node ./scripts/migrate.mjs",
+    "db:seed": "node ./scripts/seed-dev.mjs",
+    "test:integration": "node ./scripts/integration-test.mjs"
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/event-handler": "^2.32.0",
+    "@aws-lambda-powertools/validation": "^2.32.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1027.0",
+    "@aws-sdk/client-eventbridge": "^3.902.0",
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/s3-request-presigner": "^3.902.0",
+    "@napi-rs/image": "^1.12.0",
+    "aws-jwt-verify": "^5.1.1",
+    "pg": "^8.16.3",
+    "topojson-client": "^3.1.0",
+    "which-polygon": "^2.2.1",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.20.1",
+    "fast-check": "^3.0.0",
+    "globals": "^15.14.0",
+    "vitest": "^3.0.5"
+  }
+}

@@ -1,0 +1,114 @@
+.location-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.location-input__text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.location-input__label {
+  font-size: 0.85rem;
+  color: var(--color-neutral-700);
+}
+
+.location-input__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.location-input__text {
+  flex: 1;
+  font-family: var(--font-family-sans);
+  font-size: 0.9rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-base);
+  background: #fff;
+}
+
+.location-input__text:focus {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 1px;
+}
+
+.location-input__text:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.location-input__text[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.location-input__geocode-btn {
+  font-family: var(--font-family-sans);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--color-primary-500);
+  border-radius: var(--radius-base);
+  background: var(--color-primary-500);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.location-input__geocode-btn:hover:not(:disabled) {
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+
+.location-input__geocode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.location-input__error {
+  font-size: 0.8rem;
+  color: #dc2626;
+  margin: 0;
+}
+
+.location-input__map-wrapper {
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
+}
+
+.location-input__map {
+  height: 200px;
+  width: 100%;
+}
+
+.location-input__coords {
+  font-size: 0.8rem;
+  color: var(--color-neutral-700);
+  margin: 0;
+}
+
+.location-input__show-map-btn {
+  font-family: var(--font-family-sans);
+  font-size: 0.8rem;
+  color: var(--color-primary-600);
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.location-input__show-map-btn:hover:not(:disabled) {
+  color: var(--color-primary-500);
+}
+
+.location-input__show-map-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

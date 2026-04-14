@@ -26,9 +26,50 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  changes:
+    name: Detect Changed Paths
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      shared_all: ${{ steps.filter.outputs.shared_all }}
+      grn_backend: ${{ steps.filter.outputs.grn_backend }}
+      grn_frontend: ${{ steps.filter.outputs.grn_frontend }}
+      okra_backend: ${{ steps.filter.outputs.okra_backend }}
+      okra_frontend: ${{ steps.filter.outputs.okra_frontend }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed files
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            shared_all:
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'turbo.json'
+              - 'tsconfig.base.json'
+              - '.gitignore'
+              - 'scripts/**'
+            grn_backend:
+              - 'services/grn-api/**'
+              - 'postman/**'
+              - 'docs/testing/postman-e2e-rollout.md'
+            grn_frontend:
+              - 'apps/grn/**'
+              - 'packages/**'
+            okra_backend:
+              - 'services/okra-api/**'
+            okra_frontend:
+              - 'apps/okra/**'
+
   backend-format:
     name: Backend Format Check
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,7 +104,8 @@ jobs:
 
   backend-lint:
     name: Backend Clippy
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -98,7 +140,8 @@ jobs:
 
   backend-build:
     name: Backend Build Check
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -132,7 +175,8 @@ jobs:
 
   backend-unit-tests:
     name: Backend Unit Tests
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -188,7 +232,8 @@ jobs:
 
   backend-integration-tests:
     name: Backend Integration Tests
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -244,7 +289,8 @@ jobs:
 
   frontend-lint:
     name: Frontend Lint
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -269,7 +315,8 @@ jobs:
 
   frontend-typecheck:
     name: Frontend Type Check
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -294,7 +341,8 @@ jobs:
 
   frontend-unit-tests:
     name: Frontend Unit Tests
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -321,7 +369,8 @@ jobs:
 
   frontend-build:
     name: Frontend Build Check
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -345,7 +394,8 @@ jobs:
 
   frontend-performance-budget:
     name: Frontend Performance Budget
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -372,7 +422,8 @@ jobs:
 
   backend-functions-tests:
     name: Backend Functions (Node.js) Lint & Tests
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
+    needs: [changes]
     runs-on: ubuntu-latest
 
     steps:
@@ -396,10 +447,224 @@ jobs:
         working-directory: services/grn-api
         run: npm test
 
+  okra-frontend-lint:
+    name: Okra Frontend Lint
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/okra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/okra/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false
+
+      - name: Run ESLint
+        run: npm run lint
+
+  okra-frontend-typecheck:
+    name: Okra Frontend Type Check
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/okra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/okra/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false
+
+      - name: Type check
+        run: npm run typecheck
+
+  okra-frontend-tests:
+    name: Okra Frontend Tests
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/okra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/okra/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false
+
+      - name: Run tests
+        run: npm test
+
+  okra-frontend-build:
+    name: Okra Frontend Build
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/okra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/okra/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false
+
+      - name: Build check
+        run: npm run build
+
+  okra-backend-lint:
+    name: Okra Backend Lint
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/okra-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Run ESLint
+        run: npm run lint
+
+  okra-backend-typecheck:
+    name: Okra Backend Type Check
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/okra-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Type check
+        run: npm run typecheck
+
+  okra-backend-tests:
+    name: Okra Backend Tests
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/okra-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Run tests
+        run: npm test
+
+  okra-backend-build:
+    name: Okra Backend Build
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/okra-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Build check
+        run: npm run build
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
     needs:
+      - changes
       - backend-format
       - backend-lint
       - backend-build
@@ -411,6 +676,14 @@ jobs:
       - frontend-unit-tests
       - frontend-build
       - frontend-performance-budget
+      - okra-frontend-lint
+      - okra-frontend-typecheck
+      - okra-frontend-tests
+      - okra-frontend-build
+      - okra-backend-lint
+      - okra-backend-typecheck
+      - okra-backend-tests
+      - okra-backend-build
     if: always() && github.event.action != 'closed'
 
     steps:
@@ -436,13 +709,22 @@ jobs:
           check_result "frontend-unit-tests" "${{ needs.frontend-unit-tests.result }}"
           check_result "frontend-build" "${{ needs.frontend-build.result }}"
           check_result "frontend-performance-budget" "${{ needs.frontend-performance-budget.result }}"
+          check_result "okra-frontend-lint" "${{ needs.okra-frontend-lint.result }}"
+          check_result "okra-frontend-typecheck" "${{ needs.okra-frontend-typecheck.result }}"
+          check_result "okra-frontend-tests" "${{ needs.okra-frontend-tests.result }}"
+          check_result "okra-frontend-build" "${{ needs.okra-frontend-build.result }}"
+          check_result "okra-backend-lint" "${{ needs.okra-backend-lint.result }}"
+          check_result "okra-backend-typecheck" "${{ needs.okra-backend-typecheck.result }}"
+          check_result "okra-backend-tests" "${{ needs.okra-backend-tests.result }}"
+          check_result "okra-backend-build" "${{ needs.okra-backend-build.result }}"
 
           echo "All applicable CI checks passed"
 
   deploy-staging-backend:
     name: Deploy Staging Backend
     runs-on: ubuntu-latest
-    needs: [ci-summary]
+    needs: [changes, ci-summary]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     environment:
       name: staging
       url: ${{ steps.get-outputs.outputs.frontend-url }}
@@ -613,7 +895,8 @@ jobs:
   deploy-staging-frontend:
     name: Deploy Staging Frontend
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend]
+    needs: [changes, deploy-staging-backend]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     env:
       AWS_REGION: us-east-1
 
@@ -683,7 +966,8 @@ jobs:
   comment-staging-deployment:
     name: Comment Staging Deployment
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend]
+    needs: [changes, deploy-staging-backend, deploy-staging-frontend]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
 
     steps:
       - name: Comment on PR
@@ -710,7 +994,8 @@ jobs:
   staging-public-api-smoke:
     name: Staging Unauthorized API Smoke Test
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend]
+    needs: [changes, deploy-staging-backend]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
 
     steps:
       - name: Verify unauthorized catalog request is rejected
@@ -721,9 +1006,9 @@ jobs:
 
   postman-public-smoke:
     name: Public Catalog Smoke Test
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, staging-public-api-smoke]
+    needs: [changes, deploy-staging-backend, staging-public-api-smoke]
 
     steps:
       - name: Checkout code
@@ -743,7 +1028,8 @@ jobs:
   contract-api-tests:
     name: Staging Contract API Tests
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     env:
       AWS_REGION: us-east-1
 
@@ -838,7 +1124,8 @@ jobs:
   utility-api-tests:
     name: Staging Utility API Tests
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     env:
       AWS_REGION: us-east-1
 
@@ -926,7 +1213,8 @@ jobs:
   e2e-api-tests:
     name: Staging E2E API Tests
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     env:
       AWS_REGION: us-east-1
 
@@ -1012,6 +1300,7 @@ jobs:
     name: Staging Validation Summary
     runs-on: ubuntu-latest
     needs:
+      - changes
       - deploy-staging-backend
       - deploy-staging-frontend
       - staging-public-api-smoke

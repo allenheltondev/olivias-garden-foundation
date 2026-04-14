@@ -64,6 +64,8 @@ samconfig.toml
 *.tmp
 *.temp
 .cache/
+.npm-cache*/
+**/.npm-cache/
 
 # Catalog pipeline
 scripts/catalog/node_modules/
