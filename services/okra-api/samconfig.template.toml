@@ -1,0 +1,28 @@
+version = 0.1
+
+[stage.deploy.parameters]
+stack_name = "okra-stage"
+resolve_s3 = true
+s3_prefix = "okra-stage"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DatabaseUrl=__DATABASE_URL__ SharedUserPoolId=__SHARED_USER_POOL_ID__ SharedUserPoolClientId=__SHARED_USER_POOL_CLIENT_ID__ CiAdminUsername=__CI_ADMIN_USERNAME__ CiAdminPassword=__CI_ADMIN_PASSWORD__"
+
+[preview.deploy.parameters]
+stack_name = "__STACK_NAME_PREVIEW__"
+resolve_s3 = true
+s3_prefix = "__STACK_NAME_PREVIEW__"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DatabaseUrl=__DATABASE_URL__ SharedUserPoolId=__SHARED_USER_POOL_ID__ SharedUserPoolClientId=__SHARED_USER_POOL_CLIENT_ID__ CiAdminUsername=__CI_ADMIN_USERNAME__ CiAdminPassword=__CI_ADMIN_PASSWORD__"
+
+[prod.deploy.parameters]
+stack_name = "okra-prod"
+resolve_s3 = true
+s3_prefix = "okra-prod"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "DatabaseUrl=__DATABASE_URL__ SharedUserPoolId=__SHARED_USER_POOL_ID__ SharedUserPoolClientId=__SHARED_USER_POOL_CLIENT_ID__ CiAdminUsername=__CI_ADMIN_USERNAME__ CiAdminPassword=__CI_ADMIN_PASSWORD__"
