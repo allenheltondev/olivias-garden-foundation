@@ -417,10 +417,10 @@ Resources:
       BuildProperties:
         <<: *esbuild-properties
         EntryPoints:
-          - ci-auth-seed-v2.mjs
+          - ci-auth-seed.mjs
     Properties:
-      CodeUri: .
-      Handler: ci-auth-seed-v2.handler
+      CodeUri: functions
+      Handler: ci-auth-seed.handler
       Runtime: nodejs24.x
       Timeout: 30
       Policies:
