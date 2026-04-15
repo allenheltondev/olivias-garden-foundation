@@ -114,6 +114,50 @@ jobs:
           role-session-name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js for okra deploy
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install okra backend dependencies
+        working-directory: services/okra-api
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Generate okra CI auth credentials
+        id: okra-ci-auth
+        run: |
+          echo "username=okra-ci-admin+staging@ogf.local" >> "$GITHUB_OUTPUT"
+          PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
+          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy okra backend stack
+        working-directory: services/okra-api
+        env:
+          OKRA_DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
+          OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+        run: |
+          sam build
+          sam deploy \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "DatabaseUrl=$OKRA_DATABASE_URL" \
+              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
+              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+
       - name: Read okra stack outputs
         id: okra-stack
         run: |

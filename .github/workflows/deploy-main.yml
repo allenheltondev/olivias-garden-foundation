@@ -24,6 +24,7 @@ env:
   ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   STACK_NAME: grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FOUNDATION_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'ogf-okra-prod' || 'ogf-okra-staging' }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -135,6 +136,44 @@ jobs:
       - name: Backend Functions - Run tests
         working-directory: services/grn-api
         run: npm test
+
+  okra-lint-and-test:
+    name: Okra Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/okra-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build check
+        run: npm run build
 
   deploy-backend:
     name: Deploy GRN Backend
@@ -321,6 +360,90 @@ jobs:
 
           echo "Stack outputs retrieved successfully"
 
+  deploy-okra-backend:
+    name: Deploy Okra Backend
+    runs-on: ubuntu-latest
+    needs: okra-lint-and-test
+    outputs:
+      api-url: ${{ steps.get-outputs.outputs.api-url }}
+      admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ env.ENVIRONMENT == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Okra-Deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install Okra backend dependencies
+        working-directory: services/okra-api
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Generate CI admin credentials
+        id: okra-ci-auth
+        run: |
+          echo "username=okra-ci-admin+${{ env.ENVIRONMENT }}@ogf.local" >> "$GITHUB_OUTPUT"
+          PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
+          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Okra backend
+        working-directory: services/okra-api
+        env:
+          OKRA_DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+          OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
+          OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+        run: |
+          sam build
+          sam deploy \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "DatabaseUrl=$OKRA_DATABASE_URL" \
+              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
+              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+
+      - name: Get Okra stack outputs
+        id: get-outputs
+        run: |
+          OKRA_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" \
+            --output text)
+
+          OKRA_ADMIN_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='AdminApiUrl'].OutputValue" \
+            --output text)
+
+          echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
+          echo "admin-api-url=$OKRA_ADMIN_API_URL" >> $GITHUB_OUTPUT
+
+          echo "Okra API URL: $OKRA_API_URL"
+          echo "Okra Admin API URL: $OKRA_ADMIN_API_URL"
+
   deploy-frontend:
     name: Deploy GRN Frontend
     runs-on: ubuntu-latest
@@ -408,7 +531,7 @@ jobs:
   deployment-summary:
     name: GRN Deployment Summary
     runs-on: ubuntu-latest
-    needs: [deploy-backend, deploy-frontend]
+    needs: [deploy-backend, deploy-okra-backend, deploy-frontend]
     if: always()
 
     steps:
@@ -419,14 +542,16 @@ jobs:
           echo "=========================================="
           echo "Environment: ${{ env.ENVIRONMENT }}"
           echo "Stack Name: ${{ env.STACK_NAME }}"
+          echo "Okra Stack Name: ${{ env.OKRA_STACK_NAME }}"
           echo "Region: ${{ env.AWS_REGION }}"
           echo ""
           echo "Frontend URL (apps/grn): ${{ needs.deploy-backend.outputs.frontend-url }}"
           echo "API URL (services/grn-api): ${{ needs.deploy-backend.outputs.api-url }}"
+          echo "Okra API URL (services/okra-api): ${{ needs.deploy-okra-backend.outputs.api-url }}"
           echo "User Pool ID: ${{ needs.deploy-backend.outputs.user-pool-id }}"
           echo "=========================================="
 
-          if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ]; then
+          if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-okra-backend.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ]; then
             echo "Deployment failed"
             exit 1
           fi

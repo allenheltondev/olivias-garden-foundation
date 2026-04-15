@@ -1,9 +1,9 @@
 version = 0.1
 
 [stage.deploy.parameters]
-stack_name = "okra-stage"
+stack_name = "ogf-okra-staging"
 resolve_s3 = true
-s3_prefix = "okra-stage"
+s3_prefix = "ogf-okra-staging"
 region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
@@ -19,9 +19,9 @@ capabilities = "CAPABILITY_IAM"
 parameter_overrides = "DatabaseUrl=__DATABASE_URL__ CiAdminUsername=__CI_ADMIN_USERNAME__ CiAdminPassword=__CI_ADMIN_PASSWORD__"
 
 [prod.deploy.parameters]
-stack_name = "okra-prod"
+stack_name = "ogf-okra-prod"
 resolve_s3 = true
-s3_prefix = "okra-prod"
+s3_prefix = "ogf-okra-prod"
 region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
