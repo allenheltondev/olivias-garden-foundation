@@ -6,8 +6,13 @@ const mockClient = {
   end: vi.fn()
 };
 
-const mockEnqueuePhotoProcessing = vi.fn();
-const mockResolveOptionalContributor = vi.fn();
+const {
+  mockEnqueuePhotoProcessing,
+  mockResolveOptionalContributor
+} = vi.hoisted(() => ({
+  mockEnqueuePhotoProcessing: vi.fn(),
+  mockResolveOptionalContributor: vi.fn()
+}));
 
 vi.mock('../../scripts/db-client.mjs', () => ({
   createDbClient: vi.fn(() => mockClient)

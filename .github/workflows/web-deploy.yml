@@ -32,7 +32,7 @@ env:
   AWS_REGION: us-east-1
   DEPLOY_ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FOUNDATION_WEB_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
-  OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'okra-prod' || 'okra-stage' }}
+  OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'ogf-okra-prod' || 'ogf-okra-staging' }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:

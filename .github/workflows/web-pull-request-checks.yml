@@ -28,7 +28,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   FOUNDATION_WEB_STACK_NAME: ogf-web-staging
-  OKRA_STACK_NAME: okra-stage
+  OKRA_STACK_NAME: ogf-okra-staging
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
