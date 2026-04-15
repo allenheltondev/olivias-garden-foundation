@@ -126,7 +126,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/okra-api/package-lock.json
 
-      - name: Install okra backend dependencies
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+        - name: Install okra backend dependencies
         working-directory: services/okra-api
         run: npm ci --workspaces=false --ignore-scripts
 
