@@ -119,58 +119,6 @@ jobs:
         with:
           use-installer: true
 
-      - name: Setup Node.js for okra deploy
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: services/okra-api/package-lock.json
-
-      - name: Install esbuild
-        run: npm install -g esbuild
-
-      - name: Install okra backend dependencies
-        working-directory: services/okra-api
-        run: npm ci --workspaces=false --ignore-scripts
-
-      - name: Generate okra CI auth credentials
-        id: okra-ci-auth
-        run: |
-          echo "username=okra-ci-admin+staging@ogf.local" >> "$GITHUB_OUTPUT"
-          PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
-          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy okra backend stack
-        working-directory: services/okra-api
-        env:
-          OKRA_DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
-          OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
-          OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
-        run: |
-          sam build
-          sam deploy \
-            --stack-name "${{ env.OKRA_STACK_NAME }}" \
-            --resolve-s3 \
-            --s3-prefix "${{ env.OKRA_STACK_NAME }}" \
-            --region "${{ env.AWS_REGION }}" \
-            --capabilities CAPABILITY_IAM \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              "DatabaseUrl=$OKRA_DATABASE_URL" \
-              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
-              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
-
-      - name: Read okra stack outputs
-        id: okra-stack
-        run: |
-          OKRA_API_URL=$(aws cloudformation describe-stacks \
-            --stack-name "${{ env.OKRA_STACK_NAME }}" \
-            --region "${{ env.AWS_REGION }}" \
-            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" \
-            --output text)
-          echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
-
       - name: Deploy shared foundation web stack
         env:
           DOMAIN_NAME: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
@@ -229,6 +177,58 @@ jobs:
           echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
           echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
           echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js for okra deploy
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Install okra backend dependencies
+        working-directory: services/okra-api
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Generate okra CI auth credentials
+        id: okra-ci-auth
+        run: |
+          echo "username=okra-ci-admin+staging@ogf.local" >> "$GITHUB_OUTPUT"
+          PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
+          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy okra backend stack
+        working-directory: services/okra-api
+        env:
+          OKRA_DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
+          OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+        run: |
+          sam build
+          sam deploy \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "DatabaseUrl=$OKRA_DATABASE_URL" \
+              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
+              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+
+      - name: Read okra stack outputs
+        id: okra-stack
+        run: |
+          OKRA_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" \
+            --output text)
+          echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
