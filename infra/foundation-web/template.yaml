@@ -49,7 +49,7 @@ Resources:
             NoncurrentVersionExpirationInDays: 30
       Tags:
         - Key: App
-          Value: foundation-web
+          Value: ogf-web
         - Key: Environment
           Value: !Ref EnvironmentName
 
