@@ -613,6 +613,9 @@ jobs:
     environment:
       name: staging
       url: ${{ steps.get-outputs.outputs.api-url }}
+    env:
+      AWS_REGION: us-east-1
+      OKRA_STACK_NAME: ogf-okra-staging
     outputs:
       api-url: ${{ steps.get-outputs.outputs.api-url }}
       admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
