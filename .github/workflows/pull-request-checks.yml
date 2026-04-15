@@ -643,6 +643,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/okra-api/package-lock.json
 
+      - name: Install esbuild globally for SAM
+        run: npm install -g esbuild
+
       - name: Install Okra backend dependencies
         working-directory: services/okra-api
         run: npm ci --workspaces=false --ignore-scripts
