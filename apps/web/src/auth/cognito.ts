@@ -359,6 +359,6 @@ export async function restoreAuthSession(config: CognitoConfig): Promise<AuthSes
   }
 }
 
-export function signOut(config: CognitoConfig) {
+export function signOut(_config: CognitoConfig) {
   clearStoredSession();
 }
