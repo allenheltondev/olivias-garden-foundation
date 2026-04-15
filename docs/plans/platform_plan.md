@@ -40,7 +40,6 @@ Single Turborepo containing all frontend apps and shared packages. All apps use 
 
 | apps/web | oliviasgarden.org — Next.js or Vite SPA for foundation home |
 | :---- | :---- |
-| **apps/okra** | Okra Project — migrated and rebuilt clean inside monorepo |
 | **apps/grn** | Good Roots Network — migrated frontend, shared auth \+ UI |
 | **apps/admin** | Admin UI — internal ops, role-gated, Cognito admin claim |
 | **packages/ui** | Shared component library — Olivia's design system, brand tokens |
@@ -158,9 +157,9 @@ Stand up the core platform. Everything else plugs into what gets built here.
 
 Bring the Okra Project home. Rebuild it clean inside the monorepo on shared auth and shared UI. This is the most emotionally central piece of the platform.
 
-**Okra SPA (apps/okra)**
+**Okra Experience (apps/web)**
 
-* Rebuild existing SPA inside monorepo — React 19 \+ Vite
+* Build the public Okra experience into the foundation web app on shared auth and shared UI
 
 * World map with pins showing active growers
 

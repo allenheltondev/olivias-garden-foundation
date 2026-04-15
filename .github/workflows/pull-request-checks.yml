@@ -35,7 +35,6 @@ jobs:
       grn_backend: ${{ steps.filter.outputs.grn_backend }}
       grn_frontend: ${{ steps.filter.outputs.grn_frontend }}
       okra_backend: ${{ steps.filter.outputs.okra_backend }}
-      okra_frontend: ${{ steps.filter.outputs.okra_frontend }}
 
     steps:
       - name: Checkout code
@@ -63,8 +62,6 @@ jobs:
               - 'packages/**'
             okra_backend:
               - 'services/okra-api/**'
-            okra_frontend:
-              - 'apps/okra/**'
 
   backend-format:
     name: GRN Backend Format Check
@@ -447,110 +444,6 @@ jobs:
         working-directory: services/grn-api
         run: npm test
 
-  okra-frontend-lint:
-    name: Okra Frontend Lint
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/okra
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: apps/okra/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Run ESLint
-        run: npm run lint
-
-  okra-frontend-typecheck:
-    name: Okra Frontend Type Check
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/okra
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: apps/okra/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Type check
-        run: npm run typecheck
-
-  okra-frontend-tests:
-    name: Okra Frontend Tests
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/okra
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: apps/okra/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Run tests
-        run: npm test
-
-  okra-frontend-build:
-    name: Okra Frontend Build
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_frontend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/okra
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: apps/okra/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Build check
-        run: npm run build
-
   okra-backend-lint:
     name: Okra Backend Lint
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
@@ -676,10 +569,6 @@ jobs:
       - frontend-unit-tests
       - frontend-build
       - frontend-performance-budget
-      - okra-frontend-lint
-      - okra-frontend-typecheck
-      - okra-frontend-tests
-      - okra-frontend-build
       - okra-backend-lint
       - okra-backend-typecheck
       - okra-backend-tests
@@ -709,10 +598,6 @@ jobs:
           check_result "frontend-unit-tests" "${{ needs.frontend-unit-tests.result }}"
           check_result "frontend-build" "${{ needs.frontend-build.result }}"
           check_result "frontend-performance-budget" "${{ needs.frontend-performance-budget.result }}"
-          check_result "okra-frontend-lint" "${{ needs.okra-frontend-lint.result }}"
-          check_result "okra-frontend-typecheck" "${{ needs.okra-frontend-typecheck.result }}"
-          check_result "okra-frontend-tests" "${{ needs.okra-frontend-tests.result }}"
-          check_result "okra-frontend-build" "${{ needs.okra-frontend-build.result }}"
           check_result "okra-backend-lint" "${{ needs.okra-backend-lint.result }}"
           check_result "okra-backend-typecheck" "${{ needs.okra-backend-typecheck.result }}"
           check_result "okra-backend-tests" "${{ needs.okra-backend-tests.result }}"
@@ -821,6 +706,29 @@ jobs:
         run: node scripts/deploy-and-configure.mjs --region ${{ env.AWS_REGION }} --stack-name ${{ env.STACK_NAME }} --ci
         env:
           SAM_CLI_TELEMETRY: "0"
+
+      - name: Attach post-confirmation trigger to foundation user pool
+        run: |
+          SHARED_USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ogf-web-staging \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+
+          FUNCTION_NAME=$(aws cloudformation describe-stack-resource \
+            --stack-name ${{ env.STACK_NAME }} \
+            --logical-resource-id PostConfirmationFunction \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text)
+
+          FUNCTION_ARN=$(aws lambda get-function \
+            --function-name "$FUNCTION_NAME" \
+            --query 'Configuration.FunctionArn' \
+            --output text)
+
+          aws cognito-idp update-user-pool \
+            --user-pool-id "$SHARED_USER_POOL_ID" \
+            --lambda-config "PostConfirmation=$FUNCTION_ARN"
 
       - name: Get stack outputs
         id: get-outputs

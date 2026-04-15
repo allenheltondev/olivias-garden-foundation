@@ -12,7 +12,8 @@
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "deploy:configure": "node scripts/deploy-and-configure.mjs"
+    "deploy:configure": "node scripts/deploy-and-configure.mjs",
+    "web:configure": "node scripts/configure-foundation-web.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.8"

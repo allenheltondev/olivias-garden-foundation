@@ -32,6 +32,7 @@ env:
   AWS_REGION: us-east-1
   DEPLOY_ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FOUNDATION_WEB_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'okra-prod' || 'okra-stage' }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -90,6 +91,16 @@ jobs:
           role-session-name: GitHubActions-FoundationWeb-Deploy
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Read okra stack outputs
+        id: okra-stack
+        run: |
+          OKRA_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" \
+            --output text)
+          echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
+
       - name: Deploy shared foundation web stack
         env:
           DOMAIN_NAME: ${{ env.DEPLOY_ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
@@ -127,9 +138,27 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='WebFrontendDistributionId'].OutputValue" \
             --output text)
 
+          USER_POOL_ID=$(aws cloudformation list-exports \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Exports[?Name=='OGF-UserPoolId'].Value | [0]" \
+            --output text)
+
+          USER_POOL_CLIENT_ID=$(aws cloudformation list-exports \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Exports[?Name=='OGF-UserPoolClientId'].Value | [0]" \
+            --output text)
+
+          USER_POOL_DOMAIN=$(aws cloudformation list-exports \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Exports[?Name=='OGF-UserPoolDomain'].Value | [0]" \
+            --output text)
+
           echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -142,6 +171,11 @@ jobs:
         run: npm ci
 
       - name: Build foundation web app for deployment
+        env:
+          VITE_OKRA_API_BASE: ${{ steps.okra-stack.outputs.api-url }}
+          VITE_AUTH_USER_POOL_ID: ${{ steps.stack-outputs.outputs.user-pool-id }}
+          VITE_AUTH_USER_POOL_CLIENT_ID: ${{ steps.stack-outputs.outputs.user-pool-client-id }}
+          VITE_AUTH_USER_POOL_DOMAIN: ${{ steps.stack-outputs.outputs.user-pool-domain }}
         run: npm --workspace @olivias/web run build
 
       - name: Deploy frontend assets to S3

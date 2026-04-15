@@ -29,7 +29,6 @@ Parameters:
       - prod
       - pr
     Description: Deployment environment name used for environment-specific resources
-
 Conditions:
   DeployCustomDomain: !Not [!Equals [!Ref DomainHostedZoneId, ""]]
   DeployCiAuthSeedFunction: !Not [!Equals [!Ref EnvironmentName, prod]]
@@ -62,147 +61,6 @@ Metadata:
       - '@aws-sdk/*'
 
 Resources:
-  UserPool:
-    Type: AWS::Cognito::UserPool
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      UserPoolName: !Sub "${AWS::StackName}-admin-users"
-      UsernameAttributes:
-        - email
-      AutoVerifiedAttributes:
-        - email
-      LambdaConfig:
-        PostConfirmation: !GetAtt PostConfirmationFunction.Arn
-      UserAttributeUpdateSettings:
-        AttributesRequireVerificationBeforeUpdate:
-          - email
-      AccountRecoverySetting:
-        RecoveryMechanisms:
-          - Name: verified_email
-            Priority: 1
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireUppercase: true
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireSymbols: false
-          TemporaryPasswordValidityDays: 7
-      Schema:
-        - Name: email
-          AttributeDataType: String
-          Required: true
-          Mutable: true
-
-  UserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      UserPoolId: !Ref UserPool
-      ClientName: !Sub "${AWS::StackName}-admin-client"
-      AllowedOAuthFlows:
-        - code
-      AllowedOAuthScopes:
-        - email
-        - openid
-        - profile
-      ExplicitAuthFlows:
-        - ALLOW_ADMIN_USER_PASSWORD_AUTH
-        - ALLOW_USER_PASSWORD_AUTH
-        - ALLOW_USER_SRP_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_CUSTOM_AUTH
-        - ALLOW_USER_AUTH
-      AuthSessionValidity: 3
-      EnableTokenRevocation: true
-      PreventUserExistenceErrors: ENABLED
-      TokenValidityUnits:
-        AccessToken: hours
-        IdToken: hours
-        RefreshToken: days
-      AccessTokenValidity: 24
-      IdTokenValidity: 24
-      RefreshTokenValidity: 30
-      AllowedOAuthFlowsUserPoolClient: true
-      CallbackURLs:
-        - !Sub "${DomainProtocol}://${DomainName}"
-        - !Sub "${DomainProtocol}://${DomainName}/oauth2/idpresponse"
-      LogoutURLs:
-        - !Sub "${DomainProtocol}://${DomainName}/logout"
-      SupportedIdentityProviders:
-        - COGNITO
-
-  FreeTierGroup:
-    Type: AWS::Cognito::UserPoolGroup
-    Properties:
-      GroupName: free-tier
-      UserPoolId: !Ref UserPool
-      Description: Free tier users with basic features
-      Precedence: 3
-
-  SupporterTierGroup:
-    Type: AWS::Cognito::UserPoolGroup
-    Properties:
-      GroupName: supporter-tier
-      UserPoolId: !Ref UserPool
-      Description: Supporter tier users with enhanced features
-      Precedence: 2
-
-  ProTierGroup:
-    Type: AWS::Cognito::UserPoolGroup
-    Properties:
-      GroupName: pro-tier
-      UserPoolId: !Ref UserPool
-      Description: Pro tier users with pro features
-      Precedence: 1
-
-  UserPoolDomain:
-    Type: AWS::Cognito::UserPoolDomain
-    Properties:
-      UserPoolId: !Ref UserPool
-      Domain: !Sub "${AWS::StackName}-auth-${AWS::AccountId}"
-
-  IdentityPool:
-    Type: AWS::Cognito::IdentityPool
-    Properties:
-      IdentityPoolName: !Sub "${AWS::StackName}-identity-pool"
-      AllowUnauthenticatedIdentities: false
-      CognitoIdentityProviders:
-        - ClientId: !Ref UserPoolClient
-          ProviderName: !GetAtt UserPool.ProviderName
-
-  CognitoAuthenticatedRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: cognito-identity.amazonaws.com
-            Action: sts:AssumeRoleWithWebIdentity
-            Condition:
-              StringEquals:
-                "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
-              "ForAnyValue:StringLike":
-                "cognito-identity.amazonaws.com:amr": authenticated
-      Policies:
-        - PolicyName: CognitoAuthenticatedPolicy
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - execute-api:Invoke
-                Resource: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*"
-
-  IdentityPoolRoleAttachment:
-    Type: AWS::Cognito::IdentityPoolRoleAttachment
-    Properties:
-      IdentityPoolId: !Ref IdentityPool
-      Roles:
-        authenticated: !GetAtt CognitoAuthenticatedRole.Arn
-
   # Database connection is managed externally via Neon Postgres
   # DATABASE_URL is provided as an environment variable to Lambda functions
 
@@ -376,12 +234,14 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:AdminListGroupsForUser
-              Resource: !GetAtt UserPool.Arn
+              Resource: !Sub
+                - "arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+                - UserPoolId: !ImportValue OGF-UserPoolId
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
-          USER_POOL_ID: !Ref UserPool
-          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          USER_POOL_ID: !ImportValue OGF-UserPoolId
+          USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
 
   PostConfirmationFunction:
     Type: AWS::Serverless::Function
@@ -407,7 +267,9 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref PostConfirmationFunction
       Principal: cognito-idp.amazonaws.com
-      SourceArn: !GetAtt UserPool.Arn
+      SourceArn: !Sub
+        - "arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+        - UserPoolId: !ImportValue OGF-UserPoolId
 
   CiAuthSeedUsersFunction:
     Type: AWS::Serverless::Function
@@ -436,11 +298,13 @@ Resources:
                 - cognito-idp:AdminRemoveUserFromGroup
                 - cognito-idp:AdminSetUserPassword
                 - cognito-idp:AdminInitiateAuth
-              Resource: !GetAtt UserPool.Arn
+              Resource: !Sub
+                - "arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
+                - UserPoolId: !ImportValue OGF-UserPoolId
       Environment:
         Variables:
-          USER_POOL_ID: !Ref UserPool
-          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          USER_POOL_ID: !ImportValue OGF-UserPoolId
+          USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
           DATABASE_URL: !Ref DatabaseUrl
 
   ApiFunction:
@@ -593,20 +457,20 @@ Outputs:
       Name: !Sub "${AWS::StackName}-EventBusName"
 
   UserPoolId:
-    Description: Cognito User Pool ID
-    Value: !Ref UserPool
+    Description: Shared Cognito User Pool ID used by GRN
+    Value: !ImportValue OGF-UserPoolId
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolId"
 
   UserPoolClientId:
-    Description: Cognito User Pool Client ID
-    Value: !Ref UserPoolClient
+    Description: Shared Cognito User Pool Client ID used by GRN
+    Value: !ImportValue OGF-UserPoolClientId
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolClientId"
 
   UserPoolDomain:
-    Description: Cognito User Pool Domain
-    Value: !Sub "${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com"
+    Description: Shared Cognito User Pool Domain used by GRN
+    Value: !ImportValue OGF-UserPoolDomain
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolDomain"
 

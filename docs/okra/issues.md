@@ -31,12 +31,11 @@
 
 ---
 
-## Issue 3 - S3 buckets + CloudFront + static hosting
+## Issue 3 - S3 buckets + CloudFront media hosting
 
-**Title:** `[Infra] Provision frontend hosting and media buckets`
+**Title:** `[Infra] Provision media bucket and CDN`
 
 **Description:**
-- Frontend static bucket + CloudFront distribution.
 - Private media bucket for originals/normalized photos.
 - Bucket policies/CORS for pre-signed uploads.
 

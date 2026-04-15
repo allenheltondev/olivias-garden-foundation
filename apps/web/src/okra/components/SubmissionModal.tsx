@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import type { AuthSession } from '../../auth/session';
 import { usePhotoUploader } from '../hooks/usePhotoUploader';
 import { useLocationPicker } from '../hooks/useLocationPicker';
 import { useSubmissionForm } from '../hooks/useSubmissionForm';
@@ -12,22 +13,35 @@ import './SubmissionModal.css';
 export interface SubmissionModalProps {
   open: boolean;
   onClose: () => void;
+  authEnabled?: boolean;
+  authSession?: AuthSession | null;
+  onLogin?: () => void;
+  onSignup?: () => void;
 }
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function SubmissionModal({ open, onClose }: SubmissionModalProps) {
+export function SubmissionModal({
+  open,
+  onClose,
+  authEnabled = false,
+  authSession = null,
+  onLogin,
+  onSignup,
+}: SubmissionModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const photoUploader = usePhotoUploader();
+  const photoUploader = usePhotoUploader(authSession?.accessToken);
   const locationPicker = useLocationPicker();
   const form = useSubmissionForm(
     photoUploader.uploadedPhotoIds,
     photoUploader.photos.some((photo) => photo.state === 'uploading'),
     locationPicker.location,
     photoUploader.photos.some((photo) => photo.state === 'failed'),
+    authSession?.accessToken,
+    authSession?.user.name ?? authSession?.user.email ?? undefined,
   );
 
   const photosComplete = photoUploader.hasUploaded;
@@ -160,6 +174,34 @@ export function SubmissionModal({ open, onClose }: SubmissionModalProps) {
             </div>
           ) : (
             <>
+              {authEnabled ? (
+                <section className="submission-modal__auth">
+                  {authSession ? (
+                    <>
+                      <p className="submission-modal__auth-eyebrow">Signed in</p>
+                      <p className="submission-modal__auth-title">
+                        This submission can stay connected to {authSession.user.name ?? authSession.user.email ?? 'your Good Roots Network account'}.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="submission-modal__auth-eyebrow">Anonymous is still fine</p>
+                      <p className="submission-modal__auth-title">
+                        Log in only if you want us to remember your okra submissions across Good Roots Network.
+                      </p>
+                      <div className="submission-modal__auth-actions">
+                        <button type="button" className="submission-modal__auth-button" onClick={onLogin}>
+                          Log in
+                        </button>
+                        <button type="button" className="submission-modal__auth-button submission-modal__auth-button--primary" onClick={onSignup}>
+                          Sign up
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </section>
+              ) : null}
+
               <section className="submission-modal__section">
                 <h3 className="submission-modal__section-heading">
                   Photos{' '}

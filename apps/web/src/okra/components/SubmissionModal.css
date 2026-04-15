@@ -63,6 +63,54 @@
   margin-bottom: 1.5rem;
 }
 
+.submission-modal__auth {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.12);
+  border-radius: 0.9rem;
+  background: rgba(247, 244, 235, 0.92);
+}
+
+.submission-modal__auth-eyebrow {
+  margin: 0;
+  color: var(--color-primary-600);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.submission-modal__auth-title {
+  margin: 0;
+  color: var(--color-neutral-800);
+  line-height: 1.5;
+}
+
+.submission-modal__auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding-top: 0.2rem;
+}
+
+.submission-modal__auth-button {
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.14);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-neutral-800);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.submission-modal__auth-button--primary {
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: #fff;
+}
+
 .submission-modal__section--submit {
   margin-bottom: 0;
 }

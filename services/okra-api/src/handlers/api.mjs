@@ -8,7 +8,12 @@ import {
   photoCreateSchema
 } from '../services/photos.mjs';
 import { enqueuePhotoProcessing } from '../services/photo-processing-queue.mjs';
-import { insertPendingSubmissionWithPhotos, submissionSchema } from '../services/submissions.mjs';
+import { resolveOptionalContributor } from '../services/auth.mjs';
+import {
+  enrichSubmissionPayload,
+  insertPendingSubmissionWithPhotos,
+  submissionSchema
+} from '../services/submissions.mjs';
 import { errorResponse } from '../services/pagination.mjs';
 import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
 
@@ -66,7 +71,7 @@ app.post('/photos', async ({ req, event }) => {
   }
 });
 
-app.post('/submissions', async ({ req }) => {
+app.post('/submissions', async ({ req, event }) => {
   const payload = await req.json();
 
   try {
@@ -87,11 +92,19 @@ app.post('/submissions', async ({ req }) => {
     throw error;
   }
 
+  const authResult = await resolveOptionalContributor(event);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
   const client = await createDbClient();
   await client.connect();
 
   try {
-    const created = await insertPendingSubmissionWithPhotos(client, payload);
+    const created = await insertPendingSubmissionWithPhotos(
+      client,
+      enrichSubmissionPayload(payload, authResult.contributor)
+    );
 
     await enqueuePhotoProcessing(created.claimedPhotoIds);
 

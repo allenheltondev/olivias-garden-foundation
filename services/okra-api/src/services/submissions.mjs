@@ -25,6 +25,29 @@ export const submissionSchema = {
   additionalProperties: false
 };
 
+function firstDefinedValue(...values) {
+  for (const value of values) {
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+export function enrichSubmissionPayload(payload, contributor) {
+  if (!contributor) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    contributorName: firstDefinedValue(payload.contributorName, contributor.name, contributor.email),
+    contributorEmail: firstDefinedValue(payload.contributorEmail, contributor.email),
+    contributorCognitoSub: firstDefinedValue(payload.contributorCognitoSub, contributor.sub)
+  };
+}
+
 export async function insertPendingSubmissionWithPhotos(client, payload) {
   await client.query('begin');
 
@@ -34,18 +57,20 @@ export async function insertPendingSubmissionWithPhotos(client, payload) {
         insert into submissions (
           contributor_name,
           contributor_email,
+          contributor_cognito_sub,
           story_text,
           raw_location_text,
           privacy_mode,
           display_lat,
           display_lng,
           status
-        ) values ($1, $2, $3, $4, $5, $6, $7, 'pending_review')
+        ) values ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_review')
         returning id, status, created_at
       `,
       [
         payload.contributorName ?? null,
         payload.contributorEmail ?? null,
+        payload.contributorCognitoSub ?? null,
         payload.storyText ?? null,
         payload.rawLocationText,
         payload.privacyMode ?? 'city',

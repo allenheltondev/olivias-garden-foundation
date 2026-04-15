@@ -23,6 +23,7 @@ env:
   AWS_REGION: us-east-1
   ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   STACK_NAME: grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  FOUNDATION_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -241,6 +242,29 @@ jobs:
             --ci
         env:
           SAM_CLI_TELEMETRY: "0"
+
+      - name: Attach post-confirmation trigger to foundation user pool
+        run: |
+          SHARED_USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.FOUNDATION_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+
+          FUNCTION_NAME=$(aws cloudformation describe-stack-resource \
+            --stack-name ${{ env.STACK_NAME }} \
+            --logical-resource-id PostConfirmationFunction \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text)
+
+          FUNCTION_ARN=$(aws lambda get-function \
+            --function-name "$FUNCTION_NAME" \
+            --query 'Configuration.FunctionArn' \
+            --output text)
+
+          aws cognito-idp update-user-pool \
+            --user-pool-id "$SHARED_USER_POOL_ID" \
+            --lambda-config "PostConfirmation=$FUNCTION_ARN"
 
       - name: Get stack outputs
         id: get-outputs

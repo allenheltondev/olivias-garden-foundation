@@ -18,6 +18,27 @@ npm run deploy:configure -- --config-only --stack-name grn-staging
 
 For full deployment details, see [docs/setup/DEPLOYMENT.md](../docs/setup/DEPLOYMENT.md).
 
+### `configure-foundation-web.mjs`
+
+Deploys the default local dev foundation, GRN, and okra stacks, then writes `apps/web/.env.local`.
+
+Use it from the repo root:
+
+```bash
+npm run web:configure
+npm run web:configure -- --profile sandbox
+npm run web:configure -- --config-only --environment dev
+```
+
+Defaults:
+- foundation stack: `ogf-web-dev`
+- GRN stack: `ogf-grn-dev`
+- okra stack: `ogf-okra-dev`
+
+The script also tries to reuse existing local database configuration:
+- `GRN_DATABASE_URL`, then `DATABASE_URL`, then `services/grn-api/samconfig.toml`
+- `OKRA_DATABASE_URL`, then `DATABASE_URL`, then `services/okra-api/samconfig.toml`, then the GRN URL
+
 ## Catalog
 
 ### `catalog/`

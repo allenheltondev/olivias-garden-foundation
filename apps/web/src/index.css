@@ -83,6 +83,13 @@ a {
   padding: 1rem 0;
 }
 
+.site-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .site-brand,
 .site-nav__link,
 .site-footer__link {
@@ -116,6 +123,58 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.site-auth {
+  display: flex;
+  align-items: center;
+}
+
+.site-auth__login,
+.site-auth__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.site-auth__login {
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.14);
+  background: rgba(255, 252, 246, 0.96);
+  color: var(--site-branch);
+  font-weight: 700;
+}
+
+.site-auth__login:hover,
+.site-auth__avatar:hover {
+  transform: translateY(-1px);
+}
+
+.site-auth__login:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.site-auth__avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid rgba(76, 52, 38, 0.16);
+  background: linear-gradient(180deg, rgba(90, 116, 71, 0.95), rgba(76, 52, 38, 0.95));
+  color: #fffaf1;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site-auth__error {
+  display: none;
 }
 
 .site-nav__link,
@@ -153,6 +212,11 @@ a {
   gap: 1rem;
   padding: 1rem 0 2rem;
   align-content: start;
+}
+
+.site-main--login {
+  width: 100%;
+  padding: 0;
 }
 
 .page-hero {
@@ -892,6 +956,326 @@ a {
   color: var(--site-ink);
 }
 
+.login-page {
+  display: grid;
+  min-height: calc(100vh - 5.5rem);
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+.login-page__backdrop {
+  width: 100%;
+  min-height: calc(100vh - 5.5rem);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(38, 23, 15, 0.18), rgba(38, 23, 15, 0.58)),
+    url('/images/home/sunset-garden.jpg') center/cover no-repeat;
+}
+
+.login-page__eyebrow {
+  margin: 0;
+  color: var(--site-leaf);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.login-page__card {
+  width: min(34rem, calc(100% - 2rem));
+  display: grid;
+  gap: 1.15rem;
+  padding: 1.6rem;
+  border: 1px solid rgba(255, 250, 241, 0.2);
+  border-radius: 1.5rem;
+  background: rgba(255, 250, 241, 0.88);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 22px 48px rgba(38, 23, 15, 0.22);
+}
+
+.login-page__title {
+  margin: 0;
+  font-family: var(--site-display);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--site-branch);
+}
+
+.login-page__body,
+.login-page__account-body,
+.login-page__note {
+  margin: 0;
+  color: var(--site-muted);
+  line-height: 1.75;
+}
+
+.login-page__actions,
+.login-page__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.login-page__form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.login-page__field-row {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.login-page__password-block {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.login-page__field {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.login-page__field span {
+  color: var(--site-branch);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.login-page__field input {
+  width: 100%;
+  min-height: 3.2rem;
+  border: 1px solid rgba(76, 52, 38, 0.16);
+  border-radius: 1rem;
+  background: rgba(255, 252, 246, 0.98);
+  padding: 0.9rem 1rem;
+  color: var(--site-ink);
+}
+
+.login-page__field input:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.login-page__field input::placeholder {
+  color: color-mix(in srgb, var(--site-muted) 76%, white 24%);
+}
+
+.verification-code-input {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.verification-code-input__slot {
+  width: 100%;
+  min-height: 3.2rem;
+  border: 1px solid rgba(76, 52, 38, 0.16);
+  border-radius: 1rem;
+  background: rgba(255, 252, 246, 0.98);
+  padding: 0.75rem 0.25rem;
+  color: var(--site-ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.verification-code-input__slot:focus {
+  outline: 2px solid rgba(90, 116, 71, 0.45);
+  outline-offset: 1px;
+}
+
+.login-page__hint {
+  margin: -0.2rem 0 0;
+  color: var(--site-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.login-page__benefits {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.1);
+  border-radius: 1rem;
+  background: rgba(255, 252, 246, 0.72);
+}
+
+.login-page__benefits-title {
+  margin: 0;
+  color: var(--site-branch);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.login-page__benefits-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--site-muted);
+  line-height: 1.65;
+}
+
+.login-page__checkbox {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.2rem 0;
+  color: var(--site-muted);
+  line-height: 1.55;
+}
+
+.login-page__checkbox input {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.18rem;
+}
+
+.login-page__switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 1px solid rgba(76, 52, 38, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.72);
+}
+
+.login-page__switch-option {
+  min-height: 2.7rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--site-muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-page__switch-option.is-active {
+  background: var(--site-branch);
+  color: #fffaf1;
+}
+
+.login-page__primary,
+.login-page__secondary,
+.login-page__link {
+  min-height: 3rem;
+  padding: 0.8rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.login-page__primary {
+  background: var(--site-leaf);
+  color: #fffaf1;
+}
+
+.login-page__secondary,
+.login-page__link {
+  border: 1px solid rgba(76, 52, 38, 0.14);
+  background: rgba(255, 252, 246, 0.96);
+  color: var(--site-branch);
+}
+
+.login-page__link--inline {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--site-muted) 92%, white 8%);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-page__meta-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.login-page__link--inline:hover {
+  color: var(--site-branch);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.login-page__primary:disabled,
+.login-page__secondary:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.login-page__account {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.1);
+  border-radius: 1.25rem;
+  background: rgba(255, 250, 241, 0.78);
+}
+
+.login-page__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(90, 116, 71, 0.95), rgba(76, 52, 38, 0.95));
+  color: #fffaf1;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-page__account-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.login-page__account-eyebrow {
+  margin: 0;
+  color: var(--site-leaf);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.login-page__account-name {
+  margin: 0;
+  color: var(--site-branch);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.login-page__error {
+  margin: 0;
+  color: #a43e1b;
+  line-height: 1.6;
+}
+
+.login-page__success {
+  margin: 0;
+  color: #335a2f;
+  line-height: 1.6;
+}
+
+.login-page__link--danger {
+  color: #8b2e17;
+}
+
 .site-footer {
   margin-top: auto;
   border-top: 1px solid rgba(255, 250, 241, 0.14);
@@ -938,6 +1322,19 @@ a {
   justify-self: start;
 }
 
+.site-footer__icon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  color: rgba(255, 250, 241, 0.9);
+}
+
+.site-footer__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
 .site-footer__link {
   color: rgba(255, 250, 241, 0.84);
 }
@@ -949,9 +1346,31 @@ a {
 
 @media (min-width: 760px) {
   .site-header__inner {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .site-header__actions {
+    justify-self: end;
+  }
+
+  .site-nav {
+    justify-content: flex-end;
+  }
+
+  .login-page__backdrop {
+    min-height: calc(100vh - 5rem);
+  }
+
+  .login-page__card {
+    justify-self: center;
+    margin-right: 0;
+  }
+
+  .login-page__field-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .page-hero {

@@ -38,6 +38,7 @@ create table if not exists submissions (
   -- contributor-provided fields
   contributor_name text,
   contributor_email text,
+  contributor_cognito_sub text,
   story_text text,
   raw_location_text text,
   privacy_mode privacy_mode not null default 'city',
@@ -76,6 +77,10 @@ create index if not exists idx_submissions_approved
 
 create index if not exists idx_submissions_status_created_id
   on submissions(status, created_at asc, id asc);
+
+create index if not exists idx_submissions_contributor_cognito_sub_created
+  on submissions(contributor_cognito_sub, created_at desc)
+  where contributor_cognito_sub is not null;
 
 create index if not exists idx_submissions_approved_country
   on submissions(status, country)

@@ -1,0 +1,9 @@
+interface ImportMetaEnv {
+  readonly VITE_AUTH_USER_POOL_ID?: string;
+  readonly VITE_AUTH_USER_POOL_CLIENT_ID?: string;
+  readonly VITE_AUTH_USER_POOL_DOMAIN?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
