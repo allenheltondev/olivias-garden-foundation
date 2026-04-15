@@ -162,16 +162,18 @@ jobs:
           DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
           DOMAIN_HOSTED_ZONE_ID: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD || vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
         run: |
+          PARAM_OVERRIDES=("EnvironmentName=${{ env.ENVIRONMENT }}")
+          if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+
           sam deploy \
             --template-file infra/foundation-web/template.yaml \
             --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
             --region "${{ env.AWS_REGION }}" \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              EnvironmentName="${{ env.ENVIRONMENT }}" \
-              DomainName="$DOMAIN_NAME" \
-              DomainHostedZoneId="$DOMAIN_HOSTED_ZONE_ID"
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
   okra-lint-and-test:
     name: Okra Lint & Test
