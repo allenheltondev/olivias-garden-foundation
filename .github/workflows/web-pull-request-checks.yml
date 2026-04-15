@@ -1,0 +1,254 @@
+name: Foundation Web PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - 'apps/web/**'
+      - 'packages/ui/**'
+      - 'infra/foundation-web/**'
+      - '.github/workflows/web-*.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'turbo.json'
+      - 'tsconfig.base.json'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+  FOUNDATION_WEB_STACK_NAME: foundation-web-staging
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  template-validate:
+    name: Foundation Web Template Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+
+      - name: Validate root template
+        run: cfn-lint infra/foundation-web/template.yaml
+
+  web-typecheck:
+    name: Foundation Web Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npm --workspace @olivias/web run typecheck
+
+  web-build:
+    name: Foundation Web Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build foundation web app
+        run: npm --workspace @olivias/web run build
+
+  deploy-staging:
+    name: Foundation Web Staging Deploy
+    runs-on: ubuntu-latest
+    needs: [template-validate, web-typecheck, web-build]
+    if: github.event.pull_request.head.repo.fork == false
+    outputs:
+      frontend-url: ${{ steps.stack-outputs.outputs.frontend-url }}
+      frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}
+      cloudfront-distribution-id: ${{ steps.stack-outputs.outputs.cloudfront-distribution-id }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy shared foundation web stack
+        env:
+          DOMAIN_NAME: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+          DOMAIN_HOSTED_ZONE_ID: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/foundation-web/template.yaml \
+            --stack-name "${{ env.FOUNDATION_WEB_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              EnvironmentName=staging \
+              DomainName="$DOMAIN_NAME" \
+              DomainHostedZoneId="$DOMAIN_HOSTED_ZONE_ID"
+
+      - name: Read stack outputs
+        id: stack-outputs
+        run: |
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_WEB_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text)
+
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_WEB_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendBucketName'].OutputValue" \
+            --output text)
+
+          CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_WEB_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendDistributionId'].OutputValue" \
+            --output text)
+
+          echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
+          echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build foundation web app for staging
+        run: npm --workspace @olivias/web run build
+
+      - name: Deploy frontend assets to S3
+        run: |
+          aws s3 sync apps/web/dist/ "s3://${{ steps.stack-outputs.outputs.frontend-bucket }}/" \
+            --region "${{ env.AWS_REGION }}" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "manifest.json"
+
+          aws s3 cp apps/web/dist/index.html "s3://${{ steps.stack-outputs.outputs.frontend-bucket }}/index.html" \
+            --region "${{ env.AWS_REGION }}" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+          if [ -f "apps/web/dist/manifest.json" ]; then
+            aws s3 cp apps/web/dist/manifest.json "s3://${{ steps.stack-outputs.outputs.frontend-bucket }}/manifest.json" \
+              --region "${{ env.AWS_REGION }}" \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "application/json"
+          fi
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID="${{ steps.stack-outputs.outputs.cloudfront-distribution-id }}"
+          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+          fi
+
+  comment-staging:
+    name: Comment Foundation Web Staging URL
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: always() && needs.deploy-staging.result == 'success'
+
+    steps:
+      - name: Comment on pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Foundation Web Staging Deployment
+
+            **Stack:** \`${process.env.STACK_NAME}\`
+            **Frontend URL:** ${{ needs.deploy-staging.outputs.frontend-url }}
+
+            This PR updated the shared foundation web staging environment.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+        env:
+          STACK_NAME: ${{ env.FOUNDATION_WEB_STACK_NAME }}
+
+  ci-summary:
+    name: Foundation Web CI Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - template-validate
+      - web-typecheck
+      - web-build
+      - deploy-staging
+
+    steps:
+      - name: Check workflow results
+        run: |
+          check_result() {
+            local job_name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$job_name failed with result: $result"
+              exit 1
+            fi
+          }
+
+          check_result "template-validate" "${{ needs.template-validate.result }}"
+          check_result "web-typecheck" "${{ needs.web-typecheck.result }}"
+          check_result "web-build" "${{ needs.web-build.result }}"
+          check_result "deploy-staging" "${{ needs.deploy-staging.result }}"
+
+          echo "Foundation web PR checks passed"

@@ -1,4 +1,4 @@
-name: Pull Request Checks
+name: Repository Pull Request Checks
 
 on:
   pull_request:
@@ -67,7 +67,7 @@ jobs:
               - 'apps/okra/**'
 
   backend-format:
-    name: Backend Format Check
+    name: GRN Backend Format Check
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -103,7 +103,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   backend-lint:
-    name: Backend Clippy
+    name: GRN Backend Clippy
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -139,7 +139,7 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
   backend-build:
-    name: Backend Build Check
+    name: GRN Backend Build Check
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -174,7 +174,7 @@ jobs:
         run: cargo check --all-targets --all-features
 
   backend-unit-tests:
-    name: Backend Unit Tests
+    name: GRN Backend Unit Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -231,7 +231,7 @@ jobs:
         run: cargo test --bins --all-features
 
   backend-integration-tests:
-    name: Backend Integration Tests
+    name: GRN Backend Integration Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -288,7 +288,7 @@ jobs:
         run: cargo test --test integration_test
 
   frontend-lint:
-    name: Frontend Lint
+    name: GRN Frontend Lint
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -314,7 +314,7 @@ jobs:
         run: npm run lint
 
   frontend-typecheck:
-    name: Frontend Type Check
+    name: GRN Frontend Type Check
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -340,7 +340,7 @@ jobs:
         run: npm run typecheck
 
   frontend-unit-tests:
-    name: Frontend Unit Tests
+    name: GRN Frontend Unit Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -368,7 +368,7 @@ jobs:
         run: npm test
 
   frontend-build:
-    name: Frontend Build Check
+    name: GRN Frontend Build Check
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -393,7 +393,7 @@ jobs:
         run: npm run build
 
   frontend-performance-budget:
-    name: Frontend Performance Budget
+    name: GRN Frontend Performance Budget
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -421,7 +421,7 @@ jobs:
         run: npm run perf:budget
 
   backend-functions-tests:
-    name: Backend Functions (Node.js) Lint & Tests
+    name: GRN Backend Functions (Node.js) Lint & Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -661,7 +661,7 @@ jobs:
         run: npm run build
 
   ci-summary:
-    name: CI Summary
+    name: Repository CI Summary
     runs-on: ubuntu-latest
     needs:
       - changes
@@ -721,7 +721,7 @@ jobs:
           echo "All applicable CI checks passed"
 
   deploy-staging-backend:
-    name: Deploy Staging Backend
+    name: Deploy GRN Staging Backend
     runs-on: ubuntu-latest
     needs: [changes, ci-summary]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -893,7 +893,7 @@ jobs:
       ci-auth-seed-users-function: ${{ steps.get-outputs.outputs.ci-auth-seed-users-function }}
 
   deploy-staging-frontend:
-    name: Deploy Staging Frontend
+    name: Deploy GRN Staging Frontend
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -964,7 +964,7 @@ jobs:
           fi
 
   comment-staging-deployment:
-    name: Comment Staging Deployment
+    name: Comment GRN Staging Deployment
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend, deploy-staging-frontend]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -974,15 +974,17 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const output = `#### Staging Deployment Complete
+            const output = `#### GRN Staging Deployment Complete
 
             **Environment:** \`staging\`
+            **App:** \`apps/grn\`
+            **Service:** \`services/grn-api\`
             **Stack:** \`grn-staging\`
 
-            **Frontend URL:** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
-            **API URL:** ${{ needs.deploy-staging-backend.outputs.api-url }}
+            **Frontend URL (apps/grn):** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
+            **API URL (services/grn-api):** ${{ needs.deploy-staging-backend.outputs.api-url }}
 
-            This PR updated the shared staging environment.`;
+            This PR updated the shared GRN staging environment.`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -992,7 +994,7 @@ jobs:
             });
 
   staging-public-api-smoke:
-    name: Staging Unauthorized API Smoke Test
+    name: GRN Staging Unauthorized API Smoke Test
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -1005,7 +1007,7 @@ jobs:
           test "$HTTP_CODE" = "401"
 
   postman-public-smoke:
-    name: Public Catalog Smoke Test
+    name: GRN Public Catalog Smoke Test
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend, staging-public-api-smoke]
@@ -1026,7 +1028,7 @@ jobs:
             --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}"
 
   contract-api-tests:
-    name: Staging Contract API Tests
+    name: GRN Staging Contract API Tests
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -1122,7 +1124,7 @@ jobs:
             --env-var "stripeWebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
   utility-api-tests:
-    name: Staging Utility API Tests
+    name: GRN Staging Utility API Tests
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -1211,7 +1213,7 @@ jobs:
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
   e2e-api-tests:
-    name: Staging E2E API Tests
+    name: GRN Staging E2E API Tests
     runs-on: ubuntu-latest
     needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
@@ -1297,7 +1299,7 @@ jobs:
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
   staging-validation-summary:
-    name: Staging Validation Summary
+    name: GRN Staging Validation Summary
     runs-on: ubuntu-latest
     needs:
       - changes
