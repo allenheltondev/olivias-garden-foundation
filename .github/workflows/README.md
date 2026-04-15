@@ -4,7 +4,7 @@ This directory contains the CI/CD pipelines for Good Roots Network.
 
 ## Workflows
 
-### 1. Pull Request Checks (`pr-checks.yml`)
+### 1. Pull Request Checks (`pull-request-checks.yml`)
 
 Runs on every pull request to `main` or `develop` branches.
 
@@ -61,6 +61,28 @@ Runs on:
 ![Deploy](https://github.com/YOUR_ORG/YOUR_REPO/workflows/Deploy%20to%20AWS/badge.svg)
 ```
 
+### 3. Foundation Web PR Checks (`web-pull-request-checks.yml`)
+
+Runs on pull requests that touch the foundation site or its shared hosting stack.
+
+**Jobs:**
+- Foundation web infrastructure template validation (`infra/foundation-web/template.yaml`)
+- Foundation web TypeScript check
+- Foundation web production build
+- Shared staging deploy for the foundation site
+- PR comment with the staging URL
+
+### 4. Deploy Foundation Web (`web-deploy.yml`)
+
+Runs on pushes to `main` that touch the foundation site or can be triggered manually.
+
+**Jobs:**
+- Template validation
+- Foundation web typecheck/build
+- Root stack deploy for the foundation web shared resources
+- Static asset publish to the frontend S3 bucket
+- CloudFront invalidation
+
 ## Required GitHub Secrets
 
 Configure these in your repository settings under Settings â†’ Secrets and variables â†’ Actions:
@@ -70,7 +92,7 @@ Configure these in your repository settings under Settings â†’ Secrets and 
 **For shared staging deployments used by PR validation (separate AWS account recommended):**
 - `AWS_STAGING_ROLE_ARN` - ARN of the IAM role for the shared staging environment
   - Example: `arn:aws:iam::111111111111:role/GitHubActionsDeploymentRole`
-  - Used by: PR checks workflow
+  - Used by: PR checks workflow, foundation web PR preview deploys
 
 **For dev/staging/prod deployments from main branch:**
 - `AWS_DEV_ROLE_ARN` - ARN of the IAM role for dev/staging deployments
@@ -79,7 +101,16 @@ Configure these in your repository settings under Settings â†’ Secrets and 
 
 - `AWS_PROD_ROLE_ARN` - ARN of the IAM role for production deployments
   - Example: `arn:aws:iam::333333333333:role/GitHubActionsDeploymentRole`
-  - Used by: Main deployment workflow (prod environment only)
+  - Used by: Main deployment workflow (prod environment only), foundation web production deploys
+
+### Optional repository variables for foundation web deployments
+
+- `FOUNDATION_WEB_DOMAIN_NAME_STAGING`
+- `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING`
+- `FOUNDATION_WEB_DOMAIN_NAME_PROD`
+- `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD`
+
+If the domain variables are omitted, the foundation web workflow publishes to the CloudFront default domain exposed by the stack outputs.
 
 ### Required for production only:
 - `DOMAIN_NAME` - Custom domain name (e.g., `app.example.com`)
@@ -223,7 +254,7 @@ The workflows use GitHub Actions caching to speed up builds:
 
 - **Rust dependencies:** Cached based on `Cargo.lock` hash
 - **Node modules:** Cached based on `package-lock.json` hash
-- **SAM build artifacts:** Cached based on `Cargo.lock` and `template.yaml` hash
+- **SAM build artifacts:** Cached based on service `Cargo.lock` and the relevant infrastructure template hash
 
 ## AWS Permissions Required
 

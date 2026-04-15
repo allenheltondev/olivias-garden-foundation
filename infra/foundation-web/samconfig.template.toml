@@ -1,0 +1,21 @@
+version = 0.1
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+stack_name = "{{STACK_NAME}}"
+resolve_s3 = true
+s3_prefix = "{{STACK_NAME}}"
+region = "{{REGION}}"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false
+parameter_overrides = [
+  "EnvironmentName={{ENVIRONMENT_NAME}}",
+  "DomainName={{DOMAIN_NAME}}",
+  "DomainHostedZoneId={{DOMAIN_HOSTED_ZONE_ID}}"
+]
+
+[default.global.parameters]
+region = "{{REGION}}"

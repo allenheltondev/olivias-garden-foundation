@@ -88,6 +88,7 @@ cargo test --all-features
 - Deployment guide: [docs/setup/DEPLOYMENT.md](docs/setup/DEPLOYMENT.md)
 - Neon/Postgres setup: [docs/setup/NEON_SETUP.md](docs/setup/NEON_SETUP.md)
 - Root deployment helper: `npm run deploy:configure`
+- Foundation web shared infrastructure: [infra/foundation-web/template.yaml](infra/foundation-web/template.yaml)
 
 ## Testing
 
@@ -114,4 +115,5 @@ For rollout details and CI mapping, see [docs/testing/postman-e2e-rollout.md](do
 
 - `services/grn-api` remains under `services/` intentionally. The frontend belongs in `apps/`; the backend is treated as a service boundary.
 - `apps/web` is intentionally small right now. It is a starting point, not the finished foundation site.
+- `apps/web` now has a dedicated static-hosting deploy path through `infra/foundation-web` and the `Foundation Web` GitHub Actions workflows.
 - Some deeper docs still use older product naming such as `grn`; those should be normalized over time where helpful, but the repo structure is now current.

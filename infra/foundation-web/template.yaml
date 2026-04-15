@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Shared infrastructure for the Olivia's Garden Foundation web app.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment name used for environment-specific resources.
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Optional custom domain name for the foundation web frontend.
+  DomainHostedZoneId:
+    Type: String
+    Default: ''
+    Description: Optional Route53 hosted zone ID for the custom domain.
+
+Conditions:
+  DeployCustomDomain: !And
+    - !Not [!Equals [!Ref DomainName, '']]
+    - !Not [!Equals [!Ref DomainHostedZoneId, '']]
+
+Resources:
+  WebFrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      Tags:
+        - Key: App
+          Value: ogf-web
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WebFrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-web-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  WebFrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        Aliases: !If
+          - DeployCustomDomain
+          - [!Ref DomainName]
+          - !Ref AWS::NoValue
+        ViewerCertificate: !If
+          - DeployCustomDomain
+          - AcmCertificateArn: !Ref WebFrontendCertificate
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: WebFrontendS3Origin
+            DomainName: !GetAtt WebFrontendBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !Ref WebFrontendOriginAccessControl
+        DefaultCacheBehavior:
+          TargetOriginId: WebFrontendS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: '67f7725c-6f97-4210-82d7-5512b31e9d03'
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  WebFrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebFrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub '${WebFrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${WebFrontendDistribution}'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt WebFrontendBucket.Arn
+              - !Sub '${WebFrontendBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  WebFrontendCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: DeployCustomDomain
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref DomainHostedZoneId
+
+  WebFrontendDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: DeployCustomDomain
+    Properties:
+      HostedZoneId: !Ref DomainHostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt WebFrontendDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+Outputs:
+  WebFrontendBucketName:
+    Description: S3 bucket that stores foundation web static assets.
+    Value: !Ref WebFrontendBucket
+
+  WebFrontendDistributionId:
+    Description: CloudFront distribution ID for the foundation web frontend.
+    Value: !Ref WebFrontendDistribution
+
+  WebFrontendDistributionDomainName:
+    Description: CloudFront domain name for the foundation web frontend.
+    Value: !GetAtt WebFrontendDistribution.DomainName
+
+  WebFrontendUrl:
+    Description: Public URL for the foundation web frontend.
+    Value: !If
+      - DeployCustomDomain
+      - !Sub 'https://${DomainName}'
+      - !Sub 'https://${WebFrontendDistribution.DomainName}'
