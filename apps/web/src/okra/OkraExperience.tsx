@@ -55,7 +55,6 @@ export function OkraExperience({
   const handleSidebarPinClick = useCallback((pin: PinData) => setFocusPin(pin), []);
 
   const recentPins = pins.slice(0, 5);
-  const authName = authSession?.user.name ?? authSession?.user.email ?? 'Good Roots Network member';
 
   return (
     <div className="okra-experience">
@@ -84,36 +83,6 @@ export function OkraExperience({
               Share your garden
             </button>
           </div>
-
-          {authEnabled ? (
-            <section className="okra-auth-callout" aria-label="Optional login">
-              {authSession ? (
-                <>
-                  <p className="okra-auth-callout__eyebrow">Signed in</p>
-                  <p className="okra-auth-callout__title">{authName}</p>
-                  <p className="okra-auth-callout__body">
-                    Your future okra submissions can stay tied to one Good Roots Network login while the map remains open to everyone.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="okra-auth-callout__eyebrow">Optional login</p>
-                  <p className="okra-auth-callout__title">Stay anonymous if you want. Sign in if you want continuity.</p>
-                  <p className="okra-auth-callout__body">
-                    A login lets us connect your submitted okra back to you later without changing the anonymous browsing experience.
-                  </p>
-                  <div className="okra-auth-callout__actions">
-                    <button type="button" className="okra-experience__secondary-cta" onClick={onLogin}>
-                      Log in
-                    </button>
-                    <button type="button" className="okra-experience__primary-cta" onClick={onSignup}>
-                      Sign up
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
-          ) : null}
         </div>
 
         <div className="okra-experience__story-photo">

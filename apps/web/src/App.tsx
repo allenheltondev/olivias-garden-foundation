@@ -1,5 +1,5 @@
 import { type ClipboardEvent, type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import { Button, Card } from '@olivias/ui';
+import { Button, Card, Input, SiteFooter as SharedSiteFooter, SiteHeader as SharedSiteHeader } from '@olivias/ui';
 import {
   confirmSignUp,
   confirmPasswordReset,
@@ -96,6 +96,8 @@ const routes: Route[] = [
 
 const navRoutes = routes.filter((route) => route.showInNav);
 const footerRoutes = routes.filter((route) => route.showInFooter);
+const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://goodroots.network';
+const instagramUrl = 'https://instagram.com/oliviasgardentx';
 
 const internalPaths = new Set(routes.map((route) => route.path));
 
@@ -316,7 +318,7 @@ function App() {
   };
 
   return (
-    <div className="site-shell">
+    <div className="og-app-shell">
       <SiteHeader
         pathname={pathname}
         onNavigate={navigate}
@@ -325,7 +327,7 @@ function App() {
         authBusy={authBusy || !authReady}
         authError={authError}
       />
-      <main className={`site-main ${pathname === '/login' ? 'site-main--login' : ''}`.trim()}>
+      <main className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}>
         {pathname === '/' ? <HomePage onNavigate={navigate} /> : null}
         {pathname === '/auth/callback' ? <AuthCallbackPage /> : null}
         {pathname === '/login' ? (
@@ -385,57 +387,62 @@ function SiteHeader({
   const avatarLabel = authSession
     ? authSession.user.name ?? authSession.user.email ?? 'Signed-in account'
     : 'Go to login page';
+  const headerNavItems = [
+    ...navRoutes.map((route) => ({
+      id: route.path,
+      label: route.label,
+      active: pathname === route.path,
+      onSelect: () => onNavigate(route.path),
+    })),
+    ...(authSession
+      ? [{
+          id: 'good-roots-network',
+          label: 'Good Roots Network',
+          active: false,
+          onSelect: () => window.location.assign(goodRootsNetworkUrl),
+        }]
+      : []),
+    {
+      id: 'donate',
+      label: 'Donate',
+      active: pathname === '/donate',
+      accent: true,
+      onSelect: () => onNavigate('/donate'),
+    },
+  ];
 
   return (
-    <header className="site-header">
-      <div className="site-header__inner">
-        <button className="site-brand" onClick={() => onNavigate('/')}>
-          <span className="site-brand__eyebrow">Olivia&apos;s Garden Foundation</span>
-          <span className="site-brand__title">Homesteading, growing, and community</span>
-        </button>
-
-        <div className="site-header__actions">
-          <nav className="site-nav" aria-label="Primary">
-            {navRoutes.map((route) => (
-              <button
-                key={route.path}
-                className={`site-nav__link ${pathname === route.path ? 'is-active' : ''}`.trim()}
-                onClick={() => onNavigate(route.path)}
-              >
-                {route.label}
-              </button>
-            ))}
-            <button className="site-nav__link site-nav__link--accent" onClick={() => onNavigate('/donate')}>
-              Donate
+    <SharedSiteHeader
+      brandEyebrow="Olivia's Garden Foundation"
+      brandTitle="Homesteading, growing, and community"
+      onBrandClick={() => onNavigate('/')}
+      navItems={headerNavItems}
+      utility={(
+        <div className="og-auth-utility">
+          {authSession ? (
+            <button
+              type="button"
+              className="og-auth-utility__avatar"
+              onClick={() => onNavigate('/login')}
+              aria-label={avatarLabel}
+              title={avatarLabel}
+            >
+              {initials}
             </button>
-          </nav>
-
-          <div className="site-auth">
-            {authSession ? (
-              <button
-                type="button"
-                className="site-auth__avatar"
-                onClick={() => onNavigate('/login')}
-                aria-label={avatarLabel}
-                title={avatarLabel}
-              >
-                {initials}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="site-auth__login"
-                onClick={() => onNavigate('/login')}
-                disabled={!authEnabled || authBusy}
-              >
-                Log in
-              </button>
-            )}
-            {authError && pathname === '/login' ? <p className="site-auth__error" role="alert">{authError}</p> : null}
-          </div>
+          ) : (
+            <button
+              type="button"
+              className="og-auth-utility__login"
+              onClick={() => onNavigate('/login')}
+              disabled={!authEnabled || authBusy}
+            >
+              Log in
+            </button>
+          )}
+          {authError && pathname === '/login' ? <p className="og-login-page__error" role="alert">{authError}</p> : null}
         </div>
-      </div>
-    </header>
+      )}
+    />
   );
 }
 
@@ -446,42 +453,22 @@ function SiteFooter({
   currentPage: Route;
   onNavigate: (path: string) => void;
 }) {
+  const footerLinks = footerRoutes.map((route) => ({
+    id: route.path,
+    label: route.label,
+    active: currentPage.path === route.path,
+    onSelect: () => onNavigate(route.path),
+  }));
+
   return (
-    <footer className="site-footer">
-      <div className="site-footer__inner">
-        <div>
-          <p className="site-footer__tagline">
-            Growing food, sharing seeds, and helping more people feel at home on the land.
-          </p>
-          <p className="site-footer__meta">
-            {new Date().getFullYear()} Olivia&apos;s Garden Foundation. All rights reserved.
-          </p>
-        </div>
-
-        <div className="site-footer__links">
-          {footerRoutes.map((route) => (
-            <button
-              key={route.path}
-              className={`site-footer__link ${currentPage.path === route.path ? 'is-active' : ''}`.trim()}
-              onClick={() => onNavigate(route.path)}
-            >
-              {route.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="site-footer__social">
-          <span className="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false">
-              <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2A3 3 0 0 0 4 7v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Zm5.25-3.25a1.25 1.25 0 1 1-1.25 1.25 1.25 1.25 0 0 1 1.25-1.25Z" />
-            </svg>
-          </span>
-          <a href="https://instagram.com/oliviasgardentx" target="_blank" rel="noreferrer">
-            @oliviasgardentx
-          </a>
-        </div>
-      </div>
-    </footer>
+    <SharedSiteFooter
+      tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
+      meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
+      links={footerLinks}
+      socialLabel="Follow Olivia's Garden Foundation on Instagram"
+      socialHref={instagramUrl}
+      socialHandle="@oliviasgardentx"
+    />
   );
 }
 
@@ -681,7 +668,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
               The foundation gives away free okra seeds from a line of plants Olivia grew herself.
               It is meant to be an easy, generous way for people to start growing food.
             </p>
-            <CtaButton onClick={() => onNavigate('/seeds')} variant="secondary">Request your seeds</CtaButton>
+            <CtaButton onClick={() => onNavigate('/okra')} variant="secondary">Request your seeds</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
             <h3>Support the work</h3>
@@ -1014,14 +1001,14 @@ function VerificationCodeInput({
   };
 
   return (
-    <div className="verification-code-input" role="group" aria-label="Verification code">
+    <div className="og-verification-code" role="group" aria-label="Verification code">
       {characters.map((character, index) => (
         <input
           key={index}
           ref={(element) => {
             inputRefs.current[index] = element;
           }}
-          className="verification-code-input__slot"
+          className="og-verification-code__slot"
           type="text"
           inputMode="numeric"
           autoComplete={index === 0 ? 'one-time-code' : 'off'}
@@ -1221,8 +1208,29 @@ function LoginPage({
 
     try {
       if (mode === 'login') {
-        await onSubmitLogin(trimmedEmail, password);
-        onNavigate('/');
+        const session = await onSubmitLogin(trimmedEmail, password);
+        const redirectTo = new URLSearchParams(window.location.search).get('redirect');
+        if (redirectTo) {
+          try {
+            const redirectOrigin = new URL(redirectTo).origin;
+            const isCrossOrigin = redirectOrigin !== window.location.origin;
+            if (isCrossOrigin) {
+              const payload = btoa(JSON.stringify({
+                accessToken: session.accessToken,
+                idToken: session.idToken,
+                refreshToken: session.refreshToken,
+                expiresAt: session.expiresAt,
+              }));
+              window.location.assign(`${redirectTo}#session=${payload}`);
+            } else {
+              window.location.assign(redirectTo);
+            }
+          } catch {
+            onNavigate('/');
+          }
+        } else {
+          onNavigate('/');
+        }
         return;
       }
 
@@ -1286,37 +1294,37 @@ function LoginPage({
   };
 
   return (
-    <section className="login-page">
-      <div className="login-page__backdrop">
-        <div className="login-page__card">
+    <section className="og-login-page">
+      <div className="og-login-page__backdrop">
+        <div className="og-login-page__card">
           {authEnabled ? (
             authSession ? (
               <>
-                <p className="login-page__eyebrow">Olivia&apos;s Garden</p>
-                <div className="login-page__account">
-                  <div className="login-page__avatar" aria-hidden="true">{initials}</div>
-                  <div className="login-page__account-copy">
-                    <p className="login-page__account-eyebrow">Signed in</p>
-                    <p className="login-page__account-name">{displayName}</p>
-                    <p className="login-page__account-body">
+                <p className="og-login-page__eyebrow">Olivia&apos;s Garden</p>
+                <div className="og-login-page__account">
+                  <div className="og-login-page__account-avatar" aria-hidden="true">{initials}</div>
+                  <div className="og-login-page__account-copy">
+                    <p className="og-login-page__account-eyebrow">Signed in</p>
+                    <p className="og-login-page__account-name">{displayName}</p>
+                    <p className="og-login-page__account-body">
                       You&apos;re all set. Head back to the okra project or sign out here.
                     </p>
                   </div>
                 </div>
 
-                <div className="login-page__footer">
-                  <button type="button" className="login-page__link" onClick={() => onNavigate('/okra')}>
+                <div className="og-login-page__footer">
+                  <button type="button" className="og-login-page__link" onClick={() => onNavigate('/okra')}>
                     Back to the Okra Project
                   </button>
-                  <button type="button" className="login-page__link login-page__link--danger" onClick={onLogout}>
+                  <button type="button" className="og-login-page__link og-login-page__link--danger" onClick={onLogout}>
                     Log out
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <p className="login-page__eyebrow">Olivia&apos;s Garden</p>
-                <h1 className="login-page__title">
+                <p className="og-login-page__eyebrow">Olivia&apos;s Garden</p>
+                <h1 className="og-login-page__title">
                   {mode === 'login'
                     ? 'Welcome back!'
                     : mode === 'signup'
@@ -1329,9 +1337,9 @@ function LoginPage({
                 </h1>
 
                 {mode === 'signup' ? (
-                  <div className="login-page__benefits">
-                    <p className="login-page__benefits-title">With an account you can:</p>
-                    <ul className="login-page__benefits-list">
+                  <div className="og-login-page__benefits">
+                    <p className="og-login-page__benefits-title">With an account you can:</p>
+                    <ul className="og-login-page__benefits-list">
                       <li>Access the Good Roots Network</li>
                       <li>Edit your okra photo submissions instead of starting over each time.</li>
                     </ul>
@@ -1339,7 +1347,7 @@ function LoginPage({
                 ) : null}
 
                 {mode === 'forgot' ? (
-                  <p className="login-page__body">
+                  <p className="og-login-page__body">
                     {forgotStep === 'request'
                       ? 'Enter your email and we will send a verification code to reset your password.'
                       : 'Use the code from your email and choose a new password.'}
@@ -1347,18 +1355,18 @@ function LoginPage({
                 ) : null}
 
                 {mode === 'verify' ? (
-                  <p className="login-page__body">
+                  <p className="og-login-page__body">
                     Enter the verification code we sent to your email to finish setting up your account.
                   </p>
                 ) : null}
 
                 {mode !== 'forgot' && mode !== 'verify' ? (
-                  <div className="login-page__switch" role="tablist" aria-label="Authentication mode">
+                  <div className="og-login-page__switch" role="tablist" aria-label="Authentication mode">
                     <button
                       type="button"
                       role="tab"
                       aria-selected={mode === 'login'}
-                      className={`login-page__switch-option ${mode === 'login' ? 'is-active' : ''}`.trim()}
+                      className={`og-login-page__switch-option ${mode === 'login' ? 'is-active' : ''}`.trim()}
                       onClick={() => handleModeChange('login')}
                     >
                       Log in
@@ -1367,7 +1375,7 @@ function LoginPage({
                       type="button"
                       role="tab"
                       aria-selected={mode === 'signup'}
-                      className={`login-page__switch-option ${mode === 'signup' ? 'is-active' : ''}`.trim()}
+                      className={`og-login-page__switch-option ${mode === 'signup' ? 'is-active' : ''}`.trim()}
                       onClick={() => handleModeChange('signup')}
                     >
                       Sign up
@@ -1375,71 +1383,63 @@ function LoginPage({
                   </div>
                 ) : null}
 
-                <form className="login-page__form" onSubmit={handleSubmit}>
+                <form className="og-login-page__form" onSubmit={handleSubmit}>
                   {mode === 'signup' ? (
-                    <div className="login-page__field-row">
-                      <label className="login-page__field">
-                        <span>First name</span>
-                        <input
-                          type="text"
-                          autoComplete="given-name"
-                          placeholder="First name"
-                          value={firstName}
-                          onChange={(event) => setFirstName(event.target.value)}
-                          disabled={authBusy}
-                        />
-                      </label>
+                    <div className="og-login-page__field-row">
+                      <Input
+                        label="First name"
+                        type="text"
+                        autoComplete="given-name"
+                        placeholder="First name"
+                        value={firstName}
+                        onChange={(event) => setFirstName(event.target.value)}
+                        disabled={authBusy}
+                      />
 
-                      <label className="login-page__field">
-                        <span>Last name</span>
-                        <input
-                          type="text"
-                          autoComplete="family-name"
-                          placeholder="Last name"
-                          value={lastName}
-                          onChange={(event) => setLastName(event.target.value)}
-                          disabled={authBusy}
-                        />
-                      </label>
+                      <Input
+                        label="Last name"
+                        type="text"
+                        autoComplete="family-name"
+                        placeholder="Last name"
+                        value={lastName}
+                        onChange={(event) => setLastName(event.target.value)}
+                        disabled={authBusy}
+                      />
                     </div>
                   ) : null}
 
-                  <label className="login-page__field">
-                    <span>Email</span>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      disabled={authBusy || mode === 'verify'}
-                    />
-                  </label>
+                  <Input
+                    label="Email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    disabled={authBusy || mode === 'verify'}
+                  />
 
                   {mode === 'verify' ? (
-                    <label className="login-page__field">
+                    <label className="og-login-page__field">
                       <span>Verification code</span>
                       <VerificationCodeInput value={resetCode} onChange={setResetCode} disabled={authBusy} />
                     </label>
                   ) : null}
 
                   {mode === 'login' || mode === 'signup' || (mode === 'forgot' && forgotStep === 'confirm') ? (
-                    <div className="login-page__password-block">
-                      <label className="login-page__field">
-                        <span>{mode === 'login' ? 'Password' : 'New password'}</span>
-                        <input
-                          type="password"
-                          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                          placeholder={mode === 'login' ? 'Enter your password' : 'Create a password'}
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          disabled={authBusy}
-                        />
-                      </label>
+                    <div className="og-login-page__password-block">
+                      <Input
+                        label={mode === 'login' ? 'Password' : 'New password'}
+                        type="password"
+                        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                        placeholder={mode === 'login' ? 'Enter your password' : 'Create a password'}
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        disabled={authBusy}
+                      />
 
                       {mode === 'login' ? (
-                        <div className="login-page__meta-action">
-                          <button type="button" className="login-page__link login-page__link--inline" onClick={startForgotPassword}>
+                        <div className="og-login-page__meta-action">
+                          <button type="button" className="og-login-page__link og-login-page__link--inline" onClick={startForgotPassword}>
                             Forgot password?
                           </button>
                         </div>
@@ -1448,7 +1448,7 @@ function LoginPage({
                   ) : null}
 
                   {mode === 'forgot' && forgotStep === 'confirm' ? (
-                    <label className="login-page__field">
+                    <label className="og-login-page__field">
                       <span>Verification code</span>
                       <VerificationCodeInput value={resetCode} onChange={setResetCode} disabled={authBusy} />
                     </label>
@@ -1456,25 +1456,23 @@ function LoginPage({
 
                   {mode === 'signup' || (mode === 'forgot' && forgotStep === 'confirm') ? (
                     <>
-                      <label className="login-page__field">
-                        <span>{mode === 'signup' ? 'Confirm password' : 'Confirm new password'}</span>
-                        <input
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder="Repeat your password"
-                          value={confirmPassword}
-                          onChange={(event) => setConfirmPassword(event.target.value)}
-                          disabled={authBusy}
-                        />
-                      </label>
+                      <Input
+                        label={mode === 'signup' ? 'Confirm password' : 'Confirm new password'}
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Repeat your password"
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        disabled={authBusy}
+                      />
                       {showPasswordHint ? (
-                        <p className="login-page__hint">
+                        <p className="og-login-page__hint">
                           Use at least 8 characters with uppercase, lowercase, a number, and a symbol.
                         </p>
                       ) : null}
 
                       {mode === 'signup' ? (
-                        <label className="login-page__checkbox">
+                        <label className="og-login-page__checkbox">
                           <input
                             type="checkbox"
                             checked={newsletterOptIn}
@@ -1487,8 +1485,8 @@ function LoginPage({
                     </>
                   ) : null}
 
-                  <div className="login-page__actions">
-                    <button type="submit" className="login-page__primary" disabled={authBusy}>
+                  <div className="og-login-page__actions">
+                    <button type="submit" className="og-login-page__primary" disabled={authBusy}>
                       {authBusy
                         ? mode === 'login'
                           ? 'Logging in...'
@@ -1512,19 +1510,19 @@ function LoginPage({
                   </div>
                 </form>
 
-                <div className="login-page__footer">
+                <div className="og-login-page__footer">
                   {mode === 'verify' ? (
                     <>
-                      <button type="button" className="login-page__link login-page__link--inline" onClick={handleResendVerification}>
+                      <button type="button" className="og-login-page__link og-login-page__link--inline" onClick={handleResendVerification}>
                         Resend code
                       </button>
-                      <button type="button" className="login-page__link login-page__link--inline" onClick={() => handleModeChange('login')}>
+                      <button type="button" className="og-login-page__link og-login-page__link--inline" onClick={() => handleModeChange('login')}>
                         Back to log in
                       </button>
                     </>
                   ) : null}
                   {mode === 'forgot' ? (
-                    <button type="button" className="login-page__link login-page__link--inline" onClick={() => handleModeChange('login')}>
+                    <button type="button" className="og-login-page__link og-login-page__link--inline" onClick={() => handleModeChange('login')}>
                       Back to log in
                     </button>
                   ) : null}
@@ -1534,21 +1532,21 @@ function LoginPage({
             )
           ) : (
             <>
-              <p className="login-page__eyebrow">Olivia&apos;s Garden</p>
-              <h1 className="login-page__title">Login unavailable.</h1>
-              <p className="login-page__note">
+              <p className="og-login-page__eyebrow">Olivia&apos;s Garden</p>
+              <h1 className="og-login-page__title">Login unavailable.</h1>
+              <p className="og-login-page__note">
                 Login is not configured for this environment yet.
               </p>
-              <div className="login-page__footer">
-                <button type="button" className="login-page__link" onClick={() => onNavigate('/okra')}>
+              <div className="og-login-page__footer">
+                <button type="button" className="og-login-page__link" onClick={() => onNavigate('/okra')}>
                   Back to the Okra Project
                 </button>
               </div>
             </>
           )}
 
-          {statusMessage ? <p className="login-page__success">{statusMessage}</p> : null}
-          {localError || authError ? <p className="login-page__error" role="alert">{localError ?? authError}</p> : null}
+          {statusMessage ? <p className="og-login-page__success">{statusMessage}</p> : null}
+          {localError || authError ? <p className="og-login-page__error" role="alert">{localError ?? authError}</p> : null}
         </div>
       </div>
     </section>

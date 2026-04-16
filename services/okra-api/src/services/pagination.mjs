@@ -1,7 +1,13 @@
+export const corsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+  'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
+};
+
 export function errorResponse(statusCode, code, message) {
   return new Response(
     JSON.stringify({ error: { code, message } }),
-    { status: statusCode, headers: { 'content-type': 'application/json' } }
+    { status: statusCode, headers: { 'content-type': 'application/json', ...corsHeaders } }
   );
 }
 

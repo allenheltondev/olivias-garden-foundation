@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Card } from '../ui/Card';
+import { Button, Card, Input } from '@olivias/ui';
 import type { GrowerProfileInput } from '../../hooks/useOnboarding';
 import { logger } from '../../utils/logging';
 
@@ -283,7 +281,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
                 loading={isLoadingLocation}
                 disabled={isLoadingLocation}
               >
-                {isLoadingLocation ? 'Finding your address...' : 'Use my current location (PWA)'}
+                {isLoadingLocation ? 'Finding your address...' : 'Use my current location'}
               </Button>
             </div>
           </div>

@@ -23,6 +23,7 @@ env:
   VITE_API_URL: https://placeholder.execute-api.us-east-1.amazonaws.com
   VITE_FRONTEND_URL: https://placeholder.cloudfront.net
   VITE_AWS_REGION: us-east-1
+  VITE_FOUNDATION_URL: https://placeholder.cloudfront.net
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -307,6 +308,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Run ESLint
         run: npm run lint
 
@@ -332,6 +337,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --workspaces=false
+
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Type check
         run: npm run typecheck
@@ -361,6 +370,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Run tests
         run: npm test
 
@@ -386,6 +399,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Build check
         run: npm run build
 
@@ -410,6 +427,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --workspaces=false
+
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Build frontend for bundle analysis
         run: npm run build
@@ -971,6 +992,20 @@ jobs:
         working-directory: apps/grn
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Get foundation web frontend URL
+        id: get-foundation-url
+        run: |
+          FOUNDATION_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "ogf-web-staging" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
+
       - name: Build frontend
         working-directory: apps/grn
         run: npm run build
@@ -981,6 +1016,7 @@ jobs:
           VITE_API_URL: ${{ needs.deploy-staging-backend.outputs.api-url }}
           VITE_FRONTEND_URL: ${{ needs.deploy-staging-backend.outputs.frontend-url }}
           VITE_AWS_REGION: ${{ env.AWS_REGION }}
+          VITE_FOUNDATION_URL: ${{ steps.get-foundation-url.outputs.url }}
 
       - name: Deploy frontend to S3
         run: |

@@ -242,12 +242,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Read GRN staging frontend URL
+        id: grn-stack
+        run: |
+          GRN_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "grn-staging" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "frontend-url=$GRN_FRONTEND_URL" >> $GITHUB_OUTPUT
+
       - name: Build foundation web app for staging
         env:
           VITE_OKRA_API_BASE: ${{ steps.okra-stack.outputs.api-url }}
           VITE_AUTH_USER_POOL_ID: ${{ steps.stack-outputs.outputs.user-pool-id }}
           VITE_AUTH_USER_POOL_CLIENT_ID: ${{ steps.stack-outputs.outputs.user-pool-client-id }}
           VITE_AUTH_USER_POOL_DOMAIN: ${{ steps.stack-outputs.outputs.user-pool-domain }}
+          VITE_GRN_URL: ${{ steps.grn-stack.outputs.frontend-url }}
         run: npm --workspace @olivias/web run build
 
       - name: Deploy frontend assets to S3

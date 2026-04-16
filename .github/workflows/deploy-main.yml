@@ -116,6 +116,10 @@ jobs:
         working-directory: apps/grn
         run: npm ci --workspaces=false
 
+      - name: Frontend - Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Frontend - Run ESLint
         working-directory: apps/grn
         run: npm run lint
@@ -511,6 +515,20 @@ jobs:
         working-directory: apps/grn
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Get foundation web frontend URL
+        id: get-foundation-url
+        run: |
+          FOUNDATION_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text)
+          echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
+
       - name: Create environment file
         working-directory: apps/grn
         run: |
@@ -521,6 +539,7 @@ jobs:
           VITE_API_URL=${{ needs.deploy-backend.outputs.api-url }}
           VITE_FRONTEND_URL=${{ needs.deploy-backend.outputs.frontend-url }}
           VITE_AWS_REGION=${{ env.AWS_REGION }}
+          VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
           EOF
 
           echo "Environment file created"

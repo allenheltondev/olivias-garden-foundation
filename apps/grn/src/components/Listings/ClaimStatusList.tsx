@@ -1,5 +1,5 @@
 import type { Claim, ClaimStatus } from '../../types/claim';
-import { Button } from '../ui/Button';
+import { Button } from '@olivias/ui';
 
 interface ClaimStatusListProps {
   title: string;

@@ -632,17 +632,15 @@ fn parse_list_my_listings_query(
             let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
 
             match key {
-                "status" => {
-                    if !value.is_empty() {
-                        if !ALLOWED_LISTING_READ_STATUS.contains(&value) {
-                            return Err(lambda_http::Error::from(format!(
-                                "Invalid listing status '{}'. Allowed values: {}",
-                                value,
-                                ALLOWED_LISTING_READ_STATUS.join(", ")
-                            )));
-                        }
-                        status = Some(value.to_string());
+                "status" if !value.is_empty() => {
+                    if !ALLOWED_LISTING_READ_STATUS.contains(&value) {
+                        return Err(lambda_http::Error::from(format!(
+                            "Invalid listing status '{}'. Allowed values: {}",
+                            value,
+                            ALLOWED_LISTING_READ_STATUS.join(", ")
+                        )));
                     }
+                    status = Some(value.to_string());
                 }
                 "limit" => {
                     limit = value.parse::<i64>().map_err(|_| {

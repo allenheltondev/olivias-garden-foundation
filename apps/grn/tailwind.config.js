@@ -1,4 +1,4 @@
-import { colors, shadows, borderRadius, animation } from './src/theme/tokens';
+import { colors, shadows, borderRadius, animation } from '@olivias/ui/theme';
 
 /** @type {import('tailwindcss').Config} */
 export default {

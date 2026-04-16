@@ -6,7 +6,7 @@ import {
   type ReminderType,
   updateReminderStatus,
 } from '../../services/api';
-import { Button } from '../ui/Button';
+import { Button } from '@olivias/ui';
 
 const REMINDER_TYPES: Array<{ value: ReminderType; label: string }> = [
   { value: 'watering', label: 'Watering' },

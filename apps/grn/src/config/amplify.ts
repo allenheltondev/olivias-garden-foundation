@@ -68,7 +68,7 @@ function loadConfig(): AmplifyConfig {
  * Persistence Mode: localStorage (default)
  * - Sessions persist across browser restarts
  * - Tokens stored in localStorage
- * - Suitable for PWA use case where users expect to stay logged in
+ * - Suitable for SPA use case where users expect to stay logged in
  * - Cross-tab logout is handled via storage events
  *
  * Call this function once at application startup (in main.tsx)

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+import { Button, Card } from '@olivias/ui';
 import type { UserType } from '../../types/user';
 
 export interface UserTypeSelectionProps {
