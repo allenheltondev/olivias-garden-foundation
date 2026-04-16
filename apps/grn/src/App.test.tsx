@@ -9,6 +9,9 @@ vi.mock('./hooks/useUser');
 vi.mock('./components/Profile/ProfileView', () => ({
   ProfileView: () => <div>Profile View</div>,
 }));
+vi.mock('./components/Onboarding/OnboardingGuard', () => ({
+  OnboardingGuard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 describe('App', () => {
   const mockUseAuth = vi.mocked(useAuthModule.useAuth);

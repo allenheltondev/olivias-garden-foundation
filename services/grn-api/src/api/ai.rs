@@ -88,9 +88,7 @@ fn bedrock_generate(
     signals: &[DerivedFeedSignal],
 ) -> Result<SummaryArtifact, lambda_http::Error> {
     // Keep runtime safe by requiring explicit enablement.
-    if std::env::var("BEDROCK_SUMMARY_ENABLED")
-        .map_or(true, |value| value != "1")
-    {
+    if std::env::var("BEDROCK_SUMMARY_ENABLED").map_or(true, |value| value != "1") {
         return Err(lambda_http::Error::from(
             "Bedrock summarization disabled by configuration".to_string(),
         ));
