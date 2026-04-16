@@ -56,6 +56,9 @@ jobs:
   deploy:
     name: Deploy Foundation Web
     runs-on: ubuntu-latest
+    concurrency:
+      group: foundation-stack-${{ inputs.foundation_web_stack_name }}
+      cancel-in-progress: false
     outputs:
       frontend-url: ${{ steps.stack-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}
@@ -210,8 +213,17 @@ jobs:
           OKRA_DATABASE_URL: ${{ secrets.database_url }}
           OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
           OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+          FOUNDATION_DOMAIN_NAME: ${{ inputs.domain_name }}
         run: |
           sam build
+          PARAM_OVERRIDES=(
+            "DatabaseUrl=$OKRA_DATABASE_URL"
+            "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME"
+            "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+          )
+          if [ -n "$FOUNDATION_DOMAIN_NAME" ]; then
+            PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME")
+          fi
           sam deploy \
             --stack-name "${{ inputs.okra_stack_name }}" \
             --resolve-s3 \
@@ -220,10 +232,7 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              "DatabaseUrl=$OKRA_DATABASE_URL" \
-              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
-              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
       - name: Read okra stack outputs
         id: okra-stack

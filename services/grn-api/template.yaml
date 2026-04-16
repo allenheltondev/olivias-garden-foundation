@@ -4,10 +4,10 @@ Description: >
   Core services for Good Roots Network
 
 Parameters:
-  DomainName:
+  FrontendDomainName:
     Type: String
     Default: "localhost:5173"
-    Description: Domain name for the front end and api
+    Description: Domain name for the GRN frontend
   DomainProtocol:
     Type: String
     Default: https
@@ -29,16 +29,21 @@ Parameters:
       - prod
       - pr
     Description: Deployment environment name used for environment-specific resources
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Optional root domain name used to derive the shared API custom domain
 Conditions:
   DeployCustomDomain: !Not [!Equals [!Ref DomainHostedZoneId, ""]]
   DeployCiAuthSeedFunction: !Not [!Equals [!Ref EnvironmentName, prod]]
+  DeploySharedApiBasePathMapping: !Not [!Equals [!Ref DomainName, ""]]
 
 Globals:
   Api:
     Cors:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-      AllowOrigin: !Sub "'${DomainProtocol}://${DomainName}'"
+      AllowOrigin: !Sub "'${DomainProtocol}://${FrontendDomainName}'"
   Function:
     Architectures: [ arm64 ]
     Tracing: Disabled
@@ -77,7 +82,7 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: !Sub "'${DomainProtocol}://${DomainName}'"
+        AllowOrigin: !Sub "'${DomainProtocol}://${FrontendDomainName}'"
       Auth:
         DefaultAuthorizer: LambdaAuthorizer
         AddDefaultAuthorizerToCorsPreflight: false
@@ -94,6 +99,15 @@ Resources:
           HttpMethod: "*"
           LoggingLevel: ERROR
           DataTraceEnabled: True
+
+  SharedApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeploySharedApiBasePathMapping
+    Properties:
+      DomainName: !Sub 'api.${DomainName}'
+      RestApiId: !Ref Api
+      Stage: api
+      BasePath: grn
 
   FrontendBucket:
     Type: AWS::S3::Bucket
@@ -159,7 +173,7 @@ Resources:
         DefaultRootObject: index.html
         Aliases: !If
           - DeployCustomDomain
-          - [!Ref DomainName]
+          - [!Ref FrontendDomainName]
           - !Ref AWS::NoValue
         ViewerCertificate: !If
           - DeployCustomDomain
@@ -199,10 +213,10 @@ Resources:
     Type: AWS::CertificateManager::Certificate
     Condition: DeployCustomDomain
     Properties:
-      DomainName: !Ref DomainName
+      DomainName: !Ref FrontendDomainName
       ValidationMethod: DNS
       DomainValidationOptions:
-        - DomainName: !Ref DomainName
+        - DomainName: !Ref FrontendDomainName
           HostedZoneId: !Ref DomainHostedZoneId
 
   FrontendDNSRecord:
@@ -210,7 +224,7 @@ Resources:
     Condition: DeployCustomDomain
     Properties:
       HostedZoneId: !Ref DomainHostedZoneId
-      Name: !Ref DomainName
+      Name: !Ref FrontendDomainName
       Type: A
       AliasTarget:
         DNSName: !GetAtt FrontendDistribution.DomainName
@@ -302,7 +316,7 @@ Resources:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
           EVENT_BUS_NAME: !Ref EventBus
-          ORIGIN: !Sub "${DomainProtocol}://${DomainName}"
+          ORIGIN: !Sub "${DomainProtocol}://${FrontendDomainName}"
           RUST_LOG: info
           RUST_BACKTRACE: "1"
       Events:
@@ -418,7 +432,12 @@ Resources:
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
-    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api"
+    Value: !If
+      - DeploySharedApiBasePathMapping
+      - !Sub
+        - "https://api.${RootDomainName}/grn"
+        - RootDomainName: !Ref DomainName
+      - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api"
     Export:
       Name: !Sub "${AWS::StackName}-ApiUrl"
 
@@ -450,7 +469,7 @@ Outputs:
     Description: CloudFront distribution URL for frontend
     Value: !If
       - DeployCustomDomain
-      - !Sub "${DomainProtocol}://${DomainName}"
+      - !Sub "${DomainProtocol}://${FrontendDomainName}"
       - !Sub "https://${FrontendDistribution.DomainName}"
     Export:
       Name: !Sub "${AWS::StackName}-FrontendUrl"

@@ -152,6 +152,9 @@ jobs:
   deploy-foundation:
     name: Deploy Foundation Stack
     runs-on: ubuntu-latest
+    concurrency:
+      group: foundation-stack-${{ github.event.inputs.environment == 'prod' && 'ogf-web-prod' || github.event.inputs.environment == 'staging' && 'ogf-web-staging' || github.ref == 'refs/heads/main' && 'ogf-web-prod' || 'ogf-web-staging' }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout code
@@ -316,12 +319,16 @@ jobs:
         working-directory: services/grn-api
         env:
           DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+          FRONTEND_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.GRN_DOMAIN_NAME_PROD || vars.GRN_DOMAIN_NAME_STAGING || 'localhost:5173' }}
+          DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
         run: |
           ESCAPED_DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed 's/[&|]/\\&/g')
           sed -e "s|{{STACK_NAME}}|${{ env.STACK_NAME }}|g" \
               -e "s|{{REGION}}|${{ env.AWS_REGION }}|g" \
               -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|${{ env.ENVIRONMENT }}|g" \
+              -e "s|{{FRONTEND_DOMAIN_NAME}}|${FRONTEND_DOMAIN_NAME}|g" \
+              -e "s|{{DOMAIN_NAME}}|${DOMAIN_NAME}|g" \
               samconfig.template.toml > samconfig.toml
           echo "Generated samconfig.toml for CI"
 
@@ -459,8 +466,17 @@ jobs:
           OKRA_DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
           OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
           OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+          FOUNDATION_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
         run: |
           sam build
+          PARAM_OVERRIDES=(
+            "DatabaseUrl=$OKRA_DATABASE_URL"
+            "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME"
+            "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+          )
+          if [ -n "$FOUNDATION_DOMAIN_NAME" ]; then
+            PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME")
+          fi
           sam deploy \
             --stack-name "${{ env.OKRA_STACK_NAME }}" \
             --resolve-s3 \
@@ -469,10 +485,7 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              "DatabaseUrl=$OKRA_DATABASE_URL" \
-              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
-              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
       - name: Get Okra stack outputs
         id: get-outputs

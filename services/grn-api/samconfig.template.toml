@@ -15,7 +15,9 @@ confirm_changeset = false
 fail_on_empty_changeset = false
 parameter_overrides = [
   "DatabaseUrl={{DATABASE_URL}}",
-  "EnvironmentName={{ENVIRONMENT_NAME}}"
+  "EnvironmentName={{ENVIRONMENT_NAME}}",
+  "FrontendDomainName={{FRONTEND_DOMAIN_NAME}}",
+  "DomainName={{DOMAIN_NAME}}"
 ]
 
 [default.global.parameters]
