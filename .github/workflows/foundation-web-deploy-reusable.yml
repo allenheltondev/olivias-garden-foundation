@@ -56,6 +56,9 @@ jobs:
   deploy:
     name: Deploy Foundation Web
     runs-on: ubuntu-latest
+    concurrency:
+      group: foundation-stack-${{ inputs.foundation_web_stack_name }}
+      cancel-in-progress: false
     outputs:
       frontend-url: ${{ steps.stack-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}

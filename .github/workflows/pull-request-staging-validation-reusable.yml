@@ -43,6 +43,9 @@ jobs:
   deploy-staging-foundation:
     name: Deploy Foundation Staging Stack
     runs-on: ubuntu-latest
+    concurrency:
+      group: foundation-stack-ogf-web-staging
+      cancel-in-progress: false
     if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true' || inputs.okra_backend == 'true'
     environment:
       name: staging

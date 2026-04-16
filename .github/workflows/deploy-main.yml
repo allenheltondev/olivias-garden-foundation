@@ -152,6 +152,9 @@ jobs:
   deploy-foundation:
     name: Deploy Foundation Stack
     runs-on: ubuntu-latest
+    concurrency:
+      group: foundation-stack-${{ github.event.inputs.environment == 'prod' && 'ogf-web-prod' || github.event.inputs.environment == 'staging' && 'ogf-web-staging' || github.ref == 'refs/heads/main' && 'ogf-web-prod' || 'ogf-web-staging' }}
+      cancel-in-progress: false
 
     steps:
       - name: Checkout code
