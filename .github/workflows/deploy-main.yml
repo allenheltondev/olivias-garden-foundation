@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'apps/web/**'
+      - 'infra/foundation-web/**'
+      - '.github/workflows/web-*.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -19,10 +23,14 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: grn-deploy-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  cancel-in-progress: true
+
 env:
   AWS_REGION: us-east-1
   ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
-  STACK_NAME: grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  STACK_NAME: ogf-grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FOUNDATION_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'ogf-okra-prod' || 'ogf-okra-staging' }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -435,6 +443,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/okra-api/package-lock.json
 
+      - name: Install esbuild globally for SAM
+        run: npm install -g esbuild
+        
       - name: Install Okra backend dependencies
         working-directory: services/okra-api
         run: npm ci --workspaces=false --ignore-scripts

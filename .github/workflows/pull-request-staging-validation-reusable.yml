@@ -1,0 +1,634 @@
+name: Pull Request Staging Validation Reusable
+
+on:
+  workflow_call:
+    inputs:
+      shared_all:
+        required: true
+        type: string
+      grn_backend:
+        required: true
+        type: string
+      grn_frontend:
+        required: true
+        type: string
+      okra_backend:
+        required: true
+        type: string
+      pr_number:
+        required: true
+        type: string
+    secrets:
+      aws_staging_role_arn:
+        required: true
+      database_url_staging:
+        required: true
+      postman_api_key:
+        required: true
+      stripe_webhook_secret:
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-staging-validation-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging-foundation:
+    name: Deploy Foundation Staging Stack
+    runs-on: ubuntu-latest
+    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true' || inputs.okra_backend == 'true'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      FOUNDATION_STACK_NAME: ogf-web-staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Foundation-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Deploy foundation stack
+        env:
+          DOMAIN_NAME: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+          DOMAIN_HOSTED_ZONE_ID: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
+        run: |
+          PARAM_OVERRIDES=("EnvironmentName=staging")
+          if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+
+          sam deploy \
+            --template-file infra/foundation-web/template.yaml \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+  deploy-staging-okra:
+    name: Deploy Okra Staging Backend
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-foundation]
+    if: inputs.shared_all == 'true' || inputs.okra_backend == 'true'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      OKRA_STACK_NAME: ogf-okra-staging
+
+    outputs:
+      api-url: ${{ steps.get-outputs.outputs.api-url }}
+      admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Okra-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/okra-api/package-lock.json
+
+      - name: Install esbuild globally for SAM
+        run: npm install -g esbuild
+
+      - name: Install Okra backend dependencies
+        working-directory: services/okra-api
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Generate CI admin credentials
+        id: okra-ci-auth
+        run: |
+          echo "username=okra-ci-admin+staging@ogf.local" >> "$GITHUB_OUTPUT"
+          PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
+          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Okra backend
+        working-directory: services/okra-api
+        env:
+          OKRA_DATABASE_URL: ${{ secrets.database_url_staging }}
+          OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
+          OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+        run: |
+          sam build
+          sam deploy \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "DatabaseUrl=$OKRA_DATABASE_URL" \
+              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
+              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
+
+      - name: Get Okra stack outputs
+        id: get-outputs
+        run: |
+          OKRA_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" \
+            --output text)
+
+          OKRA_ADMIN_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='AdminApiUrl'].OutputValue" \
+            --output text)
+
+          echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
+          echo "admin-api-url=$OKRA_ADMIN_API_URL" >> $GITHUB_OUTPUT
+
+  deploy-staging-backend:
+    name: Deploy GRN Staging Backend
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-foundation]
+    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      STACK_NAME: ogf-grn-staging
+
+    outputs:
+      user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
+      user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
+      user-pool-domain: ${{ steps.get-outputs.outputs.user-pool-domain }}
+      api-url: ${{ steps.get-outputs.outputs.api-url }}
+      frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
+      frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
+      cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
+      ci-auth-seed-users-function: ${{ steps.get-outputs.outputs.ci-auth-seed-users-function }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: aarch64-unknown-linux-gnu
+
+      - name: Install Zig toolchain
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.13.0
+
+      - name: Install cargo-lambda
+        uses: jaxxstorm/action-install-gh-release@v1.12.0
+        with:
+          repo: cargo-lambda/cargo-lambda
+          tag: v1.2.1
+          chmod: 0755
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            services/grn-api/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run database migrations
+        run: |
+          DATABASE_URL="${{ secrets.database_url_staging }}"
+          export DATABASE_URL
+          cd services/grn-api
+          ./db/migrate.sh
+
+      - name: Generate samconfig.toml from template
+        working-directory: services/grn-api
+        env:
+          DATABASE_URL: ${{ secrets.database_url_staging }}
+        run: |
+          ESCAPED_DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed 's/[&|]/\\&/g')
+          sed -e "s|{{STACK_NAME}}|${{ env.STACK_NAME }}|g" \
+              -e "s|{{REGION}}|${{ env.AWS_REGION }}|g" \
+              -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
+              -e "s|{{ENVIRONMENT_NAME}}|staging|g" \
+              samconfig.template.toml > samconfig.toml
+          echo "Generated samconfig.toml for CI"
+
+      - name: Setup Node.js for deploy script
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Install backend Node.js dependencies
+        working-directory: services/grn-api
+        run: npm install
+
+      - name: Deploy backend to staging
+        run: node scripts/deploy-and-configure.mjs --region ${{ env.AWS_REGION }} --stack-name ${{ env.STACK_NAME }} --ci
+        env:
+          SAM_CLI_TELEMETRY: "0"
+
+      - name: Attach post-confirmation trigger to foundation user pool
+        run: |
+          SHARED_USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name "ogf-web-staging" \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+
+          FUNCTION_NAME=$(aws cloudformation describe-stack-resource \
+            --stack-name ${{ env.STACK_NAME }} \
+            --logical-resource-id PostConfirmationFunction \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text)
+
+          FUNCTION_ARN=$(aws lambda get-function \
+            --function-name "$FUNCTION_NAME" \
+            --query 'Configuration.FunctionArn' \
+            --output text)
+
+          aws cognito-idp update-user-pool \
+            --user-pool-id "$SHARED_USER_POOL_ID" \
+            --auto-verified-attributes email \
+            --user-attribute-update-settings AttributesRequireVerificationBeforeUpdate=email \
+            --lambda-config "PostConfirmation=$FUNCTION_ARN"
+
+      - name: Get stack outputs
+        id: get-outputs
+        run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+
+          USER_POOL_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolDomain'].OutputValue" \
+            --output text)
+
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucket'].OutputValue" \
+            --output text)
+
+          CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)
+
+          CI_AUTH_SEED_USERS_FUNCTION=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CiAuthSeedUsersFunctionName'].OutputValue" \
+            --output text)
+
+          echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
+          echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "ci-auth-seed-users-function=$CI_AUTH_SEED_USERS_FUNCTION" >> $GITHUB_OUTPUT
+
+  deploy-staging-frontend:
+    name: Deploy GRN Staging Frontend
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend]
+    if: inputs.shared_all == 'true' || inputs.grn_frontend == 'true'
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Frontend-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup frontend dependencies
+        uses: ./.github/actions/setup-grn-frontend
+
+      - name: Get foundation web frontend URL
+        id: get-foundation-url
+        run: |
+          FOUNDATION_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "ogf-web-staging" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Build frontend
+        working-directory: apps/grn
+        run: npm run build
+        env:
+          VITE_USER_POOL_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-id }}
+          VITE_USER_POOL_CLIENT_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-client-id }}
+          VITE_USER_POOL_DOMAIN: ${{ needs.deploy-staging-backend.outputs.user-pool-domain }}
+          VITE_API_URL: ${{ needs.deploy-staging-backend.outputs.api-url }}
+          VITE_FRONTEND_URL: ${{ needs.deploy-staging-backend.outputs.frontend-url }}
+          VITE_AWS_REGION: ${{ env.AWS_REGION }}
+          VITE_FOUNDATION_URL: ${{ steps.get-foundation-url.outputs.url }}
+
+      - name: Deploy frontend to S3
+        run: |
+          aws s3 sync apps/grn/dist/ "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/" \
+            --region ${{ env.AWS_REGION }} \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "manifest.json"
+
+          aws s3 cp apps/grn/dist/index.html "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/index.html" \
+            --region ${{ env.AWS_REGION }} \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+          if [ -f "apps/grn/dist/manifest.json" ]; then
+            aws s3 cp apps/grn/dist/manifest.json "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/manifest.json" \
+              --region ${{ env.AWS_REGION }} \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "application/json"
+          fi
+
+      - name: Invalidate CloudFront cache
+        run: |
+          DISTRIBUTION_ID="${{ needs.deploy-staging-backend.outputs.cloudfront-distribution-id }}"
+          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+          fi
+
+  comment-staging-deployment:
+    name: Comment GRN Staging Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend]
+    if: always() && needs.deploy-staging-backend.result == 'success'
+
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### GRN Staging Deployment Complete
+
+            **Environment:** \`staging\`
+            **App:** \`apps/grn\`
+            **Service:** \`services/grn-api\`
+            **Stack:** \`ogf-grn-staging\`
+
+            **Frontend URL (apps/grn):** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
+            **API URL (services/grn-api):** ${{ needs.deploy-staging-backend.outputs.api-url }}
+
+            This PR updated the shared GRN staging environment.`;
+
+            github.rest.issues.createComment({
+              issue_number: Number('${{ inputs.pr_number }}'),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  staging-public-api-smoke:
+    name: GRN Staging Unauthorized API Smoke Test
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend]
+    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true'
+
+    steps:
+      - name: Verify unauthorized catalog request is rejected
+        run: |
+          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
+          HTTP_CODE=$(curl --silent --show-error --output /tmp/catalog.json --write-out "%{http_code}" "$API_URL/catalog/crops")
+          test "$HTTP_CODE" = "401"
+
+  postman-public-smoke:
+    name: GRN Public Catalog Smoke Test
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, staging-public-api-smoke]
+    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Postman CLI
+        uses: ./.github/actions/setup-postman-cli
+        with:
+          api-key: ${{ secrets.postman_api_key }}
+
+      - name: Run public catalog smoke collection
+        run: |
+          postman collection run "postman/collections/Public Catalog Smoke" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}"
+
+  postman-api-tests:
+    name: GRN Staging Postman Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
+    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true'
+    env:
+      AWS_REGION: us-east-1
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - id: contract
+            payload: '{"users":[{"name":"contract-grower-free","role":"grower","tier":"free"},{"name":"contract-grower-pro","role":"grower","tier":"pro"}]}'
+            free_user_key: contract-grower-free
+            pro_user_key: contract-grower-pro
+            gatherer_user_key: ""
+          - id: utility
+            payload: '{"users":[{"name":"util-grower-free","role":"grower","tier":"free"},{"name":"util-grower-pro","role":"grower","tier":"pro"},{"name":"util-gatherer","role":"gatherer","tier":"free"}]}'
+            free_user_key: util-grower-free
+            pro_user_key: util-grower-pro
+            gatherer_user_key: util-gatherer
+          - id: e2e
+            payload: '{"users":[{"name":"e2e-grower-free","role":"grower","tier":"free"},{"name":"e2e-grower-pro","role":"grower","tier":"pro"},{"name":"e2e-gatherer","role":"gatherer","tier":"free"}]}'
+            free_user_key: e2e-grower-free
+            pro_user_key: e2e-grower-pro
+            gatherer_user_key: e2e-gatherer
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-${{ matrix.suite.id }}-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Seed Postman auth tokens
+        id: ci-auth
+        uses: ./.github/actions/seed-postman-auth
+        with:
+          function-name: ${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}
+          payload: ${{ matrix.suite.payload }}
+          free-user-key: ${{ matrix.suite.free_user_key }}
+          pro-user-key: ${{ matrix.suite.pro_user_key }}
+          gatherer-user-key: ${{ matrix.suite.gatherer_user_key }}
+
+      - name: Setup Postman CLI
+        uses: ./.github/actions/setup-postman-cli
+        with:
+          api-key: ${{ secrets.postman_api_key }}
+
+      - name: Run contract Postman suite
+        if: matrix.suite.id == 'contract'
+        run: |
+          postman collection run "postman/collections/Good Roots Network API" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "expectFeatureLocked=false"
+
+          postman collection run "postman/collections/Good Roots Network API/AI Features" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
+            --env-var "expectFeatureLocked=true"
+
+          if [ -n "${{ secrets.stripe_webhook_secret }}" ]; then
+            postman collection run "postman/collections/Good Roots Network API/Billing Webhook Reliability" \
+              --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+              --env-var "stripeWebhookSecret=${{ secrets.stripe_webhook_secret }}"
+          else
+            echo "Skipping billing webhook reliability collection: STRIPE_WEBHOOK_SECRET is not configured."
+          fi
+
+      - name: Run utility Postman suite
+        if: matrix.suite.id == 'utility'
+        run: |
+          postman collection run "postman/collections/Good Roots Network API - Utility Tests" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "proAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "premiumAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "freeAuthToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
+            --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
+
+      - name: Run E2E Postman suite
+        if: matrix.suite.id == 'e2e'
+        run: |
+          postman collection run "postman/collections/Good Roots Network API - E2E Flows" \
+            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
+            --env-var "growerAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
+            --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
+
+  staging-validation-summary:
+    name: GRN Staging Validation Summary
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-staging-foundation
+      - deploy-staging-okra
+      - deploy-staging-backend
+      - deploy-staging-frontend
+      - staging-public-api-smoke
+      - postman-public-smoke
+      - postman-api-tests
+    if: always()
+
+    steps:
+      - name: Check staging validation jobs
+        run: |
+          check_result() {
+            local job_name="$1"
+            local result="$2"
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$job_name failed with result: $result"
+              exit 1
+            fi
+          }
+
+          check_result "deploy-staging-foundation" "${{ needs.deploy-staging-foundation.result }}"
+          check_result "deploy-staging-okra" "${{ needs.deploy-staging-okra.result }}"
+          check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
+          check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
+          check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
+          check_result "postman-public-smoke" "${{ needs.postman-public-smoke.result }}"
+          check_result "postman-api-tests" "${{ needs.postman-api-tests.result }}"
+
+          echo "Staging validation passed"
