@@ -308,6 +308,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Run ESLint
         run: npm run lint
 
@@ -333,6 +337,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --workspaces=false
+
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Type check
         run: npm run typecheck
@@ -362,6 +370,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Run tests
         run: npm test
 
@@ -387,6 +399,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Build check
         run: npm run build
 
@@ -411,6 +427,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --workspaces=false
+
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Build frontend for bundle analysis
         run: npm run build

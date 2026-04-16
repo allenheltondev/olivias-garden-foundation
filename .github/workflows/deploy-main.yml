@@ -116,6 +116,10 @@ jobs:
         working-directory: apps/grn
         run: npm ci --workspaces=false
 
+      - name: Frontend - Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Frontend - Run ESLint
         working-directory: apps/grn
         run: npm run lint
@@ -510,6 +514,10 @@ jobs:
       - name: Install dependencies
         working-directory: apps/grn
         run: npm ci --workspaces=false
+
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Get foundation web frontend URL
         id: get-foundation-url
