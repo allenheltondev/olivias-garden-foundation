@@ -36,21 +36,6 @@ Globals:
     Timeout: 5
     MemorySize: 512
 
-Metadata:
-  esbuild-properties: &esbuild-properties
-    Format: esm
-    Minify: true
-    OutExtension:
-      - .js=.mjs
-    Target: es2020
-    Sourcemap: false
-    EntryPoints:
-      - post-confirmation.mjs
-    Banner:
-      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
-    External:
-      - '@aws-sdk/*'
-
 Conditions:
   DeployCustomDomain: !And
     - !Not [!Equals [!Ref DomainName, '']]
@@ -99,7 +84,18 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
-        <<: *esbuild-properties
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Target: es2020
+        Sourcemap: false
+        EntryPoints:
+          - post-confirmation.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - '@aws-sdk/*'
     Properties:
       CodeUri: functions
       Handler: post-confirmation.handler
