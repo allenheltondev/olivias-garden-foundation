@@ -992,6 +992,10 @@ jobs:
         working-directory: apps/grn
         run: npm ci --workspaces=false
 
+      - name: Install shared package types
+        working-directory: packages/ui
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Get foundation web frontend URL
         id: get-foundation-url
         run: |
