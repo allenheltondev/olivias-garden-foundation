@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Description: Shared infrastructure for the Olivia's Garden Foundation web app.
 
 Parameters:
@@ -18,6 +19,22 @@ Parameters:
     Type: String
     Default: ''
     Description: Optional Route53 hosted zone ID for the custom domain.
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: PostgreSQL connection string for the shared GRN database user table.
+  SignupSlackWebhookUrl:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Optional Slack webhook URL for foundation signup notifications.
+
+Globals:
+  Function:
+    Architectures: [arm64]
+    Runtime: nodejs24.x
+    Timeout: 5
+    MemorySize: 512
 
 Conditions:
   DeployCustomDomain: !And
@@ -59,6 +76,44 @@ Resources:
           AttributeDataType: String
           DeveloperOnlyAttribute: false
           Mutable: true
+      LambdaConfig:
+        PostConfirmation: !GetAtt FoundationPostConfirmationFunction.Arn
+
+  FoundationPostConfirmationFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Target: es2020
+        Sourcemap: false
+        EntryPoints:
+          - post-confirmation.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+        External:
+          - '@aws-sdk/*'
+    Properties:
+      CodeUri: functions
+      Handler: post-confirmation.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          SLACK_WEBHOOK_URL: !Ref SignupSlackWebhookUrl
+          FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
+
+  FoundationPostConfirmationInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FoundationPostConfirmationFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${FoundationUserPool}'
 
   FoundationUserPoolClient:
     Type: AWS::Cognito::UserPoolClient

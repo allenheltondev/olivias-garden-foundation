@@ -14,7 +14,6 @@ import { parseArgs } from "node:util";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
 
-const foundationTemplatePath = resolve(repoRoot, "infra", "foundation-web", "template.yaml");
 const grnDir = resolve(repoRoot, "services", "grn-api");
 const okraDir = resolve(repoRoot, "services", "okra-api");
 const grnSamconfigPath = resolve(grnDir, "samconfig.toml");
@@ -180,35 +179,34 @@ function deployFoundationStack({
   environment,
   domainName,
   domainHostedZoneId,
+  databaseUrl,
+  signupSlackWebhookUrl,
 }) {
+  const foundationDir = resolve(repoRoot, "infra", "foundation-web");
+
+  step(`Building foundation stack ${stackName}`);
+  samBuild(foundationDir, { profile, region });
+  ok(`Foundation build completed for ${stackName}`);
+
   step(`Deploying foundation stack ${stackName}`);
-  const args = [
-    "cloudformation",
-    "deploy",
-    "--template-file",
-    foundationTemplatePath,
-    "--stack-name",
-    stackName,
-    "--region",
-    region,
-    "--capabilities",
-    "CAPABILITY_IAM",
-    "--no-fail-on-empty-changeset",
-    "--parameter-overrides",
+  const parameterOverrides = [
     `EnvironmentName=${environment}`,
     `DomainName=${domainName}`,
     `DomainHostedZoneId=${domainHostedZoneId}`,
+    `DatabaseUrl=${escapeParameterValue(databaseUrl)}`,
   ];
 
-  if (profile) {
-    args.push("--profile", profile);
+  if (signupSlackWebhookUrl) {
+    parameterOverrides.push(`SignupSlackWebhookUrl=${escapeParameterValue(signupSlackWebhookUrl)}`);
   }
 
-  const result = run("aws", args);
-  if (!result.ok) {
-    fail(`Failed to deploy foundation stack ${stackName}`, result.stderr || result.stdout);
-  }
-
+  samDeploy(foundationDir, {
+    profile,
+    region,
+    stackName,
+    capabilities: ["CAPABILITY_IAM"],
+    parameterOverrides,
+  });
   ok(`Foundation stack ${stackName} deployed`);
 }
 
@@ -444,6 +442,10 @@ Options:
   const grnStackName = values["grn-stack-name"];
   const okraStackName = values["okra-stack-name"];
   const configOnly = values["config-only"];
+  const signupSlackWebhookUrl =
+    process.env.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL ??
+    process.env.SIGNUP_SLACK_WEBHOOK_URL ??
+    "";
 
   console.log(`Foundation stack: ${foundationStackName}`);
   console.log(`GRN stack: ${grnStackName}`);
@@ -474,6 +476,8 @@ Options:
       environment,
       domainName: values["domain-name"],
       domainHostedZoneId: values["domain-hosted-zone-id"],
+      databaseUrl: grnDatabaseUrl,
+      signupSlackWebhookUrl,
     });
 
     deployGrnStack({

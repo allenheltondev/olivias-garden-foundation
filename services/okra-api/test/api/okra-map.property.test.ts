@@ -116,7 +116,11 @@ describe('Property 1: Map endpoint returns exactly the approved non-zero-coord s
   it('GET /okra returns exactly approved non-zero-coord submissions with total_count === data.length', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(arbSubmission, { minLength: 0, maxLength: 30 }),
+        fc.uniqueArray(arbSubmission, {
+          minLength: 0,
+          maxLength: 30,
+          selector: (submission) => submission.id,
+        }),
         async (submissions) => {
           const isNullIsland = (s: any) => s.display_lat === 0 && s.display_lng === 0;
 
@@ -205,11 +209,15 @@ describe('Property 2: Map endpoint applies deterministic privacy fuzzing', () =>
   it('returned coordinates match fuzzCoordinates() output for each submission', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(
+        fc.uniqueArray(
           arbSubmission.filter(
             (s) => s.status === 'approved' && !(s.display_lat === 0 && s.display_lng === 0)
           ),
-          { minLength: 1, maxLength: 20 }
+          {
+            minLength: 1,
+            maxLength: 20,
+            selector: (submission) => submission.id,
+          }
         ),
         async (submissions) => {
           const dbRows = submissions.map((s) => ({

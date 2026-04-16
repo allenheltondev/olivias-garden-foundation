@@ -75,22 +75,31 @@ jobs:
       - name: Build foundation web app
         run: npm --workspace @olivias/web run build
 
+      - name: Install foundation infrastructure dependencies
+        working-directory: infra/foundation-web
+        run: npm ci --ignore-scripts
+
+      - name: Run foundation function tests
+        working-directory: infra/foundation-web
+        run: npm test
+
   deploy:
     name: Deploy Foundation Web
     needs: [checks]
     uses: ./.github/workflows/foundation-web-deploy-reusable.yml
     with:
-      environment_name: ${{ env.DEPLOY_ENVIRONMENT }}
-      foundation_web_stack_name: ${{ env.FOUNDATION_WEB_STACK_NAME }}
-      okra_stack_name: ${{ env.OKRA_STACK_NAME }}
-      grn_stack_name: ogf-grn-${{ env.DEPLOY_ENVIRONMENT }}
-      aws_region: ${{ env.AWS_REGION }}
+      environment_name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+      foundation_web_stack_name: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+      okra_stack_name: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'ogf-okra-prod' || 'ogf-okra-staging' }}
+      grn_stack_name: ogf-grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+      aws_region: us-east-1
       aws_role_session_name: GitHubActions-FoundationWeb-Deploy
-      domain_name: ${{ env.DEPLOY_ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
-      domain_hosted_zone_id: ${{ env.DEPLOY_ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD || vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
+      domain_name: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+      domain_hosted_zone_id: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD || vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
     secrets:
-      aws_role_arn: ${{ env.DEPLOY_ENVIRONMENT == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
-      database_url: ${{ env.DEPLOY_ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+      aws_role_arn: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
+      database_url: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+      signup_slack_webhook_url: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
 
   deployment-summary:
     name: Foundation Web Deployment Summary

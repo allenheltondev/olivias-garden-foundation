@@ -39,6 +39,9 @@ The script also tries to reuse existing local database configuration:
 - `GRN_DATABASE_URL`, then `DATABASE_URL`, then `services/grn-api/samconfig.toml`
 - `OKRA_DATABASE_URL`, then `DATABASE_URL`, then `services/okra-api/samconfig.toml`, then the GRN URL
 
+Optional foundation signup notifications:
+- `FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL`, then `SIGNUP_SLACK_WEBHOOK_URL`
+
 ## Catalog
 
 ### `catalog/`

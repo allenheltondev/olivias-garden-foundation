@@ -14,7 +14,9 @@ fail_on_empty_changeset = false
 parameter_overrides = [
   "EnvironmentName={{ENVIRONMENT_NAME}}",
   "DomainName={{DOMAIN_NAME}}",
-  "DomainHostedZoneId={{DOMAIN_HOSTED_ZONE_ID}}"
+  "DomainHostedZoneId={{DOMAIN_HOSTED_ZONE_ID}}",
+  "DatabaseUrl={{DATABASE_URL}}",
+  "SignupSlackWebhookUrl={{SIGNUP_SLACK_WEBHOOK_URL}}"
 ]
 
 [default.global.parameters]
