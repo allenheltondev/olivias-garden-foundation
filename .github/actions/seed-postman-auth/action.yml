@@ -1,0 +1,89 @@
+name: Seed Postman Auth
+description: Seed CI users through the auth seeding Lambda and expose their access tokens.
+
+inputs:
+  function-name:
+    description: Name of the CI auth seed Lambda function.
+    required: true
+  payload:
+    description: JSON payload describing users to seed.
+    required: true
+  free-user-key:
+    description: User key whose token should map to free-auth-token.
+    required: false
+    default: ""
+  pro-user-key:
+    description: User key whose token should map to pro-auth-token.
+    required: false
+    default: ""
+  gatherer-user-key:
+    description: User key whose token should map to gatherer-auth-token.
+    required: false
+    default: ""
+
+outputs:
+  free-auth-token:
+    description: Access token for the configured free user.
+    value: ${{ steps.seed.outputs.free-auth-token }}
+  pro-auth-token:
+    description: Access token for the configured pro user.
+    value: ${{ steps.seed.outputs.pro-auth-token }}
+  gatherer-auth-token:
+    description: Access token for the configured gatherer user.
+    value: ${{ steps.seed.outputs.gatherer-auth-token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Seed CI auth users
+      id: seed
+      shell: bash
+      env:
+        FUNCTION_NAME: ${{ inputs.function-name }}
+        PAYLOAD: ${{ inputs.payload }}
+        FREE_USER_KEY: ${{ inputs.free-user-key }}
+        PRO_USER_KEY: ${{ inputs.pro-user-key }}
+        GATHERER_USER_KEY: ${{ inputs.gatherer-user-key }}
+      run: |
+        if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
+          echo "A valid CI auth seed Lambda function name is required."
+          exit 1
+        fi
+
+        aws lambda invoke \
+          --function-name "$FUNCTION_NAME" \
+          --payload "$PAYLOAD" \
+          --cli-binary-format raw-in-base64-out \
+          ci-auth-seed-response.json > /dev/null
+
+        RESPONSE_JSON=$(jq -c '
+          if .body == null then .
+          elif (.body | type) == "string" then (.body | fromjson)
+          else .body
+          end
+        ' ci-auth-seed-response.json)
+
+        extract_token() {
+          local key="$1"
+          local output_name="$2"
+
+          if [ -z "$key" ]; then
+            return 0
+          fi
+
+          local token
+          token=$(printf '%s' "$RESPONSE_JSON" | jq -r --arg user_key "$key" '.users[$user_key].access_token')
+
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "Failed to extract $key access_token from CI auth seed response."
+            cat ci-auth-seed-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$token"
+          echo "$output_name=$token" >> "$GITHUB_OUTPUT"
+        }
+
+        extract_token "$FREE_USER_KEY" "free-auth-token"
+        extract_token "$PRO_USER_KEY" "pro-auth-token"
+        extract_token "$GATHERER_USER_KEY" "gatherer-auth-token"

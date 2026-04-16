@@ -16,6 +16,10 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: repository-pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   VITE_USER_POOL_ID: placeholder
   VITE_USER_POOL_CLIENT_ID: placeholder
@@ -64,8 +68,8 @@ jobs:
             okra_backend:
               - 'services/okra-api/**'
 
-  backend-format:
-    name: GRN Backend Format Check
+  backend-static:
+    name: GRN Backend Static Checks
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
@@ -77,108 +81,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup GRN backend Rust
+        uses: ./.github/actions/setup-grn-backend-rust
         with:
-          toolchain: stable
-          components: rustfmt
+          components: rustfmt,clippy
 
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/grn-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Check code formatting
+      - name: Check formatting
         run: cargo fmt --all -- --check
 
-  backend-lint:
-    name: GRN Backend Clippy
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/grn-api
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          components: clippy
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/grn-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Run Clippy linter
+      - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
-
-  backend-build:
-    name: GRN Backend Build Check
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/grn-api
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/grn-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
 
       - name: Run cargo check
         run: cargo check --all-targets --all-features
 
-  backend-unit-tests:
-    name: GRN Backend Unit Tests
+  backend-tests:
+    name: GRN Backend Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -200,87 +124,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup GRN backend Rust
+        uses: ./.github/actions/setup-grn-backend-rust
         with:
-          toolchain: stable
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/grn-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+          install-postgres-client: 'true'
 
       - name: Run database migrations
         run: ./db/migrate.sh
 
       - name: Run unit tests
         run: cargo test --bins --all-features
-
-  backend-integration-tests:
-    name: GRN Backend Integration Tests
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
-    needs: [changes]
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: grn_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    defaults:
-      run:
-        working-directory: services/grn-api
-    env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_ci
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/grn-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Run database migrations
-        run: ./db/migrate.sh
 
       - name: Run integration tests
         run: cargo test --test integration_test
@@ -298,19 +151,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: apps/grn/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Install shared package types
-        working-directory: packages/ui
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Setup frontend dependencies
+        uses: ./.github/actions/setup-grn-frontend
 
       - name: Run ESLint
         run: npm run lint
@@ -328,19 +170,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: apps/grn/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Install shared package types
-        working-directory: packages/ui
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Setup frontend dependencies
+        uses: ./.github/actions/setup-grn-frontend
 
       - name: Type check
         run: npm run typecheck
@@ -353,26 +184,15 @@ jobs:
     defaults:
       run:
         working-directory: apps/grn
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup frontend dependencies
+        uses: ./.github/actions/setup-grn-frontend
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: apps/grn/package-lock.json
-
-      - name: Install esbuild
-        run: npm install -g esbuild
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Install shared package types
-        working-directory: packages/ui
-        run: npm install --ignore-scripts --no-audit --no-fund
+          install-esbuild: 'true'
 
       - name: Run tests
         run: npm test
@@ -385,55 +205,45 @@ jobs:
     defaults:
       run:
         working-directory: apps/grn
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: apps/grn/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Install shared package types
-        working-directory: packages/ui
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Setup frontend dependencies
+        uses: ./.github/actions/setup-grn-frontend
 
       - name: Build check
         run: npm run build
 
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: grn-frontend-dist
+          path: apps/grn/dist
+          if-no-files-found: error
+
   frontend-performance-budget:
     name: GRN Frontend Performance Budget
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    needs: [changes]
+    needs: [changes, frontend-build]
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/grn
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup frontend dependencies
+        uses: ./.github/actions/setup-grn-frontend
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: apps/grn/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false
-
-      - name: Install shared package types
-        working-directory: packages/ui
-        run: npm install --ignore-scripts --no-audit --no-fund
-
-      - name: Build frontend for bundle analysis
-        run: npm run build
+          name: grn-frontend-dist
+          path: apps/grn/dist
 
       - name: Performance budget check
         run: npm run perf:budget
@@ -478,15 +288,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: services/okra-api/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false --ignore-scripts
+      - name: Setup Okra backend dependencies
+        uses: ./.github/actions/setup-okra-backend
 
       - name: Run ESLint
         run: npm run lint
@@ -504,15 +307,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: services/okra-api/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false --ignore-scripts
+      - name: Setup Okra backend dependencies
+        uses: ./.github/actions/setup-okra-backend
 
       - name: Type check
         run: npm run typecheck
@@ -530,15 +326,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: services/okra-api/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false --ignore-scripts
+      - name: Setup Okra backend dependencies
+        uses: ./.github/actions/setup-okra-backend
 
       - name: Run tests
         run: npm test
@@ -556,20 +345,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Okra backend dependencies
+        uses: ./.github/actions/setup-okra-backend
         with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: services/okra-api/package-lock.json
-
-      - name: Setup SAM CLI
-        uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
-
-      - name: Install dependencies
-        run: npm ci --workspaces=false --ignore-scripts
+          setup-sam: 'true'
 
       - name: Build check
         run: npm run build
@@ -579,11 +358,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - changes
-      - backend-format
-      - backend-lint
-      - backend-build
-      - backend-unit-tests
-      - backend-integration-tests
+      - backend-static
+      - backend-tests
       - backend-functions-tests
       - frontend-lint
       - frontend-typecheck
@@ -608,11 +384,8 @@ jobs:
             fi
           }
 
-          check_result "backend-format" "${{ needs.backend-format.result }}"
-          check_result "backend-lint" "${{ needs.backend-lint.result }}"
-          check_result "backend-build" "${{ needs.backend-build.result }}"
-          check_result "backend-unit-tests" "${{ needs.backend-unit-tests.result }}"
-          check_result "backend-integration-tests" "${{ needs.backend-integration-tests.result }}"
+          check_result "backend-static" "${{ needs.backend-static.result }}"
+          check_result "backend-tests" "${{ needs.backend-tests.result }}"
           check_result "backend-functions-tests" "${{ needs.backend-functions-tests.result }}"
           check_result "frontend-lint" "${{ needs.frontend-lint.result }}"
           check_result "frontend-typecheck" "${{ needs.frontend-typecheck.result }}"
@@ -626,796 +399,19 @@ jobs:
 
           echo "All applicable CI checks passed"
 
-  deploy-staging-foundation:
-    name: Deploy Foundation Staging Stack
-    runs-on: ubuntu-latest
+  staging-validation:
+    name: PR Staging Deploy And Validation
     needs: [changes, ci-summary]
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.okra_backend == 'true')
-    environment:
-      name: staging
-    env:
-      AWS_REGION: us-east-1
-      FOUNDATION_STACK_NAME: ogf-web-staging
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-Foundation-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup SAM CLI
-        uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
-
-      - name: Deploy foundation stack
-        env:
-          DOMAIN_NAME: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
-          DOMAIN_HOSTED_ZONE_ID: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
-        run: |
-          PARAM_OVERRIDES=("EnvironmentName=staging")
-          if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
-            PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
-          fi
-
-          sam deploy \
-            --template-file infra/foundation-web/template.yaml \
-            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
-            --region "${{ env.AWS_REGION }}" \
-            --capabilities CAPABILITY_IAM \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides "${PARAM_OVERRIDES[@]}"
-
-  deploy-staging-okra-backend:
-    name: Deploy Okra Staging Backend
-    runs-on: ubuntu-latest
-    needs: [changes, ci-summary, deploy-staging-foundation]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
-    environment:
-      name: staging
-      url: ${{ steps.get-outputs.outputs.api-url }}
-    env:
-      AWS_REGION: us-east-1
-      OKRA_STACK_NAME: ogf-okra-staging
-    outputs:
-      api-url: ${{ steps.get-outputs.outputs.api-url }}
-      admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-Okra-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup SAM CLI
-        uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: services/okra-api/package-lock.json
-
-      - name: Install esbuild globally for SAM
-        run: npm install -g esbuild
-
-      - name: Install Okra backend dependencies
-        working-directory: services/okra-api
-        run: npm ci --workspaces=false --ignore-scripts
-
-      - name: Generate CI admin credentials
-        id: okra-ci-auth
-        run: |
-          echo "username=okra-ci-admin+staging@ogf.local" >> "$GITHUB_OUTPUT"
-          PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
-          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy Okra backend
-        working-directory: services/okra-api
-        env:
-          OKRA_DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
-          OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
-          OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
-        run: |
-          sam build
-          sam deploy \
-            --stack-name "${{ env.OKRA_STACK_NAME }}" \
-            --resolve-s3 \
-            --s3-prefix "${{ env.OKRA_STACK_NAME }}" \
-            --region "${{ env.AWS_REGION }}" \
-            --capabilities CAPABILITY_IAM \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              "DatabaseUrl=$OKRA_DATABASE_URL" \
-              "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME" \
-              "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
-
-      - name: Get Okra stack outputs
-        id: get-outputs
-        run: |
-          OKRA_API_URL=$(aws cloudformation describe-stacks \
-            --stack-name "${{ env.OKRA_STACK_NAME }}" \
-            --region "${{ env.AWS_REGION }}" \
-            --query "Stacks[0].Outputs[?OutputKey=='HttpApiUrl'].OutputValue" \
-            --output text)
-
-          OKRA_ADMIN_API_URL=$(aws cloudformation describe-stacks \
-            --stack-name "${{ env.OKRA_STACK_NAME }}" \
-            --region "${{ env.AWS_REGION }}" \
-            --query "Stacks[0].Outputs[?OutputKey=='AdminApiUrl'].OutputValue" \
-            --output text)
-
-          echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
-          echo "admin-api-url=$OKRA_ADMIN_API_URL" >> $GITHUB_OUTPUT
-
-          echo "Okra API URL: $OKRA_API_URL"
-          echo "Okra Admin API URL: $OKRA_ADMIN_API_URL"
-
-  deploy-staging-backend:
-    name: Deploy GRN Staging Backend
-    runs-on: ubuntu-latest
-    needs: [changes, ci-summary, deploy-staging-foundation]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    environment:
-      name: staging
-      url: ${{ steps.get-outputs.outputs.frontend-url }}
-    env:
-      AWS_REGION: us-east-1
-      STACK_NAME: grn-staging
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup SAM CLI
-        uses: aws-actions/setup-sam@v2
-        with:
-          use-installer: true
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          target: aarch64-unknown-linux-gnu
-
-      - name: Install Zig toolchain
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.13.0
-
-      - name: Install cargo-lambda
-        uses: jaxxstorm/action-install-gh-release@v1.12.0
-        with:
-          repo: cargo-lambda/cargo-lambda
-          tag: v1.2.1
-          chmod: 0755
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/grn-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-
-      - name: Run database migrations
-        run: |
-          DATABASE_URL="${{ secrets.DATABASE_URL_STAGING }}"
-          export DATABASE_URL
-          cd services/grn-api
-          ./db/migrate.sh
-
-      - name: Generate samconfig.toml from template
-        working-directory: services/grn-api
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
-        run: |
-          ESCAPED_DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed 's/[&|]/\\&/g')
-          sed -e "s|{{STACK_NAME}}|${{ env.STACK_NAME }}|g" \
-              -e "s|{{REGION}}|${{ env.AWS_REGION }}|g" \
-              -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
-              -e "s|{{ENVIRONMENT_NAME}}|staging|g" \
-              samconfig.template.toml > samconfig.toml
-          echo "Generated samconfig.toml for CI"
-
-      - name: Setup Node.js for deploy script
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Install esbuild
-        run: npm install -g esbuild
-
-      - name: Install backend Node.js dependencies
-        working-directory: services/grn-api
-        run: npm install
-
-      - name: Deploy backend to staging
-        run: node scripts/deploy-and-configure.mjs --region ${{ env.AWS_REGION }} --stack-name ${{ env.STACK_NAME }} --ci
-        env:
-          SAM_CLI_TELEMETRY: "0"
-
-      - name: Attach post-confirmation trigger to foundation user pool
-        run: |
-          SHARED_USER_POOL_ID=$(aws cloudformation describe-stacks \
-            --stack-name ogf-web-staging \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
-            --output text)
-
-          FUNCTION_NAME=$(aws cloudformation describe-stack-resource \
-            --stack-name ${{ env.STACK_NAME }} \
-            --logical-resource-id PostConfirmationFunction \
-            --query 'StackResourceDetail.PhysicalResourceId' \
-            --output text)
-
-          FUNCTION_ARN=$(aws lambda get-function \
-            --function-name "$FUNCTION_NAME" \
-            --query 'Configuration.FunctionArn' \
-            --output text)
-
-          aws cognito-idp update-user-pool \
-            --user-pool-id "$SHARED_USER_POOL_ID" \
-            --auto-verified-attributes email \
-            --user-attribute-update-settings AttributesRequireVerificationBeforeUpdate=email \
-            --lambda-config "PostConfirmation=$FUNCTION_ARN"
-
-      - name: Get stack outputs
-        id: get-outputs
-        run: |
-          USER_POOL_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
-            --output text)
-
-          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
-            --output text)
-
-          USER_POOL_DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolDomain'].OutputValue" \
-            --output text)
-
-          API_URL=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
-            --output text)
-
-          FRONTEND_URL=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
-            --output text)
-
-          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucket'].OutputValue" \
-            --output text)
-
-          CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
-            --output text)
-
-          CI_AUTH_SEED_USERS_FUNCTION=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='CiAuthSeedUsersFunctionName'].OutputValue" \
-            --output text)
-
-          echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
-          echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
-          echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
-          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
-          echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
-          echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
-          echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
-          echo "ci-auth-seed-users-function=$CI_AUTH_SEED_USERS_FUNCTION" >> $GITHUB_OUTPUT
-
-    outputs:
-      api-url: ${{ steps.get-outputs.outputs.api-url }}
-      frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
-      frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
-      cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
-      user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
-      user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
-      user-pool-domain: ${{ steps.get-outputs.outputs.user-pool-domain }}
-      ci-auth-seed-users-function: ${{ steps.get-outputs.outputs.ci-auth-seed-users-function }}
-
-  deploy-staging-frontend:
-    name: Deploy GRN Staging Frontend
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    env:
-      AWS_REGION: us-east-1
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-Frontend-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: apps/grn/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: apps/grn
-        run: npm ci --workspaces=false
-
-      - name: Install shared package types
-        working-directory: packages/ui
-        run: npm install --ignore-scripts --no-audit --no-fund
-
-      - name: Get foundation web frontend URL
-        id: get-foundation-url
-        run: |
-          FOUNDATION_FRONTEND_URL=$(aws cloudformation describe-stacks \
-            --stack-name "ogf-web-staging" \
-            --region "${{ env.AWS_REGION }}" \
-            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
-            --output text 2>/dev/null || echo "")
-          echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
-
-      - name: Build frontend
-        working-directory: apps/grn
-        run: npm run build
-        env:
-          VITE_USER_POOL_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-id }}
-          VITE_USER_POOL_CLIENT_ID: ${{ needs.deploy-staging-backend.outputs.user-pool-client-id }}
-          VITE_USER_POOL_DOMAIN: ${{ needs.deploy-staging-backend.outputs.user-pool-domain }}
-          VITE_API_URL: ${{ needs.deploy-staging-backend.outputs.api-url }}
-          VITE_FRONTEND_URL: ${{ needs.deploy-staging-backend.outputs.frontend-url }}
-          VITE_AWS_REGION: ${{ env.AWS_REGION }}
-          VITE_FOUNDATION_URL: ${{ steps.get-foundation-url.outputs.url }}
-
-      - name: Deploy frontend to S3
-        run: |
-          aws s3 sync apps/grn/dist/ "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/" \
-            --region ${{ env.AWS_REGION }} \
-            --delete \
-            --cache-control "public, max-age=31536000, immutable" \
-            --exclude "index.html" \
-            --exclude "manifest.json"
-
-          aws s3 cp apps/grn/dist/index.html "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/index.html" \
-            --region ${{ env.AWS_REGION }} \
-            --cache-control "no-cache, no-store, must-revalidate" \
-            --content-type "text/html"
-
-          if [ -f "apps/grn/dist/manifest.json" ]; then
-            aws s3 cp apps/grn/dist/manifest.json "s3://${{ needs.deploy-staging-backend.outputs.frontend-bucket }}/manifest.json" \
-              --region ${{ env.AWS_REGION }} \
-              --cache-control "no-cache, no-store, must-revalidate" \
-              --content-type "application/json"
-          fi
-
-      - name: Invalidate CloudFront cache
-        run: |
-          DISTRIBUTION_ID="${{ needs.deploy-staging-backend.outputs.cloudfront-distribution-id }}"
-          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
-            aws cloudfront create-invalidation \
-              --distribution-id "$DISTRIBUTION_ID" \
-              --paths "/*"
-          fi
-
-  comment-staging-deployment:
-    name: Comment GRN Staging Deployment
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend, deploy-staging-frontend]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-
-    steps:
-      - name: Comment on PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const output = `#### GRN Staging Deployment Complete
-
-            **Environment:** \`staging\`
-            **App:** \`apps/grn\`
-            **Service:** \`services/grn-api\`
-            **Stack:** \`grn-staging\`
-
-            **Frontend URL (apps/grn):** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
-            **API URL (services/grn-api):** ${{ needs.deploy-staging-backend.outputs.api-url }}
-
-            This PR updated the shared GRN staging environment.`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-
-  staging-public-api-smoke:
-    name: GRN Staging Unauthorized API Smoke Test
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-
-    steps:
-      - name: Verify unauthorized catalog request is rejected
-        run: |
-          API_URL="${{ needs.deploy-staging-backend.outputs.api-url }}"
-          HTTP_CODE=$(curl --silent --show-error --output /tmp/catalog.json --write-out "%{http_code}" "$API_URL/catalog/crops")
-          test "$HTTP_CODE" = "401"
-
-  postman-public-smoke:
-    name: GRN Public Catalog Smoke Test
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend, staging-public-api-smoke]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Postman CLI
-        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-      - name: Login to Postman CLI
-        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
-
-      - name: Run public catalog smoke collection
-        run: |
-          postman collection run "postman/collections/Public Catalog Smoke" \
-            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}"
-
-  contract-api-tests:
-    name: GRN Staging Contract API Tests
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    env:
-      AWS_REGION: us-east-1
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-Contract-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Generate grower auth token for Postman
-        id: ci-auth
-        run: |
-          FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
-
-          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
-            echo "CiAuthSeedUsersFunctionName stack output is required for Postman contract auth."
-            exit 1
-          fi
-
-          PAYLOAD='{"users":[{"name":"contract-grower-free","role":"grower","tier":"free"},{"name":"contract-grower-pro","role":"grower","tier":"pro"}]}'
-
-          aws lambda invoke \
-            --function-name "$FUNCTION_NAME" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            ci-auth-seed-response.json > /dev/null
-
-          RESPONSE_JSON=$(jq -c '
-            if .body == null then .
-            elif (.body | type) == "string" then (.body | fromjson)
-            else .body
-            end
-          ' ci-auth-seed-response.json)
-
-          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["contract-grower-free"].access_token')
-          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["contract-grower-pro"].access_token')
-
-          if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract contract-grower-free access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract contract-grower-pro access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
-          echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
-          echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "pro-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Install Postman CLI
-        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-      - name: Login to Postman CLI
-        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
-
-      - name: Run contract collection (pro token)
-        run: |
-          postman collection run "postman/collections/Good Roots Network API" \
-            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
-            --env-var "expectFeatureLocked=false"
-
-      - name: Run entitlement negative checks (free token)
-        run: |
-          postman collection run "postman/collections/Good Roots Network API/AI Features" \
-            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
-            --env-var "expectFeatureLocked=true"
-
-      - name: Run billing webhook reliability collection
-        run: |
-          if [ -z "${{ secrets.STRIPE_WEBHOOK_SECRET }}" ]; then
-            echo "Skipping billing webhook reliability collection: STRIPE_WEBHOOK_SECRET is not configured."
-            exit 0
-          fi
-
-          postman collection run "postman/collections/Good Roots Network API/Billing Webhook Reliability" \
-            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "stripeWebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
-
-  utility-api-tests:
-    name: GRN Staging Utility API Tests
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    env:
-      AWS_REGION: us-east-1
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-Utility-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Generate auth tokens for Postman
-        id: ci-auth
-        run: |
-          FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
-
-          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
-            echo "CiAuthSeedUsersFunctionName stack output is required for Postman utility auth."
-            exit 1
-          fi
-
-          PAYLOAD='{"users":[{"name":"util-grower-free","role":"grower","tier":"free"},{"name":"util-grower-pro","role":"grower","tier":"pro"},{"name":"util-gatherer","role":"gatherer","tier":"free"}]}'
-
-          aws lambda invoke \
-            --function-name "$FUNCTION_NAME" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            ci-auth-seed-response.json > /dev/null
-
-          RESPONSE_JSON=$(jq -c '
-            if .body == null then .
-            elif (.body | type) == "string" then (.body | fromjson)
-            else .body
-            end
-          ' ci-auth-seed-response.json)
-
-          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-grower-free"].access_token')
-          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-grower-pro"].access_token')
-          GATHERER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["util-gatherer"].access_token')
-
-          if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract util-grower-free access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract util-grower-pro access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          if [ -z "$GATHERER_ACCESS_TOKEN" ] || [ "$GATHERER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract util-gatherer access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
-          echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
-          echo "::add-mask::$GATHERER_ACCESS_TOKEN"
-          echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "pro-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "gatherer-auth-token=$GATHERER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Install Postman CLI
-        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-      - name: Login to Postman CLI
-        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
-
-      - name: Run utility collection (pro token)
-        run: |
-          postman collection run "postman/collections/Good Roots Network API - Utility Tests" \
-            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "authToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
-            --env-var "proAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
-            --env-var "premiumAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
-            --env-var "freeAuthToken=${{ steps.ci-auth.outputs.free-auth-token }}" \
-            --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
-
-  e2e-api-tests:
-    name: GRN Staging E2E API Tests
-    runs-on: ubuntu-latest
-    needs: [changes, deploy-staging-backend, deploy-staging-frontend, staging-public-api-smoke]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true')
-    env:
-      AWS_REGION: us-east-1
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-          role-session-name: GitHubActions-E2E-PR-${{ github.event.pull_request.number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Generate auth tokens for Postman
-        id: ci-auth
-        run: |
-          FUNCTION_NAME="${{ needs.deploy-staging-backend.outputs.ci-auth-seed-users-function }}"
-
-          if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ] || [ "$FUNCTION_NAME" = "NONE" ]; then
-            echo "CiAuthSeedUsersFunctionName stack output is required for Postman E2E auth."
-            exit 1
-          fi
-
-          PAYLOAD='{"users":[{"name":"e2e-grower-free","role":"grower","tier":"free"},{"name":"e2e-grower-pro","role":"grower","tier":"pro"},{"name":"e2e-gatherer","role":"gatherer","tier":"free"}]}'
-
-          aws lambda invoke \
-            --function-name "$FUNCTION_NAME" \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            ci-auth-seed-response.json > /dev/null
-
-          RESPONSE_JSON=$(jq -c '
-            if .body == null then .
-            elif (.body | type) == "string" then (.body | fromjson)
-            else .body
-            end
-          ' ci-auth-seed-response.json)
-
-          FREE_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-grower-free"].access_token')
-          PREMIUM_GROWER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-grower-pro"].access_token')
-          GATHERER_ACCESS_TOKEN=$(printf '%s' "$RESPONSE_JSON" | jq -r '.users["e2e-gatherer"].access_token')
-
-          if [ -z "$FREE_GROWER_ACCESS_TOKEN" ] || [ "$FREE_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract e2e-grower-free access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          if [ -z "$PREMIUM_GROWER_ACCESS_TOKEN" ] || [ "$PREMIUM_GROWER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract e2e-grower-pro access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          if [ -z "$GATHERER_ACCESS_TOKEN" ] || [ "$GATHERER_ACCESS_TOKEN" = "null" ]; then
-            echo "Failed to extract e2e-gatherer access_token from CI auth seed response."
-            cat ci-auth-seed-response.json
-            exit 1
-          fi
-
-          echo "::add-mask::$FREE_GROWER_ACCESS_TOKEN"
-          echo "::add-mask::$PREMIUM_GROWER_ACCESS_TOKEN"
-          echo "::add-mask::$GATHERER_ACCESS_TOKEN"
-          echo "free-auth-token=$FREE_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "pro-auth-token=$PREMIUM_GROWER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-          echo "gatherer-auth-token=$GATHERER_ACCESS_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Install Postman CLI
-        run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-      - name: Login to Postman CLI
-        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
-
-      - name: Run E2E collection
-        run: |
-          postman collection run "postman/collections/Good Roots Network API - E2E Flows" \
-            --env-var "baseUrl=${{ needs.deploy-staging-backend.outputs.api-url }}" \
-            --env-var "growerAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
-            --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
-
-  staging-validation-summary:
-    name: GRN Staging Validation Summary
-    runs-on: ubuntu-latest
-    needs:
-      - changes
-      - deploy-staging-backend
-      - deploy-staging-frontend
-      - staging-public-api-smoke
-      - postman-public-smoke
-      - contract-api-tests
-      - utility-api-tests
-      - e2e-api-tests
-    if: always()
-
-    steps:
-      - name: Check staging validation jobs
-        run: |
-          check_result() {
-            local job_name="$1"
-            local result="$2"
-            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
-              echo "$job_name failed with result: $result"
-              exit 1
-            fi
-          }
-
-          check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
-          check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
-          check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
-          check_result "postman-public-smoke" "${{ needs.postman-public-smoke.result }}"
-          check_result "contract-api-tests" "${{ needs.contract-api-tests.result }}"
-          check_result "utility-api-tests" "${{ needs.utility-api-tests.result }}"
-          check_result "e2e-api-tests" "${{ needs.e2e-api-tests.result }}"
-
-          echo "Staging validation passed"
-
+    uses: ./.github/workflows/pull-request-staging-validation-reusable.yml
+    with:
+      shared_all: ${{ needs.changes.outputs.shared_all }}
+      grn_backend: ${{ needs.changes.outputs.grn_backend }}
+      grn_frontend: ${{ needs.changes.outputs.grn_frontend }}
+      okra_backend: ${{ needs.changes.outputs.okra_backend }}
+      pr_number: ${{ github.event.pull_request.number }}
+    secrets:
+      aws_staging_role_arn: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+      database_url_staging: ${{ secrets.DATABASE_URL_STAGING }}
+      postman_api_key: ${{ secrets.POSTMAN_API_KEY }}
+      stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}

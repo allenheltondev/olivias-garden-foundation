@@ -1,0 +1,33 @@
+name: Setup GRN Frontend
+description: Setup Node.js and install GRN frontend dependencies.
+
+inputs:
+  install-esbuild:
+    description: Install esbuild globally before running frontend commands.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: apps/grn/package-lock.json
+
+    - name: Install esbuild
+      if: ${{ inputs.install-esbuild == 'true' }}
+      shell: bash
+      run: npm install -g esbuild
+
+    - name: Install frontend dependencies
+      shell: bash
+      working-directory: apps/grn
+      run: npm ci --workspaces=false
+
+    - name: Install shared package types
+      shell: bash
+      working-directory: packages/ui
+      run: npm install --ignore-scripts --no-audit --no-fund

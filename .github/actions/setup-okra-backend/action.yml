@@ -1,0 +1,29 @@
+name: Setup Okra Backend
+description: Setup Node.js and install Okra backend dependencies.
+
+inputs:
+  setup-sam:
+    description: Install the SAM CLI before running backend commands.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+        cache: npm
+        cache-dependency-path: services/okra-api/package-lock.json
+
+    - name: Setup SAM CLI
+      if: ${{ inputs.setup-sam == 'true' }}
+      uses: aws-actions/setup-sam@v2
+      with:
+        use-installer: true
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: services/okra-api
+      run: npm ci --workspaces=false --ignore-scripts
