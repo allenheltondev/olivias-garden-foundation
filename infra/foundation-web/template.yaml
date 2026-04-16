@@ -540,20 +540,16 @@ Outputs:
       - !Sub 'https://${SharedAssetsDistribution.DomainName}'
 
   SharedApiCustomDomainName:
+    Condition: DeployCustomDomain
     Description: Shared API custom domain for service base path mappings.
-    Value: !If
-      - DeployCustomDomain
-      - !Sub 'api.${DomainName}'
-      - ''
+    Value: !Sub 'api.${DomainName}'
     Export:
       Name: OGF-SharedApiCustomDomainName
 
   SharedApiUrl:
+    Condition: DeployCustomDomain
     Description: Shared API custom domain base URL.
-    Value: !If
-      - DeployCustomDomain
-      - !Sub 'https://api.${DomainName}'
-      - ''
+    Value: !Sub 'https://api.${DomainName}'
 
   UserPoolId:
     Description: Cognito User Pool ID for the foundation web app.
