@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { okraApiUrl } from '../api';
+import { createOkraHeaders, okraApiUrl } from '../api';
 
 export type PhotoState = 'uploading' | 'uploaded' | 'failed';
 
@@ -46,6 +46,7 @@ export function validateFile(file: File): string | null {
 
 async function uploadSinglePhoto(
   file: File,
+  accessToken: string | null | undefined,
   onStateChange: (photoId: string | null, state: PhotoState, errorMessage?: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -53,7 +54,7 @@ async function uploadSinglePhoto(
     // Step 1: Request upload intent
     const intentRes = await fetch(okraApiUrl('/photos'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createOkraHeaders({ contentType: 'application/json', accessToken }),
       body: JSON.stringify({ contentType: file.type }),
       signal,
     });
@@ -93,7 +94,7 @@ async function uploadSinglePhoto(
   }
 }
 
-export function usePhotoUploader(): UsePhotoUploaderReturn {
+export function usePhotoUploader(accessToken?: string | null): UsePhotoUploaderReturn {
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
   const activeUploads = useRef(0);
@@ -120,7 +121,7 @@ export function usePhotoUploader(): UsePhotoUploaderReturn {
           );
         };
 
-        uploadSinglePhoto(file, onStateChange)
+        uploadSinglePhoto(file, accessToken, onStateChange)
           .catch((err: unknown) => {
             if (err && typeof err === 'object' && 'rateLimited' in err) {
               const rlErr = err as unknown as { retryAfterSeconds: number };
@@ -143,7 +144,7 @@ export function usePhotoUploader(): UsePhotoUploaderReturn {
       uploadQueue.current.push(task);
       processQueue();
     },
-    [processQueue],
+    [accessToken, processQueue],
   );
 
   const addFiles = useCallback(

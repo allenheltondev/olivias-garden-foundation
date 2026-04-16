@@ -21,8 +21,8 @@ A simple, maintainable web app for Olivia's Garden Foundation to show where Clem
 
 ## Tech Stack (AWS, Node.js 24)
 
-- **Frontend:** Vite + React (static build)
-- **Hosting:** S3 + CloudFront
+- **Frontend:** absorbed into `apps/web`
+- **Hosting:** media assets served from S3 + CloudFront
 - **API:** API Gateway HTTP API + Lambda (Node.js 24)
 - **Database:** PostgreSQL (Neon)
 - **Auth:** Cognito (optional for non-admin in later phase; admin-ready)
@@ -47,7 +47,7 @@ A simple, maintainable web app for Olivia's Garden Foundation to show where Clem
 
 ## Monorepo Layout
 
-- `apps/okra/` - Vite + React app
+- `apps/web/` - foundation web app, including the public Okra experience
 - `services/okra-api/` - Lambda handlers, SAM template, tests, and DB scripts
 - `services/okra-api/db/ddl.sql` - PostgreSQL schema reference for MVP
 - `services/okra-api/db/migrations/` - ordered SQL migrations applied by the Okra backend migration runner
@@ -84,7 +84,7 @@ sam build
 sam local invoke HealthFunction
 ```
 
-Deploy stack (creates API + frontend/media buckets + CloudFront):
+Deploy stack (creates APIs plus media bucket/CloudFront):
 
 ```bash
 cd services/okra-api

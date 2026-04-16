@@ -5,7 +5,7 @@ This repository is the working monorepo for the Olivia's Garden Foundation platf
 Today it contains:
 - `apps/grn`: the Good Roots Network frontend
 - `services/grn-api`: the Good Roots Network Rust API and Node workers
-- `apps/web`: the early scaffold for the foundation website
+- `apps/web`: the foundation website and public Okra experience
 - `packages/ui`: shared UI primitives and brand tokens
 - `packages/auth`: shared frontend auth helpers
 
@@ -17,7 +17,7 @@ The long-term platform plan lives in [docs/plans/platform_plan.md](docs/plans/pl
 .
 |-- apps/
 |   |-- grn/                  # Good Roots Network frontend (React + Vite)
-|   `-- web/                  # Foundation website scaffold
+|   `-- web/                  # Foundation website and public Okra experience
 |-- services/
 |   `-- grn-api/              # Rust API, SAM template, Node workers, DB migrations
 |-- packages/
@@ -39,7 +39,7 @@ The long-term platform plan lives in [docs/plans/platform_plan.md](docs/plans/pl
 
 The repo is in an active restructuring phase:
 - Good Roots has been moved into the monorepo layout
-- the foundation site scaffold has been added
+- the foundation site now carries the public Okra experience
 - shared packages are being established before broader Phase 1 product work
 
 The current architectural and product guidance, in priority order, is:
@@ -63,7 +63,7 @@ npm run test
 Useful targeted commands:
 
 ```bash
-# Foundation website scaffold
+# Foundation website and public Okra experience
 cd apps/web
 npm run dev
 
@@ -114,6 +114,6 @@ For rollout details and CI mapping, see [docs/testing/postman-e2e-rollout.md](do
 ## Notes
 
 - `services/grn-api` remains under `services/` intentionally. The frontend belongs in `apps/`; the backend is treated as a service boundary.
-- `apps/web` is intentionally small right now. It is a starting point, not the finished foundation site.
+- `apps/web` is now the main public foundation surface, including the Okra experience.
 - `apps/web` now has a dedicated static-hosting deploy path through `infra/foundation-web` and the `Foundation Web` GitHub Actions workflows.
 - Some deeper docs still use older product naming such as `grn`; those should be normalized over time where helpful, but the repo structure is now current.

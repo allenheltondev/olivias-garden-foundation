@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { AuthSession } from '../auth/session';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
@@ -31,7 +32,19 @@ function recentDisplayName(pin: PinData): string {
   return 'A grower';
 }
 
-export function OkraExperience({ onNavigate }: { onNavigate: (path: string) => void }) {
+export function OkraExperience({
+  onNavigate,
+  authEnabled,
+  authSession,
+  onLogin,
+  onSignup,
+}: {
+  onNavigate: (path: string) => void;
+  authEnabled: boolean;
+  authSession: AuthSession | null;
+  onLogin: () => void;
+  onSignup: () => void;
+}) {
   const [pins, setPins] = useState<PinData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [focusPin, setFocusPin] = useState<PinData | null>(null);
@@ -42,6 +55,7 @@ export function OkraExperience({ onNavigate }: { onNavigate: (path: string) => v
   const handleSidebarPinClick = useCallback((pin: PinData) => setFocusPin(pin), []);
 
   const recentPins = pins.slice(0, 5);
+  const authName = authSession?.user.name ?? authSession?.user.email ?? 'Good Roots Network member';
 
   return (
     <div className="okra-experience">
@@ -70,6 +84,36 @@ export function OkraExperience({ onNavigate }: { onNavigate: (path: string) => v
               Share your garden
             </button>
           </div>
+
+          {authEnabled ? (
+            <section className="okra-auth-callout" aria-label="Optional login">
+              {authSession ? (
+                <>
+                  <p className="okra-auth-callout__eyebrow">Signed in</p>
+                  <p className="okra-auth-callout__title">{authName}</p>
+                  <p className="okra-auth-callout__body">
+                    Your future okra submissions can stay tied to one Good Roots Network login while the map remains open to everyone.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="okra-auth-callout__eyebrow">Optional login</p>
+                  <p className="okra-auth-callout__title">Stay anonymous if you want. Sign in if you want continuity.</p>
+                  <p className="okra-auth-callout__body">
+                    A login lets us connect your submitted okra back to you later without changing the anonymous browsing experience.
+                  </p>
+                  <div className="okra-auth-callout__actions">
+                    <button type="button" className="okra-experience__secondary-cta" onClick={onLogin}>
+                      Log in
+                    </button>
+                    <button type="button" className="okra-experience__primary-cta" onClick={onSignup}>
+                      Sign up
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+          ) : null}
         </div>
 
         <div className="okra-experience__story-photo">
@@ -111,7 +155,7 @@ export function OkraExperience({ onNavigate }: { onNavigate: (path: string) => v
                 <h3 className="okra-recent-card__title">Recent growers</h3>
                 <p className="okra-recent-card__subtitle">
                   These are growers who sent back photos and stories. Click one to center the map on
-                  their garden.
+                  their garden. {authSession ? 'Your sign-in can keep future submissions connected to you.' : 'You can still submit anonymously.'}
                 </p>
               </div>
               <button
@@ -145,7 +189,14 @@ export function OkraExperience({ onNavigate }: { onNavigate: (path: string) => v
         ) : null}
       </section>
 
-      <SubmissionModal open={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <SubmissionModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        authEnabled={authEnabled}
+        authSession={authSession}
+        onLogin={onLogin}
+        onSignup={onSignup}
+      />
     </div>
   );
 }

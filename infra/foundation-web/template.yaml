@@ -25,6 +25,116 @@ Conditions:
     - !Not [!Equals [!Ref DomainHostedZoneId, '']]
 
 Resources:
+  FoundationUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-users'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      UserAttributeUpdateSettings:
+        AttributesRequireVerificationBeforeUpdate:
+          - email
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: newsletter_opt_in
+          AttributeDataType: String
+          DeveloperOnlyAttribute: false
+          Mutable: true
+
+  FoundationUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref FoundationUserPool
+      ClientName: !Sub '${AWS::StackName}-web-client'
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_AUTH
+      AuthSessionValidity: 3
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - 'http://localhost:4174/auth/callback'
+        - !Sub 'https://${WebFrontendDistribution.DomainName}/auth/callback'
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://${DomainName}/auth/callback'
+          - !Ref AWS::NoValue
+      LogoutURLs:
+        - 'http://localhost:4174/'
+        - !Sub 'https://${WebFrontendDistribution.DomainName}/'
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://${DomainName}/'
+          - !Ref AWS::NoValue
+      SupportedIdentityProviders:
+        - COGNITO
+
+  FoundationFreeTierGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: free-tier
+      UserPoolId: !Ref FoundationUserPool
+      Description: Free tier users with basic foundation and GRN features
+      Precedence: 3
+
+  FoundationSupporterTierGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: supporter-tier
+      UserPoolId: !Ref FoundationUserPool
+      Description: Supporter tier users with enhanced foundation and GRN features
+      Precedence: 2
+
+  FoundationProTierGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: pro-tier
+      UserPoolId: !Ref FoundationUserPool
+      Description: Pro tier users with pro foundation and GRN features
+      Precedence: 1
+
+  FoundationUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref FoundationUserPool
+      Domain: !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
+
   WebFrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -175,3 +285,21 @@ Outputs:
       - DeployCustomDomain
       - !Sub 'https://${DomainName}'
       - !Sub 'https://${WebFrontendDistribution.DomainName}'
+
+  UserPoolId:
+    Description: Cognito User Pool ID for the foundation web app.
+    Value: !Ref FoundationUserPool
+    Export:
+      Name: OGF-UserPoolId
+
+  UserPoolClientId:
+    Description: Cognito User Pool App Client ID for the foundation web app.
+    Value: !Ref FoundationUserPoolClient
+    Export:
+      Name: OGF-UserPoolClientId
+
+  UserPoolDomain:
+    Description: Cognito Hosted UI domain for the foundation web app.
+    Value: !Sub '${FoundationUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: OGF-UserPoolDomain

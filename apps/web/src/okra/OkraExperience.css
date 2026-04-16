@@ -77,6 +77,45 @@
   padding-top: 0.6rem;
 }
 
+.okra-auth-callout {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.12);
+  border-radius: 1.1rem;
+  background: rgba(247, 244, 235, 0.92);
+}
+
+.okra-auth-callout__eyebrow {
+  margin: 0;
+  color: var(--site-leaf);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.okra-auth-callout__title {
+  margin: 0;
+  color: var(--site-branch);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.okra-auth-callout__body {
+  margin: 0;
+  color: var(--site-muted);
+  line-height: 1.55;
+}
+
+.okra-auth-callout__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding-top: 0.2rem;
+}
+
 .okra-experience__primary-cta,
 .okra-experience__secondary-cta,
 .okra-recent-card__cta {

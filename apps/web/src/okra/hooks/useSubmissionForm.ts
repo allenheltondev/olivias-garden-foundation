@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { LocationData } from './useLocationPicker';
 import type { PhotoEntry } from './usePhotoUploader';
-import { okraApiUrl } from '../api';
+import { createOkraHeaders, okraApiUrl } from '../api';
 
 export type PrivacyMode = 'exact' | 'nearby' | 'neighborhood' | 'city';
 
@@ -62,13 +62,19 @@ export function useSubmissionForm(
   hasUploadingPhotos: boolean,
   location: LocationData,
   hasFailedPhotos: boolean = false,
+  accessToken?: string | null,
+  defaultContributorName?: string,
 ): UseSubmissionFormReturn {
-  const [contributorName, setContributorNameRaw] = useState('');
+  const [contributorName, setContributorNameRaw] = useState(defaultContributorName ?? '');
   const [storyText, setStoryTextRaw] = useState('');
   const [privacyMode, setPrivacyMode] = useState<PrivacyMode>('city');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  useEffect(() => {
+    setContributorNameRaw((current) => (current.trim().length > 0 ? current : (defaultContributorName ?? '')));
+  }, [defaultContributorName]);
 
   const setContributorName = useCallback((v: string) => {
     setContributorNameRaw(v.slice(0, MAX_NAME_LENGTH));
@@ -101,7 +107,7 @@ export function useSubmissionForm(
 
         const res = await fetch(okraApiUrl('/submissions'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: createOkraHeaders({ contentType: 'application/json', accessToken }),
           body: JSON.stringify(payload),
         });
 
@@ -128,17 +134,17 @@ export function useSubmissionForm(
         setIsSubmitting(false);
       }
     },
-    [contributorName, storyText, privacyMode],
+    [accessToken, contributorName, storyText, privacyMode],
   );
 
   const reset = useCallback(() => {
-    setContributorNameRaw('');
+    setContributorNameRaw(defaultContributorName ?? '');
     setStoryTextRaw('');
     setPrivacyMode('city');
     setIsSubmitting(false);
     setSubmitError(null);
     setSubmitSuccess(false);
-  }, []);
+  }, [defaultContributorName]);
 
   const hasUnsavedProgress = useCallback(
     (photos: PhotoEntry[], loc: LocationData): boolean => {
