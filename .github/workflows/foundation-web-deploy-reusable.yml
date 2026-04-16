@@ -133,6 +133,8 @@ jobs:
           sam deploy \
             --template-file infra/foundation-web/template.yaml \
             --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ inputs.foundation_web_stack_name }}" \
             --region "${{ inputs.aws_region }}" \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
