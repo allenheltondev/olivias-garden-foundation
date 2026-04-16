@@ -15,6 +15,13 @@ Parameters:
     Default: ''
     NoEcho: true
     Description: CI admin password for integration test auth token Lambda
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Optional root domain name used to derive the shared API custom domain.
+
+Conditions:
+  DeploySharedApiBasePathMapping: !Not [!Equals [!Ref DomainName, '']]
 
 Globals:
   Function:
@@ -30,7 +37,7 @@ Globals:
         SHARED_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
         ADMIN_REQUIRED_GROUP: admin
         DATABASE_URL: !Ref DatabaseUrl
-        MEDIA_BUCKET_NAME: !Ref MediaBucket
+        MEDIA_BUCKET_NAME: !ImportValue OGF-AssetsBucketName
         PHOTO_PROCESSING_EVENT_BUS_NAME: default
         PHOTO_RATE_LIMIT_MAX_REQUESTS: '20'
         PHOTO_RATE_LIMIT_WINDOW_SECONDS: '3600'
@@ -76,104 +83,6 @@ Resources:
           AdminTokenAuthorizer:
             FunctionArn: !GetAtt AdminAuthorizerFunction.Arn
 
-  MediaBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      VersioningConfiguration:
-        Status: Enabled
-      CorsConfiguration:
-        CorsRules:
-          - AllowedMethods:
-              - PUT
-              - POST
-              - GET
-              - HEAD
-            AllowedOrigins:
-              - '*'
-            AllowedHeaders:
-              - '*'
-            ExposedHeaders:
-              - ETag
-            MaxAge: 300
-
-  MediaOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: !Sub '${AWS::StackName}-media-oac'
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
-  MediaDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Enabled: true
-        HttpVersion: http2
-        PriceClass: PriceClass_100
-        Origins:
-          - Id: MediaS3Origin
-            DomainName: !GetAtt MediaBucket.RegionalDomainName
-            S3OriginConfig: {}
-            OriginAccessControlId: !Ref MediaOriginAccessControl
-        DefaultCacheBehavior:
-          TargetOriginId: MediaS3Origin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - HEAD
-          CachedMethods:
-            - GET
-            - HEAD
-          Compress: true
-          ForwardedValues:
-            QueryString: false
-            Cookies:
-              Forward: none
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
-
-  MediaBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref MediaBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: AllowCloudFrontRead
-            Effect: Allow
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Action:
-              - s3:GetObject
-            Resource: !Sub '${MediaBucket.Arn}/*'
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${MediaDistribution}'
-          - Sid: DenyInsecureTransport
-            Effect: Deny
-            Principal: '*'
-            Action: 's3:*'
-            Resource:
-              - !GetAtt MediaBucket.Arn
-              - !Sub '${MediaBucket.Arn}/*'
-            Condition:
-              Bool:
-                aws:SecureTransport: false
-
   PhotoProcessorFunction:
     Type: AWS::Serverless::Function
     Metadata:
@@ -198,7 +107,9 @@ Resources:
                 - s3:GetObject
                 - s3:PutObject
               Resource:
-                - !Sub '${MediaBucket.Arn}/*'
+                - !Sub
+                  - '${SharedAssetsBucketArn}/*'
+                  - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
       Events:
         PhotoClaimedEvent:
           Type: EventBridgeRule
@@ -222,7 +133,7 @@ Resources:
       Handler: src/handlers/api.handler
       Environment:
         Variables:
-          MEDIA_CDN_DOMAIN: !GetAtt MediaDistribution.DomainName
+          MEDIA_CDN_DOMAIN: !ImportValue OGF-AssetsPublicDomainName
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -233,7 +144,9 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:PutObject
-              Resource: !Sub '${MediaBucket.Arn}/temp-photos/*'
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/temp-photos/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
             - Effect: Allow
               Action:
                 - cognito-idp:GetUser
@@ -283,7 +196,9 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: !Sub '${MediaBucket.Arn}/*'
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
             - Effect: Allow
               Action:
                 - events:PutEvents
@@ -325,10 +240,19 @@ Resources:
                 - "SubmissionDenied"
       Policies:
         - S3CrudPolicy:
-            BucketName: !Ref MediaBucket
+            BucketName: !ImportValue OGF-AssetsBucketName
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
+
+  SharedApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeploySharedApiBasePathMapping
+    Properties:
+      DomainName: !Sub 'api.${DomainName}'
+      RestApiId: !Ref ApiGateway
+      Stage: api
+      BasePath: okra
 
   AdminUserPoolGroup:
     Type: AWS::Cognito::UserPoolGroup
@@ -370,13 +294,15 @@ Resources:
 Outputs:
   HttpApiUrl:
     Description: Base URL for the HTTP API
-    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+    Value: !If
+      - DeploySharedApiBasePathMapping
+      - !Sub
+        - 'https://api.${RootDomainName}/okra'
+        - RootDomainName: !Ref DomainName
+      - !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
   AdminApiUrl:
     Description: Base URL for the Admin API
     Value: !Sub 'https://${AdminApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
-  MediaBucketName:
-    Description: S3 bucket for uploaded/processed images
-    Value: !Ref MediaBucket
   PhotoProcessingEventBusName:
     Description: EventBridge bus used for claimed-photo processing events
     Value: default
@@ -388,7 +314,7 @@ Outputs:
     Value: !ImportValue OGF-UserPoolClientId
   MediaDistributionDomainName:
     Description: CloudFront domain for media assets (photos)
-    Value: !GetAtt MediaDistribution.DomainName
+    Value: !ImportValue OGF-AssetsPublicDomainName
   CiAuthTokenFunctionName:
     Description: Lambda function name for CI auth token generation
     Value: !Ref CiAuthTokenFunction
