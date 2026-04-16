@@ -83,7 +83,7 @@ jobs:
       environment_name: ${{ env.DEPLOY_ENVIRONMENT }}
       foundation_web_stack_name: ${{ env.FOUNDATION_WEB_STACK_NAME }}
       okra_stack_name: ${{ env.OKRA_STACK_NAME }}
-      grn_stack_name: grn-${{ env.DEPLOY_ENVIRONMENT }}
+      grn_stack_name: ogf-grn-${{ env.DEPLOY_ENVIRONMENT }}
       aws_region: ${{ env.AWS_REGION }}
       aws_role_session_name: GitHubActions-FoundationWeb-Deploy
       domain_name: ${{ env.DEPLOY_ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}

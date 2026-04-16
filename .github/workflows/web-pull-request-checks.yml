@@ -106,7 +106,7 @@ jobs:
       environment_name: staging
       foundation_web_stack_name: ${{ env.FOUNDATION_WEB_STACK_NAME }}
       okra_stack_name: ${{ env.OKRA_STACK_NAME }}
-      grn_stack_name: grn-staging
+      grn_stack_name: ogf-grn-staging
       aws_region: ${{ env.AWS_REGION }}
       aws_role_session_name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
       domain_name: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}

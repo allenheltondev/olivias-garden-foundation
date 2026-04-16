@@ -182,7 +182,7 @@ jobs:
       name: staging
     env:
       AWS_REGION: us-east-1
-      STACK_NAME: grn-staging
+      STACK_NAME: ogf-grn-staging
 
     outputs:
       user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
@@ -458,7 +458,7 @@ jobs:
             **Environment:** \`staging\`
             **App:** \`apps/grn\`
             **Service:** \`services/grn-api\`
-            **Stack:** \`grn-staging\`
+            **Stack:** \`ogf-grn-staging\`
 
             **Frontend URL (apps/grn):** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
             **API URL (services/grn-api):** ${{ needs.deploy-staging-backend.outputs.api-url }}

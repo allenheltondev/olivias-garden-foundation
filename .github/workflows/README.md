@@ -112,9 +112,13 @@ Configure these in your repository settings under Settings â†’ Secrets and 
 
 If the domain variables are omitted, the foundation web workflow publishes to the CloudFront default domain exposed by the stack outputs.
 
-### Required for production only:
-- `DOMAIN_NAME` - Custom domain name (e.g., `app.example.com`)
-- `HOSTED_ZONE_ID` - Route53 hosted zone ID for the domain
+### Required for foundation web custom domains:
+- `FOUNDATION_WEB_DOMAIN_NAME_STAGING`
+- `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING`
+- `FOUNDATION_WEB_DOMAIN_NAME_PROD`
+- `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD`
+
+For production foundation web deploys, both `FOUNDATION_WEB_DOMAIN_NAME_PROD` and `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD` must be set.
 
 ## Multi-Account Strategy
 

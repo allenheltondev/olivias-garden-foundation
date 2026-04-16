@@ -75,6 +75,27 @@ jobs:
         with:
           use-installer: true
 
+      - name: Validate custom domain configuration
+        env:
+          ENVIRONMENT_NAME: ${{ inputs.environment_name }}
+          DOMAIN_NAME: ${{ inputs.domain_name }}
+          DOMAIN_HOSTED_ZONE_ID: ${{ inputs.domain_hosted_zone_id }}
+        run: |
+          if [ -n "$DOMAIN_NAME" ] && [ -z "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            echo "Foundation Web domain_name is set but domain_hosted_zone_id is missing."
+            exit 1
+          fi
+
+          if [ -z "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            echo "Foundation Web domain_hosted_zone_id is set but domain_name is missing."
+            exit 1
+          fi
+
+          if [ "$ENVIRONMENT_NAME" = "prod" ] && [ -z "$DOMAIN_NAME" ]; then
+            echo "Production Foundation Web deploys require FOUNDATION_WEB_DOMAIN_NAME_PROD and FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD."
+            exit 1
+          fi
+
       - name: Deploy shared foundation web stack
         env:
           DOMAIN_NAME: ${{ inputs.domain_name }}

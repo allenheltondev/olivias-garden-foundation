@@ -13,7 +13,7 @@ Use it from the repo root:
 ```bash
 npm run deploy:configure
 npm run deploy:configure -- --profile sandbox
-npm run deploy:configure -- --config-only --stack-name grn-staging
+npm run deploy:configure -- --config-only --stack-name ogf-grn-staging
 ```
 
 For full deployment details, see [docs/setup/DEPLOYMENT.md](../docs/setup/DEPLOYMENT.md).
