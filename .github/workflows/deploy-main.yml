@@ -169,14 +169,33 @@ jobs:
         with:
           use-installer: true
 
+      - name: Setup Node.js for foundation function build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: infra/foundation-web/package-lock.json
+
+      - name: Install esbuild for SAM
+        run: npm install -g esbuild
+
+      - name: Install foundation infrastructure dependencies
+        working-directory: infra/foundation-web
+        run: npm ci --ignore-scripts
+
       - name: Deploy foundation stack
         env:
           DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
           DOMAIN_HOSTED_ZONE_ID: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD || vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
+          DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+          SIGNUP_SLACK_WEBHOOK_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
         run: |
-          PARAM_OVERRIDES=("EnvironmentName=${{ env.ENVIRONMENT }}")
+          PARAM_OVERRIDES=("EnvironmentName=${{ env.ENVIRONMENT }}" "DatabaseUrl=$DATABASE_URL")
           if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
             PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+          if [ -n "$SIGNUP_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("SignupSlackWebhookUrl=$SIGNUP_SLACK_WEBHOOK_URL")
           fi
 
           sam deploy \
@@ -331,31 +350,6 @@ jobs:
             --ci
         env:
           SAM_CLI_TELEMETRY: "0"
-
-      - name: Attach post-confirmation trigger to foundation user pool
-        run: |
-          SHARED_USER_POOL_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.FOUNDATION_STACK_NAME }} \
-            --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
-            --output text)
-
-          FUNCTION_NAME=$(aws cloudformation describe-stack-resource \
-            --stack-name ${{ env.STACK_NAME }} \
-            --logical-resource-id PostConfirmationFunction \
-            --query 'StackResourceDetail.PhysicalResourceId' \
-            --output text)
-
-          FUNCTION_ARN=$(aws lambda get-function \
-            --function-name "$FUNCTION_NAME" \
-            --query 'Configuration.FunctionArn' \
-            --output text)
-
-          aws cognito-idp update-user-pool \
-            --user-pool-id "$SHARED_USER_POOL_ID" \
-            --auto-verified-attributes email \
-            --user-attribute-update-settings AttributesRequireVerificationBeforeUpdate=email \
-            --lambda-config "PostConfirmation=$FUNCTION_ARN"
 
       - name: Get stack outputs
         id: get-outputs

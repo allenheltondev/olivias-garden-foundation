@@ -415,3 +415,4 @@ jobs:
       database_url_staging: ${{ secrets.DATABASE_URL_STAGING }}
       postman_api_key: ${{ secrets.POSTMAN_API_KEY }}
       stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      foundation_signup_slack_webhook_url_staging: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}

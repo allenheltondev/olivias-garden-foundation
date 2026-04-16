@@ -72,7 +72,7 @@ Resources:
   Api:
     Type: AWS::Serverless::Api
     Properties:
-      TracingEnabled: true
+      TracingEnabled: false
       StageName: api
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
@@ -242,34 +242,6 @@ Resources:
           DATABASE_URL: !Ref DatabaseUrl
           USER_POOL_ID: !ImportValue OGF-UserPoolId
           USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
-
-  PostConfirmationFunction:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        <<: *esbuild-properties
-        EntryPoints:
-          - post-confirmation.mjs
-    Properties:
-      CodeUri: functions
-      Handler: post-confirmation.handler
-      Runtime: nodejs24.x
-      Policies:
-        - AWSLambdaBasicExecutionRole
-      Environment:
-        Variables:
-          DATABASE_URL: !Ref DatabaseUrl
-
-  PostConfirmationInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref PostConfirmationFunction
-      Principal: cognito-idp.amazonaws.com
-      SourceArn: !Sub
-        - "arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
-        - UserPoolId: !ImportValue OGF-UserPoolId
 
   CiAuthSeedUsersFunction:
     Type: AWS::Serverless::Function

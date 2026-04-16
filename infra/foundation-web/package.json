@@ -1,0 +1,15 @@
+{
+  "name": "@olivias/foundation-web-infra",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test functions/tests/*.test.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.11"
+  }
+}
