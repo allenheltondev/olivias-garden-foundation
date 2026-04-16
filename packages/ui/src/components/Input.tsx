@@ -1,10 +1,9 @@
-import { type InputHTMLAttributes, type Ref, useState } from 'react';
+import { type InputHTMLAttributes, useState } from 'react';
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   type?: 'text' | 'email' | 'password';
   label?: string;
   error?: string;
-  ref?: Ref<HTMLInputElement>;
 }
 
 export function Input({
@@ -18,7 +17,6 @@ export function Input({
   required = false,
   className = '',
   id,
-  ref,
   ...props
 }: InputProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -38,7 +36,6 @@ export function Input({
 
       <div className="og-input__wrapper">
         <input
-          ref={ref}
           id={inputId}
           type={inputType}
           value={value}
