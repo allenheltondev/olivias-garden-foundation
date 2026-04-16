@@ -1,5 +1,5 @@
-import React, { useMemo, useId } from 'react';
-import { FormField } from './FormField';
+import { useId, useMemo } from 'react';
+import { FormField } from './FormField.tsx';
 
 export interface SelectOption {
   value: string;
@@ -19,10 +19,7 @@ export interface SelectProps {
   className?: string;
 }
 
-/**
- * Select component provides a styled dropdown select input.
- */
-export const Select: React.FC<SelectProps> = ({
+export function Select({
   label,
   value,
   onChange,
@@ -32,7 +29,7 @@ export const Select: React.FC<SelectProps> = ({
   required = false,
   disabled = false,
   className = '',
-}) => {
+}: SelectProps) {
   const generatedId = useId();
   const id = useMemo(() => `select-${generatedId}`, [generatedId]);
 
@@ -49,28 +46,22 @@ export const Select: React.FC<SelectProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className={`
-          w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-          disabled:bg-gray-100 disabled:cursor-not-allowed
-          ${error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}
-        `}
+        className={`og-select__field ${error ? 'og-select__field--error' : ''}`.trim()}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        aria-required={required}
       >
-        {placeholder && (
+        {placeholder ? (
           <option value="" disabled>
             {placeholder}
           </option>
-        )}
+        ) : null}
         {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}
       </select>
     </FormField>
   );
-};
+}

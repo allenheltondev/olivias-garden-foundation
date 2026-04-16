@@ -1,3 +1,5 @@
+import { borderRadius, shadows } from './theme.ts';
+
 export const brandTokens = {
   color: {
     soil: '#4f3825',
@@ -10,13 +12,13 @@ export const brandTokens = {
     mist: '#e8decb',
   },
   radius: {
-    sm: '0.5rem',
-    md: '1rem',
-    lg: '1.5rem',
-    pill: '999px',
+    sm: borderRadius.base,
+    md: borderRadius.lg,
+    lg: borderRadius.xl,
+    pill: borderRadius.full,
   },
   shadow: {
-    card: '0 24px 48px rgba(35, 27, 22, 0.08)',
-    button: '0 10px 20px rgba(66, 107, 63, 0.18)',
+    card: shadows.card,
+    button: shadows.button,
   },
 } as const;

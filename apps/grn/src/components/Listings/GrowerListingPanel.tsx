@@ -12,8 +12,7 @@ import {
 import { createClaim, updateClaimStatus } from '../../services/claims';
 import type { Listing, UpsertListingRequest } from '../../types/listing';
 import type { Claim, ClaimStatus } from '../../types/claim';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
+import { Button, Card } from '@olivias/ui';
 import { ListingForm, type ListingQuickPickOption } from './ListingForm';
 import { createLogger } from '../../utils/logging';
 import { ClaimStatusList } from './ClaimStatusList';

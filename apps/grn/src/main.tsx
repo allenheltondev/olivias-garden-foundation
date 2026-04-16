@@ -1,12 +1,21 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import '@olivias/ui/styles.css'
 import './index.css'
 import App from './App.tsx'
-import { configureAmplify } from './config/amplify'
+import { configureAmplify, getConfig } from './config/amplify'
+import { consumeSessionFragment } from './auth/sessionTransfer'
 
 // Configure AWS Amplify
 configureAmplify()
+
+// If redirected from the foundation login with tokens in the URL fragment,
+// write them into Amplify's localStorage before the React tree mounts.
+// This only fires for cross-origin redirects (dev/staging); in production
+// both apps share a domain so localStorage is already shared.
+const amplifyConfig = getConfig()
+consumeSessionFragment(amplifyConfig.userPoolClientId)
 
 // Create TanStack Query client
 const queryClient = new QueryClient({

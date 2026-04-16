@@ -14,7 +14,7 @@ import {
   insertPendingSubmissionWithPhotos,
   submissionSchema
 } from '../services/submissions.mjs';
-import { errorResponse } from '../services/pagination.mjs';
+import { errorResponse, corsHeaders } from '../services/pagination.mjs';
 import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
 
 const app = new Router();
@@ -206,7 +206,8 @@ app.get('/okra', async () => {
         status: 200,
         headers: {
           'content-type': 'application/json',
-          'cache-control': 'public, max-age=300, stale-while-revalidate=60'
+          'cache-control': 'public, max-age=300, stale-while-revalidate=60',
+          ...corsHeaders
         }
       }
     );
@@ -243,7 +244,8 @@ app.get('/okra/stats', async () => {
         status: 200,
         headers: {
           'content-type': 'application/json',
-          'cache-control': 'public, max-age=300, stale-while-revalidate=60'
+          'cache-control': 'public, max-age=300, stale-while-revalidate=60',
+          ...corsHeaders
         }
       }
     );
@@ -271,12 +273,26 @@ app.notFound(() => {
     {
       status: 404,
       headers: {
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        ...corsHeaders
       }
     }
   );
 });
 
 export const handler = async (event, context) => {
-  return app.resolve(event, context);
+  const response = await app.resolve(event, context);
+
+  // Ensure CORS headers are present on every response, including those
+  // built by the Powertools Router from plain-object route returns.
+  if (response && typeof response === 'object' && !response.headers?.['access-control-allow-origin']) {
+    response.headers = {
+      ...response.headers,
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+      'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    };
+  }
+
+  return response;
 };

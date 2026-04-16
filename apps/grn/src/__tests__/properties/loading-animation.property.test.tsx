@@ -33,6 +33,12 @@ describe('Property 3: Loading Animation Consistency', () => {
       removeListener: vi.fn(),
     })) as unknown as typeof window.matchMedia;
     window.matchMedia = matchMediaMock;
+
+    // Mock window.location.assign for redirect testing
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, assign: vi.fn(), href: 'https://goodroots.network/' },
+    });
   });
 
   afterAll(() => {
