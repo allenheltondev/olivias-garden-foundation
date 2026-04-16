@@ -126,18 +126,16 @@ fn parse_list_claims_query(query: Option<&str>) -> Result<ListClaimsQuery, lambd
             let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
 
             match key {
-                "listingId" => {
-                    if !value.is_empty() {
+                "listingId"
+                    if !value.is_empty() => {
                         listing_id = Some(parse_uuid(value, "listingId")?);
                     }
-                }
-                "requestId" => {
-                    if !value.is_empty() {
+                "requestId"
+                    if !value.is_empty() => {
                         request_id = Some(parse_uuid(value, "requestId")?);
                     }
-                }
-                "status" => {
-                    if !value.is_empty() {
+                "status"
+                    if !value.is_empty() => {
                         if !ALLOWED_CLAIM_STATUSES.contains(&value) {
                             return Err(lambda_http::Error::from(format!(
                                 "Invalid claim status filter '{}'. Allowed values: {}",
@@ -147,7 +145,6 @@ fn parse_list_claims_query(query: Option<&str>) -> Result<ListClaimsQuery, lambd
                         }
                         status = Some(value.to_string());
                     }
-                }
                 "limit" => {
                     limit = value.parse::<i64>().map_err(|_| {
                         lambda_http::Error::from("Invalid limit. Must be an integer")
