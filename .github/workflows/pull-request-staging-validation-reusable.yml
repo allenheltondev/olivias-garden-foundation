@@ -352,6 +352,15 @@ jobs:
               -e "s|{{DOMAIN_HOSTED_ZONE_ID}}|${DOMAIN_HOSTED_ZONE_ID}|g" \
               -e "s|{{DOMAIN_NAME}}|${DOMAIN_NAME}|g" \
               samconfig.template.toml > samconfig.toml
+          if [ -z "$FRONTEND_DOMAIN_NAME" ]; then
+            sed -i '/"FrontendDomainName="/d' samconfig.toml
+          fi
+          if [ -z "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            sed -i '/"DomainHostedZoneId="/d' samconfig.toml
+          fi
+          if [ -z "$DOMAIN_NAME" ]; then
+            sed -i '/"DomainName="/d' samconfig.toml
+          fi
           echo "Generated samconfig.toml for CI"
 
       - name: Setup Node.js for deploy script
