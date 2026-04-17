@@ -34,9 +34,14 @@ export const AppShell: React.FC<AppShellProps> = ({
           label: link.label,
           onSelect: () => window.location.assign(link.href),
         }))}
-        socialLabel="Follow Olivia's Garden Foundation on Instagram"
-        socialHref="https://instagram.com/oliviasgardentx"
-        socialHandle="@oliviasgardentx"
+        socialLinks={[
+          {
+            id: 'instagram',
+            href: 'https://instagram.com/oliviasgardentx',
+            label: "Follow Olivia's Garden Foundation on Instagram",
+            icon: 'instagram',
+          },
+        ]}
       />
     </div>
   );
