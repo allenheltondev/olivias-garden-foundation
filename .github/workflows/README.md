@@ -69,8 +69,9 @@ Runs on pull requests that touch the foundation site or its shared hosting stack
 - Foundation web infrastructure template validation (`infra/foundation-web/template.yaml`)
 - Foundation web TypeScript check
 - Foundation web production build
-- Shared staging deploy for the foundation site
-- PR comment with the staging URL
+- Foundation function tests
+
+Staging deployment ownership for pull requests lives in `pull-request-checks.yml` via `pull-request-staging-validation-reusable.yml`, so the foundation-specific PR workflow no longer deploys `ogf-web-staging` on its own.
 
 ### 4. Deploy Foundation Web (`web-deploy.yml`)
 

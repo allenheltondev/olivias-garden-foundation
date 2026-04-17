@@ -26,6 +26,8 @@ struct JwtClaims {
     client_id: Option<String>,
     #[serde(default)]
     token_use: Option<String>,
+    #[serde(default, rename = "cognito:groups")]
+    cognito_groups: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -108,6 +110,11 @@ async fn handle_authorization(
     event: &ApiGatewayCustomAuthorizerRequestTypeRequest,
     state: &AppState,
 ) -> Result<PolicyResponse, Error> {
+    if is_public_route(event) {
+        let api_arn = get_api_arn_pattern(event.method_arn.as_deref().unwrap_or_default());
+        return Ok(generate_policy("anonymous", "Allow", &api_arn, None));
+    }
+
     let auth_header = get_authorization_header(event).ok_or("No Authorization header provided")?;
 
     if !auth_header.starts_with("Bearer ") {
@@ -147,6 +154,20 @@ async fn handle_jwt_auth(
     let principal_id = principal_uuid.to_string();
 
     let tier = get_user_tier(&state.cognito, &state.user_pool_id, &principal_id).await;
+    let is_admin = user_info.get("cognito:groups").map_or_else(
+        || {
+            claims
+                .cognito_groups
+                .iter()
+                .any(|group| group.eq_ignore_ascii_case("admin"))
+        },
+        |groups| {
+            groups
+                .split(',')
+                .map(str::trim)
+                .any(|group| group.eq_ignore_ascii_case("admin"))
+        },
+    );
     let user_type = get_user_type_from_db(&state.database_url, &principal_uuid).await;
 
     let api_arn = get_api_arn_pattern(event.method_arn.as_deref().unwrap_or_default());
@@ -157,9 +178,30 @@ async fn handle_jwt_auth(
         ("firstName", user_info.get("given_name").cloned()),
         ("lastName", user_info.get("family_name").cloned()),
         ("tier", tier),
+        (
+            "isAdmin",
+            Some(if is_admin { "true" } else { "false" }.to_string()),
+        ),
     ]);
 
     Ok(generate_policy(&principal_id, "Allow", &api_arn, context))
+}
+
+fn is_public_route(event: &ApiGatewayCustomAuthorizerRequestTypeRequest) -> bool {
+    let method = event.http_method.as_ref().map(reqwest::Method::as_str);
+    let path = event.path.as_deref().unwrap_or_default();
+
+    match method {
+        Some("GET") if path == "/api/catalog/crops" || path == "/catalog/crops" => true,
+        Some("GET")
+            if path.ends_with("/varieties")
+                && (path.starts_with("/api/catalog/crops/")
+                    || path.starts_with("/catalog/crops/")) =>
+        {
+            true
+        }
+        _ => false,
+    }
 }
 
 async fn get_user_attributes(

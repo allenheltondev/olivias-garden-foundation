@@ -1,0 +1,231 @@
+:root {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  color: #1b2118;
+  background:
+    radial-gradient(circle at top left, rgba(214, 164, 79, 0.22), transparent 30%),
+    radial-gradient(circle at top right, rgba(70, 118, 86, 0.18), transparent 28%),
+    linear-gradient(180deg, #f7f2e8 0%, #efe5d3 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.admin-shell {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.admin-shell--centered {
+  display: grid;
+  place-items: center;
+}
+
+.admin-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.admin-hero h1 {
+  margin: 0.2rem 0 0.5rem;
+  max-width: 12ch;
+  font-size: clamp(2rem, 4vw, 3.75rem);
+  line-height: 0.95;
+}
+
+.admin-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.75rem;
+  color: #5e684d;
+}
+
+.admin-subtitle {
+  max-width: 42rem;
+  color: #46533e;
+}
+
+.admin-pill {
+  border: 1px solid rgba(27, 33, 24, 0.15);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+}
+
+.admin-tabs {
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  margin-bottom: 1.5rem;
+}
+
+.admin-tabs button,
+.submission-actions button,
+.store-header button,
+.store-form button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.8rem 1.1rem;
+  background: #274234;
+  color: #fffaf0;
+  cursor: pointer;
+}
+
+.admin-tabs button {
+  background: transparent;
+  color: #394634;
+}
+
+.admin-tabs button.is-active {
+  background: #274234;
+  color: #fffaf0;
+}
+
+.admin-grid,
+.admin-store-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-store-layout {
+  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+}
+
+.admin-card {
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(27, 33, 24, 0.1);
+  border-radius: 1.25rem;
+  padding: 1.2rem;
+  box-shadow: 0 24px 60px rgba(60, 49, 27, 0.08);
+}
+
+.admin-card--submission {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.submission-meta,
+.store-header,
+.store-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.submission-meta h2,
+.store-header h2 {
+  margin: 0.2rem 0;
+}
+
+.submission-photo {
+  width: 100%;
+  max-height: 20rem;
+  object-fit: cover;
+  border-radius: 0.9rem;
+}
+
+.submission-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.submission-actions .danger {
+  background: #7a2e1e;
+}
+
+.submission-location,
+.store-row small {
+  color: #6a705d;
+}
+
+.store-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.store-row {
+  align-items: center;
+  border: 1px solid rgba(27, 33, 24, 0.08);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  background: #fffdfa;
+  cursor: pointer;
+  text-align: left;
+}
+
+.store-row span {
+  display: grid;
+}
+
+.store-form,
+.store-form label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.store-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.store-form input,
+.store-form textarea,
+.store-form select {
+  border: 1px solid rgba(27, 33, 24, 0.14);
+  border-radius: 0.8rem;
+  padding: 0.85rem 0.9rem;
+  background: #fffcf6;
+}
+
+.store-form textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.checkbox {
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+}
+
+.admin-error {
+  color: #7a2e1e;
+  margin: 0 0 1rem;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    padding: 1rem;
+  }
+
+  .admin-hero,
+  .admin-store-layout,
+  .submission-meta,
+  .store-header,
+  .store-row {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .store-grid {
+    grid-template-columns: 1fr;
+  }
+}

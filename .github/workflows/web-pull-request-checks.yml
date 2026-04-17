@@ -21,18 +21,13 @@ on:
       - 'tsconfig.base.json'
 
 permissions:
-  id-token: write
   contents: read
-  pull-requests: write
 
 concurrency:
   group: foundation-web-pr-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  AWS_REGION: us-east-1
-  FOUNDATION_WEB_STACK_NAME: ogf-web-staging
-  OKRA_STACK_NAME: ogf-okra-staging
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -120,52 +115,6 @@ jobs:
         working-directory: infra/foundation-web
         run: npm test
 
-  deploy-staging:
-    name: Foundation Web Staging Deploy
-    needs: [template-validate, web-typecheck, web-build, foundation-functions-test]
-    if: github.event.pull_request.head.repo.fork == false
-    uses: ./.github/workflows/foundation-web-deploy-reusable.yml
-    with:
-      environment_name: staging
-      foundation_web_stack_name: ogf-web-staging
-      okra_stack_name: ogf-okra-staging
-      grn_stack_name: ogf-grn-staging
-      aws_region: us-east-1
-      aws_role_session_name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
-      domain_name: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
-      domain_hosted_zone_id: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
-    secrets:
-      aws_role_arn: ${{ secrets.AWS_STAGING_ROLE_ARN }}
-      database_url: ${{ secrets.DATABASE_URL_STAGING }}
-      signup_slack_webhook_url: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
-
-  comment-staging:
-    name: Comment Foundation Web Staging URL
-    runs-on: ubuntu-latest
-    needs: [deploy-staging]
-    if: always() && needs.deploy-staging.result == 'success'
-
-    steps:
-      - name: Comment on pull request
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const output = `#### Foundation Web Staging Deployment
-
-            **Stack:** \`${process.env.STACK_NAME}\`
-            **Frontend URL:** ${{ needs.deploy-staging.outputs.frontend-url }}
-
-            This PR updated the shared foundation web staging environment.`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-        env:
-          STACK_NAME: ${{ env.FOUNDATION_WEB_STACK_NAME }}
-
   ci-summary:
     name: Foundation Web CI Summary
     runs-on: ubuntu-latest
@@ -175,7 +124,6 @@ jobs:
       - web-typecheck
       - web-build
       - foundation-functions-test
-      - deploy-staging
 
     steps:
       - name: Check workflow results
@@ -193,6 +141,5 @@ jobs:
           check_result "web-typecheck" "${{ needs.web-typecheck.result }}"
           check_result "web-build" "${{ needs.web-build.result }}"
           check_result "foundation-functions-test" "${{ needs.foundation-functions-test.result }}"
-          check_result "deploy-staging" "${{ needs.deploy-staging.result }}"
 
           echo "Foundation web PR checks passed"

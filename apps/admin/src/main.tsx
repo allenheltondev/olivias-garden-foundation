@@ -1,0 +1,15 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles.css';
+import App from './App';
+import { configureAmplify, getConfig } from './config/amplify';
+import { consumeSessionFragment } from './auth/sessionTransfer';
+
+configureAmplify();
+consumeSessionFragment(getConfig().userPoolClientId);
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);

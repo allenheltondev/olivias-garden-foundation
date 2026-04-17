@@ -1,0 +1,46 @@
+$kind: http-request
+name: Create Store Product
+description: |-
+  Create a new store product in the admin-owned store service.
+method: POST
+url: '{{baseUrl}}/admin/store/products'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  mode: raw
+  raw: |-
+    {
+      "slug": "postman-store-product",
+      "name": "Postman Store Product",
+      "short_description": "Store product created from Admin API contract tests",
+      "description": "A store product created through the admin service contract.",
+      "status": "draft",
+      "kind": "donation",
+      "fulfillment_type": "shipping",
+      "is_public": false,
+      "is_featured": false,
+      "currency": "usd",
+      "unit_amount_cents": 2500,
+      "statement_descriptor": "OGF STORE",
+      "nonprofit_program": "Food access",
+      "impact_summary": "Supports produce distribution",
+      "image_url": null,
+      "metadata": {
+        "source": "postman"
+      }
+    }
+order: 3000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      const product = pm.response.json();
+
+      pm.test("Created product contains expected name", function () {
+          pm.expect(product).to.have.property("name", "Postman Store Product");
+      });

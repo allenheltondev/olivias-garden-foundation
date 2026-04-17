@@ -115,7 +115,6 @@ pub async fn route_request(event: &Request) -> Result<Response<Body>, lambda_htt
         ("POST", "/reminders") => handle(reminder::create_reminder(event, &correlation_id).await)?,
 
         ("GET", "/catalog/crops") => handle(catalog::list_catalog_crops().await)?,
-
         _ => route_dynamic_routes(event, &correlation_id, request_path).await?,
     };
 
@@ -315,7 +314,11 @@ fn map_api_error_to_response(
         return crop::error_response(503, &message);
     }
 
-    if message.contains("is not configured") {
+    if message.contains("is not configured")
+        || message.contains("STRIPE_SECRET_KEY")
+        || message.contains("STRIPE_PRO_PRICE_ID")
+        || message.contains("STRIPE_WEBHOOK_SECRET")
+    {
         return crop::error_response(503, "Service not configured in this environment");
     }
 
@@ -450,6 +453,23 @@ mod tests {
             body.contains("Service not configured"),
             "503 body should use generic message, not leak env var names"
         );
+    }
+
+    #[test]
+    fn map_api_error_maps_wrapped_checkout_configuration_error_to_503() {
+        let error =
+            lambda_http::Error::from("Error: STRIPE_PRO_PRICE_ID is not configured".to_string());
+        let response = map_api_error_to_response(&error).unwrap();
+        assert_eq!(response.status().as_u16(), 503);
+    }
+
+    #[test]
+    fn map_api_error_maps_wrapped_webhook_configuration_error_to_503() {
+        let error = lambda_http::Error::from(
+            "billing webhook failed because STRIPE_WEBHOOK_SECRET was missing".to_string(),
+        );
+        let response = map_api_error_to_response(&error).unwrap();
+        assert_eq!(response.status().as_u16(), 503);
     }
 
     #[test]
