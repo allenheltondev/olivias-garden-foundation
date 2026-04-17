@@ -269,7 +269,7 @@ frontend/
 **Configuration:**
 - Origin: S3 bucket with OAC
 - Default root object: index.html
-- Custom error responses: 403/404 â†’ 200 /index.html (SPA routing)
+- Custom error responses: 403/404 â†' 200 /index.html (SPA routing)
 - HTTPS only (redirect HTTP to HTTPS)
 - Security headers policy:
   - Strict-Transport-Security

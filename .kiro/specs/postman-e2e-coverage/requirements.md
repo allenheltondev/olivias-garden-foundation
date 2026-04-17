@@ -113,8 +113,8 @@ The Good Roots Network API has 26 endpoints across 14 handler domains, but the e
 
 #### Acceptance Criteria
 
-1. THE E2E_Collection SHALL contain a claim lifecycle flow that creates a listing, then creates a claim against the listing, then transitions the claim through pending â†’ confirmed â†’ completed
-2. WHEN a claim transition to an invalid status is attempted (e.g., pending â†’ completed directly), THE E2E_Collection SHALL assert a 400 status code
+1. THE E2E_Collection SHALL contain a claim lifecycle flow that creates a listing, then creates a claim against the listing, then transitions the claim through pending â†' confirmed â†' completed
+2. WHEN a claim transition to an invalid status is attempted (e.g., pending â†' completed directly), THE E2E_Collection SHALL assert a 400 status code
 3. WHEN a claim is transitioned to `confirmed`, THE E2E_Collection SHALL assert the response `status` field equals `confirmed`
 4. WHEN a claim is transitioned to `completed`, THE E2E_Collection SHALL assert the response `status` field equals `completed`
 
@@ -124,7 +124,7 @@ The Good Roots Network API has 26 endpoints across 14 handler domains, but the e
 
 #### Acceptance Criteria
 
-1. THE E2E_Collection SHALL contain a listing-to-claim flow that executes the following ordered steps: grower creates crop â†’ grower creates listing â†’ listing appears in discovery â†’ gatherer creates claim â†’ grower confirms claim â†’ grower completes claim
+1. THE E2E_Collection SHALL contain a listing-to-claim flow that executes the following ordered steps: grower creates crop â†' grower creates listing â†' listing appears in discovery â†' gatherer creates claim â†' grower confirms claim â†' grower completes claim
 2. THE E2E_Collection SHALL use Variable_Chain to pass resource IDs between steps and abort the run if any chained ID is missing
 3. WHEN the listing-to-claim flow completes, THE E2E_Collection SHALL assert the final claim status is `completed`
 4. THE CI_Pipeline SHALL run the listing-to-claim E2E_Flow as part of the e2e-api-tests job

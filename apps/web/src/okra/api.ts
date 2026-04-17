@@ -1,4 +1,5 @@
 const trimmedBase = (import.meta.env.VITE_OKRA_API_BASE ?? '/api').replace(/\/+$/, '');
+const publicMapPrefix = /\/okra$/i.test(trimmedBase) ? '' : '/okra';
 
 function randomFallback() {
   return `corr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -7,6 +8,10 @@ function randomFallback() {
 export function okraApiUrl(path: string) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${trimmedBase}${normalizedPath}`;
+}
+
+export function okraMapUrl(path: '' | '/stats' = '') {
+  return `${trimmedBase}${publicMapPrefix}${path}`;
 }
 
 export function createCorrelationId() {
