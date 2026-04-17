@@ -236,6 +236,7 @@ jobs:
           fi
 
           sam deploy \
+            --debug \
             --template-file infra/foundation-web/template.yaml \
             --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
             --resolve-s3 \
@@ -268,6 +269,27 @@ jobs:
             --region "${{ env.AWS_REGION }}" \
             --query "StackResourceSummaries[*].[LogicalResourceId,ResourceType,ResourceStatus,PhysicalResourceId]" \
             --output table || true
+
+          echo "==== list-change-sets (latest 5) ===="
+          aws cloudformation list-change-sets \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "sort_by(Summaries,&CreationTime)[-5:].[ChangeSetName,Status,ExecutionStatus,StatusReason,CreationTime]" \
+            --output table || true
+
+          LATEST_CHANGE_SET=$(aws cloudformation list-change-sets \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "sort_by(Summaries,&CreationTime)[-1].ChangeSetName" \
+            --output text 2>/dev/null || true)
+
+          if [ -n "$LATEST_CHANGE_SET" ] && [ "$LATEST_CHANGE_SET" != "None" ]; then
+            echo "==== describe-change-set ($LATEST_CHANGE_SET) ===="
+            aws cloudformation describe-change-set \
+              --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+              --change-set-name "$LATEST_CHANGE_SET" \
+              --region "${{ env.AWS_REGION }}" || true
+          fi
 
   okra-lint-and-test:
     name: Okra Lint & Test

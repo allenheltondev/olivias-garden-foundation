@@ -134,6 +134,7 @@ jobs:
           fi
 
           sam deploy \
+            --debug \
             --template-file infra/foundation-web/template.yaml \
             --stack-name "${{ inputs.foundation_web_stack_name }}" \
             --resolve-s3 \
@@ -166,6 +167,27 @@ jobs:
             --region "${{ inputs.aws_region }}" \
             --query "StackResourceSummaries[*].[LogicalResourceId,ResourceType,ResourceStatus,PhysicalResourceId]" \
             --output table || true
+
+          echo "==== list-change-sets (latest 5) ===="
+          aws cloudformation list-change-sets \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "sort_by(Summaries,&CreationTime)[-5:].[ChangeSetName,Status,ExecutionStatus,StatusReason,CreationTime]" \
+            --output table || true
+
+          LATEST_CHANGE_SET=$(aws cloudformation list-change-sets \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "sort_by(Summaries,&CreationTime)[-1].ChangeSetName" \
+            --output text 2>/dev/null || true)
+
+          if [ -n "$LATEST_CHANGE_SET" ] && [ "$LATEST_CHANGE_SET" != "None" ]; then
+            echo "==== describe-change-set ($LATEST_CHANGE_SET) ===="
+            aws cloudformation describe-change-set \
+              --stack-name "${{ inputs.foundation_web_stack_name }}" \
+              --change-set-name "$LATEST_CHANGE_SET" \
+              --region "${{ inputs.aws_region }}" || true
+          fi
 
       - name: Read stack outputs
         id: stack-outputs
