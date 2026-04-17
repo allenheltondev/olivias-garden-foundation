@@ -6,8 +6,8 @@ Description: >
 Parameters:
   FrontendDomainName:
     Type: String
-    Default: "localhost:5173"
-    Description: Domain name for the GRN frontend
+    Default: ""
+    Description: Optional custom domain name for the GRN frontend
   DomainProtocol:
     Type: String
     Default: https
@@ -33,17 +33,39 @@ Parameters:
     Type: String
     Default: ""
     Description: Optional root domain name used to derive the shared API custom domain
+  StripeSecretKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Stripe secret key for subscription and store operations
+  StripeWebhookSecret:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Stripe webhook signing secret
+  StripeProPriceId:
+    Type: String
+    Default: ""
+    Description: Optional Stripe price id for GRN Pro checkout
 Conditions:
-  DeployCustomDomain: !Not [!Equals [!Ref DomainHostedZoneId, ""]]
+  HasFrontendDomainName: !Not [!Equals [!Ref FrontendDomainName, ""]]
+  DeployCustomDomain: !And
+    - !Condition HasFrontendDomainName
+    - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
   DeployCiAuthSeedFunction: !Not [!Equals [!Ref EnvironmentName, prod]]
-  DeploySharedApiBasePathMapping: !Not [!Equals [!Ref DomainName, ""]]
+  DeploySharedApiBasePathMapping: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
 
 Globals:
   Api:
     Cors:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-      AllowOrigin: !Sub "'${DomainProtocol}://${FrontendDomainName}'"
+      AllowOrigin: !If
+        - HasFrontendDomainName
+        - !Sub "'${DomainProtocol}://${FrontendDomainName}'"
+        - "'*'"
   Function:
     Architectures: [ arm64 ]
     Tracing: Disabled
@@ -82,7 +104,10 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: !Sub "'${DomainProtocol}://${FrontendDomainName}'"
+        AllowOrigin: !If
+          - HasFrontendDomainName
+          - !Sub "'${DomainProtocol}://${FrontendDomainName}'"
+          - "'*'"
       Auth:
         DefaultAuthorizer: LambdaAuthorizer
         AddDefaultAuthorizerToCorsPreflight: false
@@ -316,7 +341,13 @@ Resources:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
           EVENT_BUS_NAME: !Ref EventBus
-          ORIGIN: !Sub "${DomainProtocol}://${FrontendDomainName}"
+          ORIGIN: !If
+            - HasFrontendDomainName
+            - !Sub "${DomainProtocol}://${FrontendDomainName}"
+            - "*"
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+          STRIPE_PRO_PRICE_ID: !Ref StripeProPriceId
           RUST_LOG: info
           RUST_BACKTRACE: "1"
       Events:

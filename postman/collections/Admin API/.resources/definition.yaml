@@ -1,0 +1,18 @@
+$kind: collection
+name: Admin API
+description: |-
+  REST API for backoffice admin operations.
+
+  This collection currently covers admin-managed store catalog operations.
+variables:
+  - key: baseUrl
+    value: 'https://api.example.com'
+    description: Base URL for the Admin API
+  - key: authToken
+    value: ''
+    description: JWT Bearer token for an admin user
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'

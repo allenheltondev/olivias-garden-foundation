@@ -184,6 +184,14 @@ Resources:
       Description: Pro tier users with pro foundation and GRN features
       Precedence: 1
 
+  FoundationAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admin
+      UserPoolId: !Ref FoundationUserPool
+      Description: Administrative operators for moderation and store management
+      Precedence: 0
+
   FoundationUserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:

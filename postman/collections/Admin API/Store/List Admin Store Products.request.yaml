@@ -1,0 +1,21 @@
+$kind: http-request
+name: List Admin Store Products
+description: |-
+  Retrieve the full store catalog for authenticated admins.
+method: GET
+url: '{{baseUrl}}/admin/store/products'
+order: 2000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const response = pm.response.json();
+
+      pm.test("Response contains items array", function () {
+          pm.expect(response).to.have.property("items");
+          pm.expect(Array.isArray(response.items)).to.eql(true);
+      });

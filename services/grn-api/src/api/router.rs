@@ -115,7 +115,6 @@ pub async fn route_request(event: &Request) -> Result<Response<Body>, lambda_htt
         ("POST", "/reminders") => handle(reminder::create_reminder(event, &correlation_id).await)?,
 
         ("GET", "/catalog/crops") => handle(catalog::list_catalog_crops().await)?,
-
         _ => route_dynamic_routes(event, &correlation_id, request_path).await?,
     };
 

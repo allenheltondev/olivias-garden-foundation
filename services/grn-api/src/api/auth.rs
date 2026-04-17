@@ -15,6 +15,9 @@ pub enum UserType {
 pub struct AuthContext {
     pub user_id: String,
     pub user_type: Option<UserType>,
+    #[allow(dead_code)]
+    // Preserved in context for shared authorizer compatibility and future admin route checks
+    pub is_admin: bool,
     #[allow(dead_code)] // Will be used for tier-based authorization in future phases
     pub tier: String,
     #[allow(dead_code)] // Will be used for user communication features
@@ -28,12 +31,15 @@ pub fn extract_auth_context(request: &Request) -> Result<AuthContext, Error> {
     let tier = extract_authorizer_field(request, "tier").unwrap_or_else(|| "free".to_string());
 
     let user_type = extract_authorizer_field(request, "userType").and_then(|s| parse_user_type(&s));
+    let is_admin = extract_authorizer_field(request, "isAdmin")
+        .is_some_and(|value| value.eq_ignore_ascii_case("true"));
 
     let email = extract_authorizer_field(request, "email");
 
     Ok(AuthContext {
         user_id,
         user_type,
+        is_admin,
         tier,
         email,
     })
@@ -126,6 +132,17 @@ pub fn require_participant_user_type(user_type: Option<&UserType>) -> Result<(),
     }
 }
 
+#[allow(dead_code)] // Preserved for future GRN admin-only endpoints
+pub fn require_admin(ctx: &AuthContext) -> Result<(), Error> {
+    if ctx.is_admin {
+        Ok(())
+    } else {
+        Err(Error::from(
+            "Forbidden: This feature is only available to administrators",
+        ))
+    }
+}
+
 #[allow(dead_code)] // Will be used when gatherer-specific endpoints are implemented
 pub fn require_user_type(ctx: &AuthContext, required: &UserType) -> Result<(), Error> {
     match &ctx.user_type {
@@ -202,6 +219,7 @@ mod tests {
         let ctx = AuthContext {
             user_id: String::from("test-user"),
             user_type: Some(UserType::Grower),
+            is_admin: false,
             tier: String::from("free"),
             email: None,
         };
@@ -213,6 +231,7 @@ mod tests {
         let ctx = AuthContext {
             user_id: String::from("test-user"),
             user_type: Some(UserType::Gatherer),
+            is_admin: false,
             tier: String::from("free"),
             email: None,
         };
@@ -229,6 +248,7 @@ mod tests {
         let ctx = AuthContext {
             user_id: String::from("test-user"),
             user_type: None,
+            is_admin: false,
             tier: String::from("free"),
             email: None,
         };
@@ -261,6 +281,7 @@ mod tests {
         let ctx = AuthContext {
             user_id: String::from("test-user"),
             user_type: Some(UserType::Gatherer),
+            is_admin: false,
             tier: String::from("free"),
             email: None,
         };
@@ -272,6 +293,7 @@ mod tests {
         let ctx = AuthContext {
             user_id: String::from("test-user"),
             user_type: Some(UserType::Grower),
+            is_admin: false,
             tier: String::from("free"),
             email: None,
         };
@@ -288,6 +310,7 @@ mod tests {
         let ctx = AuthContext {
             user_id: String::from("test-user"),
             user_type: None,
+            is_admin: false,
             tier: String::from("free"),
             email: None,
         };
@@ -317,5 +340,33 @@ mod tests {
 
         let gatherer: UserType = serde_json::from_str(r#""gatherer""#).unwrap();
         assert_eq!(gatherer, UserType::Gatherer);
+    }
+
+    #[test]
+    fn require_admin_accepts_admins() {
+        let ctx = AuthContext {
+            user_id: String::from("test-user"),
+            user_type: Some(UserType::Grower),
+            is_admin: true,
+            tier: String::from("free"),
+            email: None,
+        };
+
+        assert!(require_admin(&ctx).is_ok());
+    }
+
+    #[test]
+    fn require_admin_rejects_non_admins() {
+        let ctx = AuthContext {
+            user_id: String::from("test-user"),
+            user_type: Some(UserType::Grower),
+            is_admin: false,
+            tier: String::from("free"),
+            email: None,
+        };
+
+        let result = require_admin(&ctx);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("administrators"));
     }
 }
