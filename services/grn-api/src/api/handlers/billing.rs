@@ -32,10 +32,8 @@ pub async fn create_checkout_session(
         .map_err(|_| lambda_http::Error::from("Invalid user ID format"))?;
     let payload: CreateCheckoutSessionRequest = parse_json_body(request)?;
 
-    let stripe_secret = env::var("STRIPE_SECRET_KEY")
-        .map_err(|_| lambda_http::Error::from("STRIPE_SECRET_KEY is not configured"))?;
-    let stripe_price_id = env::var("STRIPE_PRO_PRICE_ID")
-        .map_err(|_| lambda_http::Error::from("STRIPE_PRO_PRICE_ID is not configured"))?;
+    let stripe_secret = required_env_var("STRIPE_SECRET_KEY")?;
+    let stripe_price_id = required_env_var("STRIPE_PRO_PRICE_ID")?;
 
     let mut form = HashMap::new();
     form.insert("mode", "subscription".to_string());
@@ -332,8 +330,7 @@ fn extract_raw_body(request: &Request) -> Result<String, lambda_http::Error> {
 }
 
 fn verify_stripe_signature(request: &Request, body: &str) -> Result<(), lambda_http::Error> {
-    let secret = env::var("STRIPE_WEBHOOK_SECRET")
-        .map_err(|_| lambda_http::Error::from("STRIPE_WEBHOOK_SECRET is not configured"))?;
+    let secret = required_env_var("STRIPE_WEBHOOK_SECRET")?;
     let signature_header = request
         .headers()
         .get("Stripe-Signature")
@@ -341,6 +338,15 @@ fn verify_stripe_signature(request: &Request, body: &str) -> Result<(), lambda_h
         .ok_or_else(|| lambda_http::Error::from("Missing Stripe-Signature header"))?;
 
     verify_signature_with_secret(&secret, signature_header, body)
+}
+
+fn required_env_var(name: &str) -> Result<String, lambda_http::Error> {
+    match env::var(name) {
+        Ok(value) if !value.trim().is_empty() => Ok(value),
+        _ => Err(lambda_http::Error::from(format!(
+            "{name} is not configured"
+        ))),
+    }
 }
 
 fn verify_signature_with_secret(
@@ -554,5 +560,32 @@ mod tests {
         assert!(is_supported_event_type("customer.subscription.updated"));
         assert!(is_supported_event_type("customer.subscription.deleted"));
         assert!(!is_supported_event_type("invoice.payment_failed"));
+    }
+
+    #[test]
+    fn required_env_var_rejects_blank_values() {
+        let err = required_config_value("STRIPE_SECRET_KEY", Ok("   ".to_string())).unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("STRIPE_SECRET_KEY is not configured"));
+    }
+
+    #[test]
+    fn required_env_var_accepts_non_blank_values() {
+        let value =
+            required_config_value("STRIPE_SECRET_KEY", Ok("sk_test_123".to_string())).unwrap();
+        assert_eq!(value, "sk_test_123");
+    }
+
+    fn required_config_value(
+        name: &str,
+        value: Result<String, env::VarError>,
+    ) -> Result<String, lambda_http::Error> {
+        match value {
+            Ok(value) if !value.trim().is_empty() => Ok(value),
+            _ => Err(lambda_http::Error::from(format!(
+                "{name} is not configured"
+            ))),
+        }
     }
 }
