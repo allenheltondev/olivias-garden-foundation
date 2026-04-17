@@ -143,6 +143,30 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
+      - name: Diagnose failed foundation deploy
+        if: ${{ failure() }}
+        run: |
+          echo "Foundation deploy failed. Dumping CloudFormation diagnostics for ${{ inputs.foundation_web_stack_name }}."
+
+          echo "==== describe-stacks ===="
+          aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" || true
+
+          echo "==== describe-stack-events (latest 50) ===="
+          aws cloudformation describe-stack-events \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "StackEvents[:50].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true
+
+          echo "==== list-stack-resources ===="
+          aws cloudformation list-stack-resources \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "StackResourceSummaries[*].[LogicalResourceId,ResourceType,ResourceStatus,PhysicalResourceId]" \
+            --output table || true
+
       - name: Read stack outputs
         id: stack-outputs
         run: |

@@ -108,6 +108,30 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
+      - name: Diagnose failed foundation deploy
+        if: ${{ failure() }}
+        run: |
+          echo "Foundation deploy failed. Dumping CloudFormation diagnostics for ${{ env.FOUNDATION_STACK_NAME }}."
+
+          echo "==== describe-stacks ===="
+          aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" || true
+
+          echo "==== describe-stack-events (latest 50) ===="
+          aws cloudformation describe-stack-events \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackEvents[:50].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true
+
+          echo "==== list-stack-resources ===="
+          aws cloudformation list-stack-resources \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackResourceSummaries[*].[LogicalResourceId,ResourceType,ResourceStatus,PhysicalResourceId]" \
+            --output table || true
+
   deploy-staging-okra:
     name: Deploy Okra Staging Backend
     runs-on: ubuntu-latest
