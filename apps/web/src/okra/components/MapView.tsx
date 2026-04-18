@@ -5,7 +5,7 @@ import { type StatsData } from './StatsBar';
 import { PinLayer, type PinData } from './PinLayer';
 import { PinPopup } from './PinPopup';
 import { BottomSheet } from './BottomSheet';
-import { okraApiUrl } from '../api';
+import { okraMapUrl } from '../api';
 import './MapView.css';
 
 export type { PinData } from './PinLayer';
@@ -75,10 +75,11 @@ export function MapView({
     setPinError(null);
     setSelectedPin(null);
 
-    const pinPromise = fetch(okraApiUrl('/okra'))
+    const pinPromise = fetch(okraMapUrl())
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to load pins: ${res.status}`);
-        return (await res.json()).data as PinData[];
+        const body = await res.json();
+        return Array.isArray(body?.data) ? (body.data as PinData[]) : [];
       })
       .then((data) => {
         setPins(data);
@@ -90,7 +91,7 @@ export function MapView({
         setPinsLoading(false);
       });
 
-    const statsPromise = fetch(okraApiUrl('/okra/stats'))
+    const statsPromise = fetch(okraMapUrl('/stats'))
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to load stats: ${res.status}`);
         return (await res.json()) as StatsData;
@@ -131,6 +132,7 @@ export function MapView({
     const bounds = computeViewportBounds(pins);
     if (bounds) {
       map.flyToBounds(bounds, { duration: 0.4, padding: [30, 30] });
+      window.requestAnimationFrame(() => map.invalidateSize());
     }
   }, [pins]);
 

@@ -13,7 +13,7 @@ function cleanToken(value) {
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[×x]\s+/g, ' ')
-    .replace(/[‘’'"`]/g, ' ')
+    .replace(/[‘''"`]/g, ' ')
     .replace(/\([^)]*\)/g, ' ')
     .toLowerCase()
     .replace(/\b(var\.?|subsp\.?|ssp\.?|f\.?|forma|cv\.?|cultivar|group|agg\.?|cf\.?|aff\.?)\b/g, ' ')

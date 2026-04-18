@@ -5,56 +5,83 @@ export interface SiteFooterLink {
   active?: boolean;
 }
 
+export interface SiteFooterSocialLink {
+  id: string;
+  href: string;
+  label: string;
+  icon: 'instagram' | 'facebook';
+}
+
 export interface SiteFooterProps {
   tagline: string;
   meta: string;
   links?: SiteFooterLink[];
-  socialLabel?: string;
-  socialHref?: string;
-  socialHandle?: string;
+  socialLinks?: SiteFooterSocialLink[];
 }
 
 export function SiteFooter({
   tagline,
   meta,
   links = [],
-  socialLabel,
-  socialHref,
-  socialHandle,
+  socialLinks = [],
 }: SiteFooterProps) {
   return (
     <footer className="og-site-footer">
       <div className="og-site-footer__inner">
-        <div>
+        {links.length > 0 ? (
+          <div className="og-site-footer__links-block">
+            <p className="og-site-footer__label">Pages</p>
+            <div className="og-site-footer__links">
+              {links.map((link) => (
+                <button
+                  key={link.id}
+                  type="button"
+                  className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
+                  onClick={link.onSelect}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="og-site-footer__copy">
+          <p className="og-site-footer__label">Olivia&apos;s Garden Foundation</p>
           <p className="og-site-footer__tagline">{tagline}</p>
           <p className="og-site-footer__meta">{meta}</p>
         </div>
 
-        {links.length > 0 ? (
-          <div className="og-site-footer__links">
-            {links.map((link) => (
-              <button
-                key={link.id}
-                type="button"
-                className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
-                onClick={link.onSelect}
-              >
-                {link.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {socialHref && socialHandle ? (
-          <div className="og-site-footer__social">
-            <span className="og-site-footer__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2A3 3 0 0 0 4 7v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Zm5.25-3.25a1.25 1.25 0 1 1-1.25 1.25 1.25 1.25 0 0 1 1.25-1.25Z" />
-              </svg>
-            </span>
-            <a href={socialHref} target="_blank" rel="noreferrer" aria-label={socialLabel ?? socialHandle}>
-              {socialHandle}
-            </a>
+        {socialLinks.length > 0 ? (
+          <div className="og-site-footer__social-block">
+            <div className="og-site-footer__social-row">
+              <p className="og-site-footer__label">Follow</p>
+              <div className="og-site-footer__social-icons">
+                {socialLinks.map((link) => (
+                  <a
+                    key={link.id}
+                    className="og-site-footer__social-link"
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={link.label}
+                    title={link.label}
+                  >
+                    <span className="og-site-footer__icon" aria-hidden="true">
+                      {link.icon === 'instagram' ? (
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2A3 3 0 0 0 4 7v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5Zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5Zm5.25-3.25a1.25 1.25 0 1 1-1.25 1.25 1.25 1.25 0 0 1 1.25-1.25Z" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <path d="M13 22v-8h3l1-4h-4V7.6c0-1.2.4-2 2.1-2H17V2.2c-.3 0-1.4-.2-2.8-.2-2.8 0-4.7 1.7-4.7 4.9V10H6v4h3.5v8H13Z" />
+                        </svg>
+                      )}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
       </div>

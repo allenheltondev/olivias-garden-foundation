@@ -282,6 +282,69 @@
   width: fit-content;
 }
 
+@media (max-width: 859px) {
+  .okra-experience {
+    gap: 0.9rem;
+  }
+
+  .okra-experience__intro {
+    gap: 0.9rem;
+    padding: 0.95rem;
+    border-radius: 1.2rem;
+  }
+
+  .okra-experience__title {
+    font-size: clamp(1.9rem, 9vw, 2.45rem);
+    line-height: 0.96;
+  }
+
+  .okra-experience__intro-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .okra-experience__primary-cta,
+  .okra-experience__secondary-cta,
+  .okra-recent-card__cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .okra-experience__story-photo {
+    min-height: 10rem;
+    border-radius: 1.1rem;
+  }
+
+  .okra-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .okra-stats__item {
+    min-height: 100%;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .okra-experience__map {
+    height: min(32rem, 68vh);
+    min-height: 23rem;
+    border-radius: 1.2rem;
+  }
+
+  .okra-recent-card {
+    padding: 0.9rem;
+    border-radius: 1.2rem;
+  }
+
+  .okra-recent-card__btn {
+    padding: 0.75rem 0.85rem;
+    align-items: flex-start;
+  }
+
+  .okra-recent-card__location {
+    margin-left: 0;
+  }
+}
+
 @media (min-width: 860px) {
   .okra-experience__intro {
     grid-template-columns: minmax(0, 1.5fr) minmax(9rem, 14rem);

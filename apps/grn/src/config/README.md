@@ -59,7 +59,7 @@ After deploying the frontend to CloudFront, you need to update the Cognito User 
 
 1. Go to AWS Cognito Console
 2. Select your User Pool
-3. Go to "App integration" â†’ "App clients"
+3. Go to "App integration" â†' "App clients"
 4. Edit your app client
 5. Update "Allowed callback URLs" to include your CloudFront URL:
    - `https://d123abc456xyz.cloudfront.net`

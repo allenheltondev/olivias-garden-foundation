@@ -42,7 +42,7 @@ const routes: Route[] = [
     path: '/login',
     label: 'Login',
     title: 'Log in',
-    description: 'Use one Good Roots Network account across Olivia’s Garden experiences.',
+    description: "Use one Good Roots Network account across Olivia's Garden experiences.",
   },
   {
     path: '/about',
@@ -98,6 +98,7 @@ const navRoutes = routes.filter((route) => route.showInNav);
 const footerRoutes = routes.filter((route) => route.showInFooter);
 const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://goodroots.network';
 const instagramUrl = 'https://instagram.com/oliviasgardentx';
+const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
 
 const internalPaths = new Set(routes.map((route) => route.path));
 
@@ -403,6 +404,13 @@ function SiteHeader({
         }]
       : []),
     {
+      id: authSession ? 'profile' : 'login',
+      label: authSession ? 'Profile' : 'Log in',
+      active: pathname === '/login',
+      mobileOnly: true,
+      onSelect: () => onNavigate('/login'),
+    },
+    {
       id: 'donate',
       label: 'Donate',
       active: pathname === '/donate',
@@ -461,14 +469,25 @@ function SiteFooter({
   }));
 
   return (
-    <SharedSiteFooter
-      tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
-      meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
-      links={footerLinks}
-      socialLabel="Follow Olivia's Garden Foundation on Instagram"
-      socialHref={instagramUrl}
-      socialHandle="@oliviasgardentx"
-    />
+      <SharedSiteFooter
+        tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
+        meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
+        links={footerLinks}
+        socialLinks={[
+          {
+            id: 'instagram',
+            href: instagramUrl,
+            label: "Follow Olivia's Garden Foundation on Instagram",
+            icon: 'instagram',
+          },
+          {
+            id: 'facebook',
+            href: facebookUrl,
+            label: "Follow Olivia's Garden Foundation on Facebook",
+            icon: 'facebook',
+          },
+        ]}
+      />
   );
 }
 
@@ -606,7 +625,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
             alt="Watering seedlings in a raised garden bed."
           />
           <img
-            className="home-photo-band__image"
+            className="home-photo-band__image home-photo-band__image--mobile-hide"
             src="/images/home/bee-suit.jpg"
             alt="Working bees with a child in protective gear."
           />
@@ -614,44 +633,68 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         </div>
       </section>
 
+      <section className="home-mobile-image-break" aria-label="Life and work at the foundation">
+        <img
+          className="home-mobile-image-break__image"
+          src="/images/home/melon-harvest.jpg"
+          alt="Harvesting in raised beds with a child."
+        />
+      </section>
+
       <Section
-        title="How we do the work"
-        intro="What we share comes from doing the work ourselves and staying close to what actually helps people start."
+        title="What we do"
+        intro="We share what we learn from doing the work ourselves and staying close to what  helps people get started."
         className="section-teach"
       >
         <div className="home-teach-grid" aria-label="Core focus areas">
           <div className="home-teach-stack">
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="sprout" /></div>
               <div className="home-teach-item__body">
-                <h3>Teach from real work</h3>
-                <p>If we’re sharing it, it’s something we’re actively doing.</p>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="sprout" /></div>
+                  <h3>Teach from real work</h3>
+                </div>
+                <p>If we're sharing it, it's something we're actively doing.</p>
               </div>
             </article>
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="tool" /></div>
               <div className="home-teach-item__body">
-                <h3>Make starting feel possible</h3>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="tool" /></div>
+                  <h3>Make starting feel possible</h3>
+                </div>
                 <p>This should feel within reach. The goal is to make getting started simpler.</p>
               </div>
             </article>
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="post" /></div>
               <div className="home-teach-item__body">
-                <h3>Stay honest about the work</h3>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="post" /></div>
+                  <h3>Stay honest about the work</h3>
+                </div>
                 <p>This is a working place. Some days are messy, and we show that too.</p>
               </div>
             </article>
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="hands" /></div>
               <div className="home-teach-item__body">
-                <h3>Share what helps</h3>
-                <p>The goal isn’t just to grow here. It’s to help more people start where they are.</p>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="hands" /></div>
+                  <h3>Share what helps</h3>
+                </div>
+                <p>The goal isn't just to grow here. It's to help more people start where they are.</p>
               </div>
             </article>
           </div>
         </div>
       </Section>
+
+      <section className="home-mobile-image-break" aria-label="Learning through real work">
+        <img
+          className="home-mobile-image-break__image"
+          src="/images/home/watering-seedlings.jpg"
+          alt="Watering seedlings in a raised garden bed."
+        />
+      </section>
 
       <Section title="Ways to take part" className="section-take-part">
         <div className="home-action-grid">
@@ -660,7 +703,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
             <p>
               Olivia was a true Texas cowgirl who loved being outside, spending time in the garden, and interacting with animals. Learn more about her.
             </p>
-            <CtaButton onClick={() => onNavigate('/contact')} variant="secondary">Olivia's story</CtaButton>
+            <CtaButton onClick={() => onNavigate('/about')} variant="secondary">Olivia's story</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
             <h3>Get free okra seeds</h3>
@@ -707,6 +750,7 @@ function AboutPage() {
       <section className="about-prose-hero" aria-label="About Olivia's Garden">
         <div className="about-prose-hero__copy">
           <div className="about-prose-hero__header">
+            <p className="about-prose-hero__eyebrow">In Olivia&apos;s memory</p>
             <h1>About Olivia&apos;s Garden</h1>
             <p className="about-prose-hero__dek">
               The story behind the foundation, the family, and the work being built in Olivia&apos;s memory.
@@ -750,12 +794,13 @@ function AboutPage() {
 
       <hr className="about-divider" />
 
-      <section className="about-prose-block" aria-label="How the foundation began">
-        <p>
-          After Olivia passed, Allen and Mallory wanted to build something in her memory. They had
-          seen up close what families in treatment go through. The logistics are relentless. Access
-          to fresh, local food is harder than it should be. The first idea was straightforward:
-          start a foundation to grow and provide locally available food to families who needed it
+        <section className="about-prose-block about-prose-block--origin" aria-label="How the foundation began">
+          <p className="about-prose-block__eyebrow">How it began</p>
+          <p>
+            After Olivia passed, Allen and Mallory wanted to build something in her memory. They had
+            seen up close what families in treatment go through. The logistics are relentless. Access
+            to fresh, local food is harder than it should be. The first idea was straightforward:
+            start a foundation to grow and provide locally available food to families who needed it
           most.
         </p>
         <p>
@@ -770,13 +815,14 @@ function AboutPage() {
 
       <hr className="about-divider" />
 
-      <section className="about-memory-layout" aria-label="Building the garden">
-        <div className="about-prose-block">
-          <p>
-            Allen sat down and designed the garden she always wanted.
-          </p>
-          <p>
-            He pulled in everything they had talked about on those walks. Her ideas, her favorite
+        <section className="about-memory-layout" aria-label="Building the garden">
+          <div className="about-prose-block">
+            <p className="about-prose-block__eyebrow">Building the garden</p>
+            <p>
+              Allen sat down and designed the garden she always wanted.
+            </p>
+            <p>
+              He pulled in everything they had talked about on those walks. Her ideas, her favorite
             things to grow, the way she moved through the land. Then they built it. Six raised beds
             became a quarter-acre memorial garden. Volunteers showed up. The community showed up.
             Their daughter Isabella helped however she could.
@@ -803,11 +849,12 @@ function AboutPage() {
 
       <hr className="about-divider" />
 
-      <section className="about-prose-block about-prose-block--closing" aria-label="Who runs the foundation">
-        <p>
-          Olivia&apos;s Garden Foundation is run by the Helton family. Allen, Mallory, and Isabella,
-          out of McKinney, Texas.
-        </p>
+        <section className="about-prose-block about-prose-block--closing" aria-label="Who runs the foundation">
+          <p className="about-prose-block__eyebrow">Who runs it</p>
+          <p>
+            Olivia&apos;s Garden Foundation is run by the Helton family. Allen, Mallory, and Isabella,
+            out of McKinney, Texas.
+          </p>
         <p>
           We are not experts. We are a family who loves a little girl who loved this land, and we
           are doing our best to honor that by sharing what we know and building something useful for
@@ -834,8 +881,9 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
         body="There are a few clear ways to be part of the work here now, and a few more that are being built honestly instead of rushed."
       />
 
-      <div className="stack-grid">
-        <Card title="Start with seeds. Literally.">
+      <div className="stack-grid get-involved-grid">
+        <Card title="Start with seeds. Literally." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Easiest first step</p>
           <p>
             The easiest way into this is okra. It&apos;s one of the most forgiving plants you can grow.
             It tolerates heat, bounces back from neglect, and produces more than you expect.
@@ -843,7 +891,8 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
           <CtaButton onClick={() => onNavigate('/seeds')}>Request your free okra seeds</CtaButton>
         </Card>
 
-        <Card title="Come work the land.">
+        <Card title="Come work the land." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">In person</p>
           <p>
             We run regular work days tied to garden prep, animal care, event setup,
             whatever needs doing that week. It&apos;s real work and you&apos;ll go home tired.
@@ -856,7 +905,8 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
           <CtaButton onClick={() => onNavigate('/contact')}>Sign up to volunteer</CtaButton>
         </Card>
 
-        <Card title="Hands-on workshops -- coming soon.">
+        <Card title="Hands-on workshops -- coming soon." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Coming soon</p>
           <p>
             Workshops are planned, but they are not active yet. When they launch, they will be
             built around real tasks and hands-on learning, not classroom-style theory.
@@ -864,7 +914,8 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
           <CtaButton variant="secondary">Notify me when workshops open</CtaButton>
         </Card>
 
-        <Card title="Help us map where food is growing.">
+        <Card title="Help us map where food is growing." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Online</p>
           <p>
             The Okra Project is a living map of people growing food. If you&apos;re growing food
             anywhere, add your pin. Every garden on the map makes the case that this is normal,
@@ -874,7 +925,10 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
         </Card>
       </div>
 
-      <Section title="Follow along." body="We post what is actually happening in the work: harvests, setbacks, animals, systems, and the day-to-day reality of learning by doing.">
+      <Section
+        title="Follow along."
+        body="We post what is actually happening in the work: harvests, setbacks, animals, systems, and the day-to-day reality of learning by doing."
+      >
         <CtaButton variant="secondary">Follow us on Instagram</CtaButton>
       </Section>
     </>
@@ -1590,6 +1644,7 @@ function SeedsPage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         title="What you get"
         body="Free okra seeds for people in the United States who want to start growing food and take part in the Okra Project."
       >
+        <p className="page-kicker">Simple, low-friction, and meant to get you growing quickly.</p>
         <p className="page-text">
           This is meant to be an easy entry point. Start with one crop, get it in the ground, and
           see where it leads. When it grows, we ask that you send back photos so the project can
@@ -1622,6 +1677,7 @@ function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         title="What's already growing."
         body="The work is active and productive."
       >
+        <p className="page-kicker">This is not a concept page. The work is already happening.</p>
         <p className="page-text">
           On the land right now: productive garden beds, flowers, chickens, turkeys, geese, goats,
           bees, and guineas. A small Texas vineyard. A pond we use to observe and teach about
@@ -1664,6 +1720,7 @@ function DonatePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         title="Donations are coming soon."
         body="Payment processing is not set up yet. If you want to support the foundation before that is live, reach out directly."
       >
+        <p className="page-kicker">Support is welcome now, even before the payment flow is live.</p>
         <p className="page-text">
           Support will go toward seeds, tools, animals, infrastructure, and the practical work of
           keeping the foundation open and useful to the people we want to serve.
@@ -1677,19 +1734,21 @@ function DonatePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
 function ContactPage() {
   return (
     <>
-      <PageHero eyebrow="Contact" title="Get in touch" body="We'd love to hear from you." />
+      <PageHero title="Get in touch" body="We'd love to hear from you." />
 
       <div className="contact-grid">
-        <Card title="Reach out directly">
+        <Card title="Reach out directly" className="contact-card">
+          <p className="contact-card__eyebrow">Direct contact</p>
           <p>
             Whether you want seeds, have questions about the Okra Project, want to help with the
             work, or just want to say what you&apos;re growing, reach out.
           </p>
           <p className="page-text">We&apos;re real people and we actually respond.</p>
-          <p className="contact-meta">Email: [PLACEHOLDER -- INSERT EMAIL]</p>
+          <p className="contact-meta">Email: allen@oliviasgarden.org</p>
         </Card>
 
-        <Card title="Send a message">
+        <Card title="Send a message" className="contact-card">
+          <p className="contact-card__eyebrow">Send a note</p>
           <form className="contact-form">
             <label>
               <span>Name</span>
