@@ -252,6 +252,39 @@ async function applyUserDonationSummary(client, userId, amountCents, mode, custo
   );
 }
 
+async function runInTransaction(client, work) {
+  await client.query('BEGIN');
+
+  try {
+    const result = await work();
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+}
+
+async function findDonationIdentity(client, subscriptionId, customerId) {
+  if (!subscriptionId && !customerId) {
+    return null;
+  }
+
+  const result = await client.query(
+    `
+      select donor_name, donor_email, dedication_name, t_shirt_preference
+        from donation_events
+       where ($1::text is not null and stripe_subscription_id = $1)
+          or ($2::text is not null and stripe_customer_id = $2)
+       order by created_at desc
+       limit 1
+    `,
+    [subscriptionId, customerId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
 async function persistCheckoutCompletion(client, eventId, object, correlationId) {
   const metadata = object.metadata ?? null;
   const mode = extractMode(metadata);
@@ -267,47 +300,55 @@ async function persistCheckoutCompletion(client, eventId, object, correlationId)
   const customerId = object.customer ?? null;
   const subscriptionId = object.subscription ?? null;
 
-  const inserted = await client.query(
-    `
-      insert into donation_events (
-        stripe_event_id, stripe_checkout_session_id, stripe_payment_intent_id,
-        stripe_customer_id, stripe_subscription_id, user_id, donation_mode, amount_cents,
-        currency, donor_name, donor_email, dedication_name, t_shirt_preference
-      )
-      values ($1, $2, $3, $4, $5, $6::uuid, $7, $8, $9, $10, $11, $12, $13)
-      on conflict (stripe_event_id) do nothing
-    `,
-    [
-      eventId,
-      checkoutSessionId,
-      paymentIntentId,
-      customerId,
-      subscriptionId,
-      userId,
-      mode,
-      amountCents,
-      currency,
-      donorName,
-      donorEmail,
-      dedicationName,
-      tShirtPreference
-    ]
-  );
-
-  if (inserted.rowCount === 0) {
-    return;
-  }
-
-  if (userId) {
-    await applyUserDonationSummary(
-      client,
-      userId,
-      amountCents,
-      mode,
-      customerId,
-      subscriptionId,
-      tShirtPreference
+  const inserted = await runInTransaction(client, async () => {
+    const insertResult = await client.query(
+      `
+        insert into donation_events (
+          stripe_event_id, stripe_checkout_session_id, stripe_payment_intent_id,
+          stripe_customer_id, stripe_subscription_id, user_id, donation_mode, amount_cents,
+          currency, donor_name, donor_email, dedication_name, t_shirt_preference
+        )
+        values ($1, $2, $3, $4, $5, $6::uuid, $7, $8, $9, $10, $11, $12, $13)
+        on conflict (stripe_event_id) do nothing
+      `,
+      [
+        eventId,
+        checkoutSessionId,
+        paymentIntentId,
+        customerId,
+        subscriptionId,
+        userId,
+        mode,
+        amountCents,
+        currency,
+        donorName,
+        donorEmail,
+        dedicationName,
+        tShirtPreference
+      ]
     );
+
+    if (insertResult.rowCount === 0) {
+      return false;
+    }
+
+    if (userId) {
+      await applyUserDonationSummary(
+        client,
+        userId,
+        amountCents,
+        mode,
+        customerId,
+        subscriptionId,
+        tShirtPreference
+      );
+    }
+
+    return true;
+  });
+
+  if (!inserted) {
+    return;
   }
 
   await notifySlack(
@@ -330,6 +371,7 @@ async function persistInvoicePaid(client, eventId, object, correlationId) {
   const customerId = object.customer ?? null;
   const amountCents = Number(object.amount_paid ?? 0);
   const currency = object.currency ?? 'usd';
+  const priorIdentity = await findDonationIdentity(client, subscriptionId, customerId);
 
   const userResult = await client.query(
     `
@@ -341,52 +383,63 @@ async function persistInvoicePaid(client, eventId, object, correlationId) {
     [subscriptionId]
   );
 
-  if (userResult.rowCount === 0) {
+  const user = userResult.rows[0] ?? null;
+  const donorName = priorIdentity?.donor_name ?? null;
+  const donorEmail = object.customer_email ?? user?.email ?? priorIdentity?.donor_email ?? null;
+  const dedicationName = priorIdentity?.dedication_name ?? null;
+  const tShirtPreference = user?.garden_club_t_shirt_preference ?? priorIdentity?.t_shirt_preference ?? null;
+
+  const inserted = await runInTransaction(client, async () => {
+    const insertResult = await client.query(
+      `
+        insert into donation_events (
+          stripe_event_id, stripe_invoice_id, stripe_customer_id, stripe_subscription_id,
+          user_id, donation_mode, amount_cents, currency, donor_name, donor_email,
+          dedication_name, t_shirt_preference
+        )
+        values ($1, $2, $3, $4, $5::uuid, 'recurring', $6, $7, $8, $9, $10, $11)
+        on conflict (stripe_invoice_id) do nothing
+      `,
+      [
+        eventId,
+        invoiceId,
+        customerId,
+        subscriptionId,
+        user?.id ?? null,
+        amountCents,
+        currency,
+        donorName,
+        donorEmail,
+        dedicationName,
+        tShirtPreference
+      ]
+    );
+
+    if (insertResult.rowCount === 0) {
+      return false;
+    }
+
+    if (user?.id) {
+      await applyUserDonationSummary(
+        client,
+        user.id,
+        amountCents,
+        'recurring',
+        customerId,
+        subscriptionId,
+        tShirtPreference
+      );
+    }
+
+    return true;
+  });
+
+  if (!inserted) {
     return;
   }
-
-  const user = userResult.rows[0];
-  const donorEmail = user.email ?? null;
-  const tShirtPreference = user.garden_club_t_shirt_preference ?? null;
-
-  const inserted = await client.query(
-    `
-      insert into donation_events (
-        stripe_event_id, stripe_invoice_id, stripe_customer_id, stripe_subscription_id,
-        user_id, donation_mode, amount_cents, currency, donor_email, t_shirt_preference
-      )
-      values ($1, $2, $3, $4, $5::uuid, 'recurring', $6, $7, $8, $9)
-      on conflict (stripe_invoice_id) do nothing
-    `,
-    [
-      eventId,
-      invoiceId,
-      customerId,
-      subscriptionId,
-      user.id,
-      amountCents,
-      currency,
-      donorEmail,
-      tShirtPreference
-    ]
-  );
-
-  if (inserted.rowCount === 0) {
-    return;
-  }
-
-  await applyUserDonationSummary(
-    client,
-    user.id,
-    amountCents,
-    'recurring',
-    customerId,
-    subscriptionId,
-    tShirtPreference
-  );
 
   await notifySlack(
-    donationSlackText('recurring', amountCents, currency, null, donorEmail, null, tShirtPreference),
+    donationSlackText('recurring', amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference),
     correlationId
   );
 }

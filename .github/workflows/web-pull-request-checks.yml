@@ -185,14 +185,14 @@ jobs:
     uses: ./.github/workflows/foundation-web-deploy-reusable.yml
     with:
       environment_name: staging
-      foundation_web_stack_name: ogf-web-pr-${{ github.event.pull_request.number }}
-      web_api_stack_name: ogf-web-api-pr-${{ github.event.pull_request.number }}
+      foundation_web_stack_name: ogf-web-staging
+      web_api_stack_name: ogf-web-api-staging
       okra_stack_name: ogf-okra-staging
       grn_stack_name: ogf-grn-staging
       aws_region: us-east-1
       aws_role_session_name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
-      domain_name: ""
-      domain_hosted_zone_id: ""
+      domain_name: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+      domain_hosted_zone_id: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
       stripe_event_bus_name: ${{ vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}
       stripe_publishable_key: ${{ vars.STRIPE_PUBLISHABLE_KEY_STAGING || '' }}
     secrets:
@@ -219,7 +219,7 @@ jobs:
             **Frontend URL:** ${{ needs.deploy.outputs.frontend-url }}
             **Web API URL:** ${{ needs.deploy.outputs.web-api-url }}
 
-            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to a PR-specific foundation preview stack.`;
+            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to the shared foundation staging stack.`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
