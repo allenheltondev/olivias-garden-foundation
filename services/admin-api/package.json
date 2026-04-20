@@ -1,0 +1,22 @@
+{
+  "name": "@olivias/admin-authorizer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node ./test/authorizer.test.mjs",
+    "typecheck": "node -e \"console.log('admin authorizer typecheck: no TypeScript files yet')\""
+  },
+  "dependencies": {
+    "aws-jwt-verify": "^5.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.1",
+    "globals": "^15.14.0"
+  }
+}

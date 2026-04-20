@@ -23,14 +23,11 @@ similar_names = "allow"
 if_same_then_else = "allow"
 
 [dependencies]
-aws_lambda_events = "0.15"
 chrono = { version = "0.4", features = ["serde"] }
-jsonwebtoken = "9"
 lambda_http = "0.13"
 lambda_runtime = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 rustls = "0.23"
-rustls-native-certs = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
@@ -39,10 +36,6 @@ tokio-postgres-rustls = "0.13"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4", "serde"] }
-
-[[bin]]
-name = "lambda-authorizer"
-path = "src/auth/authorizer.rs"
 
 [[bin]]
 name = "api"

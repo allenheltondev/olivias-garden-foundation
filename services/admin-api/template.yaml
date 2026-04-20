@@ -219,13 +219,20 @@ Resources:
   LambdaAuthorizerFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: rust-cargolambda
+      BuildMethod: esbuild
       BuildProperties:
-        Binary: lambda-authorizer
+        EntryPoints:
+          - src/auth/authorizer.mjs
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Sourcemap: false
+        Target: es2022
     Properties:
       CodeUri: .
-      Handler: bootstrap
-      Runtime: provided.al2023
+      Handler: src/auth/authorizer.handler
+      Runtime: nodejs22.x
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:

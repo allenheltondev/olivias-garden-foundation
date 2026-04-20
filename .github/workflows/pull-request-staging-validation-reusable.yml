@@ -558,6 +558,16 @@ jobs:
         with:
           use-installer: true
 
+      - name: Setup Node.js for admin backend build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin backend Node.js dependencies
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
+
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -575,6 +585,9 @@ jobs:
           repo: cargo-lambda/cargo-lambda
           tag: v1.2.1
           chmod: 0755
+
+      - name: Install esbuild
+        run: npm install -g esbuild
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v4

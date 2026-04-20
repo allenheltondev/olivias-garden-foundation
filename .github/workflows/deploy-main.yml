@@ -174,6 +174,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin authorizer dependencies
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
+
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -229,12 +239,14 @@ jobs:
         working-directory: services/admin-api
         run: cargo test --all-features
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
+      - name: Admin Authorizer - Run ESLint
+        run: npm --workspace services/admin-api run lint
+
+      - name: Admin Authorizer - Type check
+        run: npm --workspace services/admin-api run typecheck
+
+      - name: Admin Authorizer - Run tests
+        run: npm --workspace services/admin-api run test
 
       - name: Admin Frontend - Install dependencies
         working-directory: apps/admin
@@ -424,6 +436,16 @@ jobs:
         with:
           use-installer: true
 
+      - name: Setup Node.js for admin backend build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin backend Node.js dependencies
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
+
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -441,6 +463,9 @@ jobs:
           repo: cargo-lambda/cargo-lambda
           tag: v1.2.1
           chmod: 0755
+
+      - name: Install esbuild
+        run: npm install -g esbuild
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v4

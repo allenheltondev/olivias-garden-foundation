@@ -157,6 +157,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin authorizer dependencies
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
+
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -184,6 +194,12 @@ jobs:
 
       - name: Run cargo check
         run: cargo check --all-targets --all-features
+
+      - name: Run authorizer ESLint
+        run: npm --workspace services/admin-api run lint
+
+      - name: Run authorizer type check
+        run: npm --workspace services/admin-api run typecheck
 
   admin-backend-tests:
     name: Admin Backend Tests
@@ -213,6 +229,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin authorizer dependencies
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -248,6 +274,9 @@ jobs:
 
       - name: Run tests
         run: cargo test --all-features
+
+      - name: Run authorizer tests
+        run: npm --workspace services/admin-api run test
 
   frontend-lint:
     name: GRN Frontend Lint
