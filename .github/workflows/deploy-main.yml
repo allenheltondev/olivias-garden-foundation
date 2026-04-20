@@ -1,4 +1,4 @@
-name: Deploy GRN to AWS
+name: Deploy Platform to AWS
 
 on:
   push:
@@ -38,7 +38,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  lint-and-test:
+  grn-lint-and-test:
     name: GRN Lint & Test
     runs-on: ubuntu-latest
 
@@ -90,8 +90,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             services/grn-api/target/
-            services/admin-api/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock', 'services/admin-api/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('services/grn-api/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -100,14 +99,6 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
         run: ./db/migrate.sh
-
-      - name: Run admin database migrations
-        working-directory: services/admin-api
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
-        run: |
-          chmod +x ./db/migrate.sh
-          ./db/migrate.sh
 
       - name: Backend - Check formatting
         working-directory: services/grn-api
@@ -121,18 +112,6 @@ jobs:
         working-directory: services/grn-api
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
-        run: cargo test --all-features
-
-      - name: Admin Backend - Check formatting
-        working-directory: services/admin-api
-        run: cargo fmt --all -- --check
-
-      - name: Admin Backend - Run Clippy
-        working-directory: services/admin-api
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Admin Backend - Run tests
-        working-directory: services/admin-api
         run: cargo test --all-features
 
       # Frontend checks
@@ -159,18 +138,6 @@ jobs:
         working-directory: apps/grn
         run: npm run typecheck
 
-      - name: Admin Frontend - Install dependencies
-        working-directory: apps/admin
-        run: npm install --workspaces=false --ignore-scripts
-
-      - name: Admin Frontend - Run ESLint
-        working-directory: apps/admin
-        run: npm run lint
-
-      - name: Admin Frontend - Type check
-        working-directory: apps/admin
-        run: npm run typecheck
-
       # Backend Node.js function lint & tests
       - name: Backend Functions - Install lint dependencies
         working-directory: services/grn-api
@@ -183,6 +150,99 @@ jobs:
       - name: Backend Functions - Run tests
         working-directory: services/grn-api
         run: npm test
+
+  admin-lint-and-test:
+    name: Admin Lint & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: grn_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: aarch64-unknown-linux-gnu
+
+      - name: Install Zig toolchain
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.13.0
+
+      - name: Install cargo-lambda
+        uses: jaxxstorm/action-install-gh-release@v1.12.0
+        with:
+          repo: cargo-lambda/cargo-lambda
+          tag: v1.2.1
+          chmod: 0755
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            services/admin-api/target/
+          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-admin-cargo-
+
+      - name: Run admin database migrations
+        working-directory: services/admin-api
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
+        run: |
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
+      - name: Admin Backend - Check formatting
+        working-directory: services/admin-api
+        run: cargo fmt --all -- --check
+
+      - name: Admin Backend - Run Clippy
+        working-directory: services/admin-api
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Admin Backend - Run tests
+        working-directory: services/admin-api
+        run: cargo test --all-features
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Admin Frontend - Install dependencies
+        working-directory: apps/admin
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Admin Frontend - Run ESLint
+        working-directory: apps/admin
+        run: npm run lint
+
+      - name: Admin Frontend - Type check
+        working-directory: apps/admin
+        run: npm run typecheck
 
   deploy-foundation:
     name: Deploy Foundation Stack
@@ -333,7 +393,7 @@ jobs:
   deploy-backend:
     name: Deploy GRN Backend
     runs-on: ubuntu-latest
-    needs: [lint-and-test, deploy-foundation]
+    needs: [grn-lint-and-test, deploy-foundation]
     outputs:
       user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
       user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
@@ -607,7 +667,7 @@ jobs:
   deploy-admin-backend:
     name: Deploy Admin Backend
     runs-on: ubuntu-latest
-    needs: [lint-and-test, deploy-foundation]
+    needs: [admin-lint-and-test, deploy-foundation]
     outputs:
       user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
       user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
@@ -945,7 +1005,7 @@ jobs:
           fi
 
   deployment-summary:
-    name: GRN Deployment Summary
+    name: Platform Deployment Summary
     runs-on: ubuntu-latest
     needs: [deploy-backend, deploy-admin-backend, deploy-okra-backend, deploy-frontend, deploy-admin-frontend]
     if: always()
@@ -954,10 +1014,12 @@ jobs:
       - name: Print deployment summary
         run: |
           echo "=========================================="
-          echo "GRN Deployment Summary"
+          echo "Platform Deployment Summary"
           echo "=========================================="
           echo "Environment: ${{ env.ENVIRONMENT }}"
-          echo "Stack Name: ${{ env.STACK_NAME }}"
+          echo "GRN Stack Name: ${{ env.STACK_NAME }}"
+          echo "Admin Stack Name: ${{ env.ADMIN_STACK_NAME }}"
+          echo "Foundation Stack Name: ${{ env.FOUNDATION_STACK_NAME }}"
           echo "Okra Stack Name: ${{ env.OKRA_STACK_NAME }}"
           echo "Region: ${{ env.AWS_REGION }}"
           echo ""

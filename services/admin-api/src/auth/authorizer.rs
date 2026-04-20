@@ -157,8 +157,8 @@ async fn verify_jwt(token: &str, user_pool_id: &str, client_id: &str) -> Result<
         .claims
         .token_use
         .as_deref()
-        .filter(|value| *value == "access")
-        .is_none()
+        .as_ref()
+        .is_none_or(|value| *value != "access")
     {
         return Err("Invalid token_use claim".into());
     }
@@ -167,8 +167,8 @@ async fn verify_jwt(token: &str, user_pool_id: &str, client_id: &str) -> Result<
         .claims
         .client_id
         .as_deref()
-        .filter(|value| *value == client_id)
-        .is_none()
+        .as_ref()
+        .is_none_or(|value| *value != client_id)
     {
         return Err("Invalid client_id claim".into());
     }

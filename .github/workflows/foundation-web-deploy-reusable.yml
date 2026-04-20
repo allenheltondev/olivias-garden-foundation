@@ -111,7 +111,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: |
             infra/foundation-web/package-lock.json
-            services/web-api/package-lock.json
+            package-lock.json
 
       - name: Install esbuild for SAM
         run: npm install -g esbuild
@@ -121,8 +121,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Install web-api dependencies
-        working-directory: services/web-api
-        run: npm ci --ignore-scripts
+        run: npm ci --workspace @olivias/web-api --ignore-scripts
 
       - name: Validate custom domain configuration
         env:

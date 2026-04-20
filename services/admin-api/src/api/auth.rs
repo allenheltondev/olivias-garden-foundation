@@ -59,6 +59,10 @@ mod tests {
 
         let result = require_admin(&ctx);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("administrators"));
+        let error_message = result
+            .err()
+            .map(|error| error.to_string())
+            .unwrap_or_default();
+        assert!(error_message.contains("administrators"));
     }
 }

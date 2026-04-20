@@ -1,4 +1,4 @@
-name: Repository Pull Request Checks
+name: Platform Pull Request Checks
 
 on:
   pull_request:
@@ -32,13 +32,15 @@ env:
 
 jobs:
   changes:
-    name: Detect Changed Paths
+    name: Detect Platform Change Scope
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     outputs:
       shared_all: ${{ steps.filter.outputs.shared_all }}
       grn_backend: ${{ steps.filter.outputs.grn_backend }}
       grn_frontend: ${{ steps.filter.outputs.grn_frontend }}
+      admin_backend: ${{ steps.filter.outputs.admin_backend }}
+      admin_frontend: ${{ steps.filter.outputs.admin_frontend }}
       okra_backend: ${{ steps.filter.outputs.okra_backend }}
 
     steps:
@@ -65,6 +67,10 @@ jobs:
             grn_frontend:
               - 'apps/grn/**'
               - 'packages/**'
+            admin_backend:
+              - 'services/admin-api/**'
+            admin_frontend:
+              - 'apps/admin/**'
             okra_backend:
               - 'services/okra-api/**'
 
@@ -137,6 +143,105 @@ jobs:
 
       - name: Run integration tests
         run: cargo test --test integration_test
+
+  admin-backend-static:
+    name: Admin Backend Static Checks
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/admin-api
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt,clippy
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            services/admin-api/target/
+          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-admin-cargo-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run cargo check
+        run: cargo check --all-targets --all-features
+
+  admin-backend-tests:
+    name: Admin Backend Tests
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: admin_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: services/admin-api
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/admin_ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            services/admin-api/target/
+          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-admin-cargo-
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run database migrations
+        run: |
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
+      - name: Run tests
+        run: cargo test --all-features
 
   frontend-lint:
     name: GRN Frontend Lint
@@ -248,6 +353,110 @@ jobs:
       - name: Performance budget check
         run: npm run perf:budget
 
+  admin-frontend-lint:
+    name: Admin Frontend Lint
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Run ESLint
+        run: npm run lint
+
+  admin-frontend-typecheck:
+    name: Admin Frontend Type Check
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Type check
+        run: npm run typecheck
+
+  admin-frontend-tests:
+    name: Admin Frontend Tests
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Run tests
+        run: npm test
+
+  admin-frontend-build:
+    name: Admin Frontend Build Check
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Build check
+        run: npm run build
+
   backend-functions-tests:
     name: GRN Backend Functions (Node.js) Lint & Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
@@ -354,18 +563,24 @@ jobs:
         run: npm run build
 
   ci-summary:
-    name: Repository CI Summary
+    name: Platform CI Summary
     runs-on: ubuntu-latest
     needs:
       - changes
       - backend-static
       - backend-tests
+      - admin-backend-static
+      - admin-backend-tests
       - backend-functions-tests
       - frontend-lint
       - frontend-typecheck
       - frontend-unit-tests
       - frontend-build
       - frontend-performance-budget
+      - admin-frontend-lint
+      - admin-frontend-typecheck
+      - admin-frontend-tests
+      - admin-frontend-build
       - okra-backend-lint
       - okra-backend-typecheck
       - okra-backend-tests
@@ -386,33 +601,42 @@ jobs:
 
           check_result "backend-static" "${{ needs.backend-static.result }}"
           check_result "backend-tests" "${{ needs.backend-tests.result }}"
+          check_result "admin-backend-static" "${{ needs.admin-backend-static.result }}"
+          check_result "admin-backend-tests" "${{ needs.admin-backend-tests.result }}"
           check_result "backend-functions-tests" "${{ needs.backend-functions-tests.result }}"
           check_result "frontend-lint" "${{ needs.frontend-lint.result }}"
           check_result "frontend-typecheck" "${{ needs.frontend-typecheck.result }}"
           check_result "frontend-unit-tests" "${{ needs.frontend-unit-tests.result }}"
           check_result "frontend-build" "${{ needs.frontend-build.result }}"
           check_result "frontend-performance-budget" "${{ needs.frontend-performance-budget.result }}"
+          check_result "admin-frontend-lint" "${{ needs.admin-frontend-lint.result }}"
+          check_result "admin-frontend-typecheck" "${{ needs.admin-frontend-typecheck.result }}"
+          check_result "admin-frontend-tests" "${{ needs.admin-frontend-tests.result }}"
+          check_result "admin-frontend-build" "${{ needs.admin-frontend-build.result }}"
           check_result "okra-backend-lint" "${{ needs.okra-backend-lint.result }}"
           check_result "okra-backend-typecheck" "${{ needs.okra-backend-typecheck.result }}"
           check_result "okra-backend-tests" "${{ needs.okra-backend-tests.result }}"
           check_result "okra-backend-build" "${{ needs.okra-backend-build.result }}"
 
-          echo "All applicable CI checks passed"
+          echo "All applicable platform CI checks passed"
 
   staging-validation:
-    name: PR Staging Deploy And Validation
+    name: Shared Staging Deploy And Validation
     needs: [changes, ci-summary]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.okra_backend == 'true')
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true')
     uses: ./.github/workflows/pull-request-staging-validation-reusable.yml
     with:
       shared_all: ${{ needs.changes.outputs.shared_all }}
       grn_backend: ${{ needs.changes.outputs.grn_backend }}
       grn_frontend: ${{ needs.changes.outputs.grn_frontend }}
+      admin_backend: ${{ needs.changes.outputs.admin_backend }}
+      admin_frontend: ${{ needs.changes.outputs.admin_frontend }}
       okra_backend: ${{ needs.changes.outputs.okra_backend }}
       pr_number: ${{ github.event.pull_request.number }}
     secrets:
       aws_staging_role_arn: ${{ secrets.AWS_STAGING_ROLE_ARN }}
       database_url_staging: ${{ secrets.DATABASE_URL_STAGING }}
       postman_api_key: ${{ secrets.POSTMAN_API_KEY }}
+      stripe_secret_key_staging: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
       stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       foundation_signup_slack_webhook_url_staging: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}

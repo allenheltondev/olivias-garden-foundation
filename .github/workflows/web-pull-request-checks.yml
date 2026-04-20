@@ -67,9 +67,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            services/web-api/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -134,23 +132,19 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: services/web-api/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: services/web-api
         run: npm ci
 
       - name: Run typecheck
-        working-directory: services/web-api
-        run: npm run typecheck
+        run: npm --workspace @olivias/web-api run typecheck
 
       - name: Run lint
-        working-directory: services/web-api
-        run: npm run lint
+        run: npm --workspace @olivias/web-api run lint
 
       - name: Run tests
-        working-directory: services/web-api
-        run: npm test
+        run: npm --workspace @olivias/web-api run test
 
   ci-summary:
     name: Foundation Web CI Summary
