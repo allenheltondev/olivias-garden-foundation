@@ -210,6 +210,10 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
         run: |
+          cd ../grn-api
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+          cd ../admin-api
           chmod +x ./db/migrate.sh
           ./db/migrate.sh
 
@@ -230,7 +234,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: apps/admin/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Admin Frontend - Install dependencies
         working-directory: apps/admin

@@ -235,6 +235,12 @@ jobs:
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
+      - name: Run shared GRN database migrations
+        run: |
+          cd ../grn-api
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
       - name: Run database migrations
         run: |
           chmod +x ./db/migrate.sh
@@ -371,7 +377,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: apps/admin/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm install --workspaces=false --ignore-scripts
@@ -397,7 +403,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: apps/admin/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm install --workspaces=false --ignore-scripts
@@ -423,7 +429,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: apps/admin/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm install --workspaces=false --ignore-scripts
@@ -449,7 +455,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: apps/admin/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm install --workspaces=false --ignore-scripts
