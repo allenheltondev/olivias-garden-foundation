@@ -33,6 +33,15 @@ export const donationCheckoutSessionSchema = {
   }
 };
 
+const defaultAllowedReturnOrigins = [
+  'http://localhost:4173',
+  'http://localhost:4174',
+  'http://127.0.0.1:4173',
+  'http://127.0.0.1:4174',
+  'https://oliviasgarden.org',
+  'https://www.oliviasgarden.org'
+];
+
 function requiredEnvVar(name) {
   const value = process.env[name];
   if (!value || !value.trim()) {
@@ -65,6 +74,34 @@ function readMetadata(metadata, key) {
 
 function extractMode(metadata) {
   return readMetadata(metadata, 'donation_mode') ?? 'one_time';
+}
+
+function getAllowedReturnOrigins() {
+  const configuredOrigins = (process.env.ALLOWED_RETURN_URL_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return new Set([...defaultAllowedReturnOrigins, ...configuredOrigins]);
+}
+
+function parseAndValidateReturnUrl(returnUrl) {
+  if (typeof returnUrl !== 'string' || !returnUrl.trim()) {
+    throw new Error('returnUrl is required');
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(returnUrl);
+  } catch {
+    throw new Error('returnUrl must be a valid absolute URL');
+  }
+
+  if (!getAllowedReturnOrigins().has(parsedUrl.origin)) {
+    throw new Error('returnUrl origin is not allowed');
+  }
+
+  return parsedUrl;
 }
 
 function donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference) {
@@ -137,13 +174,12 @@ function validateCheckoutPayload(payload) {
     throw new Error('amountCents must be at least 500');
   }
 
-  if (!payload?.returnUrl?.trim()) {
-    throw new Error('returnUrl is required');
-  }
+  parseAndValidateReturnUrl(payload?.returnUrl);
 }
 
 function buildCheckoutForm(payload, authContext) {
   const mode = normalizeMode(payload.mode);
+  const returnUrl = parseAndValidateReturnUrl(payload.returnUrl);
   const donorName = payload.donorName?.trim() || authContext?.name || undefined;
   const donorEmail = payload.donorEmail?.trim() || authContext?.email || undefined;
   const dedicationName = payload.dedicationName?.trim() || undefined;
@@ -152,7 +188,7 @@ function buildCheckoutForm(payload, authContext) {
   const params = new URLSearchParams();
   params.set('ui_mode', 'embedded');
   params.set('mode', mode === 'recurring' ? 'subscription' : 'payment');
-  params.set('return_url', payload.returnUrl);
+  params.set('return_url', returnUrl.toString());
   params.set('redirect_on_completion', 'always');
   params.set('billing_address_collection', 'auto');
   params.set('submit_type', 'donate');
@@ -411,7 +447,7 @@ async function processStripeEvent(event, correlationId) {
     throw new Error('Stripe event missing id');
   }
 
-  const eventType = event['detail-type'] ?? stripeEvent.type ?? '';
+  const eventType = stripeEvent.type ?? event['detail-type'] ?? '';
   const object = stripeEvent.data?.object;
   if (!object) {
     throw new Error('Stripe event missing data.object');

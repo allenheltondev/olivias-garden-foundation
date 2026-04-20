@@ -7,6 +7,9 @@ paths:
   /donations/checkout-session:
     post:
       summary: Create an embedded Stripe Checkout session for a donation
+      description: |
+        The returnUrl must be an absolute URL whose origin is in the configured allowlist for
+        Olivia's Garden donation flows.
       requestBody:
         required: true
         content:
@@ -54,6 +57,7 @@ components:
         returnUrl:
           type: string
           format: uri
+          description: Absolute return URL on an allowed Olivia's Garden origin.
         donorName:
           type: string
         donorEmail:

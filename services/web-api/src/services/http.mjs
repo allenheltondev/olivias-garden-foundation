@@ -49,7 +49,9 @@ export function mapApiError(error, correlationId) {
     || message.includes('Request body is required')
     || message.includes('mode must be one of')
     || message.includes('amountCents must be at least')
-    || message.includes('successUrl and cancelUrl are required')
+    || message.includes('returnUrl is required')
+    || message.includes('returnUrl must be a valid absolute URL')
+    || message.includes('returnUrl origin is not allowed')
     || message.includes('Invalid authorization header format')
     || message.includes('Authorization token is required')
   ) {

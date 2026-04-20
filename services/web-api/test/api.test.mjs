@@ -47,7 +47,7 @@ describe('web-api donation handler', () => {
       body: {
         mode: 'one_time',
         amountCents: 100,
-        returnUrl: 'https://example.com/donate?session_id={CHECKOUT_SESSION_ID}'
+        returnUrl: 'https://oliviasgarden.org/donate?session_id={CHECKOUT_SESSION_ID}'
       }
     }));
 
@@ -75,7 +75,7 @@ describe('web-api donation handler', () => {
       body: {
         mode: 'one_time',
         amountCents: 2500,
-        returnUrl: 'https://example.com/donate?session_id={CHECKOUT_SESSION_ID}',
+        returnUrl: 'https://oliviasgarden.org/donate?session_id={CHECKOUT_SESSION_ID}',
         donorName: 'Olivia Garden Donor'
       }
     }));
@@ -86,6 +86,25 @@ describe('web-api donation handler', () => {
       checkoutSessionId: 'cs_test_123'
     });
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it('returns 400 when returnUrl origin is not allowed', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+
+    const response = await handler(createApiGatewayEvent({
+      method: 'POST',
+      path: '/donations/checkout-session',
+      body: {
+        mode: 'one_time',
+        amountCents: 2500,
+        returnUrl: 'https://attacker.example/donate?session_id={CHECKOUT_SESSION_ID}'
+      }
+    }));
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body)).toEqual({
+      error: 'returnUrl origin is not allowed'
+    });
   });
 
   it('returns checkout session status for embedded completion handling', async () => {
