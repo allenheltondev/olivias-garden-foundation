@@ -219,54 +219,70 @@ async function createDonationCheckoutSession(
     headers.set('Authorization', `Bearer ${authSession.accessToken}`);
   }
 
-  const response = await fetch(webApiUrl('/donations/checkout-session'), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch(webApiUrl('/donations/checkout-session'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    let message = 'Unable to start donation checkout right now.';
+    if (!response.ok) {
+      let message = 'Unable to start donation checkout right now.';
 
-    try {
-      const body = await response.json() as { error?: string };
-      if (typeof body.error === 'string' && body.error.trim()) {
-        message = body.error;
+      try {
+        const body = await response.json() as { error?: string };
+        if (typeof body.error === 'string' && body.error.trim()) {
+          message = body.error;
+        }
+      } catch {
+        // Keep the generic fallback message.
       }
-    } catch {
-      // Keep the generic fallback message.
+
+      throw new Error(message);
     }
 
-    throw new Error(message);
-  }
+    return await response.json() as DonationCheckoutResponse;
+  } catch (error) {
+    if (error instanceof Error && error.message.trim() && error.message !== 'Failed to fetch') {
+      throw error;
+    }
 
-  return await response.json() as DonationCheckoutResponse;
+    throw new Error('Unable to reach secure checkout right now. Please try again in a moment.');
+  }
 }
 
 async function getDonationCheckoutSessionStatus(sessionId: string): Promise<DonationCheckoutSessionStatus> {
-  const response = await fetch(`${webApiUrl('/donations/checkout-session-status')}?session_id=${encodeURIComponent(sessionId)}`, {
-    method: 'GET',
-    headers: {
-      'X-Correlation-Id': createCorrelationId(),
-    },
-  });
+  try {
+    const response = await fetch(`${webApiUrl('/donations/checkout-session-status')}?session_id=${encodeURIComponent(sessionId)}`, {
+      method: 'GET',
+      headers: {
+        'X-Correlation-Id': createCorrelationId(),
+      },
+    });
 
-  if (!response.ok) {
-    let message = 'Unable to confirm donation status right now.';
+    if (!response.ok) {
+      let message = 'Unable to confirm donation status right now.';
 
-    try {
-      const body = await response.json() as { error?: string };
-      if (typeof body.error === 'string' && body.error.trim()) {
-        message = body.error;
+      try {
+        const body = await response.json() as { error?: string };
+        if (typeof body.error === 'string' && body.error.trim()) {
+          message = body.error;
+        }
+      } catch {
+        // Keep the generic fallback message.
       }
-    } catch {
-      // Keep the generic fallback message.
+
+      throw new Error(message);
     }
 
-    throw new Error(message);
-  }
+    return await response.json() as DonationCheckoutSessionStatus;
+  } catch (error) {
+    if (error instanceof Error && error.message.trim() && error.message !== 'Failed to fetch') {
+      throw error;
+    }
 
-  return await response.json() as DonationCheckoutSessionStatus;
+    throw new Error('We could not confirm your donation status right now. Please refresh or try again shortly.');
+  }
 }
 
 function getCurrentPath() {
@@ -684,7 +700,9 @@ function SiteFooter({
 
   return (
       <SharedSiteFooter
-        tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
+        tagline={currentPage.path === '/donate'
+          ? 'Founded in love. Growing for community.'
+          : 'Growing food, sharing seeds, and helping more people feel at home on the land.'}
         meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
         links={footerLinks}
         socialLinks={[
@@ -2004,7 +2022,7 @@ function DonatePage({
     }
 
     if (!stripePromise) {
-      setError('Stripe checkout is not configured for this environment yet.');
+      setError('Secure checkout is not configured for this environment yet.');
       setCheckoutClientSecret(null);
       setIsSubmitting(false);
       return;
@@ -2016,12 +2034,12 @@ function DonatePage({
     void stripePromise
       .then(async (stripe) => {
         if (!stripe) {
-          throw new Error('Stripe checkout is unavailable right now.');
+          throw new Error('Secure checkout is unavailable right now.');
         }
 
         const checkoutContainer = checkoutContainerRef.current;
         if (!checkoutContainer) {
-          throw new Error('Stripe checkout container is unavailable.');
+          throw new Error('Secure checkout is unavailable right now.');
         }
 
         mountedCheckout = await stripe.initEmbeddedCheckout({
@@ -2042,7 +2060,7 @@ function DonatePage({
           return;
         }
 
-        setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to open Stripe checkout.');
+        setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to open secure checkout.');
         setCheckoutClientSecret(null);
         setCheckoutSessionId(null);
         setIsSubmitting(false);
@@ -2118,25 +2136,19 @@ function DonatePage({
       <PageHero
         eyebrow="Donate"
         title="Plant something permanent in Olivia's Garden."
-        body="Every gift becomes something visible. Each donor, no matter the amount, receives a permanent acrylic garden piece with their name placed on the grounds. Last year it was a butterfly. This year it is a bee."
+        body="Every gift becomes something visible in the memorial garden itself. Each donor's name is placed on a permanent acrylic marker."
         className="donate-hero"
+        titleClassName="donate-hero__title"
         backgroundImage="/images/home/sunset-garden.jpg"
-        actions={
-          <>
-            <a className="home-hero__cta" href="#donate-options">Choose your gift</a>
-            <Button className="site-cta donate-hero__secondary" variant="secondary" onClick={() => onNavigate('/about')}>
-              Olivia&apos;s story
-            </Button>
-          </>
-        }
         aside={
           <div className="donate-hero__aside-card">
             <p className="donate-hero__eyebrow">This year&apos;s garden marker</p>
             <div className="donate-hero__bee">
               <span className="donate-hero__bee-body" aria-hidden="true" />
             </div>
+            <p className="donate-hero__aside-title">A named bee joins the garden for every donor.</p>
             <p className="page-text">
-              A named acrylic bee is added to the garden for every donor. Garden Club members also
+              A named acrylic bee is placed in the memorial garden for every donor. Garden Club members also
               receive a free t-shirt when they begin their recurring support.
             </p>
           </div>
@@ -2145,101 +2157,41 @@ function DonatePage({
 
       <section className="donate-story-band">
         <div className="donate-story-band__copy">
-          <p className="page-eyebrow">Why this matters</p>
-          <h2>The donation should feel like belonging, not just a transaction.</h2>
-          <p className="page-text">
-            Support goes into seeds, animal care, tools, educational materials, and the practical
-            work of keeping the foundation active for families who want to learn how to grow, tend,
-            and share food.
-          </p>
-          <p className="page-text">
-            We tell that story in the garden itself. Every donor receives a permanent acrylic marker
-            with their name on it, regardless of donation size. The animal changes each year so the
-            installation keeps growing while still marking a moment in the life of the garden.
-          </p>
-          <figure className="donate-story-band__artifact" aria-label="Placeholder for last year's acrylic butterfly donor marker">
-            <div className="donate-story-band__artifact-frame" aria-hidden="true">
-              <div className="donate-story-band__butterfly">
-                <span className="donate-story-band__butterfly-wing donate-story-band__butterfly-wing--left" />
-                <span className="donate-story-band__butterfly-body" />
-                <span className="donate-story-band__butterfly-wing donate-story-band__butterfly-wing--right" />
-              </div>
-            </div>
-            <figcaption>
-              Acrylic butterfly placeholder. Last year, every donor received a butterfly in the
-              garden. This year, every donor receives a bee.
-            </figcaption>
-          </figure>
+          <h2>A donation should feel like belonging, not just a transaction.</h2>
+          <div className="donate-story-band__body">
+            <p className="page-text">
+              Support goes into seeds, animal care, tools, educational materials, and the practical
+              work of keeping the foundation active for families who want to learn how to grow,
+              tend, and share food.
+            </p>
+            <p className="page-text">
+              We tell that story in the memorial garden itself. Every donor has a permanent acrylic
+              marker placed there in their honor, regardless of donation size. The animal changes each
+              year so the installation keeps growing while still marking a moment in the life of
+              the garden.
+            </p>
+          </div>
         </div>
-        <div className="donate-story-band__highlights">
-          <article className="donate-highlight">
-            <h3>Permanent recognition</h3>
-            <p>Your name is placed in the garden as part of the yearly marker installation.</p>
-          </article>
-          <article className="donate-highlight">
-            <h3>Yearly animal tradition</h3>
-            <p>Last year was the butterfly. This year is the bee. The symbol changes, the presence stays.</p>
-          </article>
-          <article className="donate-highlight">
-            <h3>Garden Club welcome</h3>
-            <p>Recurring donors join the Garden Club and get a free t-shirt of their choice at signup.</p>
-          </article>
-        </div>
+
+        <figure className="donate-story-band__photo">
+          <img
+            src="/images/about/monarchs.jpg"
+            alt="Butterflies and garden plants on the foundation grounds."
+          />
+          <figcaption>
+            The marker changes each year, but the idea stays the same: your gift becomes part of
+            the living story of the garden.
+          </figcaption>
+        </figure>
+
       </section>
 
       <section className="donate-checkout" id="donate-options">
-        <div className="donate-checkout__intro">
-          <p className="page-eyebrow">Choose your support</p>
-          <h2>Give once or join the Garden Club, then finish securely with Stripe right here on the page.</h2>
-          <p className="page-text">
-            We host the story, your gift choice, and the dedication details here. When you&apos;re
-            ready, Stripe&apos;s secure Checkout opens inside this donate page so the payment step
-            still feels like part of the same experience.
-          </p>
-          <p className="page-text">
-            If you&apos;re signed in, your donation is also recorded on your account so the
-            foundation can keep your contribution connected to your record.
-          </p>
-          {authSession ? (
-            <p className="page-kicker">
-              Signed in as {authSession.user.name ?? authSession.user.email ?? 'your account'}.
-            </p>
-          ) : (
-            <p className="page-kicker">
-              You can donate without logging in, or create an account first if you want the gift saved to your profile.
-            </p>
-          )}
-        </div>
-
-        <div className="donate-checkout__grid">
-          <article
-            className={`donate-option ${selectedMode === 'one_time' ? 'donate-option--active' : ''}`.trim()}
-          >
-            <p className="donate-option__eyebrow">One-time gift</p>
-            <h3>Fund today&apos;s work.</h3>
-            <p>Support immediate needs across the garden, animals, classes, and hands-on learning.</p>
-            <button type="button" className="donate-option__select" onClick={() => setSelectedMode('one_time')}>
-              Choose one-time
-            </button>
-          </article>
-
-          <article
-            className={`donate-option ${selectedMode === 'recurring' ? 'donate-option--active' : ''}`.trim()}
-          >
-            <p className="donate-option__eyebrow">Garden Club</p>
-            <h3>Show up every month.</h3>
-            <p>Recurring support gives the foundation steadier footing and includes a free t-shirt at signup.</p>
-            <button type="button" className="donate-option__select" onClick={() => setSelectedMode('recurring')}>
-              Choose Garden Club
-            </button>
-          </article>
-        </div>
-
         {isCheckingStatus ? (
           <div className="donate-status-card donate-status-card--neutral">
             <p className="donate-status-card__eyebrow">Checking donation</p>
-            <h3>We&apos;re confirming your Stripe checkout session.</h3>
-            <p>Give us a moment to read the latest status from Stripe.</p>
+            <h3>We&apos;re confirming your checkout session.</h3>
+            <p>Give us a moment to read the latest payment status.</p>
           </div>
         ) : null}
 
@@ -2248,14 +2200,14 @@ function DonatePage({
             <p className="donate-status-card__eyebrow">Donation complete</p>
             <h3>Your gift is in.</h3>
             <p>
-              Stripe marked this donation as complete, and we&apos;ll use the details from checkout
+              Your donation was marked complete, and we&apos;ll use the details from checkout
               to add the donor&apos;s permanent bee to the garden.
             </p>
             {checkoutStatus.customerEmail ? (
               <p>A receipt should be on its way to {checkoutStatus.customerEmail}.</p>
             ) : null}
             <div className="donate-status-card__actions">
-              <Button className="site-cta" onClick={resetCheckoutExperience}>Make another gift</Button>
+              <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>Make another gift</Button>
               <Button className="site-cta" variant="secondary" onClick={() => onNavigate('/impact')}>
                 See the impact
               </Button>
@@ -2266,19 +2218,36 @@ function DonatePage({
         {checkoutStatus && checkoutStatus.status !== 'complete' ? (
           <div className="donate-status-card donate-status-card--warning">
             <p className="donate-status-card__eyebrow">Checkout still open</p>
-            <h3>Your Stripe checkout was not completed yet.</h3>
+            <h3>Your checkout was not completed yet.</h3>
             <p>
               You can review your donation details below and start a fresh secure checkout when
               you&apos;re ready.
             </p>
             <div className="donate-status-card__actions">
-              <Button className="site-cta" onClick={resetCheckoutExperience}>Start a new checkout</Button>
+              <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>Start a new checkout</Button>
             </div>
           </div>
         ) : null}
 
         {checkoutStatus?.status === 'complete' ? null : (
         <div className="donate-form-card">
+          <div className="donate-mode-toggle" role="group" aria-label="Donation frequency">
+            <button
+              type="button"
+              className={`donate-mode-toggle__button ${selectedMode === 'one_time' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
+              onClick={() => setSelectedMode('one_time')}
+            >
+              One-time gift
+            </button>
+            <button
+              type="button"
+              className={`donate-mode-toggle__button ${selectedMode === 'recurring' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
+              onClick={() => setSelectedMode('recurring')}
+            >
+              Monthly Garden Club
+            </button>
+          </div>
+
           <div className="donate-amounts" role="group" aria-label="Donation amount">
             {[1500, 2500, 5000, 10000].map((amount) => (
               <button
@@ -2316,8 +2285,9 @@ function DonatePage({
               <span>Email</span>
               <input type="email" value={donorEmail} onChange={(event) => setDonorEmail(event.target.value)} placeholder="you@example.com" />
             </label>
-            <label>
-              <span>Name for the bee</span>
+            <label className="donate-form-grid__dedication">
+              <span className="donate-form-grid__dedication-label">Who should we name your bee after?</span>
+              <small className="donate-form-grid__dedication-note">Use your name, your family name, or honor someone you love.</small>
               <input
                 type="text"
                 value={dedicationName}
@@ -2339,22 +2309,25 @@ function DonatePage({
           </div>
 
           <div className="donate-form-card__footer">
-            <div>
+            <div className="donate-form-card__summary-block">
+              <p className="donate-form-card__summary-eyebrow">Gift summary</p>
               <p className="donate-form-card__summary">
                 {selectedMode === 'recurring' ? 'Garden Club' : 'One-time donation'}: ${(effectiveAmount / 100).toFixed(2)}
               </p>
               <p className="page-text">
                 {selectedMode === 'recurring'
                   ? 'Begins monthly support and includes your free t-shirt at signup.'
-                  : 'Includes your permanent bee in the garden, no matter the amount.'}
-              </p>
-              <p className="donate-form-card__checkout-note">
-                Stripe&apos;s secure checkout opens here on the page after you continue.
+                  : 'Includes a permanent bee placed in the memorial garden in your honor, no matter the amount.'}
               </p>
             </div>
-            <Button className="site-cta" onClick={() => void startCheckout(selectedMode)} disabled={isSubmitting}>
-              {isSubmitting ? 'Opening Stripe...' : selectedMode === 'recurring' ? 'Open Garden Club checkout' : 'Open secure donation checkout'}
-            </Button>
+            <div className="donate-form-card__cta-group">
+              <Button className="site-cta donate-form-card__cta" onClick={() => void startCheckout(selectedMode)} disabled={isSubmitting}>
+                {isSubmitting ? 'Opening secure checkout...' : selectedMode === 'recurring' ? 'Become a monthly member' : 'Make donation'}
+              </Button>
+              <p className="donate-form-card__checkout-note">
+                Secure checkout. No account required.
+              </p>
+            </div>
           </div>
 
           {error ? <p className="donate-form-card__error" role="alert">{error}</p> : null}
@@ -2364,7 +2337,7 @@ function DonatePage({
               <div className="donate-embedded-checkout__header">
                 <div>
                   <p className="donate-embedded-checkout__eyebrow">Secure payment</p>
-                  <h3>Stripe Checkout is ready below.</h3>
+                  <h3>Secure checkout is ready below.</h3>
                   <p>
                     Complete the payment here without leaving the donate page.
                     {checkoutSessionId ? ` Session ${checkoutSessionId} is active.` : ''}
@@ -2379,17 +2352,20 @@ function DonatePage({
           ) : null}
         </div>
         )}
-      </section>
 
-      <Section
-        title="Other ways to help"
-        body="If your support is better expressed through volunteering, seeds, supplies, or a larger sponsorship conversation, we can point you in the right direction."
-      >
-        <div className="site-panel__actions">
-          <CtaButton onClick={() => onNavigate('/get-involved')}>Get involved</CtaButton>
-          <CtaButton onClick={() => onNavigate('/contact')} variant="secondary">Contact us directly</CtaButton>
-        </div>
-      </Section>
+        <aside className="donate-alternate">
+          <p className="donate-alternate__eyebrow">Other ways to help</p>
+          <h3>Support can also look like time, supplies, seeds, or a larger sponsorship conversation.</h3>
+          <p>
+            If donating today is not the right fit, we can still point you toward the best next
+            step.
+          </p>
+          <div className="donate-alternate__actions">
+            <CtaButton onClick={() => onNavigate('/get-involved')} variant="secondary">Get involved</CtaButton>
+            <CtaButton onClick={() => onNavigate('/contact')} variant="secondary">Contact us directly</CtaButton>
+          </div>
+        </aside>
+      </section>
     </>
   );
 }
