@@ -1,15 +1,7 @@
-const verifierCache = new Map();
+import { Logger } from '@aws-lambda-powertools/logger';
 
-function logWarn(message, details) {
-  console.warn(
-    JSON.stringify({
-      level: 'WARN',
-      service: 'admin-authorizer',
-      message,
-      ...details
-    })
-  );
-}
+const verifierCache = new Map();
+const logger = new Logger({ serviceName: 'admin-authorizer' });
 
 export function getApiArnPattern(methodArn = '') {
   const [part1, part2] = methodArn.split('/');
@@ -121,7 +113,7 @@ export function createHandler({
         isAdmin: 'true'
       });
     } catch (error) {
-      logWarn('Authorization failed', {
+      logger.warn('Authorization failed', {
         error: error instanceof Error ? error.message : String(error),
         path: event?.path,
         method: event?.httpMethod

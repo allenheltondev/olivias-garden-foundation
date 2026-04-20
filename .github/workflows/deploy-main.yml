@@ -155,21 +155,6 @@ jobs:
     name: Admin Lint & Test
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: grn_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -181,76 +166,33 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install admin authorizer dependencies
+      - name: Install admin API dependencies
         working-directory: .
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
         with:
-          toolchain: stable
-          target: aarch64-unknown-linux-gnu
+          use-installer: true
 
-      - name: Install Zig toolchain
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.13.0
+      - name: Install esbuild
+        run: npm install -g esbuild
 
-      - name: Install cargo-lambda
-        uses: jaxxstorm/action-install-gh-release@v1.12.0
-        with:
-          repo: cargo-lambda/cargo-lambda
-          tag: v1.2.1
-          chmod: 0755
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/admin-api/target/
-          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-admin-cargo-
-
-      - name: Run admin database migrations
-        working-directory: services/admin-api
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/grn_test
-        run: |
-          cd ../grn-api
-          chmod +x ./db/migrate.sh
-          ./db/migrate.sh
-          cd ../admin-api
-          chmod +x ./db/migrate.sh
-          ./db/migrate.sh
-
-      - name: Admin Backend - Check formatting
-        working-directory: services/admin-api
-        run: cargo fmt --all -- --check
-
-      - name: Admin Backend - Run Clippy
-        working-directory: services/admin-api
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Admin Backend - Run tests
-        working-directory: services/admin-api
-        run: cargo test --all-features
-
-      - name: Admin Authorizer - Run ESLint
+      - name: Admin API - Run ESLint
         working-directory: .
         run: npm --workspace services/admin-api run lint
 
-      - name: Admin Authorizer - Type check
+      - name: Admin API - Type check
         working-directory: .
         run: npm --workspace services/admin-api run typecheck
 
-      - name: Admin Authorizer - Run tests
+      - name: Admin API - Run tests
         working-directory: .
         run: npm --workspace services/admin-api run test
+
+      - name: Admin Backend - Build
+        working-directory: services/admin-api
+        run: npm run build
 
       - name: Admin Frontend - Install dependencies
         working-directory: apps/admin
@@ -439,17 +381,6 @@ jobs:
         uses: aws-actions/setup-sam@v2
         with:
           use-installer: true
-
-      - name: Setup Node.js for admin backend build
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install admin backend Node.js dependencies
-        working-directory: .
-        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
       - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -727,41 +658,19 @@ jobs:
         with:
           use-installer: true
 
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup Node.js for admin backend build
+        uses: actions/setup-node@v4
         with:
-          toolchain: stable
-          target: aarch64-unknown-linux-gnu
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      - name: Install Zig toolchain
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.13.0
+      - name: Install admin API dependencies
+        working-directory: .
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
-      - name: Install cargo-lambda
-        uses: jaxxstorm/action-install-gh-release@v1.12.0
-        with:
-          repo: cargo-lambda/cargo-lambda
-          tag: v1.2.1
-          chmod: 0755
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/admin-api/target/
-          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-admin-cargo-
-
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+      - name: Install esbuild
+        run: npm install -g esbuild
 
       - name: Run admin database migrations
         run: |

@@ -149,9 +149,6 @@ jobs:
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/admin-api
 
     steps:
       - name: Checkout code
@@ -164,70 +161,35 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install admin authorizer dependencies
+      - name: Install admin API dependencies
         working-directory: .
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
         with:
-          toolchain: stable
-          components: rustfmt,clippy
+          use-installer: true
 
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/admin-api/target/
-          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-admin-cargo-
+      - name: Install esbuild
+        run: npm install -g esbuild
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run cargo check
-        run: cargo check --all-targets --all-features
-
-      - name: Run authorizer ESLint
+      - name: Run admin API ESLint
         working-directory: .
         run: npm --workspace services/admin-api run lint
 
-      - name: Run authorizer type check
+      - name: Run admin API type check
         working-directory: .
         run: npm --workspace services/admin-api run typecheck
+
+      - name: Build admin backend
+        working-directory: services/admin-api
+        run: npm run build
 
   admin-backend-tests:
     name: Admin Backend Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: admin_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    defaults:
-      run:
-        working-directory: services/admin-api
-    env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/admin_ci
 
     steps:
       - name: Checkout code
@@ -240,46 +202,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install admin authorizer dependencies
+      - name: Install admin API dependencies
         working-directory: .
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            services/admin-api/target/
-          key: ${{ runner.os }}-admin-cargo-${{ hashFiles('services/admin-api/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-admin-cargo-
-
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Run shared GRN database migrations
-        run: |
-          cd ../grn-api
-          chmod +x ./db/migrate.sh
-          ./db/migrate.sh
-
-      - name: Run database migrations
-        run: |
-          chmod +x ./db/migrate.sh
-          ./db/migrate.sh
-
-      - name: Run tests
-        run: cargo test --all-features
-
-      - name: Run authorizer tests
+      - name: Run admin API tests
         working-directory: .
         run: npm --workspace services/admin-api run test
 

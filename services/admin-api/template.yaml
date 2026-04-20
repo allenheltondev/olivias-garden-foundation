@@ -243,13 +243,20 @@ Resources:
   ApiFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: rust-cargolambda
+      BuildMethod: esbuild
       BuildProperties:
-        Binary: api
+        EntryPoints:
+          - src/handlers/api.mjs
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Sourcemap: false
+        Target: es2022
     Properties:
       CodeUri: .
-      Handler: bootstrap
-      Runtime: provided.al2023
+      Handler: src/handlers/api.handler
+      Runtime: nodejs22.x
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
@@ -260,8 +267,7 @@ Resources:
             - !Sub "${DomainProtocol}://admin.${DomainName}"
             - "*"
           STRIPE_SECRET_KEY: !Ref StripeSecretKey
-          RUST_LOG: info
-          RUST_BACKTRACE: "1"
+          NODE_OPTIONS: --enable-source-maps
       Events:
         ApiProxy:
           Type: Api
