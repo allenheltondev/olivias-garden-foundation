@@ -754,11 +754,15 @@ jobs:
           PARAM_OVERRIDES=(
             "DatabaseUrl=$DATABASE_URL"
             "EnvironmentName=${{ env.ENVIRONMENT }}"
-            "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID"
-            "StripeSecretKey=$STRIPE_SECRET_KEY"
           )
+          if [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
           if [ -n "$FOUNDATION_DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
             PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME")
+          fi
+          if [ -n "$STRIPE_SECRET_KEY" ]; then
+            PARAM_OVERRIDES+=("StripeSecretKey=$STRIPE_SECRET_KEY")
           fi
           sam deploy \
             --template-file services/admin-api/template.yaml \
