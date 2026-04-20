@@ -182,6 +182,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install admin authorizer dependencies
+        working-directory: .
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
       - name: Setup Rust toolchain
@@ -240,12 +241,15 @@ jobs:
         run: cargo test --all-features
 
       - name: Admin Authorizer - Run ESLint
+        working-directory: .
         run: npm --workspace services/admin-api run lint
 
       - name: Admin Authorizer - Type check
+        working-directory: .
         run: npm --workspace services/admin-api run typecheck
 
       - name: Admin Authorizer - Run tests
+        working-directory: .
         run: npm --workspace services/admin-api run test
 
       - name: Admin Frontend - Install dependencies
@@ -444,6 +448,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install admin backend Node.js dependencies
+        working-directory: .
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
       - name: Setup Rust toolchain

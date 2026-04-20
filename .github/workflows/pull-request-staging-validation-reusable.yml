@@ -566,6 +566,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install admin backend Node.js dependencies
+        working-directory: .
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
       - name: Setup Rust toolchain
