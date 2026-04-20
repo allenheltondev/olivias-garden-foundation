@@ -22,7 +22,9 @@ on:
       - 'tsconfig.base.json'
 
 permissions:
+  id-token: write
   contents: read
+  pull-requests: write
 
 concurrency:
   group: foundation-web-pr-${{ github.event.pull_request.number || github.ref }}
@@ -176,3 +178,52 @@ jobs:
           check_result "web-api-checks" "${{ needs.web-api-checks.result }}"
 
           echo "Foundation web PR checks passed"
+
+  deploy:
+    name: Deploy Foundation Web PR Preview
+    needs: [ci-summary]
+    uses: ./.github/workflows/foundation-web-deploy-reusable.yml
+    with:
+      environment_name: staging
+      foundation_web_stack_name: ogf-web-pr-${{ github.event.pull_request.number }}
+      web_api_stack_name: ogf-web-api-pr-${{ github.event.pull_request.number }}
+      okra_stack_name: ogf-okra-staging
+      grn_stack_name: ogf-grn-staging
+      aws_region: us-east-1
+      aws_role_session_name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
+      domain_name: ""
+      domain_hosted_zone_id: ""
+      stripe_event_bus_name: ${{ vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}
+      stripe_publishable_key: ${{ vars.STRIPE_PUBLISHABLE_KEY_STAGING || '' }}
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+      database_url: ${{ secrets.DATABASE_URL_STAGING }}
+      signup_slack_webhook_url: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+      web_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
+      web_donation_slack_webhook_url: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+
+  deployment-comment:
+    name: Comment Foundation Web PR Preview
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'success'
+
+    steps:
+      - name: Comment on PR with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `#### Foundation Web PR Preview Ready
+
+            **Environment:** \`staging\`
+            **Frontend URL:** ${{ needs.deploy.outputs.frontend-url }}
+            **Web API URL:** ${{ needs.deploy.outputs.web-api-url }}
+
+            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to a PR-specific foundation preview stack.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
