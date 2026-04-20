@@ -1,0 +1,27 @@
+$kind: http-request
+name: Get Donation Checkout Session Status
+description: |-
+  Read the Stripe Checkout Session status after embedded checkout returns to the donate page.
+method: GET
+url: '{{webBaseUrl}}/donations/checkout-session-status?session_id={{donationCheckoutSessionId}}'
+order: 1010
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200, 400, or 503", function () {
+          pm.expect([200, 400, 503]).to.include(pm.response.code);
+      });
+
+      const response = pm.response.json();
+
+      if (pm.response.code === 200) {
+          pm.test("Response contains session status details", function () {
+              pm.expect(response.sessionId).to.be.a("string").and.not.empty;
+              pm.expect(response.status).to.be.a("string").and.not.empty;
+          });
+      } else {
+          pm.test("Error response contains message", function () {
+              pm.expect(response.error).to.be.a("string").and.not.empty;
+          });
+      }

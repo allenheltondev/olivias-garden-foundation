@@ -86,7 +86,7 @@ Runs on pushes to `main` that touch the foundation site or can be triggered manu
 
 ## Required GitHub Secrets
 
-Configure these in your repository settings under Settings â†’ Secrets and variables â†’ Actions:
+Configure these in your repository settings under Settings â†' Secrets and variables â†' Actions:
 
 ### Required for all environments:
 

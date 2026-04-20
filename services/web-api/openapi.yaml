@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Olivia's Garden Web API
+  version: 0.1.0
+  description: Public-site donation checkout API. Stripe donation lifecycle events arrive through EventBridge.
+paths:
+  /donations/checkout-session:
+    post:
+      summary: Create an embedded Stripe Checkout session for a donation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDonationCheckoutSessionRequest'
+      responses:
+        '200':
+          description: Embedded checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDonationCheckoutSessionResponse'
+        '422':
+          description: Request validation failed
+  /donations/checkout-session-status:
+    get:
+      summary: Read the current Stripe Checkout Session status after return from embedded checkout
+      parameters:
+        - in: query
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Checkout session status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DonationCheckoutSessionStatusResponse'
+components:
+  schemas:
+    CreateDonationCheckoutSessionRequest:
+      type: object
+      required: [mode, amountCents, returnUrl]
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum: [one_time, recurring]
+        amountCents:
+          type: integer
+          minimum: 500
+        returnUrl:
+          type: string
+          format: uri
+        donorName:
+          type: string
+        donorEmail:
+          type: string
+          format: email
+        dedicationName:
+          type: string
+        tShirtPreference:
+          type: string
+    CreateDonationCheckoutSessionResponse:
+      type: object
+      required: [clientSecret, checkoutSessionId]
+      properties:
+        clientSecret:
+          type: string
+        checkoutSessionId:
+          type: string
+    DonationCheckoutSessionStatusResponse:
+      type: object
+      required: [sessionId, status]
+      properties:
+        sessionId:
+          type: string
+        status:
+          type: string
+        paymentStatus:
+          type: [string, 'null']
+        customerEmail:
+          type: [string, 'null']

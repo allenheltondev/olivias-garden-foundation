@@ -38,9 +38,9 @@ After considering options like "Recipient" and other domain labels, we've chosen
 ### High-Level Flow
 
 ```
-Auth â†’ GET /me â†’ onboardingCompleted?
-   â”œâ”€ true  â†’ Main App
-   â””â”€ false â†’ Select Type (Grower/Gatherer)
+Auth â†' GET /me â†' onboardingCompleted?
+   â”œâ”€ true  â†' Main App
+   â””â”€ false â†' Select Type (Grower/Gatherer)
                  â†“
            Type-specific Wizard
                  â†“

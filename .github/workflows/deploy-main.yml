@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - 'apps/web/**'
+      - 'services/web-api/**'
       - 'infra/foundation-web/**'
       - '.github/workflows/web-*.yml'
   workflow_dispatch:

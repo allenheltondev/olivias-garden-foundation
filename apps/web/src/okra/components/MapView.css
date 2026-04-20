@@ -163,8 +163,8 @@
 /* Mobile: full viewport height minus header */
 @media (max-width: 767px) {
   .map-view__container {
-    min-height: 400px;
-    height: min(32rem, calc(100vh - 60px));
+    min-height: 23rem;
+    height: 100%;
   }
 }
 

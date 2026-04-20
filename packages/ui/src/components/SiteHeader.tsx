@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 export interface SiteHeaderNavItem {
   id: string;
@@ -6,6 +6,7 @@ export interface SiteHeaderNavItem {
   onSelect: () => void;
   active?: boolean;
   accent?: boolean;
+  mobileOnly?: boolean;
 }
 
 export interface SiteHeaderProps {
@@ -25,30 +26,67 @@ export function SiteHeader({
   navItems = [],
   utility,
 }: SiteHeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [navItems.length]);
+
+  const handleBrandClick = () => {
+    setMenuOpen(false);
+    onBrandClick?.();
+  };
+
   return (
     <header className="og-site-header">
       <div className="og-site-header__inner">
-        <button type="button" className="og-site-header__brand" onClick={onBrandClick} aria-label={brandAriaLabel}>
+        <button type="button" className="og-site-header__brand" onClick={handleBrandClick} aria-label={brandAriaLabel}>
           {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
           <span className="og-site-header__title">{brandTitle}</span>
         </button>
 
-        <div className="og-site-header__actions">
+        <div className={`og-site-header__actions ${menuOpen ? 'is-open' : ''}`.trim()}>
+          <div className="og-site-header__controls">
+            {utility ? <div className="og-site-header__utility">{utility}</div> : null}
+            {navItems.length > 0 ? (
+              <button
+                type="button"
+                className="og-site-header__menu-toggle"
+                aria-expanded={menuOpen}
+                aria-controls="og-site-header-nav"
+                aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                onClick={() => setMenuOpen((current) => !current)}
+              >
+                <span className="og-site-header__menu-icon" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </button>
+            ) : null}
+          </div>
+
           {navItems.length > 0 ? (
-            <nav className="og-site-header__nav" aria-label="Primary">
+            <nav
+              id="og-site-header-nav"
+              className={`og-site-header__nav ${menuOpen ? 'is-open' : ''}`.trim()}
+              aria-label="Primary"
+            >
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={`og-site-header__link ${item.active ? 'is-active' : ''} ${item.accent ? 'og-site-header__link--accent' : ''}`.trim()}
-                  onClick={item.onSelect}
+                  className={`og-site-header__link ${item.active ? 'is-active' : ''} ${item.accent ? 'og-site-header__link--accent' : ''} ${item.mobileOnly ? 'og-site-header__link--mobile-only' : ''}`.trim()}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    item.onSelect();
+                  }}
                 >
                   {item.label}
                 </button>
               ))}
             </nav>
           ) : null}
-          {utility ? <div className="og-site-header__utility">{utility}</div> : null}
         </div>
       </div>
     </header>

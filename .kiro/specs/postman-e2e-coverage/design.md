@@ -78,8 +78,8 @@ Each subfolder contains YAML request files following the existing `$kind: http-r
 
 | Subfolder | Req | Description |
 |---|---|---|
-| `Claim Lifecycle/` | 9 | Full claim state machine: pending â†’ confirmed â†’ completed, plus invalid transition |
-| `Listing-to-Claim/` | 10 | Grower creates crop â†’ listing â†’ gatherer claims â†’ grower confirms â†’ completes |
+| `Claim Lifecycle/` | 9 | Full claim state machine: pending â†' confirmed â†' completed, plus invalid transition |
+| `Listing-to-Claim/` | 10 | Grower creates crop â†' listing â†' gatherer claims â†' grower confirms â†' completes |
 | `
  declares variables: `baseUrl`, `growerAuthToken`, `gathererAuthToken`, `catalogCropId`, `defaultCatalogCropId`, `cropLibraryId`, `listingId`, `requestId`, `claimId`, `reminderId`.
 
@@ -205,7 +205,7 @@ stateDiagram-v2
     confirmed --> no_show: PUT /claims/:id (listing owner)
 ```
 
-Invalid transitions (e.g., `pending â†’ completed`) return 400.
+Invalid transitions (e.g., `pending â†' completed`) return 400.
 
 
 ## Correctness Properties
@@ -300,8 +300,8 @@ However, the properties inform test design: each Postman test subfolder maps to 
 
 | Property | Utility Collection Subfolder | E2E Collection Subfolder |
 |---|---|---|
-| P1: Negative input â†’ 400 | `Negative Paths/` | â€” |
-| P2: Non-existent â†’ 404 | `404 Coverage/` | â€” |
+| P1: Negative input â†' 400 | `Negative Paths/` | â€” |
+| P2: Non-existent â†' 404 | `404 Coverage/` | â€” |
 | P3: Entitlement gating | `Entitlement Matrix/` | â€” |
 | P4: Idempotency | `Idempotency/` | â€” |
 | P5: Correlation ID | `Correlation ID/` | â€” |

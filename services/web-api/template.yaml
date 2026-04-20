@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Web API for Olivia's Garden Foundation public-site commerce flows
+
+Parameters:
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: PostgreSQL connection string
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+      - pr
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Optional root domain name used for shared API base path mapping
+  DomainHostedZoneId:
+    Type: String
+    Default: ""
+    Description: Optional Route 53 hosted zone id for shared API base path mapping
+  DomainProtocol:
+    Type: String
+    Default: https
+    AllowedValues: ["https", "http"]
+  StripeSecretKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Stripe secret key for donation checkout
+  StripeEventBusName:
+    Type: String
+    Default: ""
+    Description: Optional Stripe EventBridge event bus name for donation lifecycle events
+  DonationSlackWebhookUrl:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Slack webhook URL used for donation notifications
+
+Conditions:
+  DeploySharedApiBasePathMapping: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
+  HasStripeEventBus: !Not [!Equals [!Ref StripeEventBusName, ""]]
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Timeout: 10
+    MemorySize: 1024
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+        DATABASE_URL: !Ref DatabaseUrl
+        ORIGIN: !If
+          - DeploySharedApiBasePathMapping
+          - !Sub "${DomainProtocol}://${DomainName}"
+          - "*"
+        STRIPE_SECRET_KEY: !Ref StripeSecretKey
+        SLACK_WEBHOOK_URL: !Ref DonationSlackWebhookUrl
+        FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
+        OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
+        OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
+
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      TracingEnabled: false
+      StageName: api
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: !If
+          - DeploySharedApiBasePathMapping
+          - !Sub "'${DomainProtocol}://${DomainName}'"
+          - "'*'"
+      MethodSettings:
+        - MetricsEnabled: true
+          ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: ERROR
+          DataTraceEnabled: true
+
+  SharedApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeploySharedApiBasePathMapping
+    Properties:
+      DomainName: !Sub "api.${DomainName}"
+      RestApiId: !Ref Api
+      Stage: api
+      BasePath: web
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Target: es2020
+        Sourcemap: false
+        EntryPoints:
+          - ./src/handlers/api.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/api.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ApiProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /
+            Method: ANY
+
+  StripeEventConsumerFunction:
+    Type: AWS::Serverless::Function
+    Condition: HasStripeEventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Target: es2020
+        Sourcemap: false
+        EntryPoints:
+          - ./src/handlers/stripe-event-consumer.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/stripe-event-consumer.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        StripeDonationEvents:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref StripeEventBusName
+            Pattern:
+              detail-type:
+                - checkout.session.completed
+                - checkout.session.expired
+                - customer.subscription.deleted
+                - invoice.paid
+                - invoice.payment_failed
+
+Outputs:
+  ApiUrl:
+    Description: Web API endpoint URL
+    Value: !If
+      - DeploySharedApiBasePathMapping
+      - !Sub "https://api.${DomainName}/web"
+      - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"

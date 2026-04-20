@@ -210,7 +210,7 @@ fn build_recommendations(rows: &[Row]) -> Vec<WeeklyPlanRecommendation> {
 
     vec![
         WeeklyPlanRecommendation {
-            recommendation: "Prioritize one crop with the highest scarcity score for this week’s planting block.".to_string(),
+            recommendation: "Prioritize one crop with the highest scarcity score for this week's planting block.".to_string(),
             confidence: scarce_score.clamp(0.0, 1.0),
             rationale: vec![
                 format!("Top scarcity signal: {:.2}", scarce_score),

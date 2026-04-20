@@ -73,10 +73,10 @@ Reads the latest row from `gardener_tier_promotions` and deserializes it into `G
 
 The `to_me_response` function changes from:
 
-1. `badge_cabinet::load_and_sync_badges` â†’ `badge_cabinet::load_badges_read_only`
-2. `load_experience_signals` + `assign_experience_level` + `persist_experience_level` â†’ single read from `user_experience_levels`
-3. `gardener_tier::evaluate_and_record` â†’ `gardener_tier::load_tier_read_only`
-4. `analytics::log_backend_event` call â†’ removed entirely
+1. `badge_cabinet::load_and_sync_badges` â†' `badge_cabinet::load_badges_read_only`
+2. `load_experience_signals` + `assign_experience_level` + `persist_experience_level` â†' single read from `user_experience_levels`
+3. `gardener_tier::evaluate_and_record` â†' `gardener_tier::load_tier_read_only`
+4. `analytics::log_backend_event` call â†' removed entirely
 
 New helper function:
 

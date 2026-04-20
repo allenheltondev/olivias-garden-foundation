@@ -1,4 +1,5 @@
 import { type ClipboardEvent, type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { loadStripe, type StripeEmbeddedCheckout } from '@stripe/stripe-js';
 import { Button, Card, Input, SiteFooter as SharedSiteFooter, SiteHeader as SharedSiteHeader } from '@olivias/ui';
 import {
   confirmSignUp,
@@ -21,6 +22,8 @@ type Route = {
   showInFooter?: boolean;
   title: string;
   description: string;
+  seoImage?: string;
+  allowIndex?: boolean;
 };
 
 const routes: Route[] = [
@@ -30,19 +33,22 @@ const routes: Route[] = [
     showInNav: true,
     showInFooter: true,
     title: "Olivia's Garden Foundation",
-    description: 'Practical food-growing education, animal care skills, and community food access.',
+    description: 'Olivia’s Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency.',
+    seoImage: '/images/home/garden-landscaping.jpg',
   },
   {
     path: '/auth/callback',
     label: 'Auth callback',
     title: 'Sign in',
     description: 'Complete sign-in for the foundation web app.',
+    allowIndex: false,
   },
   {
     path: '/login',
     label: 'Login',
     title: 'Log in',
-    description: 'Use one Good Roots Network account across Olivia’s Garden experiences.',
+    description: "Use one Good Roots Network account across Olivia's Garden experiences.",
+    allowIndex: false,
   },
   {
     path: '/about',
@@ -50,19 +56,22 @@ const routes: Route[] = [
     showInNav: true,
     showInFooter: true,
     title: "About Olivia's Garden",
-    description: 'The mission, the family, and the work that supports practical learning.',
+    description: 'Read Olivia’s story, the foundation’s mission, and the family-led work behind practical food-growing education in McKinney, Texas.',
+    seoImage: '/images/about/luffa-trellis.jpg',
   },
   {
     path: '/get-involved',
     label: 'Get Involved',
     title: 'Get involved',
-    description: 'Seeds, volunteering, workshops, and ways to participate.',
+    description: 'Find ways to support Olivia’s Garden Foundation through volunteering, seed sharing, workshops, and community participation.',
+    seoImage: '/images/home/watering-seedlings.jpg',
   },
   {
     path: '/seeds',
     label: 'Request Seeds',
     title: 'Request free okra seeds',
-    description: 'Seed distribution entry point for the foundation.',
+    description: 'Request free okra seeds from Olivia’s Garden Foundation and join a growing food project rooted in Olivia’s seed line.',
+    seoImage: '/images/okra/olivia-okra.jpg',
   },
   {
     path: '/okra',
@@ -70,27 +79,31 @@ const routes: Route[] = [
     showInNav: true,
     showInFooter: true,
     title: 'The Okra Project',
-    description: 'Map, seed sharing, and the public growing-food invitation.',
+    description: 'Explore the Okra Project map, request seeds, and follow a public invitation to grow food and share the story back.',
+    seoImage: '/images/okra/olivia-okra.jpg',
   },
   {
     path: '/impact',
     label: 'Impact',
     title: "What we're building",
-    description: 'What is active now and what the foundation is building next.',
+    description: 'See what Olivia’s Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.',
+    seoImage: '/images/home/produce-basket.jpg',
   },
   {
     path: '/donate',
     label: 'Donate',
     showInFooter: true,
     title: "Support Olivia's Garden",
-    description: 'Donation readiness and direct-support contact path.',
+    description: 'Donate to Olivia’s Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.',
+    seoImage: '/images/home/sunset-garden.jpg',
   },
   {
     path: '/contact',
     label: 'Contact',
     showInFooter: true,
     title: 'Get in touch',
-    description: 'Direct contact and a simple message form.',
+    description: 'Contact Olivia’s Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.',
+    seoImage: '/images/home/bee-suit.jpg',
   },
 ];
 
@@ -98,8 +111,163 @@ const navRoutes = routes.filter((route) => route.showInNav);
 const footerRoutes = routes.filter((route) => route.showInFooter);
 const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://goodroots.network';
 const instagramUrl = 'https://instagram.com/oliviasgardentx';
+const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
+const webApiBase = (import.meta.env.VITE_WEB_API_BASE ?? '/api/web').replace(/\/+$/, '');
+const siteUrl = (import.meta.env.VITE_SITE_URL ?? 'https://oliviasgarden.org').replace(/\/+$/, '');
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim() ?? '';
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+
+type DonationMode = 'one_time' | 'recurring';
+
+type DonationCheckoutRequest = {
+  mode: DonationMode;
+  amountCents: number;
+  returnUrl: string;
+  donorName?: string;
+  donorEmail?: string;
+  dedicationName?: string;
+  tShirtPreference?: string;
+};
+
+type DonationCheckoutResponse = {
+  clientSecret: string;
+  checkoutSessionId: string;
+};
+
+type DonationCheckoutSessionStatus = {
+  sessionId: string;
+  status: string;
+  paymentStatus: string | null;
+  customerEmail: string | null;
+};
 
 const internalPaths = new Set(routes.map((route) => route.path));
+
+function createCorrelationId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `ogf-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function webApiUrl(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${webApiBase}${normalizedPath}`;
+}
+
+function absoluteUrl(path: string) {
+  return path.startsWith('http://') || path.startsWith('https://') ? path : `${siteUrl}${path}`;
+}
+
+function ensureMeta(selector: string, attributes: Record<string, string>, content: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  let meta = document.head.querySelector(selector) as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement('meta');
+    Object.entries(attributes).forEach(([key, value]) => meta?.setAttribute(key, value));
+    document.head.appendChild(meta);
+  }
+
+  meta.setAttribute('content', content);
+}
+
+function ensureLink(selector: string, rel: string, href: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  let link = document.head.querySelector(selector) as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.setAttribute('rel', rel);
+    document.head.appendChild(link);
+  }
+
+  link.setAttribute('href', href);
+}
+
+function ensureStructuredData(id: string, payload: Record<string, unknown>) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  let script = document.head.querySelector(`script[data-seo-id="${id}"]`) as HTMLScriptElement | null;
+  if (!script) {
+    script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.dataset.seoId = id;
+    document.head.appendChild(script);
+  }
+
+  script.textContent = JSON.stringify(payload);
+}
+
+async function createDonationCheckoutSession(
+  payload: DonationCheckoutRequest,
+  authSession: AuthSession | null,
+): Promise<DonationCheckoutResponse> {
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    'X-Correlation-Id': createCorrelationId(),
+  });
+
+  if (authSession?.accessToken) {
+    headers.set('Authorization', `Bearer ${authSession.accessToken}`);
+  }
+
+  const response = await fetch(webApiUrl('/donations/checkout-session'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = 'Unable to start donation checkout right now.';
+
+    try {
+      const body = await response.json() as { error?: string };
+      if (typeof body.error === 'string' && body.error.trim()) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the generic fallback message.
+    }
+
+    throw new Error(message);
+  }
+
+  return await response.json() as DonationCheckoutResponse;
+}
+
+async function getDonationCheckoutSessionStatus(sessionId: string): Promise<DonationCheckoutSessionStatus> {
+  const response = await fetch(`${webApiUrl('/donations/checkout-session-status')}?session_id=${encodeURIComponent(sessionId)}`, {
+    method: 'GET',
+    headers: {
+      'X-Correlation-Id': createCorrelationId(),
+    },
+  });
+
+  if (!response.ok) {
+    let message = 'Unable to confirm donation status right now.';
+
+    try {
+      const body = await response.json() as { error?: string };
+      if (typeof body.error === 'string' && body.error.trim()) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the generic fallback message.
+    }
+
+    throw new Error(message);
+  }
+
+  return await response.json() as DonationCheckoutSessionStatus;
+}
 
 function getCurrentPath() {
   if (typeof window === 'undefined') {
@@ -163,6 +331,53 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loginModePreference, setLoginModePreference] = useState<'login' | 'signup'>('login');
   const page = routes.find((route) => route.path === pathname) ?? routes[0];
+
+  useEffect(() => {
+    const pageTitle = page.path === '/'
+      ? `${page.title} | Grow Food, Learn Skills, Build Community`
+      : `${page.title} | Olivia's Garden Foundation`;
+    const pageUrl = absoluteUrl(pathname === '/' ? '/' : pathname);
+    const pageImage = absoluteUrl(page.seoImage ?? '/images/home/garden-landscaping.jpg');
+    const robots = page.allowIndex === false
+      ? 'noindex, nofollow, noarchive'
+      : 'index, follow, max-image-preview:large';
+
+    document.title = pageTitle;
+    ensureMeta('meta[name="description"]', { name: 'description' }, page.description);
+    ensureMeta('meta[name="robots"]', { name: 'robots' }, robots);
+    ensureMeta('meta[property="og:type"]', { property: 'og:type' }, 'website');
+    ensureMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, "Olivia's Garden Foundation");
+    ensureMeta('meta[property="og:title"]', { property: 'og:title' }, pageTitle);
+    ensureMeta('meta[property="og:description"]', { property: 'og:description' }, page.description);
+    ensureMeta('meta[property="og:url"]', { property: 'og:url' }, pageUrl);
+    ensureMeta('meta[property="og:image"]', { property: 'og:image' }, pageImage);
+    ensureMeta('meta[name="twitter:card"]', { name: 'twitter:card' }, 'summary_large_image');
+    ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title' }, pageTitle);
+    ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description' }, page.description);
+    ensureMeta('meta[name="twitter:image"]', { name: 'twitter:image' }, pageImage);
+    ensureLink('link[rel="canonical"]', 'canonical', pageUrl);
+
+    ensureStructuredData('organization', {
+      '@context': 'https://schema.org',
+      '@type': 'NonprofitOrganization',
+      name: "Olivia's Garden Foundation",
+      url: siteUrl,
+      sameAs: [instagramUrl, facebookUrl],
+    });
+
+    ensureStructuredData('webpage', {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: pageTitle,
+      description: page.description,
+      url: pageUrl,
+      isPartOf: {
+        '@type': 'WebSite',
+        name: "Olivia's Garden Foundation",
+        url: siteUrl,
+      },
+    });
+  }, [page, pathname]);
 
   useEffect(() => {
     let active = true;
@@ -359,7 +574,7 @@ function App() {
           />
         ) : null}
         {pathname === '/impact' ? <ImpactPage onNavigate={navigate} /> : null}
-        {pathname === '/donate' ? <DonatePage onNavigate={navigate} /> : null}
+        {pathname === '/donate' ? <DonatePage onNavigate={navigate} authSession={authSession} /> : null}
         {pathname === '/contact' ? <ContactPage /> : null}
         {pathname === '/seeds' ? <SeedsPage onNavigate={navigate} /> : null}
       </main>
@@ -402,6 +617,13 @@ function SiteHeader({
           onSelect: () => window.location.assign(goodRootsNetworkUrl),
         }]
       : []),
+    {
+      id: authSession ? 'profile' : 'login',
+      label: authSession ? 'Profile' : 'Log in',
+      active: pathname === '/login',
+      mobileOnly: true,
+      onSelect: () => onNavigate('/login'),
+    },
     {
       id: 'donate',
       label: 'Donate',
@@ -461,14 +683,25 @@ function SiteFooter({
   }));
 
   return (
-    <SharedSiteFooter
-      tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
-      meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
-      links={footerLinks}
-      socialLabel="Follow Olivia's Garden Foundation on Instagram"
-      socialHref={instagramUrl}
-      socialHandle="@oliviasgardentx"
-    />
+      <SharedSiteFooter
+        tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
+        meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
+        links={footerLinks}
+        socialLinks={[
+          {
+            id: 'instagram',
+            href: instagramUrl,
+            label: "Follow Olivia's Garden Foundation on Instagram",
+            icon: 'instagram',
+          },
+          {
+            id: 'facebook',
+            href: facebookUrl,
+            label: "Follow Olivia's Garden Foundation on Facebook",
+            icon: 'facebook',
+          },
+        ]}
+      />
   );
 }
 
@@ -606,7 +839,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
             alt="Watering seedlings in a raised garden bed."
           />
           <img
-            className="home-photo-band__image"
+            className="home-photo-band__image home-photo-band__image--mobile-hide"
             src="/images/home/bee-suit.jpg"
             alt="Working bees with a child in protective gear."
           />
@@ -614,44 +847,68 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         </div>
       </section>
 
+      <section className="home-mobile-image-break" aria-label="Life and work at the foundation">
+        <img
+          className="home-mobile-image-break__image"
+          src="/images/home/melon-harvest.jpg"
+          alt="Harvesting in raised beds with a child."
+        />
+      </section>
+
       <Section
-        title="How we do the work"
-        intro="What we share comes from doing the work ourselves and staying close to what actually helps people start."
+        title="What we do"
+        intro="We share what we learn from doing the work ourselves and staying close to what  helps people get started."
         className="section-teach"
       >
         <div className="home-teach-grid" aria-label="Core focus areas">
           <div className="home-teach-stack">
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="sprout" /></div>
               <div className="home-teach-item__body">
-                <h3>Teach from real work</h3>
-                <p>If we’re sharing it, it’s something we’re actively doing.</p>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="sprout" /></div>
+                  <h3>Teach from real work</h3>
+                </div>
+                <p>If we're sharing it, it's something we're actively doing.</p>
               </div>
             </article>
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="tool" /></div>
               <div className="home-teach-item__body">
-                <h3>Make starting feel possible</h3>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="tool" /></div>
+                  <h3>Make starting feel possible</h3>
+                </div>
                 <p>This should feel within reach. The goal is to make getting started simpler.</p>
               </div>
             </article>
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="post" /></div>
               <div className="home-teach-item__body">
-                <h3>Stay honest about the work</h3>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="post" /></div>
+                  <h3>Stay honest about the work</h3>
+                </div>
                 <p>This is a working place. Some days are messy, and we show that too.</p>
               </div>
             </article>
             <article className="home-teach-item">
-              <div className="home-teach-item__icon"><WorkIcon kind="hands" /></div>
               <div className="home-teach-item__body">
-                <h3>Share what helps</h3>
-                <p>The goal isn’t just to grow here. It’s to help more people start where they are.</p>
+                <div className="home-teach-item__heading">
+                  <div className="home-teach-item__icon"><WorkIcon kind="hands" /></div>
+                  <h3>Share what helps</h3>
+                </div>
+                <p>The goal isn't just to grow here. It's to help more people start where they are.</p>
               </div>
             </article>
           </div>
         </div>
       </Section>
+
+      <section className="home-mobile-image-break" aria-label="Learning through real work">
+        <img
+          className="home-mobile-image-break__image"
+          src="/images/home/watering-seedlings.jpg"
+          alt="Watering seedlings in a raised garden bed."
+        />
+      </section>
 
       <Section title="Ways to take part" className="section-take-part">
         <div className="home-action-grid">
@@ -660,7 +917,7 @@ function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
             <p>
               Olivia was a true Texas cowgirl who loved being outside, spending time in the garden, and interacting with animals. Learn more about her.
             </p>
-            <CtaButton onClick={() => onNavigate('/contact')} variant="secondary">Olivia's story</CtaButton>
+            <CtaButton onClick={() => onNavigate('/about')} variant="secondary">Olivia's story</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
             <h3>Get free okra seeds</h3>
@@ -707,6 +964,7 @@ function AboutPage() {
       <section className="about-prose-hero" aria-label="About Olivia's Garden">
         <div className="about-prose-hero__copy">
           <div className="about-prose-hero__header">
+            <p className="about-prose-hero__eyebrow">In Olivia&apos;s memory</p>
             <h1>About Olivia&apos;s Garden</h1>
             <p className="about-prose-hero__dek">
               The story behind the foundation, the family, and the work being built in Olivia&apos;s memory.
@@ -750,12 +1008,13 @@ function AboutPage() {
 
       <hr className="about-divider" />
 
-      <section className="about-prose-block" aria-label="How the foundation began">
-        <p>
-          After Olivia passed, Allen and Mallory wanted to build something in her memory. They had
-          seen up close what families in treatment go through. The logistics are relentless. Access
-          to fresh, local food is harder than it should be. The first idea was straightforward:
-          start a foundation to grow and provide locally available food to families who needed it
+        <section className="about-prose-block about-prose-block--origin" aria-label="How the foundation began">
+          <p className="about-prose-block__eyebrow">How it began</p>
+          <p>
+            After Olivia passed, Allen and Mallory wanted to build something in her memory. They had
+            seen up close what families in treatment go through. The logistics are relentless. Access
+            to fresh, local food is harder than it should be. The first idea was straightforward:
+            start a foundation to grow and provide locally available food to families who needed it
           most.
         </p>
         <p>
@@ -770,13 +1029,14 @@ function AboutPage() {
 
       <hr className="about-divider" />
 
-      <section className="about-memory-layout" aria-label="Building the garden">
-        <div className="about-prose-block">
-          <p>
-            Allen sat down and designed the garden she always wanted.
-          </p>
-          <p>
-            He pulled in everything they had talked about on those walks. Her ideas, her favorite
+        <section className="about-memory-layout" aria-label="Building the garden">
+          <div className="about-prose-block">
+            <p className="about-prose-block__eyebrow">Building the garden</p>
+            <p>
+              Allen sat down and designed the garden she always wanted.
+            </p>
+            <p>
+              He pulled in everything they had talked about on those walks. Her ideas, her favorite
             things to grow, the way she moved through the land. Then they built it. Six raised beds
             became a quarter-acre memorial garden. Volunteers showed up. The community showed up.
             Their daughter Isabella helped however she could.
@@ -803,11 +1063,12 @@ function AboutPage() {
 
       <hr className="about-divider" />
 
-      <section className="about-prose-block about-prose-block--closing" aria-label="Who runs the foundation">
-        <p>
-          Olivia&apos;s Garden Foundation is run by the Helton family. Allen, Mallory, and Isabella,
-          out of McKinney, Texas.
-        </p>
+        <section className="about-prose-block about-prose-block--closing" aria-label="Who runs the foundation">
+          <p className="about-prose-block__eyebrow">Who runs it</p>
+          <p>
+            Olivia&apos;s Garden Foundation is run by the Helton family. Allen, Mallory, and Isabella,
+            out of McKinney, Texas.
+          </p>
         <p>
           We are not experts. We are a family who loves a little girl who loved this land, and we
           are doing our best to honor that by sharing what we know and building something useful for
@@ -834,8 +1095,9 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
         body="There are a few clear ways to be part of the work here now, and a few more that are being built honestly instead of rushed."
       />
 
-      <div className="stack-grid">
-        <Card title="Start with seeds. Literally.">
+      <div className="stack-grid get-involved-grid">
+        <Card title="Start with seeds. Literally." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Easiest first step</p>
           <p>
             The easiest way into this is okra. It&apos;s one of the most forgiving plants you can grow.
             It tolerates heat, bounces back from neglect, and produces more than you expect.
@@ -843,7 +1105,8 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
           <CtaButton onClick={() => onNavigate('/seeds')}>Request your free okra seeds</CtaButton>
         </Card>
 
-        <Card title="Come work the land.">
+        <Card title="Come work the land." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">In person</p>
           <p>
             We run regular work days tied to garden prep, animal care, event setup,
             whatever needs doing that week. It&apos;s real work and you&apos;ll go home tired.
@@ -856,7 +1119,8 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
           <CtaButton onClick={() => onNavigate('/contact')}>Sign up to volunteer</CtaButton>
         </Card>
 
-        <Card title="Hands-on workshops -- coming soon.">
+        <Card title="Hands-on workshops -- coming soon." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Coming soon</p>
           <p>
             Workshops are planned, but they are not active yet. When they launch, they will be
             built around real tasks and hands-on learning, not classroom-style theory.
@@ -864,7 +1128,8 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
           <CtaButton variant="secondary">Notify me when workshops open</CtaButton>
         </Card>
 
-        <Card title="Help us map where food is growing.">
+        <Card title="Help us map where food is growing." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Online</p>
           <p>
             The Okra Project is a living map of people growing food. If you&apos;re growing food
             anywhere, add your pin. Every garden on the map makes the case that this is normal,
@@ -874,7 +1139,10 @@ function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => void; }
         </Card>
       </div>
 
-      <Section title="Follow along." body="We post what is actually happening in the work: harvests, setbacks, animals, systems, and the day-to-day reality of learning by doing.">
+      <Section
+        title="Follow along."
+        body="We post what is actually happening in the work: harvests, setbacks, animals, systems, and the day-to-day reality of learning by doing."
+      >
         <CtaButton variant="secondary">Follow us on Instagram</CtaButton>
       </Section>
     </>
@@ -1590,6 +1858,7 @@ function SeedsPage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         title="What you get"
         body="Free okra seeds for people in the United States who want to start growing food and take part in the Okra Project."
       >
+        <p className="page-kicker">Simple, low-friction, and meant to get you growing quickly.</p>
         <p className="page-text">
           This is meant to be an easy entry point. Start with one crop, get it in the ground, and
           see where it leads. When it grows, we ask that you send back photos so the project can
@@ -1622,6 +1891,7 @@ function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void; }) {
         title="What's already growing."
         body="The work is active and productive."
       >
+        <p className="page-kicker">This is not a concept page. The work is already happening.</p>
         <p className="page-text">
           On the land right now: productive garden beds, flowers, chickens, turkeys, geese, goats,
           bees, and guineas. A small Texas vineyard. A pond we use to observe and teach about
@@ -1651,24 +1921,474 @@ function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void; }) {
   );
 }
 
-function DonatePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
+function DonatePage({
+  onNavigate,
+  authSession,
+}: {
+  onNavigate: (path: string) => void;
+  authSession: AuthSession | null;
+}) {
+  const initialReturnedSessionId = typeof window === 'undefined'
+    ? null
+    : new URLSearchParams(window.location.search).get('session_id');
+  const [selectedMode, setSelectedMode] = useState<DonationMode>('one_time');
+  const [selectedAmount, setSelectedAmount] = useState(2500);
+  const [customAmount, setCustomAmount] = useState('');
+  const [donorName, setDonorName] = useState(authSession?.user.name ?? '');
+  const [donorEmail, setDonorEmail] = useState(authSession?.user.email ?? '');
+  const [dedicationName, setDedicationName] = useState('');
+  const [tShirtPreference, setTShirtPreference] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(Boolean(initialReturnedSessionId));
+  const [error, setError] = useState<string | null>(null);
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
+  const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
+  const [returnedSessionId, setReturnedSessionId] = useState(initialReturnedSessionId);
+  const [checkoutStatus, setCheckoutStatus] = useState<DonationCheckoutSessionStatus | null>(null);
+  const checkoutContainerRef = useRef<HTMLDivElement | null>(null);
+  const embeddedCheckoutRef = useRef<StripeEmbeddedCheckout | null>(null);
+
+  useEffect(() => {
+    if (authSession?.user.name) {
+      setDonorName((current) => current || authSession.user.name || '');
+    }
+    if (authSession?.user.email) {
+      setDonorEmail((current) => current || authSession.user.email || '');
+    }
+  }, [authSession?.user.email, authSession?.user.name]);
+
+  const effectiveAmount = customAmount.trim()
+    ? Math.round(Number(customAmount) * 100)
+    : selectedAmount;
+
+  useEffect(() => {
+    if (!returnedSessionId) {
+      setCheckoutStatus(null);
+      setIsCheckingStatus(false);
+      return;
+    }
+
+    let active = true;
+    setIsCheckingStatus(true);
+    setError(null);
+
+    void getDonationCheckoutSessionStatus(returnedSessionId)
+      .then((status) => {
+        if (!active) {
+          return;
+        }
+
+        setCheckoutStatus(status);
+      })
+      .catch((statusError) => {
+        if (!active) {
+          return;
+        }
+
+        setError(statusError instanceof Error ? statusError.message : 'Unable to confirm donation status.');
+      })
+      .finally(() => {
+        if (active) {
+          setIsCheckingStatus(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [returnedSessionId]);
+
+  useEffect(() => {
+    if (!checkoutClientSecret || !checkoutContainerRef.current) {
+      return;
+    }
+
+    if (!stripePromise) {
+      setError('Stripe checkout is not configured for this environment yet.');
+      setCheckoutClientSecret(null);
+      setIsSubmitting(false);
+      return;
+    }
+
+    let active = true;
+    let mountedCheckout: StripeEmbeddedCheckout | null = null;
+
+    void stripePromise
+      .then(async (stripe) => {
+        if (!stripe) {
+          throw new Error('Stripe checkout is unavailable right now.');
+        }
+
+        const checkoutContainer = checkoutContainerRef.current;
+        if (!checkoutContainer) {
+          throw new Error('Stripe checkout container is unavailable.');
+        }
+
+        mountedCheckout = await stripe.initEmbeddedCheckout({
+          fetchClientSecret: async () => checkoutClientSecret,
+        });
+
+        if (!active) {
+          mountedCheckout.destroy();
+          return;
+        }
+
+        embeddedCheckoutRef.current = mountedCheckout;
+        mountedCheckout.mount(checkoutContainer);
+        setIsSubmitting(false);
+      })
+      .catch((checkoutError) => {
+        if (!active) {
+          return;
+        }
+
+        setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to open Stripe checkout.');
+        setCheckoutClientSecret(null);
+        setCheckoutSessionId(null);
+        setIsSubmitting(false);
+      });
+
+    return () => {
+      active = false;
+      if (embeddedCheckoutRef.current) {
+        embeddedCheckoutRef.current.destroy();
+        embeddedCheckoutRef.current = null;
+      } else if (mountedCheckout) {
+        mountedCheckout.destroy();
+      }
+    };
+  }, [checkoutClientSecret]);
+
+  const resetCheckoutExperience = () => {
+    embeddedCheckoutRef.current?.destroy();
+    embeddedCheckoutRef.current = null;
+    setCheckoutClientSecret(null);
+    setCheckoutSessionId(null);
+    setCheckoutStatus(null);
+    setReturnedSessionId(null);
+    setIsCheckingStatus(false);
+    setIsSubmitting(false);
+    setError(null);
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
+
+  const startCheckout = async (mode: DonationMode) => {
+    setError(null);
+
+    if (!Number.isFinite(effectiveAmount) || effectiveAmount < 500) {
+      setError('Please choose or enter a donation of at least $5.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { clientSecret, checkoutSessionId: nextCheckoutSessionId } = await createDonationCheckoutSession(
+        {
+          mode,
+          amountCents: effectiveAmount,
+          returnUrl: `${window.location.origin}/donate?session_id={CHECKOUT_SESSION_ID}`,
+          donorName: donorName.trim() || undefined,
+          donorEmail: donorEmail.trim() || undefined,
+          dedicationName: dedicationName.trim() || undefined,
+          tShirtPreference: mode === 'recurring' ? (tShirtPreference.trim() || undefined) : undefined,
+        },
+        authSession,
+      );
+
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      setReturnedSessionId(null);
+      setCheckoutStatus(null);
+      setCheckoutSessionId(nextCheckoutSessionId);
+      setCheckoutClientSecret(clientSecret);
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to start checkout.');
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <PageHero
         eyebrow="Donate"
-        title="Support Olivia's Garden"
-        body="Donations are not live yet, but support will eventually help fund seeds, tools, infrastructure, animals, and the daily work of keeping the foundation useful to the community."
+        title="Plant something permanent in Olivia's Garden."
+        body="Every gift becomes something visible. Each donor, no matter the amount, receives a permanent acrylic garden piece with their name placed on the grounds. Last year it was a butterfly. This year it is a bee."
+        className="donate-hero"
+        backgroundImage="/images/home/sunset-garden.jpg"
+        actions={
+          <>
+            <a className="home-hero__cta" href="#donate-options">Choose your gift</a>
+            <Button className="site-cta donate-hero__secondary" variant="secondary" onClick={() => onNavigate('/about')}>
+              Olivia&apos;s story
+            </Button>
+          </>
+        }
+        aside={
+          <div className="donate-hero__aside-card">
+            <p className="donate-hero__eyebrow">This year&apos;s garden marker</p>
+            <div className="donate-hero__bee">
+              <span className="donate-hero__bee-body" aria-hidden="true" />
+            </div>
+            <p className="page-text">
+              A named acrylic bee is added to the garden for every donor. Garden Club members also
+              receive a free t-shirt when they begin their recurring support.
+            </p>
+          </div>
+        }
       />
 
+      <section className="donate-story-band">
+        <div className="donate-story-band__copy">
+          <p className="page-eyebrow">Why this matters</p>
+          <h2>The donation should feel like belonging, not just a transaction.</h2>
+          <p className="page-text">
+            Support goes into seeds, animal care, tools, educational materials, and the practical
+            work of keeping the foundation active for families who want to learn how to grow, tend,
+            and share food.
+          </p>
+          <p className="page-text">
+            We tell that story in the garden itself. Every donor receives a permanent acrylic marker
+            with their name on it, regardless of donation size. The animal changes each year so the
+            installation keeps growing while still marking a moment in the life of the garden.
+          </p>
+          <figure className="donate-story-band__artifact" aria-label="Placeholder for last year's acrylic butterfly donor marker">
+            <div className="donate-story-band__artifact-frame" aria-hidden="true">
+              <div className="donate-story-band__butterfly">
+                <span className="donate-story-band__butterfly-wing donate-story-band__butterfly-wing--left" />
+                <span className="donate-story-band__butterfly-body" />
+                <span className="donate-story-band__butterfly-wing donate-story-band__butterfly-wing--right" />
+              </div>
+            </div>
+            <figcaption>
+              Acrylic butterfly placeholder. Last year, every donor received a butterfly in the
+              garden. This year, every donor receives a bee.
+            </figcaption>
+          </figure>
+        </div>
+        <div className="donate-story-band__highlights">
+          <article className="donate-highlight">
+            <h3>Permanent recognition</h3>
+            <p>Your name is placed in the garden as part of the yearly marker installation.</p>
+          </article>
+          <article className="donate-highlight">
+            <h3>Yearly animal tradition</h3>
+            <p>Last year was the butterfly. This year is the bee. The symbol changes, the presence stays.</p>
+          </article>
+          <article className="donate-highlight">
+            <h3>Garden Club welcome</h3>
+            <p>Recurring donors join the Garden Club and get a free t-shirt of their choice at signup.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="donate-checkout" id="donate-options">
+        <div className="donate-checkout__intro">
+          <p className="page-eyebrow">Choose your support</p>
+          <h2>Give once or join the Garden Club, then finish securely with Stripe right here on the page.</h2>
+          <p className="page-text">
+            We host the story, your gift choice, and the dedication details here. When you&apos;re
+            ready, Stripe&apos;s secure Checkout opens inside this donate page so the payment step
+            still feels like part of the same experience.
+          </p>
+          <p className="page-text">
+            If you&apos;re signed in, your donation is also recorded on your account so the
+            foundation can keep your contribution connected to your record.
+          </p>
+          {authSession ? (
+            <p className="page-kicker">
+              Signed in as {authSession.user.name ?? authSession.user.email ?? 'your account'}.
+            </p>
+          ) : (
+            <p className="page-kicker">
+              You can donate without logging in, or create an account first if you want the gift saved to your profile.
+            </p>
+          )}
+        </div>
+
+        <div className="donate-checkout__grid">
+          <article
+            className={`donate-option ${selectedMode === 'one_time' ? 'donate-option--active' : ''}`.trim()}
+          >
+            <p className="donate-option__eyebrow">One-time gift</p>
+            <h3>Fund today&apos;s work.</h3>
+            <p>Support immediate needs across the garden, animals, classes, and hands-on learning.</p>
+            <button type="button" className="donate-option__select" onClick={() => setSelectedMode('one_time')}>
+              Choose one-time
+            </button>
+          </article>
+
+          <article
+            className={`donate-option ${selectedMode === 'recurring' ? 'donate-option--active' : ''}`.trim()}
+          >
+            <p className="donate-option__eyebrow">Garden Club</p>
+            <h3>Show up every month.</h3>
+            <p>Recurring support gives the foundation steadier footing and includes a free t-shirt at signup.</p>
+            <button type="button" className="donate-option__select" onClick={() => setSelectedMode('recurring')}>
+              Choose Garden Club
+            </button>
+          </article>
+        </div>
+
+        {isCheckingStatus ? (
+          <div className="donate-status-card donate-status-card--neutral">
+            <p className="donate-status-card__eyebrow">Checking donation</p>
+            <h3>We&apos;re confirming your Stripe checkout session.</h3>
+            <p>Give us a moment to read the latest status from Stripe.</p>
+          </div>
+        ) : null}
+
+        {checkoutStatus?.status === 'complete' ? (
+          <div className="donate-status-card donate-status-card--success">
+            <p className="donate-status-card__eyebrow">Donation complete</p>
+            <h3>Your gift is in.</h3>
+            <p>
+              Stripe marked this donation as complete, and we&apos;ll use the details from checkout
+              to add the donor&apos;s permanent bee to the garden.
+            </p>
+            {checkoutStatus.customerEmail ? (
+              <p>A receipt should be on its way to {checkoutStatus.customerEmail}.</p>
+            ) : null}
+            <div className="donate-status-card__actions">
+              <Button className="site-cta" onClick={resetCheckoutExperience}>Make another gift</Button>
+              <Button className="site-cta" variant="secondary" onClick={() => onNavigate('/impact')}>
+                See the impact
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {checkoutStatus && checkoutStatus.status !== 'complete' ? (
+          <div className="donate-status-card donate-status-card--warning">
+            <p className="donate-status-card__eyebrow">Checkout still open</p>
+            <h3>Your Stripe checkout was not completed yet.</h3>
+            <p>
+              You can review your donation details below and start a fresh secure checkout when
+              you&apos;re ready.
+            </p>
+            <div className="donate-status-card__actions">
+              <Button className="site-cta" onClick={resetCheckoutExperience}>Start a new checkout</Button>
+            </div>
+          </div>
+        ) : null}
+
+        {checkoutStatus?.status === 'complete' ? null : (
+        <div className="donate-form-card">
+          <div className="donate-amounts" role="group" aria-label="Donation amount">
+            {[1500, 2500, 5000, 10000].map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                className={`donate-amounts__chip ${!customAmount && selectedAmount === amount ? 'donate-amounts__chip--active' : ''}`.trim()}
+                onClick={() => {
+                  setSelectedAmount(amount);
+                  setCustomAmount('');
+                }}
+              >
+                ${amount / 100}
+              </button>
+            ))}
+            <label className="donate-amounts__custom">
+              <span>Custom</span>
+              <input
+                type="number"
+                min="5"
+                step="1"
+                inputMode="numeric"
+                placeholder="Other amount"
+                value={customAmount}
+                onChange={(event) => setCustomAmount(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="donate-form-grid">
+            <label>
+              <span>Name</span>
+              <input type="text" value={donorName} onChange={(event) => setDonorName(event.target.value)} placeholder="Your name" />
+            </label>
+            <label>
+              <span>Email</span>
+              <input type="email" value={donorEmail} onChange={(event) => setDonorEmail(event.target.value)} placeholder="you@example.com" />
+            </label>
+            <label>
+              <span>Name for the bee</span>
+              <input
+                type="text"
+                value={dedicationName}
+                onChange={(event) => setDedicationName(event.target.value)}
+                placeholder="Your name, family name, or in honor of someone"
+              />
+            </label>
+            {selectedMode === 'recurring' ? (
+              <label>
+                <span>T-shirt choice</span>
+                <input
+                  type="text"
+                  value={tShirtPreference}
+                  onChange={(event) => setTShirtPreference(event.target.value)}
+                  placeholder="Size, color, or style preference"
+                />
+              </label>
+            ) : null}
+          </div>
+
+          <div className="donate-form-card__footer">
+            <div>
+              <p className="donate-form-card__summary">
+                {selectedMode === 'recurring' ? 'Garden Club' : 'One-time donation'}: ${(effectiveAmount / 100).toFixed(2)}
+              </p>
+              <p className="page-text">
+                {selectedMode === 'recurring'
+                  ? 'Begins monthly support and includes your free t-shirt at signup.'
+                  : 'Includes your permanent bee in the garden, no matter the amount.'}
+              </p>
+              <p className="donate-form-card__checkout-note">
+                Stripe&apos;s secure checkout opens here on the page after you continue.
+              </p>
+            </div>
+            <Button className="site-cta" onClick={() => void startCheckout(selectedMode)} disabled={isSubmitting}>
+              {isSubmitting ? 'Opening Stripe...' : selectedMode === 'recurring' ? 'Open Garden Club checkout' : 'Open secure donation checkout'}
+            </Button>
+          </div>
+
+          {error ? <p className="donate-form-card__error" role="alert">{error}</p> : null}
+
+          {checkoutClientSecret ? (
+            <div className="donate-embedded-checkout">
+              <div className="donate-embedded-checkout__header">
+                <div>
+                  <p className="donate-embedded-checkout__eyebrow">Secure payment</p>
+                  <h3>Stripe Checkout is ready below.</h3>
+                  <p>
+                    Complete the payment here without leaving the donate page.
+                    {checkoutSessionId ? ` Session ${checkoutSessionId} is active.` : ''}
+                  </p>
+                </div>
+                <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>
+                  Edit donation
+                </Button>
+              </div>
+              <div className="donate-embedded-checkout__mount" ref={checkoutContainerRef} />
+            </div>
+          ) : null}
+        </div>
+        )}
+      </section>
+
       <Section
-        title="Donations are coming soon."
-        body="Payment processing is not set up yet. If you want to support the foundation before that is live, reach out directly."
+        title="Other ways to help"
+        body="If your support is better expressed through volunteering, seeds, supplies, or a larger sponsorship conversation, we can point you in the right direction."
       >
-        <p className="page-text">
-          Support will go toward seeds, tools, animals, infrastructure, and the practical work of
-          keeping the foundation open and useful to the people we want to serve.
-        </p>
-        <CtaButton onClick={() => onNavigate('/contact')}>Get in touch</CtaButton>
+        <div className="site-panel__actions">
+          <CtaButton onClick={() => onNavigate('/get-involved')}>Get involved</CtaButton>
+          <CtaButton onClick={() => onNavigate('/contact')} variant="secondary">Contact us directly</CtaButton>
+        </div>
       </Section>
     </>
   );
@@ -1677,19 +2397,21 @@ function DonatePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
 function ContactPage() {
   return (
     <>
-      <PageHero eyebrow="Contact" title="Get in touch" body="We'd love to hear from you." />
+      <PageHero title="Get in touch" body="We'd love to hear from you." />
 
       <div className="contact-grid">
-        <Card title="Reach out directly">
+        <Card title="Reach out directly" className="contact-card">
+          <p className="contact-card__eyebrow">Direct contact</p>
           <p>
             Whether you want seeds, have questions about the Okra Project, want to help with the
             work, or just want to say what you&apos;re growing, reach out.
           </p>
           <p className="page-text">We&apos;re real people and we actually respond.</p>
-          <p className="contact-meta">Email: [PLACEHOLDER -- INSERT EMAIL]</p>
+          <p className="contact-meta">Email: allen@oliviasgarden.org</p>
         </Card>
 
-        <Card title="Send a message">
+        <Card title="Send a message" className="contact-card">
+          <p className="contact-card__eyebrow">Send a note</p>
           <form className="contact-form">
             <label>
               <span>Name</span>
