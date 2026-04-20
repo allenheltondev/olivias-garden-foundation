@@ -33,7 +33,7 @@ const routes: Route[] = [
     showInNav: true,
     showInFooter: true,
     title: "Olivia's Garden Foundation",
-    description: 'Olivia’s Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency.',
+    description: "Olivia's Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency.",
     seoImage: '/images/home/garden-landscaping.jpg',
   },
   {
@@ -56,21 +56,21 @@ const routes: Route[] = [
     showInNav: true,
     showInFooter: true,
     title: "About Olivia's Garden",
-    description: 'Read Olivia’s story, the foundation’s mission, and the family-led work behind practical food-growing education in McKinney, Texas.',
+    description: "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
     seoImage: '/images/about/luffa-trellis.jpg',
   },
   {
     path: '/get-involved',
     label: 'Get Involved',
     title: 'Get involved',
-    description: 'Find ways to support Olivia’s Garden Foundation through volunteering, seed sharing, workshops, and community participation.',
+    description: "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
     seoImage: '/images/home/watering-seedlings.jpg',
   },
   {
     path: '/seeds',
     label: 'Request Seeds',
     title: 'Request free okra seeds',
-    description: 'Request free okra seeds from Olivia’s Garden Foundation and join a growing food project rooted in Olivia’s seed line.',
+    description: "Request free okra seeds from Olivia's Garden Foundation and join a growing food project rooted in Olivia's seed line.",
     seoImage: '/images/okra/olivia-okra.jpg',
   },
   {
@@ -86,7 +86,7 @@ const routes: Route[] = [
     path: '/impact',
     label: 'Impact',
     title: "What we're building",
-    description: 'See what Olivia’s Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.',
+    description: "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
     seoImage: '/images/home/produce-basket.jpg',
   },
   {
@@ -94,7 +94,7 @@ const routes: Route[] = [
     label: 'Donate',
     showInFooter: true,
     title: "Support Olivia's Garden",
-    description: 'Donate to Olivia’s Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.',
+    description: "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
     seoImage: '/images/home/sunset-garden.jpg',
   },
   {
@@ -102,7 +102,7 @@ const routes: Route[] = [
     label: 'Contact',
     showInFooter: true,
     title: 'Get in touch',
-    description: 'Contact Olivia’s Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.',
+    description: "Contact Olivia's Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.",
     seoImage: '/images/home/bee-suit.jpg',
   },
 ];
