@@ -4,7 +4,7 @@ import { handler } from '../../src/handlers/submission-notifier.mjs';
 describe('submission notifier', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    process.env.OKRA_SUBMISSION_SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/okra';
+    process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/okra';
     process.env.OKRA_ADMIN_FRONTEND_URL = 'https://admin.oliviasgarden.test';
   });
 
@@ -61,7 +61,7 @@ describe('submission notifier', () => {
   });
 
   it('returns without calling Slack when the webhook is not configured', async () => {
-    delete process.env.OKRA_SUBMISSION_SLACK_WEBHOOK_URL;
+    delete process.env.SLACK_WEBHOOK_URL;
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
