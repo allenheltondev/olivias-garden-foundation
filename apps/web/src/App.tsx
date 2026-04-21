@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { Route, Routes } from 'react-router-dom';
 import {
   confirmPasswordReset,
   confirmSignUp,
@@ -214,44 +215,56 @@ function App() {
         authError={authError}
       />
       <main className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}>
-        {pathname === '/' ? <HomePage onNavigate={navigate} /> : null}
-        {pathname === '/auth/callback' ? <AuthCallbackPage /> : null}
-        {pathname === '/login' ? (
-          <LoginPage
-            authEnabled={authConfig.enabled}
-            authSession={authSession}
-            authBusy={authBusy || !authReady}
-            authError={authError}
-            defaultMode={loginModePreference}
-            onSubmitLogin={submitLogin}
-            onSubmitSignup={submitSignup}
-            onConfirmSignup={submitSignUpConfirmation}
-            onResendSignupCode={resendSignupVerification}
-            onRequestPasswordReset={submitPasswordResetRequest}
-            onConfirmPasswordReset={submitPasswordResetConfirm}
-            onLogout={handleLogout}
-            onNavigate={navigate}
+        <Routes>
+          <Route path="/" element={<HomePage onNavigate={navigate} />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                authEnabled={authConfig.enabled}
+                authSession={authSession}
+                authBusy={authBusy || !authReady}
+                authError={authError}
+                defaultMode={loginModePreference}
+                onSubmitLogin={submitLogin}
+                onSubmitSignup={submitSignup}
+                onConfirmSignup={submitSignUpConfirmation}
+                onResendSignupCode={resendSignupVerification}
+                onRequestPasswordReset={submitPasswordResetRequest}
+                onConfirmPasswordReset={submitPasswordResetConfirm}
+                onLogout={handleLogout}
+                onNavigate={navigate}
+              />
+            }
           />
-        ) : null}
-        {pathname === '/about' ? <AboutPage /> : null}
-        {pathname === '/get-involved' ? <GetInvolvedPage onNavigate={navigate} /> : null}
-        {pathname === '/okra' ? (
-          <OkraPage
-            onNavigate={navigate}
-            authEnabled={authConfig.enabled}
-            authSession={authSession}
-            onLogin={openLoginPage}
-            onSignup={openSignupPage}
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/get-involved" element={<GetInvolvedPage onNavigate={navigate} />} />
+          <Route
+            path="/okra"
+            element={
+              <OkraPage
+                onNavigate={navigate}
+                authEnabled={authConfig.enabled}
+                authSession={authSession}
+                onLogin={openLoginPage}
+                onSignup={openSignupPage}
+              />
+            }
           />
-        ) : null}
-        {pathname === '/impact' ? <ImpactPage onNavigate={navigate} /> : null}
-        {pathname === '/donate' ? (
-          <Suspense fallback={routeFallback}>
-            <DonatePage onNavigate={navigate} authSession={authSession} />
-          </Suspense>
-        ) : null}
-        {pathname === '/contact' ? <ContactPage /> : null}
-        {pathname === '/seeds' ? <SeedsPage onNavigate={navigate} /> : null}
+          <Route path="/impact" element={<ImpactPage onNavigate={navigate} />} />
+          <Route
+            path="/donate"
+            element={
+              <Suspense fallback={routeFallback}>
+                <DonatePage onNavigate={navigate} authSession={authSession} />
+              </Suspense>
+            }
+          />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/seeds" element={<SeedsPage onNavigate={navigate} />} />
+          <Route path="*" element={<HomePage onNavigate={navigate} />} />
+        </Routes>
       </main>
       <SiteFooter currentPage={page} onNavigate={navigate} />
     </div>
