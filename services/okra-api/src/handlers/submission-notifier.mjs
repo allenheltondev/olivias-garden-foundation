@@ -133,7 +133,7 @@ function buildSlackPayload(detail) {
 }
 
 export async function handler(event) {
-  const webhookUrl = process.env.OKRA_SUBMISSION_SLACK_WEBHOOK_URL?.trim();
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL?.trim();
   const detail = event?.detail ?? {};
   const correlationId = detail.correlationId ?? event?.id ?? 'unknown';
 
