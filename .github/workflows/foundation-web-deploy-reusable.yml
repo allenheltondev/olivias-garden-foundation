@@ -120,7 +120,25 @@ jobs:
         working-directory: infra/foundation-web
         run: npm ci --ignore-scripts
 
+      - name: Download web-api SAM build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: foundation-web-api-sam-build
+          path: services/web-api/.aws-sam/build
+          if-no-files-found: ignore
+
+      - name: Detect downloaded web-api build artifact
+        id: web-api-build-artifact
+        shell: bash
+        run: |
+          if [ -f services/web-api/.aws-sam/build/template.yaml ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install web-api dependencies
+        if: steps.web-api-build-artifact.outputs.available != 'true'
         run: npm ci --workspace @olivias/web-api --ignore-scripts
 
       - name: Validate custom domain configuration
@@ -182,6 +200,7 @@ jobs:
           ./db/migrate.sh
 
       - name: Build web-api
+        if: steps.web-api-build-artifact.outputs.available != 'true'
         run: sam build --template-file services/web-api/template.yaml
 
       - name: Deploy web-api stack
@@ -209,7 +228,7 @@ jobs:
           fi
 
           sam deploy \
-            --template-file services/web-api/template.yaml \
+            --template-file services/web-api/.aws-sam/build/template.yaml \
             --stack-name "${{ inputs.web_api_stack_name }}" \
             --resolve-s3 \
             --s3-prefix "${{ inputs.web_api_stack_name }}" \

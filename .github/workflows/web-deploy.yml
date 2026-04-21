@@ -49,20 +49,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install cfn-lint
-        run: pip install cfn-lint
-
-      - name: Validate root template
-        run: cfn-lint infra/foundation-web/template.yaml
-
-      - name: Validate web-api template
-        run: cfn-lint services/web-api/template.yaml
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -70,18 +56,34 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
+      - name: Setup SAM
+        uses: aws-actions/setup-sam@v2
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Install foundation infrastructure dependencies
+        working-directory: infra/foundation-web
+        run: npm ci --ignore-scripts
+
+      - name: Build root template
+        run: sam build --template-file infra/foundation-web/template.yaml
+
+      - name: Build web-api template
+        run: sam build --template-file services/web-api/template.yaml
+
+      - name: Upload web-api SAM build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-web-api-sam-build
+          path: services/web-api/.aws-sam/build
+          if-no-files-found: error
 
       - name: Run type check
         run: npm --workspace @olivias/web run typecheck
 
       - name: Build foundation web app
         run: npm --workspace @olivias/web run build
-
-      - name: Install foundation infrastructure dependencies
-        working-directory: infra/foundation-web
-        run: npm ci --ignore-scripts
 
       - name: Run foundation function tests
         working-directory: infra/foundation-web
