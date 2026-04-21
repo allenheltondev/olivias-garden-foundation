@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run prerender:head",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "images:generate": "node ./scripts/generate-responsive-images.mjs"
+    "images:generate": "node ./scripts/generate-responsive-images.mjs",
+    "prerender:head": "node ./scripts/prerender-head.mjs"
   },
   "dependencies": {
     "@olivias/ui": "file:../../packages/ui",
