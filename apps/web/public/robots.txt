@@ -2,3 +2,19 @@ User-agent: *
 Allow: /
 Disallow: /auth/callback
 Disallow: /login
+Disallow: /api/
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://oliviasgarden.org/sitemap.xml
+# LLM guidance: https://oliviasgarden.org/llms.txt

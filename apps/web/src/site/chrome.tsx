@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { Button, SiteFooter as SharedSiteFooter, SiteHeader as SharedSiteHeader } from '@olivias/ui';
 import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
@@ -46,6 +46,7 @@ export function SiteHeader({
     ...navRoutes.map((route) => ({
       id: route.path,
       label: route.label,
+      href: route.path,
       active: pathname === route.path,
       onSelect: () => onNavigate(route.path),
     })),
@@ -53,13 +54,14 @@ export function SiteHeader({
       ? [{
           id: 'good-roots-network',
           label: 'Good Roots Network',
+          href: goodRootsNetworkUrl,
           active: false,
-          onSelect: () => window.location.assign(goodRootsNetworkUrl),
         }]
       : []),
     {
       id: authSession ? 'profile' : 'login',
       label: authSession ? 'Profile' : 'Log in',
+      href: '/login',
       active: pathname === '/login',
       mobileOnly: true,
       onSelect: () => onNavigate('/login'),
@@ -67,6 +69,7 @@ export function SiteHeader({
     {
       id: 'donate',
       label: 'Donate',
+      href: '/donate',
       active: pathname === '/donate',
       accent: true,
       onSelect: () => onNavigate('/donate'),
@@ -77,29 +80,41 @@ export function SiteHeader({
     <SharedSiteHeader
       brandEyebrow="Olivia's Garden Foundation"
       brandTitle="Homesteading, growing, and community"
+      brandHref="/"
       onBrandClick={() => onNavigate('/')}
       navItems={headerNavItems}
       utility={(
         <div className="og-auth-utility">
           {authSession ? (
-            <button
-              type="button"
+            <a
               className="og-auth-utility__avatar"
-              onClick={() => onNavigate('/login')}
+              href="/login"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/login');
+              }}
               aria-label={avatarLabel}
               title={avatarLabel}
             >
               {initials}
-            </button>
+            </a>
           ) : (
-            <button
-              type="button"
+            <a
               className="og-auth-utility__login"
-              onClick={() => onNavigate('/login')}
-              disabled={!authEnabled || authBusy}
+              href="/login"
+              aria-disabled={!authEnabled || authBusy || undefined}
+              onClick={(event) => {
+                if (!authEnabled || authBusy) {
+                  event.preventDefault();
+                  return;
+                }
+
+                event.preventDefault();
+                onNavigate('/login');
+              }}
             >
               Log in
-            </button>
+            </a>
           )}
           {authError && pathname === '/login' ? <p className="og-login-page__error" role="alert">{authError}</p> : null}
         </div>
@@ -118,6 +133,7 @@ export function SiteFooter({
   const footerLinks = footerRoutes.map((route) => ({
     id: route.path,
     label: route.label,
+    href: route.path,
     active: currentPage.path === route.path,
     onSelect: () => onNavigate(route.path),
   }));
@@ -213,13 +229,23 @@ export function Section({
 
 export function CtaButton({
   children,
+  href,
   onClick,
   variant = 'primary',
 }: {
   children: ReactNode;
-  onClick?: () => void;
+  href?: string;
+  onClick?: (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void;
   variant?: 'primary' | 'secondary';
 }) {
+  if (href) {
+    return (
+      <a className={`site-cta og-button og-button--${variant} og-button--md`} href={href} onClick={onClick}>
+        {children}
+      </a>
+    );
+  }
+
   return (
     <Button className="site-cta" variant={variant} onClick={onClick}>
       {children}

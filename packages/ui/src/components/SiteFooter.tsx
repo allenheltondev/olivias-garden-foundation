@@ -1,7 +1,8 @@
 export interface SiteFooterLink {
   id: string;
   label: string;
-  onSelect: () => void;
+  href?: string;
+  onSelect?: () => void;
   active?: boolean;
 }
 
@@ -31,18 +32,34 @@ export function SiteFooter({
         {links.length > 0 ? (
           <div className="og-site-footer__links-block">
             <p className="og-site-footer__label">Pages</p>
-            <div className="og-site-footer__links">
-              {links.map((link) => (
-                <button
-                  key={link.id}
-                  type="button"
-                  className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
-                  onClick={link.onSelect}
-                >
-                  {link.label}
-                </button>
-              ))}
-            </div>
+              <div className="og-site-footer__links">
+                {links.map((link) => (
+                  link.href ? (
+                    <a
+                      key={link.id}
+                      href={link.href}
+                      className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
+                      onClick={(event) => {
+                        if (link.onSelect) {
+                          event.preventDefault();
+                          link.onSelect();
+                        }
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <button
+                      key={link.id}
+                      type="button"
+                      className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
+                      onClick={link.onSelect}
+                    >
+                      {link.label}
+                    </button>
+                  )
+                ))}
+              </div>
           </div>
         ) : null}
 

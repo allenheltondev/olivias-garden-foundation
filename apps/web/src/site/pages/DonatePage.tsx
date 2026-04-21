@@ -417,9 +417,16 @@ export function DonatePage({
             ) : null}
             <div className="donate-status-card__actions">
               <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>Make another gift</Button>
-              <Button className="site-cta" variant="secondary" onClick={() => onNavigate('/impact')}>
+              <CtaButton
+                href="/impact"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onNavigate('/impact');
+                }}
+                variant="secondary"
+              >
                 See the impact
-              </Button>
+              </CtaButton>
             </div>
           </div>
         ) : null}
@@ -578,8 +585,26 @@ export function DonatePage({
             step.
           </p>
           <div className="donate-alternate__actions">
-            <CtaButton onClick={() => onNavigate('/get-involved')} variant="secondary">Get involved</CtaButton>
-            <CtaButton onClick={() => onNavigate('/contact')} variant="secondary">Contact us directly</CtaButton>
+            <CtaButton
+              href="/get-involved"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/get-involved');
+              }}
+              variant="secondary"
+            >
+              Get involved
+            </CtaButton>
+            <CtaButton
+              href="/contact"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/contact');
+              }}
+              variant="secondary"
+            >
+              Contact us directly
+            </CtaButton>
           </div>
         </aside>
       </section>

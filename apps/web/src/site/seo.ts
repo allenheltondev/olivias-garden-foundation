@@ -2,6 +2,12 @@ import { useEffect } from 'react';
 import type { AppRoute } from './routes';
 import { facebookUrl, instagramUrl, siteUrl } from './routes';
 
+type GtagCommand = (
+  command: 'event' | 'config' | 'js',
+  targetOrName: string | Date,
+  params?: Record<string, string | number | boolean>,
+) => void;
+
 function ensureMeta(selector: string, attributes: Record<string, string>, content: string) {
   if (typeof document === 'undefined') {
     return;
@@ -101,6 +107,13 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
         name: "Olivia's Garden Foundation",
         url: siteUrl,
       },
+    });
+
+    const gtag = (window as Window & { gtag?: GtagCommand }).gtag;
+    gtag?.('event', 'page_view', {
+      page_title: pageTitle,
+      page_location: pageUrl,
+      page_path: pathname,
     });
   }, [pathname, route]);
 }

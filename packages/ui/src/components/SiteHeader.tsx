@@ -3,7 +3,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 export interface SiteHeaderNavItem {
   id: string;
   label: string;
-  onSelect: () => void;
+  href?: string;
+  onSelect?: () => void;
   active?: boolean;
   accent?: boolean;
   mobileOnly?: boolean;
@@ -12,6 +13,7 @@ export interface SiteHeaderNavItem {
 export interface SiteHeaderProps {
   brandEyebrow?: string;
   brandTitle: string;
+  brandHref?: string;
   onBrandClick?: () => void;
   brandAriaLabel?: string;
   navItems?: SiteHeaderNavItem[];
@@ -21,6 +23,7 @@ export interface SiteHeaderProps {
 export function SiteHeader({
   brandEyebrow,
   brandTitle,
+  brandHref,
   onBrandClick,
   brandAriaLabel = 'Go to home',
   navItems = [],
@@ -40,10 +43,27 @@ export function SiteHeader({
   return (
     <header className="og-site-header">
       <div className="og-site-header__inner">
-        <button type="button" className="og-site-header__brand" onClick={handleBrandClick} aria-label={brandAriaLabel}>
-          {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
-          <span className="og-site-header__title">{brandTitle}</span>
-        </button>
+        {brandHref ? (
+          <a
+            className="og-site-header__brand"
+            href={brandHref}
+            onClick={(event) => {
+              if (onBrandClick) {
+                event.preventDefault();
+                handleBrandClick();
+              }
+            }}
+            aria-label={brandAriaLabel}
+          >
+            {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
+            <span className="og-site-header__title">{brandTitle}</span>
+          </a>
+        ) : (
+          <button type="button" className="og-site-header__brand" onClick={handleBrandClick} aria-label={brandAriaLabel}>
+            {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
+            <span className="og-site-header__title">{brandTitle}</span>
+          </button>
+        )}
 
         <div className={`og-site-header__actions ${menuOpen ? 'is-open' : ''}`.trim()}>
           <div className="og-site-header__controls">
@@ -73,17 +93,34 @@ export function SiteHeader({
               aria-label="Primary"
             >
               {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`og-site-header__link ${item.active ? 'is-active' : ''} ${item.accent ? 'og-site-header__link--accent' : ''} ${item.mobileOnly ? 'og-site-header__link--mobile-only' : ''}`.trim()}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    item.onSelect();
-                  }}
-                >
-                  {item.label}
-                </button>
+                item.href ? (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    className={`og-site-header__link ${item.active ? 'is-active' : ''} ${item.accent ? 'og-site-header__link--accent' : ''} ${item.mobileOnly ? 'og-site-header__link--mobile-only' : ''}`.trim()}
+                    onClick={(event) => {
+                      setMenuOpen(false);
+                      if (item.onSelect) {
+                        event.preventDefault();
+                        item.onSelect();
+                      }
+                    }}
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`og-site-header__link ${item.active ? 'is-active' : ''} ${item.accent ? 'og-site-header__link--accent' : ''} ${item.mobileOnly ? 'og-site-header__link--mobile-only' : ''}`.trim()}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      item.onSelect?.();
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                )
               ))}
             </nav>
           ) : null}

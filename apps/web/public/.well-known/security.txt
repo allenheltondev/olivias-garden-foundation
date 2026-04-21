@@ -1,0 +1,5 @@
+Contact: mailto:allen@oliviasgarden.org
+Canonical: https://oliviasgarden.org/.well-known/security.txt
+Policy: https://oliviasgarden.org/contact
+Preferred-Languages: en
+Expires: 2027-04-21T00:00:00Z

@@ -40,6 +40,7 @@ body {
   border: 0;
   font: inherit;
   text-align: left;
+  text-decoration: none;
 }
 
 .og-site-header__eyebrow {
@@ -131,6 +132,7 @@ body {
   border-radius: var(--og-radius-pill);
   padding: 0.55rem 0.85rem;
   font: inherit;
+  text-decoration: none;
   transition: background-color var(--duration-fast) var(--easing-out), color var(--duration-fast) var(--easing-out), transform var(--duration-fast) var(--easing-out);
 }
 
@@ -370,6 +372,7 @@ body {
   cursor: pointer;
   font: inherit;
   font-size: 0.9rem;
+  text-decoration: none;
   transition: background-color var(--duration-fast) var(--easing-out), color var(--duration-fast) var(--easing-out), transform var(--duration-fast) var(--easing-out);
 }
 
@@ -1169,6 +1172,7 @@ a {
   min-width: 2.75rem;
   border-radius: 999px;
   cursor: pointer;
+  text-decoration: none;
   transition: transform var(--duration-fast) var(--easing-out),
               background-color var(--duration-fast) var(--easing-out),
               border-color var(--duration-fast) var(--easing-out);
