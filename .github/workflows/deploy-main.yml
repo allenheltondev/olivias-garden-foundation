@@ -425,7 +425,6 @@ jobs:
         working-directory: services/grn-api
         env:
           DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
-          FRONTEND_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.GRN_DOMAIN_NAME_PROD || vars.GRN_DOMAIN_NAME_STAGING || '' }}
           DOMAIN_HOSTED_ZONE_ID: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD || vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
           FOUNDATION_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
         run: |
@@ -435,12 +434,23 @@ jobs:
             if [ -z "$value" ]; then
               return 0
             fi
+            if [[ "$value" != "${value#"${value%%[![:space:]]*}"}" || "$value" != "${value%"${value##*[![:space:]]}"}" ]]; then
+              echo "$label must not contain leading or trailing whitespace: [$value]" >&2
+              exit 1
+            fi
+            if [[ "$value" == *'"'* || "$value" == *"'"* ]]; then
+              echo "$label must not contain quotes: $value" >&2
+              exit 1
+            fi
             if [[ "$value" == *"://"* || "$value" == */* || "$value" == *":"* ]]; then
               echo "$label must be a bare hostname, not a URL: $value" >&2
               exit 1
             fi
+            if [[ ! "$value" =~ ^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])$ ]]; then
+              echo "$label is not a valid hostname for ACM: $value" >&2
+              exit 1
+            fi
           }
-          validate_domain_name "$FRONTEND_DOMAIN_NAME" "GRN frontend domain"
           validate_domain_name "$FOUNDATION_DOMAIN_NAME" "Foundation domain"
           ESCAPED_DATABASE_URL=$(printf '%s' "$DATABASE_URL" | sed 's/[&|]/\\&/g')
           DOMAIN_NAME=""
@@ -451,13 +461,9 @@ jobs:
               -e "s|{{REGION}}|${{ env.AWS_REGION }}|g" \
               -e "s|{{DATABASE_URL}}|${ESCAPED_DATABASE_URL}|g" \
               -e "s|{{ENVIRONMENT_NAME}}|${{ env.ENVIRONMENT }}|g" \
-              -e "s|{{FRONTEND_DOMAIN_NAME}}|${FRONTEND_DOMAIN_NAME}|g" \
               -e "s|{{DOMAIN_HOSTED_ZONE_ID}}|${DOMAIN_HOSTED_ZONE_ID}|g" \
               -e "s|{{DOMAIN_NAME}}|${DOMAIN_NAME}|g" \
               samconfig.template.toml > samconfig.toml
-          if [ -z "$FRONTEND_DOMAIN_NAME" ]; then
-            sed -i '/"FrontendDomainName="/d' samconfig.toml
-          fi
           if [ -z "$DOMAIN_HOSTED_ZONE_ID" ]; then
             sed -i '/"DomainHostedZoneId="/d' samconfig.toml
           fi
@@ -703,9 +709,23 @@ jobs:
           FOUNDATION_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
           STRIPE_SECRET_KEY: ${{ env.ENVIRONMENT == 'prod' && secrets.STRIPE_SECRET_KEY_PROD || secrets.STRIPE_SECRET_KEY_STAGING || '' }}
         run: |
-          if [ -n "$FOUNDATION_DOMAIN_NAME" ] && [[ "$FOUNDATION_DOMAIN_NAME" == *"://"* || "$FOUNDATION_DOMAIN_NAME" == */* || "$FOUNDATION_DOMAIN_NAME" == *":"* ]]; then
-            echo "Foundation domain must be a bare hostname, not a URL: $FOUNDATION_DOMAIN_NAME" >&2
-            exit 1
+          if [ -n "$FOUNDATION_DOMAIN_NAME" ]; then
+            if [[ "$FOUNDATION_DOMAIN_NAME" != "${FOUNDATION_DOMAIN_NAME#"${FOUNDATION_DOMAIN_NAME%%[![:space:]]*}"}" || "$FOUNDATION_DOMAIN_NAME" != "${FOUNDATION_DOMAIN_NAME%"${FOUNDATION_DOMAIN_NAME##*[![:space:]]}"}" ]]; then
+              echo "Foundation domain must not contain leading or trailing whitespace: [$FOUNDATION_DOMAIN_NAME]" >&2
+              exit 1
+            fi
+            if [[ "$FOUNDATION_DOMAIN_NAME" == *'"'* || "$FOUNDATION_DOMAIN_NAME" == *"'"* ]]; then
+              echo "Foundation domain must not contain quotes: $FOUNDATION_DOMAIN_NAME" >&2
+              exit 1
+            fi
+            if [[ "$FOUNDATION_DOMAIN_NAME" == *"://"* || "$FOUNDATION_DOMAIN_NAME" == */* || "$FOUNDATION_DOMAIN_NAME" == *":"* ]]; then
+              echo "Foundation domain must be a bare hostname, not a URL: $FOUNDATION_DOMAIN_NAME" >&2
+              exit 1
+            fi
+            if [[ ! "$FOUNDATION_DOMAIN_NAME" =~ ^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])$ ]]; then
+              echo "Foundation domain is not a valid hostname for AWS: $FOUNDATION_DOMAIN_NAME" >&2
+              exit 1
+            fi
           fi
           PARAM_OVERRIDES=(
             "DatabaseUrl=$DATABASE_URL"

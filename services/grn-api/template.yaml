@@ -4,10 +4,6 @@ Description: >
   Core services for Good Roots Network
 
 Parameters:
-  FrontendDomainName:
-    Type: String
-    Default: ""
-    Description: Optional custom domain name for the GRN frontend
   DomainProtocol:
     Type: String
     Default: https
@@ -32,7 +28,7 @@ Parameters:
   DomainName:
     Type: String
     Default: ""
-    Description: Optional root domain name used to derive the shared API custom domain
+    Description: Optional root domain name used to derive the GRN frontend and shared API custom domain
   StripeSecretKey:
     Type: String
     Default: ""
@@ -48,9 +44,8 @@ Parameters:
     Default: ""
     Description: Optional Stripe price id for GRN Pro checkout
 Conditions:
-  HasFrontendDomainName: !Not [!Equals [!Ref FrontendDomainName, ""]]
   DeployCustomDomain: !And
-    - !Condition HasFrontendDomainName
+    - !Not [!Equals [!Ref DomainName, ""]]
     - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
   DeployCiAuthSeedFunction: !Not [!Equals [!Ref EnvironmentName, prod]]
   DeploySharedApiBasePathMapping: !And
@@ -63,8 +58,8 @@ Globals:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
       AllowOrigin: !If
-        - HasFrontendDomainName
-        - !Sub "'${DomainProtocol}://${FrontendDomainName}'"
+        - DeployCustomDomain
+        - !Sub "'${DomainProtocol}://grn.${DomainName}'"
         - "'*'"
   Function:
     Architectures: [ arm64 ]
@@ -105,8 +100,8 @@ Resources:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: !If
-          - HasFrontendDomainName
-          - !Sub "'${DomainProtocol}://${FrontendDomainName}'"
+          - DeployCustomDomain
+          - !Sub "'${DomainProtocol}://grn.${DomainName}'"
           - "'*'"
       Auth:
         DefaultAuthorizer: LambdaAuthorizer
@@ -200,7 +195,7 @@ Resources:
         DefaultRootObject: index.html
         Aliases: !If
           - DeployCustomDomain
-          - [!Ref FrontendDomainName]
+          - [!Sub 'grn.${DomainName}']
           - !Ref AWS::NoValue
         ViewerCertificate: !If
           - DeployCustomDomain
@@ -240,10 +235,10 @@ Resources:
     Type: AWS::CertificateManager::Certificate
     Condition: DeployCustomDomain
     Properties:
-      DomainName: !Ref FrontendDomainName
+      DomainName: !Sub 'grn.${DomainName}'
       ValidationMethod: DNS
       DomainValidationOptions:
-        - DomainName: !Ref FrontendDomainName
+        - DomainName: !Sub 'grn.${DomainName}'
           HostedZoneId: !Ref DomainHostedZoneId
 
   FrontendDNSRecord:
@@ -251,7 +246,7 @@ Resources:
     Condition: DeployCustomDomain
     Properties:
       HostedZoneId: !Ref DomainHostedZoneId
-      Name: !Ref FrontendDomainName
+      Name: !Sub 'grn.${DomainName}'
       Type: A
       AliasTarget:
         DNSName: !GetAtt FrontendDistribution.DomainName
@@ -344,8 +339,8 @@ Resources:
           DATABASE_URL: !Ref DatabaseUrl
           EVENT_BUS_NAME: !Ref EventBus
           ORIGIN: !If
-            - HasFrontendDomainName
-            - !Sub "${DomainProtocol}://${FrontendDomainName}"
+            - DeployCustomDomain
+            - !Sub "${DomainProtocol}://grn.${DomainName}"
             - "*"
           STRIPE_SECRET_KEY: !Ref StripeSecretKey
           STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
@@ -502,7 +497,7 @@ Outputs:
     Description: CloudFront distribution URL for frontend
     Value: !If
       - DeployCustomDomain
-      - !Sub "${DomainProtocol}://${FrontendDomainName}"
+      - !Sub "${DomainProtocol}://grn.${DomainName}"
       - !Sub "https://${FrontendDistribution.DomainName}"
     Export:
       Name: !Sub "${AWS::StackName}-FrontendUrl"

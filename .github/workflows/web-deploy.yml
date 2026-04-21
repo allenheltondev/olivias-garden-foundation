@@ -59,6 +59,9 @@ jobs:
       - name: Setup SAM
         uses: aws-actions/setup-sam@v2
 
+      - name: Install esbuild globally for SAM
+        run: npm install -g esbuild
+
       - name: Install dependencies
         run: npm ci
 
