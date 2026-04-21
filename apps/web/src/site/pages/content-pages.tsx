@@ -138,7 +138,10 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
             <p>
               Olivia was a true Texas cowgirl who loved being outside, spending time in the garden, and interacting with animals. Learn more about her.
             </p>
-            <CtaButton onClick={() => onNavigate('/about')} variant="secondary">Olivia&apos;s story</CtaButton>
+            <CtaButton href="/about" onClick={(event) => {
+              event?.preventDefault?.();
+              onNavigate('/about');
+            }} variant="secondary">Olivia&apos;s story</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
             <h3>Get free okra seeds</h3>
@@ -146,7 +149,10 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
               The foundation gives away free okra seeds from a line of plants Olivia grew herself.
               It is meant to be an easy, generous way for people to start growing food.
             </p>
-            <CtaButton onClick={() => onNavigate('/okra')} variant="secondary">Request your seeds</CtaButton>
+            <CtaButton href="/okra" onClick={(event) => {
+              event?.preventDefault?.();
+              onNavigate('/okra');
+            }} variant="secondary">Request your seeds</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
             <h3>Support the work</h3>
@@ -154,7 +160,10 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
               You can directly support the garden,
               animals, tools, and community-facing programs to keep growing.
             </p>
-            <CtaButton onClick={() => onNavigate('/donate')} variant="secondary">Donate</CtaButton>
+            <CtaButton href="/donate" onClick={(event) => {
+              event?.preventDefault?.();
+              onNavigate('/donate');
+            }} variant="secondary">Donate</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
             <h3>Follow along</h3>
@@ -323,7 +332,10 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
             The easiest way into this is okra. It&apos;s one of the most forgiving plants you can grow.
             It tolerates heat, bounces back from neglect, and produces more than you expect.
           </p>
-          <CtaButton onClick={() => onNavigate('/seeds')}>Request your free okra seeds</CtaButton>
+          <CtaButton href="/seeds" onClick={(event) => {
+            event?.preventDefault?.();
+            onNavigate('/seeds');
+          }}>Request your free okra seeds</CtaButton>
         </Card>
 
         <Card title="Come work the land." className="get-involved-card">
@@ -337,7 +349,10 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
             <li>Animal care for chickens, turkeys, geese, goats, bees, and guineas</li>
             <li>Event and workshop support</li>
           </ul>
-          <CtaButton onClick={() => onNavigate('/contact')}>Sign up to volunteer</CtaButton>
+          <CtaButton href="/contact" onClick={(event) => {
+            event?.preventDefault?.();
+            onNavigate('/contact');
+          }}>Sign up to volunteer</CtaButton>
         </Card>
 
         <Card title="Hands-on workshops -- coming soon." className="get-involved-card">
@@ -356,7 +371,10 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
             anywhere, add your pin. Every garden on the map makes the case that this is normal,
             widespread, and worth doing.
           </p>
-          <CtaButton onClick={() => onNavigate('/okra')}>View the Okra Project map</CtaButton>
+          <CtaButton href="/okra" onClick={(event) => {
+            event?.preventDefault?.();
+            onNavigate('/okra');
+          }}>View the Okra Project map</CtaButton>
         </Card>
       </div>
 
@@ -425,7 +443,10 @@ export function SeedsPage({ onNavigate }: { onNavigate: (path: string) => void; 
           see where it leads. When it grows, we ask that you send back photos so the project can
           show how that seed line keeps moving through other gardens.
         </p>
-        <CtaButton onClick={() => onNavigate('/contact')}>Contact us for seeds</CtaButton>
+        <CtaButton href="/contact" onClick={(event) => {
+          event?.preventDefault?.();
+          onNavigate('/contact');
+        }}>Contact us for seeds</CtaButton>
       </Section>
     </>
   );
@@ -470,7 +491,10 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
         title="Where we're going."
         body="Next comes a fuller public program: workshops, stronger seed sharing through the Okra Project, and more structured ways to share what the foundation grows with the community."
       >
-        <CtaButton onClick={() => onNavigate('/get-involved')}>Get involved</CtaButton>
+        <CtaButton href="/get-involved" onClick={(event) => {
+          event?.preventDefault?.();
+          onNavigate('/get-involved');
+        }}>Get involved</CtaButton>
       </Section>
 
       <Section
