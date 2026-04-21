@@ -364,7 +364,7 @@ export function DonatePage({
       <PageHero
         eyebrow="Donate"
         title="Plant something permanent in Olivia's Garden."
-        body="Every gift becomes something visible in the memorial garden itself. Each donor's name is placed on a permanent acrylic marker."
+        body="Every gift lives somewhere you can point to. Each donor gets a named acrylic marker placed in the memorial garden — a small, visible reminder that you are part of the year this garden is holding."
         className="donate-hero"
         titleClassName="donate-hero__title"
         backgroundImage={buildResponsiveBackgroundImage('/images/home/sunset-garden.jpg')}

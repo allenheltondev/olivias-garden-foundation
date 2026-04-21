@@ -694,6 +694,32 @@ html {
   background: rgba(255, 252, 246, 0.95);
   padding: 0.9rem 1rem;
   color: var(--site-ink);
+  font: inherit;
+}
+
+.contact-form input:focus-visible,
+.contact-form textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-primary-600, #3f7d3a);
+  box-shadow: 0 0 0 3px rgba(63, 125, 58, 0.18);
+}
+
+.contact-form button[type="submit"]:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.contact-meta__link {
+  color: var(--site-leaf);
+  font-weight: 700;
+}
+
+.contact-card__list {
+  margin-top: 0.25rem;
+}
+.contact-card__list a {
+  color: var(--site-leaf);
+  font-weight: 600;
 }
 
 @media (max-width: 759px) {
