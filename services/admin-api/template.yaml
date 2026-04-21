@@ -57,6 +57,15 @@ Globals:
     Timeout: 5
     MemorySize: 1024
 
+Metadata:
+  esbuild-properties: &esbuild-properties
+    Format: esm
+    Minify: true
+    OutExtension:
+      - .js=.mjs
+    Target: es2022
+    Sourcemap: false
+
 Resources:
   Api:
     Type: AWS::Serverless::Api
@@ -221,14 +230,9 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
+        <<: *esbuild-properties
         EntryPoints:
           - src/auth/authorizer.mjs
-        Format: esm
-        Minify: true
-        OutExtension:
-          - .js=.mjs
-        Sourcemap: false
-        Target: es2022
     Properties:
       CodeUri: .
       Handler: src/auth/authorizer.handler
@@ -245,14 +249,9 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
+        <<: *esbuild-properties
         EntryPoints:
           - src/handlers/api.mjs
-        Format: esm
-        Minify: true
-        OutExtension:
-          - .js=.mjs
-        Sourcemap: false
-        Target: es2022
     Properties:
       CodeUri: .
       Handler: src/handlers/api.handler

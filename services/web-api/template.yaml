@@ -70,6 +70,21 @@ Globals:
         OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
         OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
 
+Metadata:
+  esbuild-properties: &esbuild-properties
+    Format: esm
+    Minify: true
+    OutExtension:
+      - .js=.mjs
+    Target: es2020
+    Sourcemap: false
+    EntryPoints:
+      - index.mjs
+    Banner:
+      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    External:
+      - '@aws-sdk/*'
+
 Resources:
   Api:
     Type: AWS::Serverless::Api
@@ -104,16 +119,9 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
-        Format: esm
-        Minify: true
-        OutExtension:
-          - .js=.mjs
-        Target: es2020
-        Sourcemap: false
+        <<: *esbuild-properties
         EntryPoints:
           - ./src/handlers/api.mjs
-        Banner:
-          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
     Properties:
       CodeUri: .
       Handler: src/handlers/api.handler
@@ -139,16 +147,9 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
-        Format: esm
-        Minify: true
-        OutExtension:
-          - .js=.mjs
-        Target: es2020
-        Sourcemap: false
+        <<: *esbuild-properties
         EntryPoints:
           - ./src/handlers/stripe-event-consumer.mjs
-        Banner:
-          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
     Properties:
       CodeUri: .
       Handler: src/handlers/stripe-event-consumer.handler
