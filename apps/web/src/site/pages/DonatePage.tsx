@@ -3,6 +3,7 @@ import { loadStripe, type StripeEmbeddedCheckout } from '@stripe/stripe-js';
 import { Button } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { CtaButton, PageHero } from '../chrome';
+import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
 import { stripePublishableKey, webApiBase } from '../routes';
 
 type DonationMode = 'one_time' | 'recurring';
@@ -347,7 +348,7 @@ export function DonatePage({
         body="Every gift becomes something visible in the memorial garden itself. Each donor's name is placed on a permanent acrylic marker."
         className="donate-hero"
         titleClassName="donate-hero__title"
-        backgroundImage="/images/home/sunset-garden.jpg"
+        backgroundImage={buildResponsiveBackgroundImage('/images/home/sunset-garden.jpg')}
         aside={(
           <div className="donate-hero__aside-card">
             <p className="donate-hero__eyebrow">This year&apos;s garden marker</p>
@@ -382,9 +383,10 @@ export function DonatePage({
         </div>
 
         <figure className="donate-story-band__photo">
-          <img
+          <ResponsiveImage
             src="/images/about/monarchs.jpg"
             alt="Butterflies and garden plants on the foundation grounds."
+            sizes="(max-width: 900px) 100vw, 38vw"
           />
           <figcaption>
             The marker changes each year, but the idea stays the same: your gift becomes part of

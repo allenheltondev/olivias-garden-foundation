@@ -1,0 +1,280 @@
+{
+  "generatedAt": "2026-04-21T18:48:43.588Z",
+  "widths": [
+    480,
+    768,
+    1280,
+    1600,
+    1920
+  ],
+  "formats": [
+    "avif"
+  ],
+  "images": {
+    "about/luffa-trellis.jpg": {
+      "original": "about/luffa-trellis.jpg",
+      "width": 1424,
+      "height": 1072,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/about/luffa-trellis-480.avif",
+            "bytes": 54833
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/about/luffa-trellis-768.avif",
+            "bytes": 137870
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/about/luffa-trellis-1280.avif",
+            "bytes": 348048
+          },
+          {
+            "width": 1424,
+            "path": "images/responsive/about/luffa-trellis-1424.avif",
+            "bytes": 444863
+          }
+        ]
+      }
+    },
+    "about/monarchs.jpg": {
+      "original": "about/monarchs.jpg",
+      "width": 982,
+      "height": 1304,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/about/monarchs-480.avif",
+            "bytes": 73277
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/about/monarchs-768.avif",
+            "bytes": 135437
+          },
+          {
+            "width": 982,
+            "path": "images/responsive/about/monarchs-982.avif",
+            "bytes": 193431
+          }
+        ]
+      }
+    },
+    "home/bee-suit.jpg": {
+      "original": "home/bee-suit.jpg",
+      "width": 979,
+      "height": 1304,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/bee-suit-480.avif",
+            "bytes": 68471
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/bee-suit-768.avif",
+            "bytes": 154786
+          },
+          {
+            "width": 979,
+            "path": "images/responsive/home/bee-suit-979.avif",
+            "bytes": 253026
+          }
+        ]
+      }
+    },
+    "home/garden-landscaping.jpg": {
+      "original": "home/garden-landscaping.jpg",
+      "width": 1536,
+      "height": 1024,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/garden-landscaping-480.avif",
+            "bytes": 31254
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/garden-landscaping-768.avif",
+            "bytes": 82140
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/home/garden-landscaping-1280.avif",
+            "bytes": 182690
+          },
+          {
+            "width": 1536,
+            "path": "images/responsive/home/garden-landscaping-1536.avif",
+            "bytes": 239254
+          }
+        ]
+      }
+    },
+    "home/garden-landscaping.png": {
+      "original": "home/garden-landscaping.png",
+      "width": 1536,
+      "height": 1024,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/garden-landscaping-480.avif",
+            "bytes": 33199
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/garden-landscaping-768.avif",
+            "bytes": 82536
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/home/garden-landscaping-1280.avif",
+            "bytes": 182770
+          },
+          {
+            "width": 1536,
+            "path": "images/responsive/home/garden-landscaping-1536.avif",
+            "bytes": 235417
+          }
+        ]
+      }
+    },
+    "home/melon-harvest.jpg": {
+      "original": "home/melon-harvest.jpg",
+      "width": 982,
+      "height": 1304,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/melon-harvest-480.avif",
+            "bytes": 83558
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/melon-harvest-768.avif",
+            "bytes": 190646
+          },
+          {
+            "width": 982,
+            "path": "images/responsive/home/melon-harvest-982.avif",
+            "bytes": 309777
+          }
+        ]
+      }
+    },
+    "home/produce-basket.jpg": {
+      "original": "home/produce-basket.jpg",
+      "width": 1424,
+      "height": 1072,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/produce-basket-480.avif",
+            "bytes": 44393
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/produce-basket-768.avif",
+            "bytes": 110476
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/home/produce-basket-1280.avif",
+            "bytes": 264803
+          },
+          {
+            "width": 1424,
+            "path": "images/responsive/home/produce-basket-1424.avif",
+            "bytes": 341812
+          }
+        ]
+      }
+    },
+    "home/sunset-garden.jpg": {
+      "original": "home/sunset-garden.jpg",
+      "width": 1424,
+      "height": 1069,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/sunset-garden-480.avif",
+            "bytes": 15137
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/sunset-garden-768.avif",
+            "bytes": 40293
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/home/sunset-garden-1280.avif",
+            "bytes": 98983
+          },
+          {
+            "width": 1424,
+            "path": "images/responsive/home/sunset-garden-1424.avif",
+            "bytes": 127055
+          }
+        ]
+      }
+    },
+    "home/watering-seedlings.jpg": {
+      "original": "home/watering-seedlings.jpg",
+      "width": 982,
+      "height": 1304,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/watering-seedlings-480.avif",
+            "bytes": 64435
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/watering-seedlings-768.avif",
+            "bytes": 133187
+          },
+          {
+            "width": 982,
+            "path": "images/responsive/home/watering-seedlings-982.avif",
+            "bytes": 202252
+          }
+        ]
+      }
+    },
+    "okra/olivia-okra.jpg": {
+      "original": "okra/olivia-okra.jpg",
+      "width": 978,
+      "height": 1304,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/olivia-okra-480.avif",
+            "bytes": 27779
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/olivia-okra-768.avif",
+            "bytes": 56341
+          },
+          {
+            "width": 978,
+            "path": "images/responsive/okra/olivia-okra-978.avif",
+            "bytes": 89518
+          }
+        ]
+      }
+    }
+  }
+}

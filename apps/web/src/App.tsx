@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import {
   confirmPasswordReset,
   confirmSignUp,
@@ -13,7 +13,6 @@ import {
 import type { AuthSession } from './auth/session';
 import { SiteFooter, SiteHeader } from './site/chrome';
 import { useRouteSeo } from './site/seo';
-import { DonatePage } from './site/pages/DonatePage';
 import { LoginPage } from './site/pages/LoginPage';
 import {
   AboutPage,
@@ -27,6 +26,11 @@ import {
 } from './site/pages/content-pages';
 import { getRouteByPath } from './site/routes';
 import { usePathname } from './site/usePathname';
+
+const DonatePage = lazy(async () => {
+  const module = await import('./site/pages/DonatePage');
+  return { default: module.DonatePage };
+});
 
 function App() {
   const { pathname, navigate } = usePathname();
@@ -197,6 +201,8 @@ function App() {
     signOut(authConfig);
   };
 
+  const routeFallback = <div className="page-section"><p className="page-text">Loading page...</p></div>;
+
   return (
     <div className="og-app-shell">
       <SiteHeader
@@ -239,7 +245,11 @@ function App() {
           />
         ) : null}
         {pathname === '/impact' ? <ImpactPage onNavigate={navigate} /> : null}
-        {pathname === '/donate' ? <DonatePage onNavigate={navigate} authSession={authSession} /> : null}
+        {pathname === '/donate' ? (
+          <Suspense fallback={routeFallback}>
+            <DonatePage onNavigate={navigate} authSession={authSession} />
+          </Suspense>
+        ) : null}
         {pathname === '/contact' ? <ContactPage /> : null}
         {pathname === '/seeds' ? <SeedsPage onNavigate={navigate} /> : null}
       </main>

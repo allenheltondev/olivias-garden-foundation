@@ -18,6 +18,7 @@ Thumbs.db
 .classpath
 .settings/
 *.sublime-*
+.claude/
 
 # Logs
 *.log
