@@ -69,6 +69,7 @@ Globals:
         FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
         OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
         OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
+        ALLOWED_RETURN_URL_ORIGINS: !ImportValue OGF-WebFrontendUrl
 
 Metadata:
   esbuild-properties: &esbuild-properties
