@@ -16,6 +16,7 @@ import {
 } from '../services/submissions.mjs';
 import { errorResponse, corsHeaders } from '../services/pagination.mjs';
 import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
+import { createHttpRouterHandler } from '../services/http-handler.mjs';
 
 const app = new Router();
 
@@ -280,19 +281,4 @@ app.notFound(() => {
   );
 });
 
-export const handler = async (event, context) => {
-  const response = await app.resolve(event, context);
-
-  // Ensure CORS headers are present on every response, including those
-  // built by the Powertools Router from plain-object route returns.
-  if (response && typeof response === 'object' && !response.headers?.['access-control-allow-origin']) {
-    response.headers = {
-      ...response.headers,
-      'access-control-allow-origin': '*',
-      'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
-      'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    };
-  }
-
-  return response;
-};
+export const handler = createHttpRouterHandler({ app, handlerName: 'public-api' });
