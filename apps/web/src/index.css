@@ -1388,6 +1388,19 @@ html {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7);
 }
 
+.donate-form-grid__required-note {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: #8d652c;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.donate-form-grid__required-mark {
+  color: #a14b1f;
+  font-weight: 800;
+}
+
 .donate-form-grid__dedication-note {
   color: var(--site-muted);
   font-size: 0.88rem;

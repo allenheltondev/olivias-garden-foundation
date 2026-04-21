@@ -500,16 +500,19 @@ export function DonatePage({
                 </div>
 
                 <div className="donate-form-grid">
+                  <p className="donate-form-grid__required-note">Fields marked * are required to make a donation.</p>
                   <label>
-                    <span>Name</span>
+                    <span>Name <span className="donate-form-grid__required-mark" aria-hidden="true">*</span></span>
                     <input type="text" value={donorName} onChange={(event) => setDonorName(event.target.value)} placeholder="Your name" required />
                   </label>
                   <label>
-                    <span>Email</span>
+                    <span>Email <span className="donate-form-grid__required-mark" aria-hidden="true">*</span></span>
                     <input type="email" value={donorEmail} onChange={(event) => setDonorEmail(event.target.value)} placeholder="you@example.com" required />
                   </label>
                   <label className="donate-form-grid__dedication">
-                    <span className="donate-form-grid__dedication-label">Who should we name your bee after?</span>
+                    <span className="donate-form-grid__dedication-label">
+                      Who should we name your bee after? <span className="donate-form-grid__required-mark" aria-hidden="true">*</span>
+                    </span>
                     <small className="donate-form-grid__dedication-note">Use your name, your family name, or honor someone you love.</small>
                     <input
                       type="text"
@@ -521,7 +524,7 @@ export function DonatePage({
                   </label>
                   {selectedMode === 'recurring' ? (
                     <label>
-                      <span>T-shirt choice</span>
+                      <span>T-shirt choice <span className="donate-form-grid__required-mark" aria-hidden="true">*</span></span>
                       <input
                         type="text"
                         value={tShirtPreference}

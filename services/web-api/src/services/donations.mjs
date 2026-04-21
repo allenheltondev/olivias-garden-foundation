@@ -270,7 +270,7 @@ function buildCheckoutForm(payload, authContext, customerId = null) {
 
   if (mode === 'recurring') {
     params.set('line_items[0][price_data][recurring][interval]', 'month');
-  } else {
+  } else if (!customerId) {
     params.set('customer_creation', 'always');
   }
   if (authContext?.userId) {
