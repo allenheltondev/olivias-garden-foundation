@@ -144,7 +144,6 @@ export function DonatePage({
   const [isCheckingStatus, setIsCheckingStatus] = useState(Boolean(initialReturnedSessionId));
   const [error, setError] = useState<string | null>(null);
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
-  const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [returnedSessionId, setReturnedSessionId] = useState(initialReturnedSessionId);
   const [checkoutStatus, setCheckoutStatus] = useState<DonationCheckoutSessionStatus | null>(null);
   const checkoutContainerRef = useRef<HTMLDivElement | null>(null);
@@ -162,6 +161,18 @@ export function DonatePage({
   const effectiveAmount = customAmount.trim()
     ? Math.round(Number(customAmount) * 100)
     : selectedAmount;
+  const trimmedDonorName = donorName.trim();
+  const trimmedDonorEmail = donorEmail.trim();
+  const trimmedDedicationName = dedicationName.trim();
+  const trimmedTShirtPreference = tShirtPreference.trim();
+  const hasValidAmount = Number.isFinite(effectiveAmount) && effectiveAmount >= 500;
+  const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedDonorEmail);
+  const hasRequiredDonationFields = Boolean(
+    trimmedDonorName
+      && hasValidEmail
+      && trimmedDedicationName
+      && (selectedMode === 'one_time' || trimmedTShirtPreference),
+  );
 
   useEffect(() => {
     if (!returnedSessionId) {
@@ -246,7 +257,6 @@ export function DonatePage({
 
         setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to open secure checkout.');
         setCheckoutClientSecret(null);
-        setCheckoutSessionId(null);
         setIsSubmitting(false);
       });
 
@@ -265,7 +275,6 @@ export function DonatePage({
     embeddedCheckoutRef.current?.destroy();
     embeddedCheckoutRef.current = null;
     setCheckoutClientSecret(null);
-    setCheckoutSessionId(null);
     setCheckoutStatus(null);
     setReturnedSessionId(null);
     setIsCheckingStatus(false);
@@ -280,23 +289,39 @@ export function DonatePage({
   const startCheckout = async (mode: DonationMode) => {
     setError(null);
 
-    if (!Number.isFinite(effectiveAmount) || effectiveAmount < 500) {
+    if (!hasValidAmount) {
       setError('Please choose or enter a donation of at least $5.');
+      return;
+    }
+    if (!trimmedDonorName) {
+      setError('Please enter the donor name before continuing.');
+      return;
+    }
+    if (!hasValidEmail) {
+      setError('Please enter a valid email address before continuing.');
+      return;
+    }
+    if (!trimmedDedicationName) {
+      setError('Please choose who the bee should be named after before continuing.');
+      return;
+    }
+    if (mode === 'recurring' && !trimmedTShirtPreference) {
+      setError('Please add a t-shirt preference before starting Garden Club checkout.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const { clientSecret, checkoutSessionId: nextCheckoutSessionId } = await createDonationCheckoutSession(
+      const { clientSecret } = await createDonationCheckoutSession(
         {
           mode,
           amountCents: effectiveAmount,
           returnUrl: `${window.location.origin}/donate?session_id={CHECKOUT_SESSION_ID}`,
-          donorName: donorName.trim() || undefined,
-          donorEmail: donorEmail.trim() || undefined,
-          dedicationName: dedicationName.trim() || undefined,
-          tShirtPreference: mode === 'recurring' ? (tShirtPreference.trim() || undefined) : undefined,
+          donorName: trimmedDonorName || undefined,
+          donorEmail: trimmedDonorEmail || undefined,
+          dedicationName: trimmedDedicationName || undefined,
+          tShirtPreference: mode === 'recurring' ? (trimmedTShirtPreference || undefined) : undefined,
         },
         authSession,
       );
@@ -307,7 +332,6 @@ export function DonatePage({
 
       setReturnedSessionId(null);
       setCheckoutStatus(null);
-      setCheckoutSessionId(nextCheckoutSessionId);
       setCheckoutClientSecret(clientSecret);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to start checkout.');
@@ -414,125 +438,130 @@ export function DonatePage({
 
         {checkoutStatus?.status === 'complete' ? null : (
           <div className="donate-form-card">
-            <div className="donate-mode-toggle" role="group" aria-label="Donation frequency">
-              <button
-                type="button"
-                className={`donate-mode-toggle__button ${selectedMode === 'one_time' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
-                onClick={() => setSelectedMode('one_time')}
-              >
-                One-time gift
-              </button>
-              <button
-                type="button"
-                className={`donate-mode-toggle__button ${selectedMode === 'recurring' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
-                onClick={() => setSelectedMode('recurring')}
-              >
-                Monthly Garden Club
-              </button>
-            </div>
-
-            <div className="donate-amounts" role="group" aria-label="Donation amount">
-              {[1500, 2500, 5000, 10000].map((amount) => (
-                <button
-                  key={amount}
-                  type="button"
-                  className={`donate-amounts__chip ${!customAmount && selectedAmount === amount ? 'donate-amounts__chip--active' : ''}`.trim()}
-                  onClick={() => {
-                    setSelectedAmount(amount);
-                    setCustomAmount('');
-                  }}
-                >
-                  ${amount / 100}
-                </button>
-              ))}
-              <label className="donate-amounts__custom">
-                <span>Custom</span>
-                <input
-                  type="number"
-                  min="5"
-                  step="1"
-                  inputMode="numeric"
-                  placeholder="Other amount"
-                  value={customAmount}
-                  onChange={(event) => setCustomAmount(event.target.value)}
-                />
-              </label>
-            </div>
-
-            <div className="donate-form-grid">
-              <label>
-                <span>Name</span>
-                <input type="text" value={donorName} onChange={(event) => setDonorName(event.target.value)} placeholder="Your name" />
-              </label>
-              <label>
-                <span>Email</span>
-                <input type="email" value={donorEmail} onChange={(event) => setDonorEmail(event.target.value)} placeholder="you@example.com" />
-              </label>
-              <label className="donate-form-grid__dedication">
-                <span className="donate-form-grid__dedication-label">Who should we name your bee after?</span>
-                <small className="donate-form-grid__dedication-note">Use your name, your family name, or honor someone you love.</small>
-                <input
-                  type="text"
-                  value={dedicationName}
-                  onChange={(event) => setDedicationName(event.target.value)}
-                  placeholder="Your name, family name, or in honor of someone"
-                />
-              </label>
-              {selectedMode === 'recurring' ? (
-                <label>
-                  <span>T-shirt choice</span>
-                  <input
-                    type="text"
-                    value={tShirtPreference}
-                    onChange={(event) => setTShirtPreference(event.target.value)}
-                    placeholder="Size, color, or style preference"
-                  />
-                </label>
-              ) : null}
-            </div>
-
-            <div className="donate-form-card__footer">
-              <div className="donate-form-card__summary-block">
-                <p className="donate-form-card__summary-eyebrow">Gift summary</p>
-                <p className="donate-form-card__summary">
-                  {selectedMode === 'recurring' ? 'Garden Club' : 'One-time donation'}: ${(effectiveAmount / 100).toFixed(2)}
-                </p>
-                <p className="page-text">
-                  {selectedMode === 'recurring'
-                    ? 'Begins monthly support and includes your free t-shirt at signup.'
-                    : 'Includes a permanent bee placed in the memorial garden in your honor, no matter the amount.'}
-                </p>
-              </div>
-              <div className="donate-form-card__cta-group">
-                <Button className="site-cta donate-form-card__cta" onClick={() => void startCheckout(selectedMode)} disabled={isSubmitting}>
-                  {isSubmitting ? 'Opening secure checkout...' : selectedMode === 'recurring' ? 'Become a monthly member' : 'Make donation'}
-                </Button>
-                <p className="donate-form-card__checkout-note">
-                  Secure checkout. No account required.
-                </p>
-              </div>
-            </div>
-
-            {error ? <p className="donate-form-card__error" role="alert">{error}</p> : null}
-
             {checkoutClientSecret ? (
               <div className="donate-embedded-checkout">
                 <div className="donate-embedded-checkout__header">
                   <div>
                     <p className="donate-embedded-checkout__eyebrow">Secure payment</p>
                     <h3>Secure checkout is ready below.</h3>
-                    <p>
-                      Complete the payment here without leaving the donate page.
-                      {checkoutSessionId ? ` Session ${checkoutSessionId} is active.` : ''}
-                    </p>
+                    <p>Complete the payment here without leaving the donate page.</p>
                   </div>
                   <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>
-                    Edit donation
+                    Go back
                   </Button>
                 </div>
                 <div className="donate-embedded-checkout__mount" ref={checkoutContainerRef} />
               </div>
-            ) : null}
+            ) : (
+              <>
+                <div className="donate-mode-toggle" role="group" aria-label="Donation frequency">
+                  <button
+                    type="button"
+                    className={`donate-mode-toggle__button ${selectedMode === 'one_time' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
+                    onClick={() => setSelectedMode('one_time')}
+                  >
+                    One-time gift
+                  </button>
+                  <button
+                    type="button"
+                    className={`donate-mode-toggle__button ${selectedMode === 'recurring' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
+                    onClick={() => setSelectedMode('recurring')}
+                  >
+                    Monthly Garden Club
+                  </button>
+                </div>
+
+                <div className="donate-amounts" role="group" aria-label="Donation amount">
+                  {[1500, 2500, 5000, 10000].map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      className={`donate-amounts__chip ${!customAmount && selectedAmount === amount ? 'donate-amounts__chip--active' : ''}`.trim()}
+                      onClick={() => {
+                        setSelectedAmount(amount);
+                        setCustomAmount('');
+                      }}
+                    >
+                      ${amount / 100}
+                    </button>
+                  ))}
+                  <label className="donate-amounts__custom">
+                    <span>Custom</span>
+                    <input
+                      type="number"
+                      min="5"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="Other amount"
+                      value={customAmount}
+                      onChange={(event) => setCustomAmount(event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="donate-form-grid">
+                  <label>
+                    <span>Name</span>
+                    <input type="text" value={donorName} onChange={(event) => setDonorName(event.target.value)} placeholder="Your name" required />
+                  </label>
+                  <label>
+                    <span>Email</span>
+                    <input type="email" value={donorEmail} onChange={(event) => setDonorEmail(event.target.value)} placeholder="you@example.com" required />
+                  </label>
+                  <label className="donate-form-grid__dedication">
+                    <span className="donate-form-grid__dedication-label">Who should we name your bee after?</span>
+                    <small className="donate-form-grid__dedication-note">Use your name, your family name, or honor someone you love.</small>
+                    <input
+                      type="text"
+                      value={dedicationName}
+                      onChange={(event) => setDedicationName(event.target.value)}
+                      placeholder="Your name, family name, or in honor of someone"
+                      required
+                    />
+                  </label>
+                  {selectedMode === 'recurring' ? (
+                    <label>
+                      <span>T-shirt choice</span>
+                      <input
+                        type="text"
+                        value={tShirtPreference}
+                        onChange={(event) => setTShirtPreference(event.target.value)}
+                        placeholder="Size, color, or style preference"
+                        required
+                      />
+                    </label>
+                  ) : null}
+                </div>
+
+                <div className="donate-form-card__footer">
+                  <div className="donate-form-card__summary-block">
+                    <p className="donate-form-card__summary-eyebrow">Gift summary</p>
+                    <p className="donate-form-card__summary">
+                      {selectedMode === 'recurring' ? 'Garden Club' : 'One-time donation'}: ${(effectiveAmount / 100).toFixed(2)}
+                    </p>
+                    <p className="page-text">
+                      {selectedMode === 'recurring'
+                        ? 'Begins monthly support and includes your free t-shirt at signup.'
+                        : 'Includes a permanent bee placed in the memorial garden in your honor, no matter the amount.'}
+                    </p>
+                  </div>
+                  <div className="donate-form-card__cta-group">
+                    <Button
+                      className="site-cta donate-form-card__cta"
+                      onClick={() => void startCheckout(selectedMode)}
+                      disabled={isSubmitting || !hasValidAmount || !hasRequiredDonationFields}
+                    >
+                      {isSubmitting ? 'Opening secure checkout...' : selectedMode === 'recurring' ? 'Become a monthly member' : 'Make donation'}
+                    </Button>
+                    <p className="donate-form-card__checkout-note">
+                      Secure checkout. No account required.
+                    </p>
+                  </div>
+                </div>
+
+                {error ? <p className="donate-form-card__error" role="alert">{error}</p> : null}
+              </>
+            )}
           </div>
         )}
 

@@ -177,7 +177,70 @@ function validateCheckoutPayload(payload) {
   parseAndValidateReturnUrl(payload?.returnUrl);
 }
 
-function buildCheckoutForm(payload, authContext) {
+function buildCheckoutDescription(mode, dedicationName) {
+  const baseDescription = mode === 'recurring'
+    ? 'Monthly Garden Club membership with a permanent bee in the garden and a free t-shirt.'
+    : 'One-time gift with a permanent acrylic bee placed in the garden.';
+
+  if (!dedicationName) {
+    return baseDescription;
+  }
+
+  return `${baseDescription} Bee dedication: ${dedicationName}.`;
+}
+
+async function createStripeCustomer(stripeSecretKey, donorName, donorEmail, dedicationName, authContext, correlationId) {
+  if (!donorEmail) {
+    return null;
+  }
+
+  const params = new URLSearchParams();
+  params.set('email', donorEmail);
+
+  if (donorName) {
+    params.set('name', donorName);
+  }
+  if (dedicationName) {
+    params.set('metadata[dedication_name]', dedicationName);
+  }
+  if (authContext?.userId) {
+    params.set('metadata[user_id]', authContext.userId);
+  }
+
+  try {
+    const response = await fetch('https://api.stripe.com/v1/customers', {
+      method: 'POST',
+      headers: {
+        authorization: `Basic ${Buffer.from(`${stripeSecretKey}:`).toString('base64')}`,
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      body: params
+    });
+
+    if (!response.ok) {
+      console.warn(JSON.stringify({
+        level: 'warn',
+        correlationId,
+        status: response.status,
+        message: 'Stripe customer prefill creation failed'
+      }));
+      return null;
+    }
+
+    const payload = await response.json();
+    return typeof payload.id === 'string' && payload.id ? payload.id : null;
+  } catch (error) {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      correlationId,
+      message: 'Stripe customer prefill request failed',
+      error: error instanceof Error ? error.message : String(error)
+    }));
+    return null;
+  }
+}
+
+function buildCheckoutForm(payload, authContext, customerId = null) {
   const mode = normalizeMode(payload.mode);
   const returnUrl = parseAndValidateReturnUrl(payload.returnUrl);
   const donorName = payload.donorName?.trim() || authContext?.name || undefined;
@@ -200,24 +263,29 @@ function buildCheckoutForm(payload, authContext) {
   );
   params.set(
     'line_items[0][price_data][product_data][description]',
-    mode === 'recurring'
-      ? 'Monthly Garden Club membership with a permanent bee in the garden and a free t-shirt.'
-      : 'One-time gift with a permanent acrylic bee placed in the garden.'
+    buildCheckoutDescription(mode, dedicationName)
   );
   params.set('line_items[0][price_data][unit_amount]', String(payload.amountCents));
   params.set('metadata[donation_mode]', mode);
 
   if (mode === 'recurring') {
     params.set('line_items[0][price_data][recurring][interval]', 'month');
+  } else {
+    params.set('customer_creation', 'always');
   }
   if (authContext?.userId) {
     params.set('metadata[user_id]', authContext.userId);
   }
+  if (customerId) {
+    params.set('customer', customerId);
+  }
   if (donorName) {
     params.set('metadata[donor_name]', donorName);
   }
-  if (donorEmail) {
+  if (!customerId && donorEmail) {
     params.set('customer_email', donorEmail);
+  }
+  if (donorEmail) {
     params.set('metadata[donor_email]', donorEmail);
   }
   if (dedicationName) {
@@ -546,7 +614,15 @@ export async function createDonationCheckoutSession(payload, event, correlationI
   validateCheckoutPayload(payload);
 
   const stripeSecretKey = requiredEnvVar('STRIPE_SECRET_KEY');
-  const form = buildCheckoutForm(payload, authContext);
+  const customerId = await createStripeCustomer(
+    stripeSecretKey,
+    payload.donorName?.trim() || authContext?.name || undefined,
+    payload.donorEmail?.trim() || authContext?.email || undefined,
+    payload.dedicationName?.trim() || undefined,
+    authContext,
+    correlationId
+  );
+  const form = buildCheckoutForm(payload, authContext, customerId);
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
     headers: {
