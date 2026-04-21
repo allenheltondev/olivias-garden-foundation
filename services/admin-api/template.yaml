@@ -99,6 +99,8 @@ Resources:
   SharedApiBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Condition: DeploySharedApiBasePathMapping
+    DependsOn:
+      - ApiapiStage
     Properties:
       DomainName: !Sub "api.${DomainName}"
       RestApiId: !Ref Api
