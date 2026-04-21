@@ -1,0 +1,26 @@
+{
+  "name": "@olivias/admin-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "sam build --template-file template.yaml",
+    "lint": "eslint .",
+    "test": "node ./test/run-tests.mjs",
+    "typecheck": "node -e \"console.log('admin api typecheck: no TypeScript files yet')\""
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/event-handler": "^2.32.0",
+    "@aws-lambda-powertools/logger": "^2.32.0",
+    "aws-jwt-verify": "^5.1.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.1",
+    "globals": "^15.14.0"
+  }
+}

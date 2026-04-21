@@ -1,4 +1,4 @@
-name: Pull Request Staging Validation Reusable
+name: Shared Staging Validation Reusable
 
 on:
   workflow_call:
@@ -10,6 +10,12 @@ on:
         required: true
         type: string
       grn_frontend:
+        required: true
+        type: string
+      admin_backend:
+        required: true
+        type: string
+      admin_frontend:
         required: true
         type: string
       okra_backend:
@@ -25,6 +31,8 @@ on:
         required: true
       postman_api_key:
         required: true
+      stripe_secret_key_staging:
+        required: false
       stripe_webhook_secret:
         required: false
       foundation_signup_slack_webhook_url_staging:
@@ -46,7 +54,7 @@ jobs:
     concurrency:
       group: foundation-stack-ogf-web-staging
       cancel-in-progress: false
-    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true' || inputs.okra_backend == 'true'
+    if: inputs.shared_all == 'true' || inputs.grn_backend == 'true' || inputs.grn_frontend == 'true' || inputs.admin_backend == 'true' || inputs.admin_frontend == 'true' || inputs.okra_backend == 'true'
     environment:
       name: staging
     env:
@@ -514,10 +522,239 @@ jobs:
               --paths "/*"
           fi
 
-  comment-staging-deployment:
-    name: Comment GRN Staging Deployment
+  deploy-staging-admin-backend:
+    name: Deploy Admin Staging Backend
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend]
+    needs: [deploy-staging-foundation]
+    if: inputs.shared_all == 'true' || inputs.admin_backend == 'true' || inputs.admin_frontend == 'true'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      ADMIN_STACK_NAME: ogf-admin-staging
+
+    outputs:
+      user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
+      user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
+      user-pool-domain: ${{ steps.get-outputs.outputs.user-pool-domain }}
+      api-url: ${{ steps.get-outputs.outputs.api-url }}
+      frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
+      frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
+      cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Admin-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js for admin backend build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin API dependencies
+        working-directory: .
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run admin database migrations
+        run: |
+          DATABASE_URL="${{ secrets.database_url_staging }}"
+          export DATABASE_URL
+          cd services/admin-api
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
+      - name: Build admin backend
+        run: sam build --template-file services/admin-api/template.yaml
+
+      - name: Deploy admin backend
+        env:
+          DATABASE_URL: ${{ secrets.database_url_staging }}
+          DOMAIN_HOSTED_ZONE_ID: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
+          FOUNDATION_DOMAIN_NAME: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+          STRIPE_SECRET_KEY: ${{ secrets.stripe_secret_key_staging }}
+        run: |
+          PARAM_OVERRIDES=(
+            "DatabaseUrl=$DATABASE_URL"
+            "EnvironmentName=staging"
+          )
+          if [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+          if [ -n "$FOUNDATION_DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME")
+          fi
+          if [ -n "$STRIPE_SECRET_KEY" ]; then
+            PARAM_OVERRIDES+=("StripeSecretKey=$STRIPE_SECRET_KEY")
+          fi
+          sam deploy \
+            --template-file services/admin-api/template.yaml \
+            --stack-name "${{ env.ADMIN_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.ADMIN_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Get admin stack outputs
+        id: get-outputs
+        run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+
+          USER_POOL_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolDomain'].OutputValue" \
+            --output text)
+
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucket'].OutputValue" \
+            --output text)
+
+          CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)
+
+          echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
+          echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+
+  deploy-staging-admin-frontend:
+    name: Deploy Admin Staging Frontend
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-admin-backend, deploy-staging-okra]
+    if: inputs.shared_all == 'true' || inputs.admin_frontend == 'true'
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Admin-Frontend-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install admin dependencies
+        working-directory: apps/admin
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Get foundation web frontend URL
+        id: get-foundation-url
+        run: |
+          FOUNDATION_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "ogf-web-staging" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Create admin environment file
+        working-directory: apps/admin
+        run: |
+          cat > .env << EOF
+          VITE_USER_POOL_ID=${{ needs.deploy-staging-admin-backend.outputs.user-pool-id }}
+          VITE_USER_POOL_CLIENT_ID=${{ needs.deploy-staging-admin-backend.outputs.user-pool-client-id }}
+          VITE_USER_POOL_DOMAIN=${{ needs.deploy-staging-admin-backend.outputs.user-pool-domain }}
+          VITE_ADMIN_API_URL=${{ needs.deploy-staging-admin-backend.outputs.api-url }}
+          VITE_OKRA_ADMIN_API_URL=${{ needs.deploy-staging-okra.outputs.admin-api-url }}
+          VITE_AWS_REGION=${{ env.AWS_REGION }}
+          VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
+          EOF
+
+      - name: Build admin frontend
+        working-directory: apps/admin
+        run: npm run build
+
+      - name: Deploy admin frontend to S3
+        run: |
+          aws s3 sync apps/admin/dist/ "s3://${{ needs.deploy-staging-admin-backend.outputs.frontend-bucket }}/" \
+            --region ${{ env.AWS_REGION }} \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "manifest.json"
+
+          aws s3 cp apps/admin/dist/index.html "s3://${{ needs.deploy-staging-admin-backend.outputs.frontend-bucket }}/index.html" \
+            --region ${{ env.AWS_REGION }} \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+          if [ -f "apps/admin/dist/manifest.json" ]; then
+            aws s3 cp apps/admin/dist/manifest.json "s3://${{ needs.deploy-staging-admin-backend.outputs.frontend-bucket }}/manifest.json" \
+              --region ${{ env.AWS_REGION }} \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "application/json"
+          fi
+
+      - name: Invalidate admin CloudFront cache
+        run: |
+          DISTRIBUTION_ID="${{ needs.deploy-staging-admin-backend.outputs.cloudfront-distribution-id }}"
+          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+          fi
+
+  comment-staging-deployment:
+    name: Comment Shared Staging Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-backend, deploy-staging-frontend, deploy-staging-admin-backend, deploy-staging-admin-frontend]
     if: always() && needs.deploy-staging-backend.result == 'success'
 
     steps:
@@ -525,17 +762,18 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const output = `#### GRN Staging Deployment Complete
+            const output = `#### Shared Staging Deployment Complete
 
             **Environment:** \`staging\`
-            **App:** \`apps/grn\`
-            **Service:** \`services/grn-api\`
-            **Stack:** \`ogf-grn-staging\`
+            **GRN Stack:** \`ogf-grn-staging\`
+            **Admin Stack:** \`ogf-admin-staging\`
 
             **Frontend URL (apps/grn):** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
             **API URL (services/grn-api):** ${{ needs.deploy-staging-backend.outputs.api-url }}
+            **Admin URL (apps/admin):** ${{ needs.deploy-staging-admin-backend.outputs.frontend-url }}
+            **Admin API URL (services/admin-api):** ${{ needs.deploy-staging-admin-backend.outputs.api-url }}
 
-            This PR updated the shared GRN staging environment.`;
+            This PR updated the shared staging environment for GRN, Admin, Foundation, and supporting services.`;
 
             github.rest.issues.createComment({
               issue_number: Number('${{ inputs.pr_number }}'),
@@ -671,13 +909,15 @@ jobs:
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
   staging-validation-summary:
-    name: GRN Staging Validation Summary
+    name: Shared Staging Validation Summary
     runs-on: ubuntu-latest
     needs:
       - deploy-staging-foundation
       - deploy-staging-okra
       - deploy-staging-backend
       - deploy-staging-frontend
+      - deploy-staging-admin-backend
+      - deploy-staging-admin-frontend
       - staging-public-api-smoke
       - postman-public-smoke
       - postman-api-tests
@@ -699,8 +939,10 @@ jobs:
           check_result "deploy-staging-okra" "${{ needs.deploy-staging-okra.result }}"
           check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
           check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
+          check_result "deploy-staging-admin-backend" "${{ needs.deploy-staging-admin-backend.result }}"
+          check_result "deploy-staging-admin-frontend" "${{ needs.deploy-staging-admin-frontend.result }}"
           check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
           check_result "postman-public-smoke" "${{ needs.postman-public-smoke.result }}"
           check_result "postman-api-tests" "${{ needs.postman-api-tests.result }}"
 
-          echo "Staging validation passed"
+          echo "Shared staging validation passed"

@@ -9,6 +9,9 @@ on:
       foundation_web_stack_name:
         required: true
         type: string
+      web_api_stack_name:
+        required: true
+        type: string
       okra_stack_name:
         required: true
         type: string
@@ -30,6 +33,14 @@ on:
         required: false
         type: string
         default: ""
+      stripe_event_bus_name:
+        required: false
+        type: string
+        default: ""
+      stripe_publishable_key:
+        required: false
+        type: string
+        default: ""
     secrets:
       aws_role_arn:
         required: true
@@ -37,10 +48,17 @@ on:
         required: true
       signup_slack_webhook_url:
         required: false
+      web_stripe_secret_key:
+        required: false
+      web_donation_slack_webhook_url:
+        required: false
     outputs:
       frontend-url:
         description: Foundation Web frontend URL
         value: ${{ jobs.deploy.outputs.frontend-url }}
+      web-api-url:
+        description: Web API URL
+        value: ${{ jobs.deploy.outputs.web-api-url }}
       frontend-bucket:
         description: Foundation Web frontend bucket
         value: ${{ jobs.deploy.outputs.frontend-bucket }}
@@ -63,6 +81,7 @@ jobs:
       frontend-url: ${{ steps.stack-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}
       cloudfront-distribution-id: ${{ steps.stack-outputs.outputs.cloudfront-distribution-id }}
+      web-api-url: ${{ steps.web-api-stack.outputs.api-url }}
 
     steps:
       - name: Checkout code
@@ -80,12 +99,19 @@ jobs:
         with:
           use-installer: true
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Setup Node.js for foundation function build
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: infra/foundation-web/package-lock.json
+          cache-dependency-path: |
+            infra/foundation-web/package-lock.json
+            package-lock.json
 
       - name: Install esbuild for SAM
         run: npm install -g esbuild
@@ -93,6 +119,27 @@ jobs:
       - name: Install foundation infrastructure dependencies
         working-directory: infra/foundation-web
         run: npm ci --ignore-scripts
+
+      - name: Download web-api SAM build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: foundation-web-api-sam-build
+          path: services/web-api/.aws-sam/build
+          if-no-files-found: ignore
+
+      - name: Detect downloaded web-api build artifact
+        id: web-api-build-artifact
+        shell: bash
+        run: |
+          if [ -f services/web-api/.aws-sam/build/template.yaml ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install web-api dependencies
+        if: steps.web-api-build-artifact.outputs.available != 'true'
+        run: npm ci --workspace @olivias/web-api --ignore-scripts
 
       - name: Validate custom domain configuration
         env:
@@ -139,6 +186,52 @@ jobs:
             --stack-name "${{ inputs.foundation_web_stack_name }}" \
             --resolve-s3 \
             --s3-prefix "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Run web-api database migrations
+        working-directory: services/web-api
+        env:
+          DATABASE_URL: ${{ secrets.database_url }}
+        run: |
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
+      - name: Build web-api
+        if: steps.web-api-build-artifact.outputs.available != 'true'
+        run: sam build --template-file services/web-api/template.yaml --build-dir services/web-api/.aws-sam/build
+
+      - name: Deploy web-api stack
+        env:
+          DATABASE_URL: ${{ secrets.database_url }}
+          DOMAIN_NAME: ${{ inputs.domain_name }}
+          DOMAIN_HOSTED_ZONE_ID: ${{ inputs.domain_hosted_zone_id }}
+          STRIPE_SECRET_KEY: ${{ secrets.web_stripe_secret_key }}
+          STRIPE_EVENT_BUS_NAME: ${{ inputs.stripe_event_bus_name }}
+          DONATION_SLACK_WEBHOOK_URL: ${{ secrets.web_donation_slack_webhook_url }}
+        run: |
+          PARAM_OVERRIDES=(
+            "DatabaseUrl=$DATABASE_URL"
+            "EnvironmentName=${{ inputs.environment_name }}"
+            "StripeSecretKey=$STRIPE_SECRET_KEY"
+          )
+          if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+          if [ -n "$STRIPE_EVENT_BUS_NAME" ]; then
+            PARAM_OVERRIDES+=("StripeEventBusName=$STRIPE_EVENT_BUS_NAME")
+          fi
+          if [ -n "$DONATION_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("DonationSlackWebhookUrl=$DONATION_SLACK_WEBHOOK_URL")
+          fi
+
+          sam deploy \
+            --template-file services/web-api/.aws-sam/build/template.yaml \
+            --stack-name "${{ inputs.web_api_stack_name }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ inputs.web_api_stack_name }}" \
             --region "${{ inputs.aws_region }}" \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
@@ -290,6 +383,16 @@ jobs:
             --output text)
           echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
 
+      - name: Read web-api stack outputs
+        id: web-api-stack
+        run: |
+          WEB_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.web_api_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+          echo "api-url=$WEB_API_URL" >> $GITHUB_OUTPUT
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -317,6 +420,8 @@ jobs:
           VITE_AUTH_USER_POOL_CLIENT_ID: ${{ steps.stack-outputs.outputs.user-pool-client-id }}
           VITE_AUTH_USER_POOL_DOMAIN: ${{ steps.stack-outputs.outputs.user-pool-domain }}
           VITE_GRN_URL: ${{ steps.grn-stack.outputs.frontend-url }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ inputs.stripe_publishable_key }}
+          VITE_WEB_API_BASE: ${{ steps.web-api-stack.outputs.api-url }}
         run: npm --workspace @olivias/web run build
 
       - name: Deploy frontend assets to S3

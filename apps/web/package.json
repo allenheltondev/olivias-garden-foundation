@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.9.0",
     "@olivias/ui": "file:../../packages/ui",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",

@@ -41,6 +41,21 @@ Conditions:
     - !Not [!Equals [!Ref DomainName, '']]
     - !Not [!Equals [!Ref DomainHostedZoneId, '']]
 
+Metadata:
+  esbuild-properties: &esbuild-properties
+    Format: esm
+    Minify: true
+    OutExtension:
+      - .js=.mjs
+    Target: es2020
+    Sourcemap: false
+    EntryPoints:
+      - index.mjs
+    Banner:
+      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    External:
+      - '@aws-sdk/*'
+
 Resources:
   FoundationUserPool:
     Type: AWS::Cognito::UserPool
@@ -84,18 +99,9 @@ Resources:
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
-        Format: esm
-        Minify: true
-        OutExtension:
-          - .js=.mjs
-        Target: es2020
-        Sourcemap: false
+        <<: *esbuild-properties
         EntryPoints:
           - post-confirmation.mjs
-        Banner:
-          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
-        External:
-          - '@aws-sdk/*'
     Properties:
       CodeUri: functions
       Handler: post-confirmation.handler
@@ -500,16 +506,14 @@ Outputs:
     Description: CloudFront distribution ID for the foundation web frontend.
     Value: !Ref WebFrontendDistribution
 
-  WebFrontendDistributionDomainName:
-    Description: CloudFront domain name for the foundation web frontend.
-    Value: !GetAtt WebFrontendDistribution.DomainName
-
   WebFrontendUrl:
     Description: Public URL for the foundation web frontend.
     Value: !If
       - DeployCustomDomain
       - !Sub 'https://${DomainName}'
       - !Sub 'https://${WebFrontendDistribution.DomainName}'
+    Export:
+      Name: OGF-WebFrontendUrl
 
   SharedAssetsBucketName:
     Description: Shared S3 bucket for uploaded and served assets.

@@ -1,0 +1,20 @@
+{
+  "name": "Olivia's Garden Foundation",
+  "short_name": "OGF",
+  "description": "Olivia's Garden Foundation",
+  "theme_color": "#3F7D3A",
+  "background_color": "#F7F5EF",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

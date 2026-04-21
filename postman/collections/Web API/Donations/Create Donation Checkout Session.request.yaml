@@ -1,0 +1,44 @@
+$kind: http-request
+name: Create Donation Checkout Session
+description: |-
+  Create a Stripe checkout session for either a one-time donation or a recurring Garden Club donation.
+method: POST
+url: '{{webBaseUrl}}/donations/checkout-session'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+    disabled: true
+body:
+  type: json
+  content: |-
+    {
+      "mode": "one_time",
+      "amountCents": 2500,
+      "returnUrl": "https://oliviasgarden.org/donate?session_id={CHECKOUT_SESSION_ID}",
+      "donorName": "Olivia Garden Donor",
+      "donorEmail": "donor@example.com",
+      "dedicationName": "The Smith Family"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200 or 503 when Stripe is not configured", function () {
+          pm.expect([200, 503]).to.include(pm.response.code);
+      });
+
+      if (pm.response.code === 200) {
+          const response = pm.response.json();
+          pm.test("Response contains Stripe checkout details", function () {
+              pm.expect(response.clientSecret).to.be.a("string").and.not.empty;
+              pm.expect(response.checkoutSessionId).to.be.a("string").and.not.empty;
+          });
+      } else {
+          const response = pm.response.json();
+          pm.test("503 includes error payload", function () {
+              pm.expect(response.error).to.be.a("string").and.not.empty;
+          });
+      }

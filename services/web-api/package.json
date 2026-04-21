@@ -1,0 +1,30 @@
+{
+  "name": "@olivias/web-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "sam build --template-file template.yaml",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "node -e \"console.log('backend typecheck: no TypeScript files yet')\""
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/event-handler": "^2.32.0",
+    "@aws-lambda-powertools/logger": "^2.32.0",
+    "@aws-lambda-powertools/validation": "^2.32.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.902.0",
+    "aws-jwt-verify": "^5.1.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.20.1",
+    "globals": "^15.14.0",
+    "vitest": "^3.0.5"
+  }
+}
