@@ -12,6 +12,7 @@ type DonationCheckoutRequest = {
   mode: DonationMode;
   amountCents: number;
   returnUrl: string;
+  anonymousDonation?: boolean;
   donorName?: string;
   donorEmail?: string;
   dedicationName?: string;
@@ -137,6 +138,7 @@ export function DonatePage({
   const [selectedMode, setSelectedMode] = useState<DonationMode>('one_time');
   const [selectedAmount, setSelectedAmount] = useState(2500);
   const [customAmount, setCustomAmount] = useState('');
+  const [anonymousDonation, setAnonymousDonation] = useState(false);
   const [donorName, setDonorName] = useState(authSession?.user.name ?? '');
   const [donorEmail, setDonorEmail] = useState(authSession?.user.email ?? '');
   const [dedicationName, setDedicationName] = useState('');
@@ -159,6 +161,21 @@ export function DonatePage({
     }
   }, [authSession?.user.email, authSession?.user.name]);
 
+  useEffect(() => {
+    if (anonymousDonation) {
+      setDonorName('');
+      setDonorEmail('');
+      return;
+    }
+
+    if (authSession?.user.name) {
+      setDonorName((current) => current || authSession.user.name || '');
+    }
+    if (authSession?.user.email) {
+      setDonorEmail((current) => current || authSession.user.email || '');
+    }
+  }, [anonymousDonation, authSession?.user.email, authSession?.user.name]);
+
   const effectiveAmount = customAmount.trim()
     ? Math.round(Number(customAmount) * 100)
     : selectedAmount;
@@ -166,12 +183,13 @@ export function DonatePage({
   const trimmedDonorEmail = donorEmail.trim();
   const trimmedDedicationName = dedicationName.trim();
   const trimmedTShirtPreference = tShirtPreference.trim();
+  const effectiveDedicationName = trimmedDedicationName || (anonymousDonation ? 'Anonymous donor' : '');
   const hasValidAmount = Number.isFinite(effectiveAmount) && effectiveAmount >= 500;
   const hasValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedDonorEmail);
   const hasRequiredDonationFields = Boolean(
-    trimmedDonorName
-      && hasValidEmail
-      && trimmedDedicationName
+    (anonymousDonation || trimmedDonorName)
+      && (anonymousDonation || hasValidEmail)
+      && effectiveDedicationName
       && (selectedMode === 'one_time' || trimmedTShirtPreference),
   );
 
@@ -294,15 +312,15 @@ export function DonatePage({
       setError('Please choose or enter a donation of at least $5.');
       return;
     }
-    if (!trimmedDonorName) {
+    if (!anonymousDonation && !trimmedDonorName) {
       setError('Please enter the donor name before continuing.');
       return;
     }
-    if (!hasValidEmail) {
+    if (!anonymousDonation && !hasValidEmail) {
       setError('Please enter a valid email address before continuing.');
       return;
     }
-    if (!trimmedDedicationName) {
+    if (!effectiveDedicationName) {
       setError('Please choose who the bee should be named after before continuing.');
       return;
     }
@@ -319,9 +337,10 @@ export function DonatePage({
           mode,
           amountCents: effectiveAmount,
           returnUrl: `${window.location.origin}/donate?session_id={CHECKOUT_SESSION_ID}`,
-          donorName: trimmedDonorName || undefined,
-          donorEmail: trimmedDonorEmail || undefined,
-          dedicationName: trimmedDedicationName || undefined,
+          anonymousDonation,
+          donorName: anonymousDonation ? undefined : (trimmedDonorName || undefined),
+          donorEmail: anonymousDonation ? undefined : (trimmedDonorEmail || undefined),
+          dedicationName: effectiveDedicationName || undefined,
           tShirtPreference: mode === 'recurring' ? (trimmedTShirtPreference || undefined) : undefined,
         },
         authSession,
@@ -509,27 +528,57 @@ export function DonatePage({
                 </div>
 
                 <div className="donate-form-grid">
-                  <p className="donate-form-grid__required-note">Fields marked * are required to make a donation.</p>
+                  <p className="donate-form-grid__required-note">
+                    {anonymousDonation
+                      ? 'This gift will be marked as Anonymous donor unless you enter a dedication below.'
+                      : 'Fields marked * are required to make a donation.'}
+                  </p>
                   <label>
-                    <span>Name <span className="donate-form-grid__required-mark" aria-hidden="true">*</span></span>
-                    <input type="text" value={donorName} onChange={(event) => setDonorName(event.target.value)} placeholder="Your name" required />
+                    <span>Name {!anonymousDonation ? <span className="donate-form-grid__required-mark" aria-hidden="true">*</span> : null}</span>
+                    <input
+                      type="text"
+                      value={donorName}
+                      onChange={(event) => setDonorName(event.target.value)}
+                      placeholder={anonymousDonation ? '' : 'Your name'}
+                      required={!anonymousDonation}
+                      disabled={anonymousDonation}
+                    />
                   </label>
                   <label>
-                    <span>Email <span className="donate-form-grid__required-mark" aria-hidden="true">*</span></span>
-                    <input type="email" value={donorEmail} onChange={(event) => setDonorEmail(event.target.value)} placeholder="you@example.com" required />
+                    <span>Email {!anonymousDonation ? <span className="donate-form-grid__required-mark" aria-hidden="true">*</span> : null}</span>
+                    <input
+                      type="email"
+                      value={donorEmail}
+                      onChange={(event) => setDonorEmail(event.target.value)}
+                      placeholder={anonymousDonation ? '' : 'you@example.com'}
+                      required={!anonymousDonation}
+                      disabled={anonymousDonation}
+                    />
                   </label>
                   <label className="donate-form-grid__dedication">
                     <span className="donate-form-grid__dedication-label">
-                      Who should we name your bee after? <span className="donate-form-grid__required-mark" aria-hidden="true">*</span>
+                      Who should we name your bee after? {!anonymousDonation ? <span className="donate-form-grid__required-mark" aria-hidden="true">*</span> : null}
                     </span>
-                    <small className="donate-form-grid__dedication-note">Use your name, your family name, or honor someone you love.</small>
+                    <small className="donate-form-grid__dedication-note">
+                      {anonymousDonation
+                        ? 'Leave this blank and we will mark the bee as Anonymous donor.'
+                        : 'Use your name, your family name, or honor someone you love.'}
+                    </small>
                     <input
                       type="text"
                       value={dedicationName}
                       onChange={(event) => setDedicationName(event.target.value)}
-                      placeholder="Your name, family name, or in honor of someone"
+                      placeholder={anonymousDonation ? 'Optional: honor someone, or leave blank for Anonymous donor' : 'Your name, family name, or in honor of someone'}
                       required
                     />
+                  </label>
+                  <label className="donate-form-grid__anonymous-toggle">
+                    <input
+                      type="checkbox"
+                      checked={anonymousDonation}
+                      onChange={(event) => setAnonymousDonation(event.target.checked)}
+                    />
+                    <span className="donate-form-grid__anonymous-toggle-label">Keep this donation anonymous</span>
                   </label>
                   {selectedMode === 'recurring' ? (
                     <label>

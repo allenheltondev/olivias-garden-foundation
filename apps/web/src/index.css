@@ -1324,8 +1324,14 @@ html {
 }
 
 .donate-amounts__custom input,
-.donate-form-grid input {
+.donate-form-grid input:not([type='checkbox']) {
+  appearance: none;
+  margin: 0;
+  min-height: 3.2rem;
+  box-sizing: border-box;
   width: 100%;
+  font: inherit;
+  line-height: 1.2;
   border: 1px solid rgba(76, 52, 38, 0.16);
   border-radius: 0.95rem;
   background: rgba(255, 252, 246, 0.98);
@@ -1345,6 +1351,28 @@ html {
 .donate-form-grid {
   display: grid;
   gap: 0.85rem;
+}
+
+.donate-form-grid label.donate-form-grid__anonymous-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.12);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.donate-form-grid__anonymous-toggle input {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.donate-form-grid__anonymous-toggle-label {
+  display: inline;
+  padding: 0;
 }
 
 .donate-form-grid__dedication {

@@ -88,6 +88,34 @@ describe('web-api donation handler', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it('accepts anonymous donation checkout requests', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'cs_test_anon_123', client_secret: 'cs_test_anon_123_secret_456' })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await handler(createApiGatewayEvent({
+      method: 'POST',
+      path: '/donations/checkout-session',
+      body: {
+        mode: 'one_time',
+        amountCents: 2500,
+        returnUrl: 'https://oliviasgarden.org/donate?session_id={CHECKOUT_SESSION_ID}',
+        anonymousDonation: true,
+        dedicationName: 'Anonymous donor'
+      }
+    }));
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      clientSecret: 'cs_test_anon_123_secret_456',
+      checkoutSessionId: 'cs_test_anon_123'
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it('returns 400 when returnUrl origin is not allowed', async () => {
     process.env.STRIPE_SECRET_KEY = 'sk_test_123';
 

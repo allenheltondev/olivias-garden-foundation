@@ -58,6 +58,9 @@ components:
           type: string
           format: uri
           description: Absolute return URL on an allowed Olivia's Garden origin.
+        anonymousDonation:
+          type: boolean
+          description: When true, the checkout flow will not prefill or persist donor identity metadata from the form.
         donorName:
           type: string
         donorEmail:

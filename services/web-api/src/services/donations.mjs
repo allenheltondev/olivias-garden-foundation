@@ -18,6 +18,9 @@ export const donationCheckoutSessionSchema = {
       type: 'string',
       minLength: 1
     },
+    anonymousDonation: {
+      type: 'boolean'
+    },
     donorName: {
       type: 'string'
     },
@@ -76,6 +79,10 @@ function extractMode(metadata) {
   return readMetadata(metadata, 'donation_mode') ?? 'one_time';
 }
 
+function extractAnonymousDonation(metadata) {
+  return readMetadata(metadata, 'anonymous_donation') === 'true';
+}
+
 function getAllowedReturnOrigins() {
   const configuredOrigins = (process.env.ALLOWED_RETURN_URL_ORIGINS ?? '')
     .split(',')
@@ -104,7 +111,7 @@ function parseAndValidateReturnUrl(returnUrl) {
   return parsedUrl;
 }
 
-function donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference) {
+function donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference, anonymousDonation = false) {
   const amount = `${String(currency ?? 'usd').toUpperCase()} ${(amountCents / 100).toFixed(2)}`;
   const lines = [
     ':sunflower: New donation',
@@ -112,6 +119,9 @@ function donationSlackText(mode, amountCents, currency, donorName, donorEmail, d
     `Amount: ${amount}`
   ];
 
+  if (anonymousDonation) {
+    lines.push('Donor: Anonymous');
+  }
   if (donorName) {
     lines.push(`Donor: ${donorName}`);
   }
@@ -175,6 +185,10 @@ function validateCheckoutPayload(payload) {
   }
 
   parseAndValidateReturnUrl(payload?.returnUrl);
+}
+
+function isAnonymousDonation(payload) {
+  return payload?.anonymousDonation === true;
 }
 
 function buildCheckoutDescription(mode, dedicationName) {
@@ -243,8 +257,9 @@ async function createStripeCustomer(stripeSecretKey, donorName, donorEmail, dedi
 function buildCheckoutForm(payload, authContext, customerId = null) {
   const mode = normalizeMode(payload.mode);
   const returnUrl = parseAndValidateReturnUrl(payload.returnUrl);
-  const donorName = payload.donorName?.trim() || authContext?.name || undefined;
-  const donorEmail = payload.donorEmail?.trim() || authContext?.email || undefined;
+  const anonymousDonation = isAnonymousDonation(payload);
+  const donorName = anonymousDonation ? undefined : (payload.donorName?.trim() || authContext?.name || undefined);
+  const donorEmail = anonymousDonation ? undefined : (payload.donorEmail?.trim() || authContext?.email || undefined);
   const dedicationName = payload.dedicationName?.trim() || undefined;
   const tShirtPreference = payload.tShirtPreference?.trim() || undefined;
 
@@ -267,6 +282,7 @@ function buildCheckoutForm(payload, authContext, customerId = null) {
   );
   params.set('line_items[0][price_data][unit_amount]', String(payload.amountCents));
   params.set('metadata[donation_mode]', mode);
+  params.set('metadata[anonymous_donation]', anonymousDonation ? 'true' : 'false');
 
   if (mode === 'recurring') {
     params.set('line_items[0][price_data][recurring][interval]', 'month');
@@ -356,6 +372,7 @@ async function findDonationIdentity(client, subscriptionId, customerId) {
 async function persistCheckoutCompletion(client, eventId, object, correlationId) {
   const metadata = object.metadata ?? null;
   const mode = extractMode(metadata);
+  const anonymousDonation = extractAnonymousDonation(metadata);
   const amountCents = Number(object.amount_total ?? 0);
   const currency = object.currency ?? 'usd';
   const donorName = readMetadata(metadata, 'donor_name');
@@ -420,7 +437,7 @@ async function persistCheckoutCompletion(client, eventId, object, correlationId)
   }
 
   await notifySlack(
-    donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference),
+    donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference, anonymousDonation),
     correlationId
   );
 }
@@ -614,10 +631,11 @@ export async function createDonationCheckoutSession(payload, event, correlationI
   validateCheckoutPayload(payload);
 
   const stripeSecretKey = requiredEnvVar('STRIPE_SECRET_KEY');
+  const anonymousDonation = isAnonymousDonation(payload);
   const customerId = await createStripeCustomer(
     stripeSecretKey,
-    payload.donorName?.trim() || authContext?.name || undefined,
-    payload.donorEmail?.trim() || authContext?.email || undefined,
+    anonymousDonation ? undefined : (payload.donorName?.trim() || authContext?.name || undefined),
+    anonymousDonation ? undefined : (payload.donorEmail?.trim() || authContext?.email || undefined),
     payload.dedicationName?.trim() || undefined,
     authContext,
     correlationId

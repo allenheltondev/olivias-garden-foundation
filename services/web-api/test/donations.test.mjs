@@ -116,6 +116,49 @@ describe('donations service', () => {
     expect(checkoutParams.get('line_items[0][price_data][product_data][description]')).toContain('Bee dedication: Olivia.');
   });
 
+  it('does not prefill donor identity from auth context when anonymous donation is requested', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    resolveOptionalAuthContextMock.mockResolvedValue({
+      userId: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+      name: 'Signed In Donor',
+      email: 'signed-in@example.com',
+    });
+
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'cs_anon_123', client_secret: 'cs_secret_anon_123' }),
+    });
+
+    const result = await createDonationCheckoutSession(
+      {
+        mode: 'one_time',
+        amountCents: 2500,
+        returnUrl: 'https://oliviasgarden.org/donate?session_id={CHECKOUT_SESSION_ID}',
+        anonymousDonation: true,
+        dedicationName: 'Anonymous donor',
+      },
+      { headers: {} },
+      'corr-anon-123',
+    );
+
+    expect(result).toEqual({
+      clientSecret: 'cs_secret_anon_123',
+      checkoutSessionId: 'cs_anon_123',
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    const [checkoutUrl, checkoutOptions] = fetchMock.mock.calls[0];
+    expect(checkoutUrl).toBe('https://api.stripe.com/v1/checkout/sessions');
+    const checkoutParams = checkoutOptions.body;
+    expect(checkoutParams.get('metadata[anonymous_donation]')).toBe('true');
+    expect(checkoutParams.get('metadata[user_id]')).toBe('cf399090-0f65-4d15-bd10-50944ce0ff9b');
+    expect(checkoutParams.get('metadata[donor_name]')).toBeNull();
+    expect(checkoutParams.get('metadata[donor_email]')).toBeNull();
+    expect(checkoutParams.get('customer')).toBeNull();
+    expect(checkoutParams.get('customer_email')).toBeNull();
+  });
+
   it('sends a Slack notification with donation details after checkout.session.completed from EventBridge', async () => {
     process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/abc';
 
@@ -200,5 +243,58 @@ describe('donations service', () => {
     expect(slackBody.text).toContain('Amount: USD 50.00');
     expect(slackBody.text).toContain('Donor: Olivia Donor');
     expect(slackBody.text).toContain('Email: donor@example.com');
+  });
+
+  it('marks anonymous donations explicitly in Slack notifications', async () => {
+    process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/abc';
+
+    const queryMock = vi.fn((sql) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') {
+        return Promise.resolve({ rowCount: null });
+      }
+
+      return Promise.resolve({ rowCount: 1 });
+    });
+    const client = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    };
+    createDbClientMock.mockResolvedValue(client);
+
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    await handleEventBridgeEvent({
+      id: 'evtbridge-456',
+      'detail-type': 'checkout.session.completed',
+      detail: {
+        id: 'evt_456',
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_456',
+            payment_intent: 'pi_456',
+            customer: 'cus_456',
+            subscription: null,
+            amount_total: 2500,
+            currency: 'usd',
+            metadata: {
+              donation_mode: 'one_time',
+              anonymous_donation: 'true',
+              dedication_name: 'Anonymous donor',
+            },
+          },
+        },
+      },
+    });
+
+    const slackBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(slackBody.text).toContain('Donor: Anonymous');
+    expect(slackBody.text).not.toContain('Email:');
+    expect(slackBody.text).toContain('Bee nameplate: Anonymous donor');
   });
 });
