@@ -66,7 +66,7 @@ jobs:
         run: sam build --template-file infra/foundation-web/template.yaml
 
       - name: Build web-api template
-        run: sam build --template-file services/web-api/template.yaml
+        run: sam build --template-file services/web-api/template.yaml --build-dir services/web-api/.aws-sam/build
 
       - name: Upload web-api SAM build artifact
         uses: actions/upload-artifact@v4

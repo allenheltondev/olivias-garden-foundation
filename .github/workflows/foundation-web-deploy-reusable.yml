@@ -201,7 +201,7 @@ jobs:
 
       - name: Build web-api
         if: steps.web-api-build-artifact.outputs.available != 'true'
-        run: sam build --template-file services/web-api/template.yaml
+        run: sam build --template-file services/web-api/template.yaml --build-dir services/web-api/.aws-sam/build
 
       - name: Deploy web-api stack
         env:
