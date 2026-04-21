@@ -200,40 +200,11 @@
   font-size: 0.9rem;
 }
 
-/* ── Promises (zero-state value props) ───────────────────────── */
-.ok-promises {
-  display: grid;
-  gap: 0.75rem;
-}
-.ok-promise {
-  display: grid;
-  grid-template-columns: 2.7rem 1fr;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.95rem 1.1rem;
-  border-radius: 1.1rem;
-  border: 1px solid rgba(76, 52, 38, 0.1);
-  background: rgba(255, 250, 241, 0.85);
-}
-.ok-promise__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.7rem;
-  height: 2.7rem;
-  border-radius: 999px;
-  background: rgba(63, 125, 58, 0.12);
-  color: var(--color-primary-600);
-}
+/* Hero trust-bar uses .ok-promise__icon-svg (see .ok-hero__trust above) */
 .ok-promise__icon-svg {
   width: 1.35rem;
   height: 1.35rem;
   fill: currentColor;
-}
-.ok-promise__text {
-  color: var(--site-branch);
-  font-weight: 600;
-  line-height: 1.4;
 }
 
 /* ── How it works ────────────────────────────────────────────── */
@@ -592,10 +563,6 @@
 
   .ok-stats {
     grid-template-columns: repeat(2, minmax(0, 18rem));
-  }
-
-  .ok-promises {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .ok-how {

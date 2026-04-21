@@ -129,7 +129,7 @@ export function OkraExperience({
         </figure>
       </section>
 
-      {/* STATS OR PROMISES */}
+      {/* STATS */}
       {hasGrowers ? (
         <section className="ok-stats" aria-label="Community stats">
           <div className="ok-stats__item">
@@ -141,22 +141,7 @@ export function OkraExperience({
             <span className="ok-stats__label">countries represented</span>
           </div>
         </section>
-      ) : (
-        <section className="ok-promises" aria-label="What the Okra Project offers">
-          <div className="ok-promise">
-            <span className="ok-promise__icon"><PromiseIcon kind="mail" /></span>
-            <span className="ok-promise__text">Free seeds, mailed to your door</span>
-          </div>
-          <div className="ok-promise">
-            <span className="ok-promise__icon"><PromiseIcon kind="seed" /></span>
-            <span className="ok-promise__text">Grown from plants Olivia grew herself</span>
-          </div>
-          <div className="ok-promise">
-            <span className="ok-promise__icon"><PromiseIcon kind="check" /></span>
-            <span className="ok-promise__text">No sign-up required to request seeds</span>
-          </div>
-        </section>
-      )}
+      ) : null}
 
       {/* HOW IT WORKS */}
       <section className="ok-how" aria-labelledby="ok-how-heading">
