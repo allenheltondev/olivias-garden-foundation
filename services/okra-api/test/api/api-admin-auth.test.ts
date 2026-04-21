@@ -117,5 +117,7 @@ describe('admin api returns 404 for unknown routes', () => {
       makeAdminApiEvent('/does-not-exist', 'GET', { sub: 'admin-456' })
     );
     expect(res.statusCode).toBe(404);
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['x-correlation-id']).toBe('req-admin');
   });
 });
