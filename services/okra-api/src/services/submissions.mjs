@@ -90,6 +90,7 @@ export async function insertPendingSubmissionWithPhotos(client, payload) {
         where id = any($2::uuid[])
           and submission_id is null
           and (expires_at is null or expires_at > now())
+        returning id, original_s3_key
       `,
       [created.id, payload.photoIds]
     );
@@ -103,7 +104,8 @@ export async function insertPendingSubmissionWithPhotos(client, payload) {
     await client.query('commit');
     return {
       ...created,
-      claimedPhotoIds: payload.photoIds
+      claimedPhotoIds: payload.photoIds,
+      claimedPhotos: claimResult.rows
     };
   } catch (error) {
     await client.query('rollback');
