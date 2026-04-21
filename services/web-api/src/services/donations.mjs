@@ -377,7 +377,7 @@ async function persistCheckoutCompletion(client, eventId, object, correlationId)
           currency, donor_name, donor_email, dedication_name, t_shirt_preference
         )
         values ($1, $2, $3, $4, $5, $6::uuid, $7, $8, $9, $10, $11, $12, $13)
-        on conflict (stripe_event_id) do nothing
+        on conflict (stripe_event_id) where stripe_event_id is not null do nothing
       `,
       [
         eventId,
@@ -466,7 +466,7 @@ async function persistInvoicePaid(client, eventId, object, correlationId) {
           dedication_name, t_shirt_preference
         )
         values ($1, $2, $3, $4, $5::uuid, 'recurring', $6, $7, $8, $9, $10, $11)
-        on conflict (stripe_invoice_id) do nothing
+        on conflict (stripe_invoice_id) where stripe_invoice_id is not null do nothing
       `,
       [
         eventId,
