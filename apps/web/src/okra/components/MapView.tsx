@@ -198,9 +198,9 @@ export function MapView({
 
         {showEmpty ? (
           <div className="map-view__empty" role="status">
-            <p className="map-view__empty-message">No gardens yet - be the first to share yours</p>
+            <p className="map-view__empty-message">No gardens yet — be the first to add yours</p>
             <button type="button" className="map-view__cta-link" onClick={onOpenSubmission}>
-              Share your garden
+              I&apos;m already growing this
             </button>
           </div>
         ) : null}

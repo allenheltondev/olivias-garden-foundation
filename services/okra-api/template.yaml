@@ -299,7 +299,7 @@ Outputs:
       - !Sub
         - 'https://api.${RootDomainName}/okra'
         - RootDomainName: !Ref DomainName
-      - !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+      - !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/api'
   AdminApiUrl:
     Description: Base URL for the Admin API
     Value: !Sub 'https://${AdminApiGateway}.execute-api.${AWS::Region}.amazonaws.com'

@@ -1,24 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { internalPaths } from './routes';
 
-export function getCurrentPath() {
-  if (typeof window === 'undefined') {
-    return '/';
-  }
-
-  const normalized = window.location.pathname.replace(/\/+$/, '') || '/';
-  return internalPaths.has(normalized) ? normalized : '/';
+function normalize(path: string) {
+  const trimmed = path.replace(/\/+$/, '') || '/';
+  return internalPaths.has(trimmed) ? trimmed : '/';
 }
 
 export function usePathname() {
-  const [pathname, setPathname] = useState(getCurrentPath);
-
-  useEffect(() => {
-    const updatePath = () => setPathname(getCurrentPath());
-
-    window.addEventListener('popstate', updatePath);
-    return () => window.removeEventListener('popstate', updatePath);
-  }, []);
+  const location = useLocation();
+  const routerNavigate = useNavigate();
+  const pathname = normalize(location.pathname);
 
   return {
     pathname,
@@ -28,8 +19,7 @@ export function usePathname() {
         return;
       }
 
-      window.history.pushState({}, '', nextPath);
-      setPathname(nextPath);
+      routerNavigate(nextPath);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
   };
