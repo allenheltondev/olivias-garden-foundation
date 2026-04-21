@@ -186,7 +186,7 @@ function buildCheckoutForm(payload, authContext) {
   const tShirtPreference = payload.tShirtPreference?.trim() || undefined;
 
   const params = new URLSearchParams();
-  params.set('ui_mode', 'embedded');
+  params.set('ui_mode', 'embedded_page');
   params.set('mode', mode === 'recurring' ? 'subscription' : 'payment');
   params.set('return_url', returnUrl.toString());
   params.set('redirect_on_completion', 'always');
