@@ -606,6 +606,7 @@ jobs:
           OKRA_DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
           OKRA_CI_ADMIN_USERNAME: ${{ steps.okra-ci-auth.outputs.username }}
           OKRA_CI_ADMIN_PASSWORD: ${{ steps.okra-ci-auth.outputs.password }}
+          SIGNUP_SLACK_WEBHOOK_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
           FOUNDATION_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
         run: |
           sam build
@@ -614,6 +615,9 @@ jobs:
             "CiAdminUsername=$OKRA_CI_ADMIN_USERNAME"
             "CiAdminPassword=$OKRA_CI_ADMIN_PASSWORD"
           )
+          if [ -n "$SIGNUP_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("SignupSlackWebhookUrl=$SIGNUP_SLACK_WEBHOOK_URL")
+          fi
           if [ -n "$FOUNDATION_DOMAIN_NAME" ]; then
             PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME")
           fi
