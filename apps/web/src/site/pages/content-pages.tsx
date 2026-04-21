@@ -1,7 +1,13 @@
 import { Card } from '@olivias/ui';
+import { lazy, Suspense } from 'react';
 import type { AuthSession } from '../../auth/session';
-import { OkraExperience } from '../../okra/OkraExperience';
 import { CtaButton, PageHero, Section, WorkIcon } from '../chrome';
+import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
+
+const OkraExperience = lazy(async () => {
+  const module = await import('../../okra/OkraExperience');
+  return { default: module.OkraExperience };
+});
 
 export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }) {
   return (
@@ -11,7 +17,7 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
         body="Olivia's Garden Foundation is a 501(c)(3) nonprofit in McKinney, Texas helping individuals and families learn how to grow food, care for animals, preserve what they produce, and build practical self-sufficiency."
         className="home-hero"
         titleClassName="home-hero__title"
-        backgroundImage="/images/home/garden-landscaping.jpg"
+        backgroundImage={buildResponsiveBackgroundImage('/images/home/garden-landscaping.jpg')}
         actions={(
           <a
             className="home-hero__cta"
@@ -39,29 +45,33 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
 
       <section className="page-section home-photo-band-section">
         <div className="home-photo-band" aria-label="Life and work at the foundation">
-          <img
+          <ResponsiveImage
             className="home-photo-band__image"
             src="/images/home/melon-harvest.jpg"
             alt="Harvesting in raised beds with a child."
+            sizes="(max-width: 900px) 100vw, 33vw"
           />
-          <img
+          <ResponsiveImage
             className="home-photo-band__image"
             src="/images/home/watering-seedlings.jpg"
             alt="Watering seedlings in a raised garden bed."
+            sizes="(max-width: 900px) 100vw, 33vw"
           />
-          <img
+          <ResponsiveImage
             className="home-photo-band__image home-photo-band__image--mobile-hide"
             src="/images/home/bee-suit.jpg"
             alt="Working bees with a child in protective gear."
+            sizes="33vw"
           />
         </div>
       </section>
 
       <section className="home-mobile-image-break" aria-label="Life and work at the foundation">
-        <img
+        <ResponsiveImage
           className="home-mobile-image-break__image"
           src="/images/home/melon-harvest.jpg"
           alt="Harvesting in raised beds with a child."
+          sizes="100vw"
         />
       </section>
 
@@ -113,10 +123,11 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
       </Section>
 
       <section className="home-mobile-image-break" aria-label="Learning through real work">
-        <img
+        <ResponsiveImage
           className="home-mobile-image-break__image"
           src="/images/home/watering-seedlings.jpg"
           alt="Watering seedlings in a raised garden bed."
+          sizes="100vw"
         />
       </section>
 
@@ -206,9 +217,10 @@ export function AboutPage() {
         </div>
 
         <figure className="photo-card photo-card--tall about-prose-hero__image">
-          <img
+          <ResponsiveImage
             src="/images/home/sunset-garden.jpg"
             alt="Sunset over the garden beds at Olivia's Garden."
+            sizes="(max-width: 900px) 100vw, 42vw"
           />
           <figcaption>The land where her memory keeps taking shape.</figcaption>
         </figure>
@@ -261,9 +273,10 @@ export function AboutPage() {
         </div>
 
         <figure className="photo-card about-memory-layout__image">
-          <img
+          <ResponsiveImage
             src="/images/about/luffa-trellis.jpg"
             alt="Garden rows and trellised plants at Olivia's Garden."
+            sizes="(max-width: 900px) 100vw, 42vw"
           />
           <figcaption>Built by hand, in memory, with the community alongside us.</figcaption>
         </figure>
@@ -381,13 +394,15 @@ export function OkraPage({
   onSignup: () => void;
 }) {
   return (
-    <OkraExperience
-      onNavigate={onNavigate}
-      authEnabled={authEnabled}
-      authSession={authSession}
-      onLogin={onLogin}
-      onSignup={onSignup}
-    />
+    <Suspense fallback={<div className="page-section"><p className="page-text">Loading the Okra Project map...</p></div>}>
+      <OkraExperience
+        onNavigate={onNavigate}
+        authEnabled={authEnabled}
+        authSession={authSession}
+        onLogin={onLogin}
+        onSignup={onSignup}
+      />
+    </Suspense>
   );
 }
 
@@ -425,9 +440,10 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
         body="The foundation is already doing real work, and some parts of the public-facing program are still being built."
         aside={(
           <div className="page-photo">
-            <img
+            <ResponsiveImage
               src="/images/home/produce-basket.jpg"
               alt="Basket of harvested produce from the garden."
+              sizes="(max-width: 900px) 100vw, 28rem"
             />
           </div>
         )}

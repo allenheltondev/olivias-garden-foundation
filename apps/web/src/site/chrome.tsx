@@ -166,10 +166,14 @@ export function PageHero({
   titleClassName?: string;
   backgroundImage?: string;
 }) {
+  const backgroundImageValue = backgroundImage
+    ? (backgroundImage.startsWith('/') ? `url(${backgroundImage})` : backgroundImage)
+    : undefined;
+
   return (
     <section
       className={`page-hero ${backgroundImage ? 'page-hero--background' : ''} ${className ?? ''}`.trim()}
-      style={backgroundImage ? { ['--page-hero-image' as string]: `url(${backgroundImage})` } : undefined}
+      style={backgroundImageValue ? { ['--page-hero-image' as string]: backgroundImageValue } : undefined}
     >
       <div className={`page-hero__copy ${backgroundImage ? 'page-hero__copy--overlay' : ''}`.trim()}>
         {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
