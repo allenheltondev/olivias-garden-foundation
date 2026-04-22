@@ -1,5 +1,5 @@
 import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
-import { Input } from '@olivias/ui';
+import { FormFeedback, Input } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { getUserInitials } from '../chrome';
 
@@ -653,8 +653,8 @@ export function LoginPage({
             </>
           )}
 
-          {statusMessage ? <p className="og-login-page__success">{statusMessage}</p> : null}
-          {localError || authError ? <p className="og-login-page__error" role="alert">{localError ?? authError}</p> : null}
+          {statusMessage ? <FormFeedback tone="success">{statusMessage}</FormFeedback> : null}
+          {localError || authError ? <FormFeedback tone="error">{localError ?? authError}</FormFeedback> : null}
         </div>
       </div>
     </section>
