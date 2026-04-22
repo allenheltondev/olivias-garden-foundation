@@ -390,8 +390,8 @@
 
 .ok-map-container {
   position: relative;
-  height: clamp(28rem, 58vh, 36rem);
-  min-height: 28rem;
+  height: clamp(24rem, 60dvh, 36rem);
+  min-height: 24rem;
   overflow: hidden;
   border-radius: 1.5rem;
   background: var(--color-background);
@@ -581,7 +581,7 @@
   }
 
   .ok-map-container {
-    height: clamp(32rem, 62vh, 42rem);
+    height: clamp(32rem, 62dvh, 42rem);
   }
   .ok-recent__header {
     grid-template-columns: minmax(0, 1fr) auto;

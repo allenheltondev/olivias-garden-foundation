@@ -9,6 +9,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
   backdrop-filter: blur(22px);
   background: rgba(251, 245, 234, 0.82);
   border-bottom: 1px solid rgba(79, 56, 37, 0.08);
@@ -21,7 +22,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1rem 0;
+  padding: 0.85rem 0;
 }
 
 .og-site-header__brand,
@@ -172,13 +173,18 @@ body {
   }
 
   .og-site-header__link {
+    display: inline-flex;
+    align-items: center;
     width: 100%;
+    min-height: 2.75rem;
+    padding: 0.75rem 0.95rem;
     justify-content: center;
   }
 
   .og-site-header__link.is-active {
     background: rgba(79, 56, 37, 0.08);
     color: var(--og-color-soil);
+    font-weight: 700;
   }
 
   .og-site-footer__inner {
@@ -257,6 +263,7 @@ body {
 
 .og-site-footer {
   margin-top: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid rgba(255, 250, 241, 0.14);
   background:
     linear-gradient(135deg, rgba(90, 116, 71, 0.96), rgba(63, 125, 58, 0.98)),
@@ -1112,10 +1119,27 @@ body {
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html {
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
@@ -1125,18 +1149,65 @@ select {
   font: inherit;
 }
 
+/* Keep form inputs at 16px minimum on small screens so iOS doesn't zoom on focus. */
+@media (max-width: 799px) {
+  input,
+  select,
+  textarea {
+    font-size: max(1rem, 16px);
+  }
+}
+
 button {
   border: 0;
+}
+
+button,
+[role="button"],
+a {
+  touch-action: manipulation;
 }
 
 a {
   color: inherit;
 }
 
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--og-color-moss, #3f7d3a);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── App shell ─────────────────────────────────────────────────────── */
 
 .og-app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -1214,12 +1285,14 @@ a {
 .og-login-page {
   display: grid;
   min-height: calc(100vh - 5.5rem);
+  min-height: calc(100dvh - 5.5rem);
   width: 100%;
 }
 
 .og-login-page__backdrop {
   width: 100%;
   min-height: calc(100vh - 5.5rem);
+  min-height: calc(100dvh - 5.5rem);
   display: grid;
   place-items: center;
   overflow: hidden;
