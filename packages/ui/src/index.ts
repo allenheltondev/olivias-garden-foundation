@@ -1,6 +1,7 @@
 export { AvatarBadge } from './components/AvatarBadge.tsx';
 export { Button } from './components/Button.tsx';
 export { Card } from './components/Card.tsx';
+export { Checkbox } from './components/Checkbox.tsx';
 export { FormFeedback } from './components/FormFeedback.tsx';
 export { FormField } from './components/FormField.tsx';
 export { Input } from './components/Input.tsx';
@@ -30,6 +31,7 @@ export type { InputProps } from './components/Input.tsx';
 export type { TextareaProps } from './components/Textarea.tsx';
 export type { ButtonProps } from './components/Button.tsx';
 export type { CardProps } from './components/Card.tsx';
+export type { CheckboxProps } from './components/Checkbox.tsx';
 export type { SelectOption, SelectProps } from './components/Select.tsx';
 export type { SiteFooterLink, SiteFooterProps } from './components/SiteFooter.tsx';
 export type { SiteHeaderNavItem, SiteHeaderProps } from './components/SiteHeader.tsx';
