@@ -3,11 +3,11 @@ import { expect, test } from '@playwright/test';
 import { gotoAndWait, trackBrowserErrors } from './test-helpers';
 
 const OKRA_IMAGE_PATHS = [
-  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra1.jpg', import.meta.url)),
-  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra2.jpg', import.meta.url)),
-  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra3.webp', import.meta.url)),
-  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra4.jpg', import.meta.url)),
-  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra5.webp', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra1.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra2.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra3.webp', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra4.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra5.webp', import.meta.url)),
 ];
 
 function pickRandomOkraImages() {
