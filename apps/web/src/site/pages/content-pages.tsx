@@ -1,8 +1,11 @@
 import { Card } from '@olivias/ui';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, type FormEvent } from 'react';
 import type { AuthSession } from '../../auth/session';
 import { CtaButton, PageHero, Section, WorkIcon } from '../chrome';
 import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
+import { facebookUrl, instagramUrl } from '../routes';
+
+const CONTACT_EMAIL = 'allen@oliviasgarden.org';
 
 const OkraExperience = lazy(async () => {
   const module = await import('../../okra/OkraExperience');
@@ -355,13 +358,18 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
           }}>Sign up to volunteer</CtaButton>
         </Card>
 
-        <Card title="Hands-on workshops -- coming soon." className="get-involved-card">
+        <Card title="Hands-on workshops — coming soon." className="get-involved-card">
           <p className="get-involved-card__eyebrow">Coming soon</p>
           <p>
             Workshops are planned, but they are not active yet. When they launch, they will be
             built around real tasks and hands-on learning, not classroom-style theory.
           </p>
-          <CtaButton variant="secondary">Notify me when workshops open</CtaButton>
+          <CtaButton
+            variant="secondary"
+            href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Notify me when workshops open')}`}
+          >
+            Notify me when workshops open
+          </CtaButton>
         </Card>
 
         <Card title="Help us map where food is growing." className="get-involved-card">
@@ -382,7 +390,23 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
         title="Follow along."
         body="We post what is actually happening in the work: harvests, setbacks, animals, systems, and the day-to-day reality of learning by doing."
       >
-        <CtaButton variant="secondary">Follow us on Instagram</CtaButton>
+        <CtaButton variant="secondary" href={instagramUrl}>Follow us on Instagram</CtaButton>
+      </Section>
+
+      <Section
+        title="Something else in mind?"
+        body="Press, partnerships, speaking requests, or something we haven't thought of yet — send a note and we'll figure it out together."
+      >
+        <CtaButton
+          variant="secondary"
+          href="/contact"
+          onClick={(event) => {
+            event?.preventDefault?.();
+            onNavigate('/contact');
+          }}
+        >
+          Get in touch
+        </CtaButton>
       </Section>
     </>
   );
@@ -480,41 +504,124 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
 }
 
 export function ContactPage() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [referral, setReferral] = useState('');
+
+  const canSend = message.trim().length > 0;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSend) {
+      return;
+    }
+
+    const subject = name.trim()
+      ? `Message from ${name.trim()} via oliviasgarden.org`
+      : 'Message from oliviasgarden.org';
+
+    const bodyLines = [
+      message.trim(),
+      '',
+      '—',
+      name.trim() ? `From: ${name.trim()}` : null,
+      email.trim() ? `Reply to: ${email.trim()}` : null,
+      referral.trim() ? `Heard about us via: ${referral.trim()}` : null,
+    ].filter(Boolean);
+
+    const href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    window.location.href = href;
+  };
+
   return (
     <>
-      <PageHero title="Get in touch" body="We'd love to hear from you." />
+      <PageHero
+        eyebrow="Contact"
+        title="Get in touch"
+        body="We're a real family running a real garden. Seeds, volunteering, partnerships, or just a note — we actually read everything that comes in."
+      />
 
       <div className="contact-grid">
-        <Card title="Reach out directly" className="contact-card">
-          <p className="contact-card__eyebrow">Direct contact</p>
+        <Card title="Reach us directly" className="contact-card">
+          <p className="contact-card__eyebrow">Quickest way</p>
           <p>
-            Whether you want seeds, have questions about the Okra Project, want to help with the
-            work, or just want to say what you&apos;re growing, reach out.
+            Email is the fastest path to us. If you're sharing photos of your garden or a long
+            story, it's also the easiest format for us to reply to carefully.
           </p>
-          <p className="page-text">We&apos;re real people and we actually respond.</p>
-          <p className="contact-meta">Email: allen@oliviasgarden.org</p>
+          <p className="contact-meta">
+            Email:{' '}
+            <a className="contact-meta__link" href={`mailto:${CONTACT_EMAIL}`}>
+              {CONTACT_EMAIL}
+            </a>
+          </p>
+          <ul className="site-list contact-card__list">
+            <li>
+              <a href={instagramUrl} target="_blank" rel="noreferrer">Instagram</a> — day-to-day work, harvests, animals
+            </li>
+            <li>
+              <a href={facebookUrl} target="_blank" rel="noreferrer">Facebook</a> — events and community posts
+            </li>
+          </ul>
+          <p className="page-text">
+            We try to respond within a few days. If it has been longer than that, a second note
+            is welcome — things occasionally slip during busy weeks on the land.
+          </p>
         </Card>
 
         <Card title="Send a message" className="contact-card">
-          <p className="contact-card__eyebrow">Send a note</p>
-          <form className="contact-form">
+          <p className="contact-card__eyebrow">Prefer a form</p>
+          <p className="page-text">
+            This opens your email app with your message pre-filled so you can send it from your
+            own inbox — easier for us to reply to you directly.
+          </p>
+          <form className="contact-form" onSubmit={handleSubmit} noValidate>
             <label>
               <span>Name</span>
-              <input type="text" placeholder="Your name" />
+              <input
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                autoComplete="name"
+              />
             </label>
             <label>
               <span>Email</span>
-              <input type="email" placeholder="Your email" />
+              <input
+                type="email"
+                placeholder="Your email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+              />
             </label>
             <label>
               <span>Message</span>
-              <textarea rows={6} placeholder="How can we help?" />
+              <textarea
+                rows={6}
+                placeholder="How can we help?"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                required
+              />
             </label>
             <label>
               <span>How did you hear about us? (optional)</span>
-              <input type="text" placeholder="Instagram, friend, work day, etc." />
+              <input
+                type="text"
+                placeholder="Instagram, friend, work day, etc."
+                value={referral}
+                onChange={(event) => setReferral(event.target.value)}
+              />
             </label>
-            <CtaButton>Send message</CtaButton>
+            <button
+              type="submit"
+              className="site-cta og-button og-button--primary og-button--md"
+              disabled={!canSend}
+            >
+              Open email to send
+            </button>
           </form>
         </Card>
       </div>

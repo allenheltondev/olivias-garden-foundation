@@ -6,6 +6,11 @@ Parameters:
   DatabaseUrl:
     Type: String
     Description: PostgreSQL connection string (e.g., from Neon)
+  SignupSlackWebhookUrl:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Optional Slack webhook URL reused for rich okra submission review notifications.
   CiAdminUsername:
     Type: String
     Default: ''
@@ -69,7 +74,7 @@ Resources:
       StageName: api
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-        AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
 
   AdminApiGateway:
@@ -79,7 +84,7 @@ Resources:
       StageName: admin
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowHeaders: "'Content-Type,Authorization,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
       Auth:
         DefaultAuthorizer: AdminTokenAuthorizer
@@ -140,6 +145,34 @@ Resources:
         Enabled: true
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+
+  SubmissionNotifierFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ././src/handlers/submission-notifier.mjs
+    Properties:
+      CodeUri: ./
+      Handler: src/handlers/submission-notifier.handler
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SignupSlackWebhookUrl
+          OKRA_ADMIN_FRONTEND_URL: !If
+            - DeploySharedApiBasePathMapping
+            - !Sub 'https://admin.${DomainName}'
+            - ''
+      Events:
+        SubmissionCreatedEvent:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - okra.submissions
+              detail-type:
+                - submission.created
 
   ApiFunction:
     Type: AWS::Serverless::Function

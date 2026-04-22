@@ -275,6 +275,39 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  # Rewrites /<path> to /<path>/index.html so per-route prerendered HTML
+  # snapshots (see apps/web/scripts/prerender-head.mjs) are served to
+  # crawlers and unfurl bots. Requests that already reference a static
+  # asset (anything with a dot in the final segment) pass through
+  # unchanged so /assets/*, /images/*, robots.txt, sitemap.xml etc. still
+  # resolve. When the rewritten path has no snapshot in S3 the existing
+  # 403/404 → /index.html fallback still delivers the SPA shell.
+  WebFrontendRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${AWS::StackName}-web-rewrite'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Rewrites clean URLs to their /index.html snapshot
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+
+          if (uri.endsWith('/')) {
+            request.uri = uri + 'index.html';
+            return request;
+          }
+
+          var lastSegment = uri.slice(uri.lastIndexOf('/') + 1);
+          if (lastSegment.indexOf('.') === -1) {
+            request.uri = uri + '/index.html';
+          }
+
+          return request;
+        }
+
   SharedAssetsOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
@@ -320,6 +353,9 @@ Resources:
           Compress: true
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           ResponseHeadersPolicyId: '67f7725c-6f97-4210-82d7-5512b31e9d03'
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt WebFrontendRewriteFunction.FunctionMetadata.FunctionARN
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 200
