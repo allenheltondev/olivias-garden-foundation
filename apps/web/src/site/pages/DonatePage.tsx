@@ -372,7 +372,12 @@ export function DonatePage({
           <div className="donate-hero__aside-card">
             <p className="donate-hero__eyebrow">This year&apos;s garden marker</p>
             <div className="donate-hero__bee">
-              <span className="donate-hero__bee-body" aria-hidden="true" />
+              <ResponsiveImage
+                className="donate-hero__bee-image"
+                src="/images/donate/bee-example.png"
+                alt="This year's bee garden marker."
+                sizes="(max-width: 900px) 100vw, 18rem"
+              />
             </div>
             <p className="donate-hero__aside-title">A named bee joins the garden for every donor.</p>
             <p className="page-text">

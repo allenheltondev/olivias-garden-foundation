@@ -50,6 +50,12 @@ describe('exact mode', () => {
     expect(result.lat).toBe(0);
     expect(result.lng).toBe(0);
   });
+
+  it('normalizes signed zero in exact mode', () => {
+    const result = fuzzCoordinates('any-id', -0, -0, 'exact');
+    expect(result.lat).toBe(0);
+    expect(result.lng).toBe(0);
+  });
 });
 
 // Validates: Requirements 3.2, 3.3, 3.4
