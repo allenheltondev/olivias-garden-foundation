@@ -34,9 +34,8 @@ body {
 
 .og-site-header__brand {
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0;
   border: 0;
   font: inherit;
@@ -44,10 +43,18 @@ body {
   text-decoration: none;
 }
 
+.og-site-header__brand-copy {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
 .og-site-header__logo {
   width: auto;
   height: 2.5rem;
   max-width: min(11rem, 42vw);
+  flex-shrink: 0;
 }
 
 .og-site-header__eyebrow {
@@ -291,7 +298,6 @@ body {
 }
 
 .og-site-footer__links-block,
-.og-site-footer__copy,
 .og-site-footer__social-block {
   display: grid;
   gap: 0.35rem;
@@ -307,19 +313,6 @@ body {
   text-transform: uppercase;
 }
 
-.og-site-footer__brand-lockup {
-  display: grid;
-  gap: 0.35rem;
-  justify-items: start;
-}
-
-.og-site-footer__logo {
-  width: auto;
-  height: 2.6rem;
-  max-width: min(12rem, 100%);
-}
-
-.og-site-footer__tagline,
 .og-site-footer__meta,
 .og-site-footer__social {
   margin: 0;
@@ -339,15 +332,13 @@ body {
   margin: 0;
 }
 
-.og-site-footer__tagline {
-  max-width: 28rem;
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-
 .og-site-footer__meta,
 .og-site-footer__social {
   font-size: 0.82rem;
+}
+
+.og-site-footer__meta {
+  text-align: center;
 }
 
 .og-site-footer__social {
@@ -904,19 +895,37 @@ body {
 
   .og-site-footer__inner {
     width: 100%;
-    grid-template-columns: minmax(12rem, 0.9fr) minmax(0, 1.5fr) minmax(10rem, 0.7fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: start;
-    column-gap: 1.75rem;
+    column-gap: 1.25rem;
     padding-left: 1.5rem;
     padding-right: 1.5rem;
   }
 
+  .og-site-footer__links-block {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .og-site-footer__meta {
+    grid-column: 2;
+    grid-row: 1;
+    padding-top: 1.5rem;
+    align-self: start;
+    text-align: center;
+    justify-self: center;
+  }
+
+  .og-site-footer__social-block {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+
   .og-site-footer__links {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, max-content));
-    gap: 0.45rem 1.5rem;
-    justify-items: start;
-    align-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
   }
 
   .og-site-footer__link {

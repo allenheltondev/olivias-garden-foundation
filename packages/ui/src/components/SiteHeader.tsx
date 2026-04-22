@@ -86,16 +86,20 @@ export function SiteHeader({
             {brandLogoSrc ? (
               <img className="og-site-header__logo" src={brandLogoSrc} alt={brandLogoAlt} />
             ) : null}
-            {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
-            <span className="og-site-header__title">{brandTitle}</span>
+            <span className="og-site-header__brand-copy">
+              {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
+              <span className="og-site-header__title">{brandTitle}</span>
+            </span>
           </a>
         ) : (
           <button type="button" className="og-site-header__brand" onClick={handleBrandClick} aria-label={brandAriaLabel}>
             {brandLogoSrc ? (
               <img className="og-site-header__logo" src={brandLogoSrc} alt={brandLogoAlt} />
             ) : null}
-            {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
-            <span className="og-site-header__title">{brandTitle}</span>
+            <span className="og-site-header__brand-copy">
+              {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
+              <span className="og-site-header__title">{brandTitle}</span>
+            </span>
           </button>
         )}
 
