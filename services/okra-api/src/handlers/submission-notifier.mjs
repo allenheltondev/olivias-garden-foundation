@@ -15,6 +15,17 @@ function truncate(text, limit) {
   return `${normalized.slice(0, limit - 3)}...`;
 }
 
+function escapeSlackMrkdwn(text) {
+  if (typeof text !== 'string') {
+    return text;
+  }
+
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
 function formatCoordinate(value) {
   return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(5) : 'n/a';
 }
@@ -30,10 +41,10 @@ function buildAdminReviewUrl(submissionId) {
 }
 
 function buildSlackPayload(detail) {
-  const contributorName = truncate(detail.contributorName, 120) ?? 'Anonymous contributor';
-  const contributorEmail = truncate(detail.contributorEmail, 160) ?? 'No email provided';
-  const storyText = truncate(detail.storyText, 1500) ?? 'No story provided.';
-  const rawLocationText = truncate(detail.rawLocationText, 300) ?? 'No location provided.';
+  const contributorName = escapeSlackMrkdwn(truncate(detail.contributorName, 120) ?? 'Anonymous contributor');
+  const contributorEmail = escapeSlackMrkdwn(truncate(detail.contributorEmail, 160) ?? 'No email provided');
+  const storyText = escapeSlackMrkdwn(truncate(detail.storyText, 1500) ?? 'No story provided.');
+  const rawLocationText = escapeSlackMrkdwn(truncate(detail.rawLocationText, 300) ?? 'No location provided.');
   const createdAt = detail.createdAt ? new Date(detail.createdAt).toISOString() : null;
   const reviewUrl = buildAdminReviewUrl(detail.submissionId);
   const blocks = [
