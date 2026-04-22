@@ -114,10 +114,10 @@ function mapAuthError(error: unknown): Error {
       return new Error('Unable to connect right now. Please try again.');
     }
 
-    return error;
+    return new Error('Something went wrong');
   }
 
-  return new Error('Authentication failed. Please try again.');
+  return new Error('Something went wrong');
 }
 
 interface InitiateAuthResponse {

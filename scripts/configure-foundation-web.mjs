@@ -183,6 +183,17 @@ function deployFoundationStack({
   signupSlackWebhookUrl,
 }) {
   const foundationDir = resolve(repoRoot, "infra", "foundation-web");
+  const foundationFunctionsDir = resolve(foundationDir, "functions");
+
+  step("Installing foundation function dependencies");
+  const installResult = run("npm", ["ci", "--ignore-scripts"], {
+    cwd: foundationFunctionsDir,
+    env: { npm_config_cache: resolve(foundationFunctionsDir, ".npm-cache") },
+  });
+  if (!installResult.ok) {
+    fail("Failed to install foundation function dependencies", installResult.stderr || installResult.stdout);
+  }
+  ok("Foundation function dependencies installed");
 
   step(`Building foundation stack ${stackName}`);
   samBuild(foundationDir, { profile, region });
@@ -226,8 +237,11 @@ function samBuild(serviceDir, { profile, region }) {
 }
 
 function samDeploy(serviceDir, { profile, region, stackName, capabilities, parameterOverrides }) {
+  const builtTemplatePath = resolve(serviceDir, ".aws-sam", "build", "template.yaml");
   const args = [
     "deploy",
+    "--template-file",
+    builtTemplatePath,
     "--stack-name",
     stackName,
     "--resolve-s3",
