@@ -8,10 +8,12 @@ const mockClient = {
 
 const {
   mockEnqueuePhotoProcessing,
-  mockResolveOptionalContributor
+  mockResolveOptionalContributor,
+  mockPublishSubmissionCreatedEvent
 } = vi.hoisted(() => ({
   mockEnqueuePhotoProcessing: vi.fn(),
-  mockResolveOptionalContributor: vi.fn()
+  mockResolveOptionalContributor: vi.fn(),
+  mockPublishSubmissionCreatedEvent: vi.fn()
 }));
 
 vi.mock('../../scripts/db-client.mjs', () => ({
@@ -20,6 +22,10 @@ vi.mock('../../scripts/db-client.mjs', () => ({
 
 vi.mock('../../src/services/photo-processing-queue.mjs', () => ({
   enqueuePhotoProcessing: mockEnqueuePhotoProcessing
+}));
+
+vi.mock('../../src/services/submission-notifications.mjs', () => ({
+  publishSubmissionCreatedEvent: mockPublishSubmissionCreatedEvent
 }));
 
 vi.mock('../../src/services/auth.mjs', async () => {
@@ -75,7 +81,13 @@ function mockSubmissionInsertSuccess() {
     }
 
     if (text.includes('update submission_photos')) {
-      return Promise.resolve({ rows: [], rowCount: 1 });
+      return Promise.resolve({
+        rows: [{
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          original_s3_key: 'temp-photos/550e8400-e29b-41d4-a716-446655440001/original'
+        }],
+        rowCount: 1
+      });
     }
 
     return Promise.resolve({ rows: [], rowCount: 0 });
@@ -84,6 +96,7 @@ function mockSubmissionInsertSuccess() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.MEDIA_CDN_DOMAIN = 'assets.oliviasgarden.test';
   mockResolveOptionalContributor.mockResolvedValue({ ok: true, contributor: null });
   mockSubmissionInsertSuccess();
 });
@@ -123,6 +136,16 @@ describe('submit endpoint optional auth enrichment', () => {
     expect(insertCall[1][1]).toBeNull();
     expect(insertCall[1][2]).toBeNull();
     expect(mockEnqueuePhotoProcessing).toHaveBeenCalledWith(['550e8400-e29b-41d4-a716-446655440001']);
+    expect(mockPublishSubmissionCreatedEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'sub-123',
+        status: 'pending_review',
+        contributorName: 'Guest',
+        rawLocationText: 'Austin, TX',
+        photoUrls: ['https://assets.oliviasgarden.test/temp-photos/550e8400-e29b-41d4-a716-446655440001/original']
+      }),
+      'req-submit'
+    );
   });
 
   it('enriches submissions from an authenticated contributor when form fields are omitted', async () => {

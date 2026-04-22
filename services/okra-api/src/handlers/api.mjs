@@ -14,9 +14,10 @@ import {
   insertPendingSubmissionWithPhotos,
   submissionSchema
 } from '../services/submissions.mjs';
+import { publishSubmissionCreatedEvent } from '../services/submission-notifications.mjs';
 import { errorResponse, corsHeaders } from '../services/pagination.mjs';
 import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
-import { createHttpRouterHandler } from '../services/http-handler.mjs';
+import { createHttpRouterHandler, getCorrelationId } from '../services/http-handler.mjs';
 
 const app = new Router();
 
@@ -108,6 +109,29 @@ app.post('/submissions', async ({ req, event }) => {
     );
 
     await enqueuePhotoProcessing(created.claimedPhotoIds);
+    await publishSubmissionCreatedEvent(
+      {
+        id: created.id,
+        status: created.status,
+        createdAt: created.created_at,
+        contributorName: payload.contributorName ?? authResult.contributor?.name ?? null,
+        contributorEmail: payload.contributorEmail ?? authResult.contributor?.email ?? null,
+        storyText: payload.storyText ?? null,
+        rawLocationText: payload.rawLocationText,
+        privacyMode: payload.privacyMode ?? 'city',
+        displayLat: payload.displayLat,
+        displayLng: payload.displayLng,
+        photoUrls: created.claimedPhotos.map((photo) => {
+          const cdnDomain = process.env.MEDIA_CDN_DOMAIN;
+          if (!cdnDomain || !photo.original_s3_key) {
+            return null;
+          }
+
+          return `https://${cdnDomain}/${photo.original_s3_key}`;
+        }).filter(Boolean)
+      },
+      getCorrelationId(event)
+    );
 
     return {
       statusCode: 201,
@@ -150,7 +174,7 @@ app.get('/okra', async () => {
   if (!cdnDomain) {
     console.error(JSON.stringify({
       level: 'warn',
-      message: 'MEDIA_CDN_DOMAIN not set — photo URLs will be empty',
+      message: 'MEDIA_CDN_DOMAIN not set â€” photo URLs will be empty',
       endpoint: 'GET /okra'
     }));
   }
