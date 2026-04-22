@@ -60,6 +60,49 @@ describe('submission notifier', () => {
     );
   });
 
+  it('escapes Slack mrkdwn control characters in user-supplied fields', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await handler({
+      id: 'evt-124',
+      detail: {
+        submissionId: 'sub-124',
+        contributorName: 'Okra <Grower> & <!channel>',
+        contributorEmail: 'okra+<review>@example.com',
+        storyText: 'Look here <!channel> & <https://bad.test|bad>',
+        rawLocationText: 'Austin & <Texas>',
+        privacyMode: 'city',
+        displayLat: 30.2672,
+        displayLng: -97.7431,
+        createdAt: '2026-04-21T12:00:00.000Z',
+        photoUrls: [],
+        correlationId: 'corr-124'
+      }
+    });
+
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.text).toContain('Okra &lt;Grower&gt; &amp; &lt;!channel&gt;');
+    expect(payload.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'section',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ text: '*Contributor*\nOkra &lt;Grower&gt; &amp; &lt;!channel&gt;' }),
+            expect.objectContaining({ text: '*Email*\nokra+&lt;review&gt;@example.com' }),
+            expect.objectContaining({ text: '*Raw location*\nAustin &amp; &lt;Texas&gt;' })
+          ])
+        }),
+        expect.objectContaining({
+          type: 'section',
+          text: expect.objectContaining({
+            text: '*Story*\nLook here &lt;!channel&gt; &amp; &lt;https://bad.test|bad&gt;'
+          })
+        })
+      ])
+    );
+  });
+
   it('returns without calling Slack when the webhook is not configured', async () => {
     delete process.env.SLACK_WEBHOOK_URL;
     const fetchMock = vi.fn();

@@ -47,7 +47,7 @@
       "name": "Request Seeds",
       "short_name": "Seeds",
       "description": "Go straight to the free okra seed request page.",
-      "url": "/seeds",
+      "url": "/okra",
       "icons": [
         {
           "src": "/icons/android-chrome-192x192.png",

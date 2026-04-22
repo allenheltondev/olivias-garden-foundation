@@ -78,6 +78,15 @@ function mockOkraApi(): Plugin {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ ok: true }));
     });
+
+    middlewares.use('/api/requests', (_req, res) => {
+      res.statusCode = 201;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        requestId: '00000000-0000-0000-0000-000000000000',
+        createdAt: new Date().toISOString(),
+      }));
+    });
   };
 
   return {

@@ -21,7 +21,7 @@ function notificationDetail(submission, correlationId) {
 
 export async function publishSubmissionCreatedEvent(submission, correlationId) {
   try {
-    await eventBridge.send(new PutEventsCommand({
+    const result = await eventBridge.send(new PutEventsCommand({
       Entries: [
         {
           Source: 'okra.submissions',
@@ -30,6 +30,19 @@ export async function publishSubmissionCreatedEvent(submission, correlationId) {
         }
       ]
     }));
+
+    if ((result?.FailedEntryCount ?? 0) > 0) {
+      const failedEntries = Array.isArray(result?.Entries)
+        ? result.Entries
+            .filter((entry) => entry?.ErrorCode || entry?.ErrorMessage)
+            .map((entry) => ({
+              errorCode: entry.ErrorCode ?? null,
+              errorMessage: entry.ErrorMessage ?? null
+            }))
+        : [];
+
+      throw new Error(`Failed to publish ${result.FailedEntryCount} okra submission notification event(s): ${JSON.stringify(failedEntries)}`);
+    }
   } catch (error) {
     console.error(JSON.stringify({
       level: 'warn',

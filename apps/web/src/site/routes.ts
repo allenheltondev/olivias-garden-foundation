@@ -54,14 +54,6 @@ export const routes: AppRoute[] = [
     prerender: true,
   },
   {
-    path: '/seeds',
-    label: 'Request Seeds',
-    title: 'Request free okra seeds',
-    description: "Request free okra seeds from Olivia's Garden Foundation and join a growing food project rooted in Olivia's seed line.",
-    seoImage: '/images/okra/olivia-okra.jpg',
-    prerender: true,
-  },
-  {
     path: '/okra',
     label: 'Okra Project',
     showInNav: true,

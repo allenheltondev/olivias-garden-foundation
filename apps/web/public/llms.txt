@@ -24,8 +24,7 @@ The foundation was built in memory of Olivia Helton and is run by the Helton fam
 - https://oliviasgarden.org/ : Home page and high-level mission
 - https://oliviasgarden.org/about : Olivia's story, the foundation's origin, and who runs it
 - https://oliviasgarden.org/get-involved : Volunteer and participation options
-- https://oliviasgarden.org/okra : The Okra Project overview and map entry point
-- https://oliviasgarden.org/seeds : Free okra seed request program
+- https://oliviasgarden.org/okra : The Okra Project overview, map entry point, and free seed request flow
 - https://oliviasgarden.org/impact : Current work and near-term direction
 - https://oliviasgarden.org/donate : Donation details and support options
 - https://oliviasgarden.org/contact : Direct contact information
