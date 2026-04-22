@@ -1732,6 +1732,18 @@ html {
   cursor: pointer;
 }
 
+.og-auth-utility__avatar--image {
+  padding: 0;
+  overflow: hidden;
+}
+
+.og-auth-utility__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 .og-auth-menu__popover {
   position: absolute;
   top: calc(100% + 0.5rem);
@@ -1843,6 +1855,89 @@ html {
   justify-content: flex-end;
   padding-top: 0.5rem;
   border-top: 1px solid var(--site-border);
+}
+
+.profile-link-button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.profile-link-button:hover {
+  text-decoration: none;
+}
+
+/* ── Profile form skeleton ──────────────────────────────────────────── */
+
+@keyframes profile-skeleton-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.profile-form--skeleton {
+  pointer-events: none;
+}
+
+.profile-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(76, 52, 38, 0.08) 0%,
+    rgba(76, 52, 38, 0.14) 50%,
+    rgba(76, 52, 38, 0.08) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 0.6rem;
+  animation: profile-skeleton-pulse 1.4s var(--easing-in-out) infinite;
+}
+
+.profile-skeleton--avatar {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.profile-skeleton__stack {
+  display: grid;
+  gap: 0.6rem;
+  align-content: center;
+}
+
+.profile-skeleton--button {
+  height: 2.5rem;
+  width: 9.5rem;
+  border-radius: 999px;
+}
+
+.profile-skeleton--hint {
+  height: 0.85rem;
+  width: min(22rem, 100%);
+}
+
+.profile-skeleton__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.profile-skeleton--label {
+  height: 0.8rem;
+  width: 40%;
+}
+
+.profile-skeleton--input {
+  height: 3.2rem;
+  border-radius: 1rem;
+}
+
+.profile-skeleton--textarea {
+  height: 6rem;
+  border-radius: 1rem;
 }
 
 .profile-activity {

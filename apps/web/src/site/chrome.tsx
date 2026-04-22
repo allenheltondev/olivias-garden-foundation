@@ -9,11 +9,13 @@ const foundationLogo = '/images/icons/logo.svg';
 function AvatarMenu({
   initials,
   label,
+  avatarUrl,
   onNavigate,
   onLogout,
 }: {
   initials: string;
   label: string;
+  avatarUrl?: string | null;
   onNavigate: (path: string) => void;
   onLogout?: () => void;
 }) {
@@ -49,14 +51,18 @@ function AvatarMenu({
     <div className="og-auth-menu" ref={containerRef}>
       <button
         type="button"
-        className="og-auth-utility__avatar"
+        className={`og-auth-utility__avatar${avatarUrl ? ' og-auth-utility__avatar--image' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
         title={label}
         onClick={() => setOpen((prev) => !prev)}
       >
-        {initials}
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="og-auth-utility__avatar-img" />
+        ) : (
+          initials
+        )}
       </button>
       {open ? (
         <div className="og-auth-menu__popover" role="menu">
@@ -110,6 +116,7 @@ export function SiteHeader({
   authSession,
   authBusy,
   authError,
+  avatarUrl,
   onLogout,
 }: {
   pathname: string;
@@ -118,6 +125,7 @@ export function SiteHeader({
   authSession: AuthSession | null;
   authBusy: boolean;
   authError: string | null;
+  avatarUrl?: string | null;
   onLogout?: () => void;
 }) {
   const initials = getUserInitials(authSession);
@@ -173,6 +181,7 @@ export function SiteHeader({
             <AvatarMenu
               initials={initials}
               label={avatarLabel}
+              avatarUrl={avatarUrl}
               onNavigate={onNavigate}
               onLogout={onLogout}
             />

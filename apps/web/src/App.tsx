@@ -13,6 +13,7 @@ import {
 } from './auth/cognito';
 import type { AuthSession } from './auth/session';
 import { SiteFooter, SiteHeader } from './site/chrome';
+import { webApiBase } from './site/routes';
 import { useRouteSeo } from './site/seo';
 import { LoginPage } from './site/pages/LoginPage';
 import {
@@ -45,6 +46,7 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [loginModePreference, setLoginModePreference] = useState<'login' | 'signup'>('login');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const page = getRouteByPath(pathname);
 
   useRouteSeo(page, pathname);
@@ -72,6 +74,31 @@ function App() {
       active = false;
     };
   }, [authConfig.clientId, authConfig.domain, authConfig.enabled, authConfig.userPoolId]);
+
+  useEffect(() => {
+    if (!authSession?.accessToken) {
+      setProfileAvatarUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`${webApiBase}/profile`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${authSession.accessToken}` },
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((profile) => {
+        if (cancelled || !profile) return;
+        setProfileAvatarUrl(profile.avatarThumbnailUrl ?? profile.avatarUrl ?? null);
+      })
+      .catch(() => {
+        // Header avatar is a nice-to-have; silently fall back to initials.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession?.accessToken]);
 
   const openLoginPage = () => {
     setAuthError(null);
@@ -217,6 +244,7 @@ function App() {
         authSession={authSession}
         authBusy={authBusy || !authReady}
         authError={authError}
+        avatarUrl={profileAvatarUrl}
         onLogout={handleLogout}
       />
       <main className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}>
@@ -270,7 +298,12 @@ function App() {
             path="/profile"
             element={
               <Suspense fallback={routeFallback}>
-                <ProfilePage authSession={authSession} authReady={authReady} onNavigate={navigate} />
+                <ProfilePage
+                  authSession={authSession}
+                  authReady={authReady}
+                  onNavigate={navigate}
+                  onAvatarUrlChange={setProfileAvatarUrl}
+                />
               </Suspense>
             }
           />

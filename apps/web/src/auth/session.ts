@@ -2,6 +2,8 @@ export interface AuthUser {
   sub: string;
   email: string | null;
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   tier: string | null;
 }
 
@@ -64,6 +66,8 @@ export function buildAuthSession(tokens: {
       sub: firstString(claims?.sub) ?? 'unknown',
       email: firstString(claims?.email),
       name: firstString(claims?.name) ?? firstString(claims?.given_name),
+      firstName: firstString(claims?.given_name),
+      lastName: firstString(claims?.family_name),
       tier: deriveTier(claims),
     },
   };
@@ -75,7 +79,15 @@ export function readStoredSession(): AuthSession | null {
   try {
     const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as AuthSession;
+    const parsed = JSON.parse(raw) as AuthSession;
+    return {
+      ...parsed,
+      user: {
+        ...parsed.user,
+        firstName: parsed.user?.firstName ?? null,
+        lastName: parsed.user?.lastName ?? null,
+      },
+    };
   } catch {
     return null;
   }
