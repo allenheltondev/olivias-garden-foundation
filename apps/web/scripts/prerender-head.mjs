@@ -29,7 +29,9 @@ const distDir = join(__dirname, '..', 'dist');
 const siteUrl = (process.env.VITE_SITE_URL ?? 'https://oliviasgarden.org').replace(/\/+$/, '');
 const instagramUrl = 'https://instagram.com/oliviasgardentx';
 const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
-const defaultImage = '/images/home/garden-landscaping.jpg';
+const defaultImage = '/images/home/og-image.png';
+const defaultImageAlt = "Olivia's Garden Foundation social sharing image.";
+const logoImage = '/images/icons/logo.svg';
 
 /** @typedef {{ path: string, title: string, description: string, seoImage?: string, allowIndex?: boolean }} PrerenderRoute */
 /** @type {PrerenderRoute[]} */
@@ -38,37 +40,37 @@ const prerenderRoutes = [
     path: '/',
     title: "Olivia's Garden Foundation",
     description: "Olivia's Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency.",
-    seoImage: '/images/home/garden-landscaping.jpg',
+    seoImage: defaultImage,
   },
   {
     path: '/about',
     title: "About Olivia's Garden",
     description: "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
-    seoImage: '/images/about/luffa-trellis.jpg',
+    seoImage: defaultImage,
   },
   {
     path: '/get-involved',
     title: 'Get involved',
     description: "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
-    seoImage: '/images/home/watering-seedlings.jpg',
+    seoImage: defaultImage,
   },
   {
     path: '/seeds',
     title: 'Request free okra seeds',
     description: "Request free okra seeds from Olivia's Garden Foundation and join a growing food project rooted in Olivia's seed line.",
-    seoImage: '/images/okra/olivia-okra.jpg',
+    seoImage: defaultImage,
   },
   {
     path: '/impact',
     title: "What we're building",
     description: "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
-    seoImage: '/images/home/produce-basket.jpg',
+    seoImage: defaultImage,
   },
   {
     path: '/contact',
     title: 'Get in touch',
     description: "Contact Olivia's Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.",
-    seoImage: '/images/home/bee-suit.jpg',
+    seoImage: defaultImage,
   },
 ];
 
@@ -103,6 +105,7 @@ function buildHeadFragment(route) {
     '@type': 'NonprofitOrganization',
     name: "Olivia's Garden Foundation",
     url: siteUrl,
+    logo: absoluteUrl(logoImage),
     sameAs: [instagramUrl, facebookUrl],
   });
 
@@ -156,9 +159,11 @@ function applyHead(templateHtml, route) {
   replaceMeta('property="og:title"', pageTitle);
   replaceMeta('property="og:description"', route.description);
   replaceMeta('property="og:image"', pageImage);
+  replaceMeta('property="og:image:alt"', defaultImageAlt);
   replaceMeta('name="twitter:title"', pageTitle);
   replaceMeta('name="twitter:description"', route.description);
   replaceMeta('name="twitter:image"', pageImage);
+  replaceMeta('name="twitter:image:alt"', defaultImageAlt);
 
   // og:url is not in the base template; inject it.
   if (/property="og:url"/i.test(html)) {

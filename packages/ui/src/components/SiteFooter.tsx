@@ -14,6 +14,9 @@ export interface SiteFooterSocialLink {
 }
 
 export interface SiteFooterProps {
+  brandLogoSrc?: string;
+  brandLogoAlt?: string;
+  brandName?: string;
   tagline: string;
   meta: string;
   links?: SiteFooterLink[];
@@ -21,6 +24,9 @@ export interface SiteFooterProps {
 }
 
 export function SiteFooter({
+  brandLogoSrc,
+  brandLogoAlt = '',
+  brandName = "Olivia's Garden Foundation",
   tagline,
   meta,
   links = [],
@@ -64,7 +70,12 @@ export function SiteFooter({
         ) : null}
 
         <div className="og-site-footer__copy">
-          <p className="og-site-footer__label">Olivia&apos;s Garden Foundation</p>
+          <div className="og-site-footer__brand-lockup">
+            {brandLogoSrc ? (
+              <img className="og-site-footer__logo" src={brandLogoSrc} alt={brandLogoAlt} />
+            ) : null}
+            <p className="og-site-footer__label">{brandName}</p>
+          </div>
           <p className="og-site-footer__tagline">{tagline}</p>
           <p className="og-site-footer__meta">{meta}</p>
         </div>

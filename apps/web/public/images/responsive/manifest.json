@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-21T18:48:43.588Z",
+  "generatedAt": "2026-04-22T16:55:47.773Z",
   "widths": [
     480,
     768,
@@ -166,6 +166,30 @@
             "width": 982,
             "path": "images/responsive/home/melon-harvest-982.avif",
             "bytes": 309777
+          }
+        ]
+      }
+    },
+    "home/og-image.png": {
+      "original": "home/og-image.png",
+      "width": 1200,
+      "height": 630,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/home/og-image-480.avif",
+            "bytes": 7311
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/home/og-image-768.avif",
+            "bytes": 11920
+          },
+          {
+            "width": 1200,
+            "path": "images/responsive/home/og-image-1200.avif",
+            "bytes": 23698
           }
         ]
       }

@@ -11,6 +11,8 @@ export interface SiteHeaderNavItem {
 }
 
 export interface SiteHeaderProps {
+  brandLogoSrc?: string;
+  brandLogoAlt?: string;
   brandEyebrow?: string;
   brandTitle: string;
   brandHref?: string;
@@ -21,6 +23,8 @@ export interface SiteHeaderProps {
 }
 
 export function SiteHeader({
+  brandLogoSrc,
+  brandLogoAlt = '',
   brandEyebrow,
   brandTitle,
   brandHref,
@@ -79,11 +83,17 @@ export function SiteHeader({
             }}
             aria-label={brandAriaLabel}
           >
+            {brandLogoSrc ? (
+              <img className="og-site-header__logo" src={brandLogoSrc} alt={brandLogoAlt} />
+            ) : null}
             {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
             <span className="og-site-header__title">{brandTitle}</span>
           </a>
         ) : (
           <button type="button" className="og-site-header__brand" onClick={handleBrandClick} aria-label={brandAriaLabel}>
+            {brandLogoSrc ? (
+              <img className="og-site-header__logo" src={brandLogoSrc} alt={brandLogoAlt} />
+            ) : null}
             {brandEyebrow ? <span className="og-site-header__eyebrow">{brandEyebrow}</span> : null}
             <span className="og-site-header__title">{brandTitle}</span>
           </button>

@@ -10,6 +10,8 @@ export type AppRoute = {
   prerender?: boolean;
 };
 
+export const socialShareImage = '/images/home/og-image.png';
+
 export const routes: AppRoute[] = [
   {
     path: '/',
@@ -18,7 +20,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: "Olivia's Garden Foundation",
     description: "Olivia's Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency.",
-    seoImage: '/images/home/garden-landscaping.jpg',
+    seoImage: socialShareImage,
     prerender: true,
   },
   {
@@ -42,7 +44,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: "About Olivia's Garden",
     description: "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
-    seoImage: '/images/about/luffa-trellis.jpg',
+    seoImage: socialShareImage,
     prerender: true,
   },
   {
@@ -50,7 +52,7 @@ export const routes: AppRoute[] = [
     label: 'Get Involved',
     title: 'Get involved',
     description: "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
-    seoImage: '/images/home/watering-seedlings.jpg',
+    seoImage: socialShareImage,
     prerender: true,
   },
   {
@@ -60,14 +62,14 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'The Okra Project',
     description: 'Explore the Okra Project map, request seeds, and follow a public invitation to grow food and share the story back.',
-    seoImage: '/images/okra/olivia-okra.jpg',
+    seoImage: socialShareImage,
   },
   {
     path: '/impact',
     label: 'Impact',
     title: "What we're building",
     description: "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
-    seoImage: '/images/home/produce-basket.jpg',
+    seoImage: socialShareImage,
     prerender: true,
   },
   {
@@ -76,7 +78,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: "Support Olivia's Garden",
     description: "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
-    seoImage: '/images/home/sunset-garden.jpg',
+    seoImage: socialShareImage,
   },
   {
     path: '/profile',
@@ -91,7 +93,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'Get in touch',
     description: "Contact Olivia's Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.",
-    seoImage: '/images/home/bee-suit.jpg',
+    seoImage: socialShareImage,
     prerender: true,
   },
 ];

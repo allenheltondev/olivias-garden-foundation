@@ -4,6 +4,8 @@ import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
 import { facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
 
+const foundationLogo = '/images/icons/logo.svg';
+
 function AvatarMenu({
   initials,
   label,
@@ -158,6 +160,8 @@ export function SiteHeader({
 
   return (
     <SharedSiteHeader
+      brandLogoSrc={foundationLogo}
+      brandLogoAlt=""
       brandEyebrow="Olivia's Garden Foundation"
       brandTitle="Homesteading, growing, and community"
       brandHref="/"
@@ -214,6 +218,9 @@ export function SiteFooter({
 
   return (
     <SharedSiteFooter
+      brandLogoSrc={foundationLogo}
+      brandLogoAlt=""
+      brandName="Olivia's Garden Foundation"
       tagline={currentPage.path === '/donate'
         ? 'Founded in love. Growing for community.'
         : 'Growing food, sharing seeds, and helping more people feel at home on the land.'}

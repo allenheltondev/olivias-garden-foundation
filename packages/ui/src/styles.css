@@ -44,6 +44,12 @@ body {
   text-decoration: none;
 }
 
+.og-site-header__logo {
+  width: auto;
+  height: 2.5rem;
+  max-width: min(11rem, 42vw);
+}
+
 .og-site-header__eyebrow {
   color: var(--og-color-moss);
   font-size: 0.78rem;
@@ -161,6 +167,11 @@ body {
   .og-site-header__eyebrow {
     font-size: 0.68rem;
     letter-spacing: 0.12em;
+  }
+
+  .og-site-header__logo {
+    height: 2.15rem;
+    max-width: min(9rem, 38vw);
   }
 
   .og-site-header__title {
@@ -294,6 +305,18 @@ body {
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.og-site-footer__brand-lockup {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+
+.og-site-footer__logo {
+  width: auto;
+  height: 2.6rem;
+  max-width: min(12rem, 100%);
 }
 
 .og-site-footer__tagline,

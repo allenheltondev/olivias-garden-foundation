@@ -156,12 +156,20 @@ Resources:
           - DeployCustomDomain
           - !Sub 'https://${DomainName}/auth/callback'
           - !Ref AWS::NoValue
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://www.${DomainName}/auth/callback'
+          - !Ref AWS::NoValue
       LogoutURLs:
         - 'http://localhost:4174/'
         - !Sub 'https://${WebFrontendDistribution.DomainName}/'
         - !If
           - DeployCustomDomain
           - !Sub 'https://${DomainName}/'
+          - !Ref AWS::NoValue
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://www.${DomainName}/'
           - !Ref AWS::NoValue
       SupportedIdentityProviders:
         - COGNITO
@@ -331,7 +339,7 @@ Resources:
         PriceClass: PriceClass_100
         Aliases: !If
           - DeployCustomDomain
-          - [!Ref DomainName]
+          - [!Ref DomainName, !Sub 'www.${DomainName}']
           - !Ref AWS::NoValue
         ViewerCertificate: !If
           - DeployCustomDomain
@@ -465,9 +473,13 @@ Resources:
     Condition: DeployCustomDomain
     Properties:
       DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub 'www.${DomainName}'
       ValidationMethod: DNS
       DomainValidationOptions:
         - DomainName: !Ref DomainName
+          HostedZoneId: !Ref DomainHostedZoneId
+        - DomainName: !Sub 'www.${DomainName}'
           HostedZoneId: !Ref DomainHostedZoneId
 
   SharedAssetsCertificate:
@@ -507,6 +519,18 @@ Resources:
     Properties:
       HostedZoneId: !Ref DomainHostedZoneId
       Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt WebFrontendDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+  WebFrontendWwwDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: DeployCustomDomain
+    Properties:
+      HostedZoneId: !Ref DomainHostedZoneId
+      Name: !Sub 'www.${DomainName}'
       Type: A
       AliasTarget:
         DNSName: !GetAtt WebFrontendDistribution.DomainName
