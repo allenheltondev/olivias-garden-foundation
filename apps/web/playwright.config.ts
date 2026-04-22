@@ -1,6 +1,12 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:4173';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL?.trim();
+
+if (!baseURL) {
+  throw new Error(
+    'Playwright requires PLAYWRIGHT_BASE_URL to point at a deployed staging environment.',
+  );
+}
 
 export default defineConfig({
   testDir: './tests',

@@ -2,8 +2,6 @@ import { expect, test } from '@playwright/test';
 import { gotoAndWait } from './test-helpers';
 
 test.describe('donation flow', () => {
-  test.skip(process.env.PLAYWRIGHT_ENABLE_DONATION_CHECKOUT !== 'true', 'Donation checkout is only enabled in Stage CI.');
-
   test('donate flow opens Stripe checkout from the Stage site', async ({ page }) => {
     await gotoAndWait(page, '/');
 

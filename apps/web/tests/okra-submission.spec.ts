@@ -1,99 +1,50 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { gotoAndWait } from './test-helpers';
+import { gotoAndWait, trackBrowserErrors } from './test-helpers';
 
 const TEST_IMAGE_PATH = fileURLToPath(new URL('../public/images/okra/olivia-okra.jpg', import.meta.url));
 
-test('okra submission flow uploads a photo and submits a garden entry', async ({ page }) => {
-  let submissionBody: Record<string, unknown> | null = null;
+test.describe('okra submission flow (staging)', () => {
+  test('opens the modal, uploads an okra photo, submits, and shows success', async ({ page, baseURL }) => {
+    expect(baseURL).toBeTruthy();
 
-  await page.route('**/api/okra', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
-    });
-  });
+    const assertNoBrowserErrors = trackBrowserErrors(page);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const contributorName = `Playwright Grower ${runId}`;
+    const storyText = `A small backyard okra patch submitted by Playwright run ${runId}.`;
 
-  await page.route('**/api/okra/stats', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ total_pins: 0, country_count: 0 }),
-    });
-  });
+    await gotoAndWait(page, '/okra');
 
-  await page.route('https://nominatim.openstreetmap.org/search?*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          lat: '33.1976',
-          lon: '-96.6153',
-        },
-      ]),
-    });
-  });
+    await page.getByRole('button', { name: 'Add my okra patch' }).first().click();
 
-  await page.route('**/api/photos', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        photoId: 'photo-test-1',
-        uploadUrl: 'http://127.0.0.1:4173/test-upload/photo-test-1',
-      }),
-    });
-  });
+    const dialog = page.getByRole('dialog', { name: 'Add my okra patch' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Submit your garden' })).toBeDisabled();
 
-  await page.route('**/test-upload/*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      body: '',
-    });
-  });
+    await dialog.locator('input[type="file"]').setInputFiles(TEST_IMAGE_PATH);
+    await expect(dialog.getByLabel('Upload complete')).toBeVisible({ timeout: 30000 });
 
-  await page.route('**/api/submissions', async (route) => {
-    submissionBody = (await route.request().postDataJSON()) as Record<string, unknown>;
-    await route.fulfill({
-      status: 201,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: true }),
-    });
-  });
+    await dialog.getByLabel('Your name (optional)').fill(contributorName);
+    await dialog.getByLabel('Your garden story (optional)').fill(storyText);
+    await dialog.getByLabel('Location (city, state, or address)').fill('McKinney, Texas');
 
-  await gotoAndWait(page, '/okra');
+    await dialog.getByRole('button', { name: 'Or click to pick on map' }).click();
 
-  await page.getByRole('button', { name: 'Add my okra patch' }).first().click();
+    const map = dialog.locator('.location-input__map');
+    await expect(map).toBeVisible();
+    await map.click({ position: { x: 160, y: 120 } });
 
-  const dialog = page.getByRole('dialog', { name: 'Add my okra patch' });
-  await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/Coordinates:/)).toBeVisible();
+    await dialog.getByRole('radio', { name: /City/ }).check();
+    await expect(dialog.getByRole('button', { name: 'Submit your garden' })).toBeEnabled();
 
-  await dialog.locator('input[type="file"]').setInputFiles(TEST_IMAGE_PATH);
+    await dialog.getByRole('button', { name: 'Submit your garden' }).click();
 
-  await expect(dialog.getByLabel('Upload complete')).toBeVisible();
+    await expect(dialog.getByRole('status')).toContainText(
+      'Your garden has been submitted and is pending review. Thank you.',
+      { timeout: 30000 },
+    );
 
-  await dialog.getByLabel('Your name (optional)').fill('Playwright Grower');
-  await dialog.getByLabel('Your garden story (optional)').fill('A small backyard okra patch for the test flow.');
-  await dialog.getByLabel('Location (city, state, or address)').fill('McKinney, Texas');
-  await dialog.getByRole('button', { name: 'Find on map' }).click();
-
-  await expect(dialog.getByText(/Coordinates:/)).toContainText('33.1976, -96.6153');
-
-  await dialog.getByRole('radio', { name: /City/ }).check();
-  await dialog.getByRole('button', { name: 'Submit your garden' }).click();
-
-  await expect(dialog.getByRole('status')).toContainText(/pending review/i);
-
-  expect(submissionBody).not.toBeNull();
-  expect(submissionBody).toMatchObject({
-    photoIds: ['photo-test-1'],
-    rawLocationText: 'McKinney, Texas',
-    displayLat: 33.1976,
-    displayLng: -96.6153,
-    contributorName: 'Playwright Grower',
-    storyText: 'A small backyard okra patch for the test flow.',
-    privacyMode: 'city',
+    await assertNoBrowserErrors();
   });
 });

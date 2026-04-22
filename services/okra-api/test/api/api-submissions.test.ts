@@ -72,6 +72,10 @@ function mockSubmissionInsertSuccess() {
       return Promise.resolve({ rows: [], rowCount: 0 });
     }
 
+    if (String(text).includes('information_schema.columns')) {
+      return Promise.resolve({ rows: [{ '?column?': 1 }], rowCount: 1 });
+    }
+
     if (text.includes('insert into submissions')) {
       return Promise.resolve({
         rows: [{ id: 'sub-123', status: 'pending_review', created_at: '2026-04-15T12:00:00.000Z' }],
