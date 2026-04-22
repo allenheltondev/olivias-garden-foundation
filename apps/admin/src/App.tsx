@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
+import { Button, Card, FormFeedback, Input, Select, Textarea } from '@olivias/ui';
 import {
   createStoreProduct,
   listOkraReviewQueue,
@@ -33,6 +34,27 @@ const emptyProductForm: UpsertStoreProductRequest = {
   image_url: '',
   metadata: {},
 };
+
+const statusOptions = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'active', label: 'Active' },
+  { value: 'archived', label: 'Archived' },
+];
+
+const kindOptions = [
+  { value: 'donation', label: 'Donation' },
+  { value: 'merchandise', label: 'Merchandise' },
+  { value: 'ticket', label: 'Ticket' },
+  { value: 'sponsorship', label: 'Sponsorship' },
+  { value: 'other', label: 'Other' },
+];
+
+const fulfillmentOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'digital', label: 'Digital' },
+  { value: 'shipping', label: 'Shipping' },
+  { value: 'pickup', label: 'Pickup' },
+];
 
 function redirectToLogin() {
   const returnUrl = window.location.href;
@@ -92,11 +114,11 @@ export default function App() {
   if (!session.isAdmin) {
     return (
       <div className="admin-shell admin-shell--centered">
-        <div className="admin-card">
+        <Card className="admin-restricted">
           <p className="admin-eyebrow">Restricted</p>
           <h1>Administrator access is required.</h1>
           <p>This account is authenticated, but it does not carry the `admin` role in Cognito.</p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -221,15 +243,15 @@ export default function App() {
         </button>
       </div>
 
-      {loadError ? <p className="admin-error">{loadError}</p> : null}
+      {loadError ? <FormFeedback tone="error" className="admin-load-error">{loadError}</FormFeedback> : null}
 
       {activeTab === 'moderation' ? (
         <section className="admin-grid">
           {okraQueue.length === 0 ? (
-            <div className="admin-card"><p>No pending okra submissions.</p></div>
+            <Card><p>No pending okra submissions.</p></Card>
           ) : (
             okraQueue.map((submission) => (
-              <article key={submission.id} className="admin-card admin-card--submission">
+              <Card key={submission.id} className="admin-card--submission">
                 <div className="submission-meta">
                   <div>
                     <h2>{submission.contributor_name || 'Anonymous contributor'}</h2>
@@ -243,26 +265,26 @@ export default function App() {
                   <img className="submission-photo" src={submission.photos[0]} alt="Okra submission" />
                 ) : null}
                 <div className="submission-actions">
-                  <button type="button" onClick={() => void handleReview(submission, 'approved')}>
+                  <Button onClick={() => void handleReview(submission, 'approved')}>
                     Approve
-                  </button>
-                  <button type="button" className="danger" onClick={() => void handleReview(submission, 'denied')}>
+                  </Button>
+                  <Button variant="outline" onClick={() => void handleReview(submission, 'denied')}>
                     Deny
-                  </button>
+                  </Button>
                 </div>
-              </article>
+              </Card>
             ))
           )}
         </section>
       ) : (
         <section className="admin-store-layout">
-          <div className="admin-card">
+          <Card>
             <div className="store-header">
               <div>
                 <p className="admin-eyebrow">Store products</p>
                 <h2>Current catalog</h2>
               </div>
-              <button type="button" onClick={startCreate}>New product</button>
+              <Button variant="secondary" size="sm" onClick={startCreate}>New product</Button>
             </div>
             <div className="store-list">
               {products.map((product) => (
@@ -278,136 +300,103 @@ export default function App() {
                 </button>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <form className="admin-card store-form" onSubmit={submitProduct}>
-            <div className="store-header">
-              <div>
-                <p className="admin-eyebrow">{activeProductId ? 'Edit product' : 'Create product'}</p>
-                <h2>{activeProductId ? 'Update store product' : 'Add store product'}</h2>
+          <Card className="store-form-card">
+            <form className="store-form" onSubmit={submitProduct}>
+              <div className="store-header">
+                <div>
+                  <p className="admin-eyebrow">{activeProductId ? 'Edit product' : 'Create product'}</p>
+                  <h2>{activeProductId ? 'Update store product' : 'Add store product'}</h2>
+                </div>
               </div>
-            </div>
-            <label>
-              Name
-              <input
+              <Input
+                label="Name"
                 value={productForm.name}
                 onChange={(event) => setProductForm((current) => ({ ...current, name: event.target.value }))}
               />
-            </label>
-            <label>
-              Slug
-              <input
+              <Input
+                label="Slug"
                 value={productForm.slug}
                 onChange={(event) => setProductForm((current) => ({ ...current, slug: event.target.value.toLowerCase() }))}
               />
-            </label>
-            <label>
-              Short description
-              <input
+              <Input
+                label="Short description"
                 value={productForm.short_description || ''}
                 onChange={(event) => setProductForm((current) => ({ ...current, short_description: event.target.value }))}
               />
-            </label>
-            <label>
-              Description
-              <textarea
+              <Textarea
+                label="Description"
                 value={productForm.description || ''}
                 onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))}
               />
-            </label>
-            <div className="store-grid">
-              <label>
-                Status
-                <select
+              <div className="store-grid">
+                <Select
+                  label="Status"
                   value={productForm.status}
-                  onChange={(event) => setProductForm((current) => ({ ...current, status: event.target.value as StoreProduct['status'] }))}
-                >
-                  <option value="draft">Draft</option>
-                  <option value="active">Active</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </label>
-              <label>
-                Kind
-                <select
+                  onChange={(value) => setProductForm((current) => ({ ...current, status: value as StoreProduct['status'] }))}
+                  options={statusOptions}
+                />
+                <Select
+                  label="Kind"
                   value={productForm.kind}
-                  onChange={(event) => setProductForm((current) => ({ ...current, kind: event.target.value as StoreProduct['kind'] }))}
-                >
-                  <option value="donation">Donation</option>
-                  <option value="merchandise">Merchandise</option>
-                  <option value="ticket">Ticket</option>
-                  <option value="sponsorship">Sponsorship</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-              <label>
-                Fulfillment
-                <select
+                  onChange={(value) => setProductForm((current) => ({ ...current, kind: value as StoreProduct['kind'] }))}
+                  options={kindOptions}
+                />
+                <Select
+                  label="Fulfillment"
                   value={productForm.fulfillment_type}
-                  onChange={(event) =>
-                    setProductForm((current) => ({ ...current, fulfillment_type: event.target.value as StoreProduct['fulfillment_type'] }))
-                  }
-                >
-                  <option value="none">None</option>
-                  <option value="digital">Digital</option>
-                  <option value="shipping">Shipping</option>
-                  <option value="pickup">Pickup</option>
-                </select>
-              </label>
-              <label>
-                Price (cents)
-                <input
+                  onChange={(value) => setProductForm((current) => ({ ...current, fulfillment_type: value as StoreProduct['fulfillment_type'] }))}
+                  options={fulfillmentOptions}
+                />
+                <Input
                   type="number"
+                  label="Price (cents)"
                   value={productForm.unit_amount_cents}
-                  onChange={(event) =>
-                    setProductForm((current) => ({ ...current, unit_amount_cents: Number(event.target.value) || 0 }))
-                  }
+                  onChange={(event) => setProductForm((current) => ({ ...current, unit_amount_cents: Number(event.target.value) || 0 }))}
                 />
-              </label>
-            </div>
-            <div className="store-grid">
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={productForm.is_public}
-                  onChange={(event) => setProductForm((current) => ({ ...current, is_public: event.target.checked }))}
-                />
-                Publicly visible
-              </label>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={productForm.is_featured}
-                  onChange={(event) => setProductForm((current) => ({ ...current, is_featured: event.target.checked }))}
-                />
-                Featured
-              </label>
-            </div>
-            <label>
-              Nonprofit program
-              <input
+              </div>
+              <div className="store-grid">
+                <label className="admin-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={productForm.is_public}
+                    onChange={(event) => setProductForm((current) => ({ ...current, is_public: event.target.checked }))}
+                  />
+                  Publicly visible
+                </label>
+                <label className="admin-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={productForm.is_featured}
+                    onChange={(event) => setProductForm((current) => ({ ...current, is_featured: event.target.checked }))}
+                  />
+                  Featured
+                </label>
+              </div>
+              <Input
+                label="Nonprofit program"
                 value={productForm.nonprofit_program || ''}
                 onChange={(event) => setProductForm((current) => ({ ...current, nonprofit_program: event.target.value }))}
               />
-            </label>
-            <label>
-              Impact summary
-              <textarea
+              <Textarea
+                label="Impact summary"
                 value={productForm.impact_summary || ''}
                 onChange={(event) => setProductForm((current) => ({ ...current, impact_summary: event.target.value }))}
               />
-            </label>
-            <label>
-              Image URL
-              <input
+              <Input
+                type="url"
+                label="Image URL"
                 value={productForm.image_url || ''}
                 onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))}
               />
-            </label>
-            <button type="submit" disabled={isSaving}>
-              {isSaving ? 'Saving...' : activeProductId ? 'Update product' : 'Create product'}
-            </button>
-          </form>
+              <div className="store-form__actions">
+                <Button type="submit" loading={isSaving} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : activeProductId ? 'Update product' : 'Create product'}
+                </Button>
+              </div>
+            </form>
+          </Card>
         </section>
       )}
     </div>
