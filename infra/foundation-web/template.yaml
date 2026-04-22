@@ -215,6 +215,10 @@ Resources:
         Status: Enabled
       LifecycleConfiguration:
         Rules:
+          - Id: ExpirePullRequestScreenshots
+            Status: Enabled
+            Prefix: pr-screenshots/
+            ExpirationInDays: 7
           - Id: DeleteOldVersions
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
