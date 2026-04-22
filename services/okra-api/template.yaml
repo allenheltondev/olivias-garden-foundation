@@ -132,9 +132,22 @@ Resources:
       AttributeDefinitions:
         - AttributeName: requestId
           AttributeType: S
+        - AttributeName: contributorCognitoSub
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
       KeySchema:
         - AttributeName: requestId
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: contributorCognitoSub-createdAt-index
+          KeySchema:
+            - AttributeName: contributorCognitoSub
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
       TimeToLiveSpecification:
         AttributeName: expiresAt
         Enabled: true
@@ -208,7 +221,10 @@ Resources:
                 - dynamodb:GetItem
                 - dynamodb:UpdateItem
                 - dynamodb:DeleteItem
-              Resource: !GetAtt SeedRequestsTable.Arn
+                - dynamodb:Query
+              Resource:
+                - !GetAtt SeedRequestsTable.Arn
+                - !Sub '${SeedRequestsTable.Arn}/index/*'
       Events:
         ApiProxy:
           Type: Api

@@ -8,6 +8,17 @@ import {
   retrieveCheckoutSessionStatus
 } from '../services/donations.mjs';
 import {
+  getProfile,
+  getProfileActivity,
+  profileUpdateSchema,
+  updateProfile
+} from '../services/profile.mjs';
+import {
+  avatarUploadIntentSchema,
+  completeAvatarUpload,
+  createAvatarUploadIntent
+} from '../services/avatar.mjs';
+import {
   corsHeaders,
   errorResponse,
   getCorrelationId,
@@ -78,6 +89,124 @@ app.get('/donations/checkout-session-status', async ({ event }) => {
         'x-correlation-id': correlationId
       },
       body: session
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/profile', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const profile = await getProfile(event);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: profile
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.put('/profile', async ({ req, event }) => {
+  const correlationId = getCorrelationId(event);
+  const payload = await req.json();
+
+  try {
+    validate({ payload, schema: profileUpdateSchema });
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      logger.warn('Profile update request validation failed', {
+        correlationId,
+        issues: error.errors?.map((issue) => issue.message) ?? [error.message]
+      });
+
+      return {
+        statusCode: 422,
+        headers: { 'x-correlation-id': correlationId },
+        body: {
+          error: 'RequestValidationError',
+          message: 'Validation failed for request',
+          details: {
+            issues: error.errors?.map((issue) => issue.message) ?? [error.message]
+          }
+        }
+      };
+    }
+
+    throw error;
+  }
+
+  try {
+    const profile = await updateProfile(event, payload);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: profile
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/profile/activity', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const activity = await getProfileActivity(event);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: activity
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/profile/avatar', async ({ req, event }) => {
+  const correlationId = getCorrelationId(event);
+  const payload = await req.json();
+
+  try {
+    validate({ payload, schema: avatarUploadIntentSchema });
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      return {
+        statusCode: 422,
+        headers: { 'x-correlation-id': correlationId },
+        body: {
+          error: 'RequestValidationError',
+          message: 'Validation failed for request',
+          details: {
+            issues: error.errors?.map((issue) => issue.message) ?? [error.message]
+          }
+        }
+      };
+    }
+    throw error;
+  }
+
+  try {
+    const intent = await createAvatarUploadIntent(event, payload);
+    return {
+      statusCode: 201,
+      headers: { 'x-correlation-id': correlationId },
+      body: intent
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/profile/avatar/complete', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await completeAvatarUpload(event);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
     };
   } catch (error) {
     return mapApiError(error, correlationId);

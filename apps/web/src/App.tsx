@@ -32,6 +32,11 @@ const DonatePage = lazy(async () => {
   return { default: module.DonatePage };
 });
 
+const ProfilePage = lazy(async () => {
+  const module = await import('./site/pages/ProfilePage');
+  return { default: module.ProfilePage };
+});
+
 function App() {
   const { pathname, navigate } = usePathname();
   const authConfig = getCognitoConfig();
@@ -212,6 +217,7 @@ function App() {
         authSession={authSession}
         authBusy={authBusy || !authReady}
         authError={authError}
+        onLogout={handleLogout}
       />
       <main className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}>
         <Routes>
@@ -257,6 +263,14 @@ function App() {
             element={
               <Suspense fallback={routeFallback}>
                 <DonatePage onNavigate={navigate} authSession={authSession} />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <Suspense fallback={routeFallback}>
+                <ProfilePage authSession={authSession} authReady={authReady} onNavigate={navigate} />
               </Suspense>
             }
           />
