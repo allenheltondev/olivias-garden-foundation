@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Button } from '@olivias/ui';
+import { Button, FormFeedback, Input, Panel, Textarea } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { createOkraHeaders, okraApiUrl } from '../../okra/api';
 import { PageHero, Section } from '../chrome';
@@ -361,8 +361,17 @@ export function ProfilePage({
     return combined;
   }, [donations, submissions, seedRequests]);
 
-  const handleChange = useCallback(
-    (field: keyof EditableProfile) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = useCallback(
+    (field: keyof EditableProfile) => (event: ChangeEvent<HTMLInputElement>) => {
+      const { value } = event.target;
+      setForm((prev) => ({ ...prev, [field]: value }));
+      setSaveSuccess(false);
+    },
+    [],
+  );
+
+  const handleTextareaChange = useCallback(
+    (field: keyof EditableProfile) => (event: ChangeEvent<HTMLTextAreaElement>) => {
       const { value } = event.target;
       setForm((prev) => ({ ...prev, [field]: value }));
       setSaveSuccess(false);
@@ -486,118 +495,123 @@ export function ProfilePage({
         ) : loadError ? (
           <p className="profile-error" role="alert">{loadError}</p>
         ) : (
-          <form className="profile-form" onSubmit={handleSubmit}>
-            <div className="profile-form__avatar-row">
-              <div className="profile-form__avatar-preview" aria-hidden="true">
-                {profile?.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt="" />
-                ) : (
-                  <span>{(displayName[0] ?? '?').toUpperCase()}</span>
-                )}
+          <Panel tone="paper" className="profile-form-panel">
+            <form className="profile-form" onSubmit={handleSubmit}>
+              <div className="profile-form__avatar-row">
+                <div className="profile-form__avatar-preview" aria-hidden="true">
+                  {profile?.avatarUrl ? (
+                    <img src={profile.avatarUrl} alt="" />
+                  ) : (
+                    <span>{(displayName[0] ?? '?').toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="profile-form__avatar-actions">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAvatarFile}
+                    hidden
+                  />
+                  <Button
+                    className="site-cta"
+                    type="button"
+                    variant="secondary"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={avatarUploading || profile?.avatarStatus === 'processing'}
+                  >
+                    {avatarUploading
+                      ? 'Uploading…'
+                      : profile?.avatarStatus === 'processing'
+                        ? 'Processing…'
+                        : profile?.avatarUrl
+                          ? 'Replace avatar'
+                          : 'Upload avatar'}
+                  </Button>
+                  <p className="profile-form__hint">JPEG, PNG, or WebP — up to 8 MB. We&apos;ll resize and optimize it automatically.</p>
+                  {profile?.avatarStatus === 'failed' && profile.avatarProcessingError ? (
+                    <FormFeedback tone="error">Avatar failed: {profile.avatarProcessingError}</FormFeedback>
+                  ) : null}
+                  {avatarError ? <FormFeedback tone="error">{avatarError}</FormFeedback> : null}
+                </div>
               </div>
-              <div className="profile-form__avatar-actions">
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleAvatarFile}
-                  hidden
-                />
-                <Button
-                  className="site-cta"
-                  type="button"
-                  variant="secondary"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={avatarUploading || profile?.avatarStatus === 'processing'}
-                >
-                  {avatarUploading
-                    ? 'Uploading…'
-                    : profile?.avatarStatus === 'processing'
-                      ? 'Processing…'
-                      : profile?.avatarUrl
-                        ? 'Replace avatar'
-                        : 'Upload avatar'}
-                </Button>
-                <p className="profile-form__hint">JPEG, PNG, or WebP — up to 8 MB. We&apos;ll resize and optimize it automatically.</p>
-                {profile?.avatarStatus === 'failed' && profile.avatarProcessingError ? (
-                  <p className="profile-error" role="alert">Avatar failed: {profile.avatarProcessingError}</p>
-                ) : null}
-                {avatarError ? <p className="profile-error" role="alert">{avatarError}</p> : null}
-              </div>
-            </div>
 
-            <div className="profile-form__grid">
-              <label className="profile-form__field">
-                <span>First name</span>
-                <input type="text" value={form.firstName} onChange={handleChange('firstName')} maxLength={120} />
-              </label>
-              <label className="profile-form__field">
-                <span>Last name</span>
-                <input type="text" value={form.lastName} onChange={handleChange('lastName')} maxLength={120} />
-              </label>
-              <label className="profile-form__field profile-form__field--wide">
-                <span>Display name</span>
-                <input
-                  type="text"
+              <div className="profile-form__grid">
+                <Input
+                  label="First name"
+                  value={form.firstName}
+                  onChange={handleInputChange('firstName')}
+                  maxLength={120}
+                />
+                <Input
+                  label="Last name"
+                  value={form.lastName}
+                  onChange={handleInputChange('lastName')}
+                  maxLength={120}
+                />
+                <Input
+                  className="profile-form__field--wide"
+                  label="Display name"
                   value={form.displayName}
-                  onChange={handleChange('displayName')}
+                  onChange={handleInputChange('displayName')}
                   maxLength={120}
                   placeholder="How your name appears on the site"
                 />
-              </label>
-              <label className="profile-form__field">
-                <span>City</span>
-                <input type="text" value={form.city} onChange={handleChange('city')} maxLength={120} />
-              </label>
-              <label className="profile-form__field">
-                <span>State / region</span>
-                <input type="text" value={form.region} onChange={handleChange('region')} maxLength={120} />
-              </label>
-              <label className="profile-form__field">
-                <span>Country</span>
-                <input type="text" value={form.country} onChange={handleChange('country')} maxLength={120} />
-              </label>
-              <label className="profile-form__field">
-                <span>Timezone</span>
-                <input
-                  type="text"
+                <Input
+                  label="City"
+                  value={form.city}
+                  onChange={handleInputChange('city')}
+                  maxLength={120}
+                />
+                <Input
+                  label="State / region"
+                  value={form.region}
+                  onChange={handleInputChange('region')}
+                  maxLength={120}
+                />
+                <Input
+                  label="Country"
+                  value={form.country}
+                  onChange={handleInputChange('country')}
+                  maxLength={120}
+                />
+                <Input
+                  label="Timezone"
                   value={form.timezone}
-                  onChange={handleChange('timezone')}
+                  onChange={handleInputChange('timezone')}
                   maxLength={120}
                   placeholder={detectBrowserTimezone() || 'e.g. America/Chicago'}
                 />
-              </label>
-              <label className="profile-form__field profile-form__field--wide">
-                <span>Website</span>
-                <input
+                <Input
+                  className="profile-form__field--wide"
                   type="url"
+                  label="Website"
                   value={form.websiteUrl}
-                  onChange={handleChange('websiteUrl')}
+                  onChange={handleInputChange('websiteUrl')}
                   maxLength={2000}
                   placeholder="https://…"
                 />
-              </label>
-              <label className="profile-form__field profile-form__field--wide">
-                <span>Bio</span>
-                <textarea
+                <Textarea
+                  className="profile-form__field--wide"
+                  label="Bio"
                   value={form.bio}
-                  onChange={handleChange('bio')}
+                  onChange={handleTextareaChange('bio')}
                   maxLength={2000}
                   rows={4}
                   placeholder="Tell other growers a little about yourself."
                 />
-              </label>
-            </div>
+              </div>
 
-            {saveError ? <p className="profile-error" role="alert">{saveError}</p> : null}
-            {saveSuccess ? <p className="profile-success">Profile saved.</p> : null}
+              {saveError ? <FormFeedback tone="error">{saveError}</FormFeedback> : null}
+              {saveSuccess ? <FormFeedback tone="success">Profile saved.</FormFeedback> : null}
 
-            <div className="profile-form__actions">
-              <Button className="site-cta" type="submit" disabled={isSaving}>
-                {isSaving ? 'Saving…' : 'Save profile'}
-              </Button>
-            </div>
-          </form>
+              <div className="profile-form__actions">
+                <Button className="site-cta" type="submit" disabled={isSaving}>
+                  {isSaving ? 'Saving…' : 'Save profile'}
+                </Button>
+              </div>
+            </form>
+          </Panel>
         )}
       </Section>
 
