@@ -744,6 +744,16 @@ body {
   background: rgba(79, 56, 37, 0.06);
 }
 
+.og-button--danger {
+  background: var(--color-error);
+  color: var(--og-color-paper);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.22);
+}
+
+.og-button--danger:hover {
+  background: #dc2f2f;
+}
+
 /* Sizes */
 
 .og-button--sm {
@@ -1209,6 +1219,77 @@ body {
 .og-form-feedback--info {
   background: rgba(234, 238, 247, 0.92);
   color: #2a3a6b;
+}
+
+/* ── Checkbox ──────────────────────────────────────────────────────── */
+
+.og-checkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.og-checkbox__label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+  color: var(--og-color-soil);
+  line-height: 1.4;
+}
+
+.og-checkbox__input {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--og-color-moss);
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--easing-out);
+}
+
+.og-checkbox__input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(63, 125, 58, 0.28);
+  border-radius: 0.25rem;
+}
+
+.og-checkbox__input:disabled {
+  cursor: not-allowed;
+}
+
+.og-checkbox__text {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.og-checkbox__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.og-checkbox__description {
+  color: var(--color-neutral-600);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.og-checkbox--disabled .og-checkbox__label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.og-checkbox--error .og-checkbox__input {
+  accent-color: var(--color-error);
+}
+
+.og-checkbox__error {
+  margin: 0;
+  padding-left: 1.75rem;
+  color: var(--color-error);
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
 
 /* ── Select ────────────────────────────────────────────────────────── */
