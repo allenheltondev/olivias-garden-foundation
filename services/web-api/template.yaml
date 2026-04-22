@@ -170,13 +170,14 @@ Resources:
           - ./src/handlers/avatar-processor.mjs
         External:
           - '@aws-sdk/*'
-          - '@napi-rs/image'
-          - '@napi-rs/image-linux-arm64-gnu'
+          - '@napi-rs/canvas'
     Properties:
       CodeUri: .
       Handler: src/handlers/avatar-processor.handler
       Timeout: 60
       MemorySize: 1024
+      Layers:
+        - arn:aws:lambda:us-east-1:205979422636:layer:napi-rs-canvas:888
       Policies:
         - AWSLambdaBasicExecutionRole
         - Version: '2012-10-17'

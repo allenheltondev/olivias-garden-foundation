@@ -1,34 +1,113 @@
-import { Transformer } from '@napi-rs/image';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
+import exifr from 'exifr';
 
 /**
- * Read intrinsic width/height (and other metadata) from the source bytes.
- * Passes true for `withExif` so EXIF orientation is available if callers
- * need it outside of the transform (we already honor it via `rotate()`).
+ * Read the EXIF Orientation tag if present. Returns a value in 1..8 or 1
+ * as a safe default for formats without EXIF (PNG, WebP) or on parse error.
  */
-export async function getImageMetadata(bytes) {
-  return new Transformer(bytes).metadata(true);
+async function readOrientation(bytes) {
+  try {
+    const tags = await exifr.parse(bytes, { pick: ['Orientation'] });
+    const orientation = tags?.Orientation;
+    return typeof orientation === 'number' && orientation >= 1 && orientation <= 8 ? orientation : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function orientationSwapsAxes(orientation) {
+  return orientation >= 5 && orientation <= 8;
 }
 
 /**
- * Resize the source bytes to fit within `width` x `height` (aspect ratio
- * preserved) and re-encode as WebP at the given quality. Honors EXIF
- * orientation unless `rotate: false` is passed.
+ * Apply a canvas transform that, combined with a subsequent
+ * `drawImage(img, 0, 0, w, h)` where (w, h) are the *source* image's own
+ * dimensions, lands the pixels upright on a canvas sized to the oriented
+ * output. See https://sylvana.net/jpegcrop/exif_orientation.html for the
+ * transform-matrix breakdown.
+ */
+function applyOrientationTransform(ctx, orientation, sourceWidth, sourceHeight) {
+  switch (orientation) {
+    case 2: ctx.transform(-1, 0, 0, 1, sourceWidth, 0); break;
+    case 3: ctx.transform(-1, 0, 0, -1, sourceWidth, sourceHeight); break;
+    case 4: ctx.transform(1, 0, 0, -1, 0, sourceHeight); break;
+    case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+    case 6: ctx.transform(0, 1, -1, 0, sourceHeight, 0); break;
+    case 7: ctx.transform(0, -1, -1, 0, sourceHeight, sourceWidth); break;
+    case 8: ctx.transform(0, -1, 1, 0, 0, sourceWidth); break;
+    default: break;
+  }
+}
+
+function fitWithinBox(width, height, maxSize) {
+  const longest = Math.max(width, height);
+  if (longest <= maxSize) {
+    return { width, height };
+  }
+  const scale = maxSize / longest;
+  return {
+    width: Math.round(width * scale),
+    height: Math.round(height * scale),
+  };
+}
+
+/**
+ * Read the image's intrinsic dimensions (post-EXIF-orientation — i.e.
+ * what a correct viewer would show) plus the raw Orientation tag.
+ */
+export async function getImageMetadata(bytes) {
+  const [image, orientation] = await Promise.all([
+    loadImage(bytes),
+    readOrientation(bytes),
+  ]);
+  const swap = orientationSwapsAxes(orientation);
+  return {
+    width: swap ? image.height : image.width,
+    height: swap ? image.width : image.height,
+    orientation,
+  };
+}
+
+/**
+ * Resize to fit within `width` x `height` (aspect ratio preserved, longest
+ * side becomes max(width, height)) and re-encode as WebP at the given
+ * quality (0..100). Honors EXIF orientation unless `rotate: false`.
  *
- * Returns a Buffer of the encoded WebP.
+ * Returns a Buffer.
  */
 export async function transformToWebp(bytes, { width, height, quality = 82, rotate = true }) {
-  const base = new Transformer(bytes);
-  const oriented = rotate ? base.rotate() : base;
-  return oriented.resize(width, height).webp(quality);
+  const [image, orientation] = await Promise.all([
+    loadImage(bytes),
+    rotate ? readOrientation(bytes) : Promise.resolve(1),
+  ]);
+
+  const swap = orientationSwapsAxes(orientation);
+  const effectiveWidth = swap ? image.height : image.width;
+  const effectiveHeight = swap ? image.width : image.height;
+
+  const boxSize = Math.max(width, height);
+  const target = fitWithinBox(effectiveWidth, effectiveHeight, boxSize);
+
+  const canvas = createCanvas(target.width, target.height);
+  const ctx = canvas.getContext('2d');
+
+  // Uniform scale (aspect ratio already preserved in target dims).
+  const scale = target.width / effectiveWidth;
+  const scaledSourceWidth = image.width * scale;
+  const scaledSourceHeight = image.height * scale;
+
+  applyOrientationTransform(ctx, orientation, scaledSourceWidth, scaledSourceHeight);
+  ctx.drawImage(image, 0, 0, scaledSourceWidth, scaledSourceHeight);
+
+  return canvas.toBuffer('image/webp', { quality });
 }
 
 /**
  * Process one source image into a normalized copy + a thumbnail in a
- * single pass. This is the universal shape our S3-backed media flows
- * want — submissions, avatars, product photos, etc.
+ * single pass. The canonical shape our S3-backed media flows want —
+ * submissions, avatars, product photos, etc.
  *
- * Sizes are passed as square bounds (e.g. `mainSize: 1600`), matching
- * `@napi-rs/image`'s resize-to-fit behavior.
+ * Sizes are passed as square bounds; longest side gets clamped to that.
  */
 export async function transformToWebpPair(bytes, {
   mainSize,
@@ -43,5 +122,3 @@ export async function transformToWebpPair(bytes, {
   ]);
   return { metadata, main, thumbnail };
 }
-
-export { Transformer } from '@napi-rs/image';
