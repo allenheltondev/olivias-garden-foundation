@@ -689,9 +689,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install admin dependencies
-        working-directory: apps/admin
-        run: npm install --workspaces=false --ignore-scripts
+      - name: Install workspace dependencies
+        run: npm ci
 
       - name: Get foundation web frontend URL
         id: get-foundation-url
@@ -717,8 +716,7 @@ jobs:
           EOF
 
       - name: Build admin frontend
-        working-directory: apps/admin
-        run: npm run build
+        run: npm --workspace @olivias/admin run build
 
       - name: Deploy admin frontend to S3
         run: |

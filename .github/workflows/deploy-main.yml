@@ -194,17 +194,14 @@ jobs:
         working-directory: services/admin-api
         run: npm run build
 
-      - name: Admin Frontend - Install dependencies
-        working-directory: apps/admin
-        run: npm install --workspaces=false --ignore-scripts
+      - name: Admin Frontend - Install workspace dependencies
+        run: npm ci
 
       - name: Admin Frontend - Run ESLint
-        working-directory: apps/admin
-        run: npm run lint
+        run: npm --workspace @olivias/admin run lint
 
       - name: Admin Frontend - Type check
-        working-directory: apps/admin
-        run: npm run typecheck
+        run: npm --workspace @olivias/admin run typecheck
 
   deploy-foundation:
     name: Deploy Foundation Stack
@@ -927,9 +924,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install admin dependencies
-        working-directory: apps/admin
-        run: npm install --workspaces=false --ignore-scripts
+      - name: Install workspace dependencies
+        run: npm ci
 
       - name: Get foundation web frontend URL
         id: get-foundation-url
@@ -955,8 +951,7 @@ jobs:
           EOF
 
       - name: Build admin frontend
-        working-directory: apps/admin
-        run: npm run build
+        run: npm --workspace @olivias/admin run build
 
       - name: Deploy admin frontend to S3
         run: |
