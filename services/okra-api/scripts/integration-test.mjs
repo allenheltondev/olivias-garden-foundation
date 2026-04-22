@@ -6,6 +6,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname } from 'node:path';
 import { createDbClient } from './db-client.mjs';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -128,6 +130,30 @@ async function run() {
       console.error(`  ✗ Cleanup failed: ${err.message}`);
     } finally {
       await db.end();
+    }
+
+    // Seed request cleanup (DynamoDB) — best-effort, keyed by runPrefix in the name field
+    const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
+    if (!tableName) {
+      return;
+    }
+    try {
+      const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+      const scanRes = await ddb.send(new ScanCommand({
+        TableName: tableName,
+        FilterExpression: 'begins_with(#name, :prefix)',
+        ExpressionAttributeNames: { '#name': 'name' },
+        ExpressionAttributeValues: { ':prefix': `[${runPrefix}]` }
+      }));
+      const items = scanRes.Items ?? [];
+      for (const item of items) {
+        await ddb.send(new DeleteCommand({ TableName: tableName, Key: { requestId: item.requestId } }));
+      }
+      if (items.length > 0) {
+        console.log(`  ✓ Deleted ${items.length} seed request(s) from DynamoDB`);
+      }
+    } catch (err) {
+      console.error(`  ✗ Seed request cleanup failed: ${err.message}`);
     }
   }
 
@@ -370,6 +396,84 @@ async function run() {
       reporter.fail('denial', `Denial scenario error: ${err.message}`);
     }
     console.error('Denial scenario failed:', err.message);
+  }
+
+  // --- Seed Request Scenario ---
+  console.log('\n=== Seed Request Scenario ===');
+  try {
+    const idempotencyKey = crypto.randomUUID();
+    const mailPayload = {
+      name: `[${runPrefix}] Seed Request Tester`,
+      email: `seed-request+${runPrefix}@okra-test.local`,
+      fulfillmentMethod: 'mail',
+      shippingAddress: {
+        line1: '100 Garden Lane',
+        city: 'Austin',
+        region: 'TX',
+        postalCode: '73301',
+        country: 'US'
+      }
+    };
+
+    // 1. Missing Idempotency-Key → 400
+    {
+      const res = await publicApi.request('/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mailPayload)
+      });
+      reporter.assert('seed-request', res.status === 400, `POST /requests without Idempotency-Key returns 400 (got ${res.status})`, res.json);
+      reporter.assert('seed-request', res.json?.error === 'MissingIdempotencyKey', 'error code is MissingIdempotencyKey', res.json);
+    }
+
+    // 2. Unsupported country → 422
+    {
+      const badCountry = { ...mailPayload, shippingAddress: { ...mailPayload.shippingAddress, country: 'GB' } };
+      const res = await publicApi.request('/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify(badCountry)
+      });
+      reporter.assert('seed-request', res.status === 422, `POST /requests with unsupported country returns 422 (got ${res.status})`, res.json);
+    }
+
+    // 3. Happy path — US mail request → 201
+    const firstRes = await publicApi.request('/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(mailPayload)
+    });
+    reporter.assert('seed-request', firstRes.status === 201, `POST /requests returns 201 (got ${firstRes.status})`, firstRes.json);
+    const firstRequestId = firstRes.json?.requestId ?? null;
+    reporter.assert('seed-request', !!firstRequestId, 'POST /requests returns requestId', firstRes.json);
+
+    // 4. Replaying same Idempotency-Key → same requestId (cached by Powertools)
+    const replayRes = await publicApi.request('/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(mailPayload)
+    });
+    reporter.assert('seed-request', replayRes.status === 201, `Replay returns 201 (got ${replayRes.status})`, replayRes.json);
+    reporter.assert('seed-request', replayRes.json?.requestId === firstRequestId, `Replay returns cached requestId (got ${replayRes.json?.requestId}, expected ${firstRequestId})`, replayRes.json);
+
+    // 5. In-person exchange → 201 (no shipping address required)
+    {
+      const inPersonPayload = {
+        name: `[${runPrefix}] In-Person Tester`,
+        email: `seed-request-inperson+${runPrefix}@okra-test.local`,
+        fulfillmentMethod: 'in_person',
+        visitDetails: { approximateDate: 'next spring', notes: 'Integration run' }
+      };
+      const res = await publicApi.request('/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify(inPersonPayload)
+      });
+      reporter.assert('seed-request', res.status === 201, `In-person POST /requests returns 201 (got ${res.status})`, res.json);
+    }
+  } catch (err) {
+    reporter.fail('seed-request', `Seed request scenario error: ${err.message}`);
+    console.error('Seed request scenario failed:', err.message);
   }
 
   // --- Admin listing checks (Task 3.6) ---

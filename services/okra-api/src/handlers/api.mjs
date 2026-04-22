@@ -1,4 +1,11 @@
 import { Router } from '@aws-lambda-powertools/event-handler/http';
+import {
+  IdempotencyAlreadyInProgressError,
+  IdempotencyConfig,
+  IdempotencyItemAlreadyExistsError,
+  makeIdempotent
+} from '@aws-lambda-powertools/idempotency';
+import { DynamoDBPersistenceLayer } from '@aws-lambda-powertools/idempotency/dynamodb';
 import { validate } from '@aws-lambda-powertools/validation';
 import { SchemaValidationError } from '@aws-lambda-powertools/validation/errors';
 import { createDbClient } from '../../scripts/db-client.mjs';
@@ -14,6 +21,41 @@ import {
   insertPendingSubmissionWithPhotos,
   submissionSchema
 } from '../services/submissions.mjs';
+import {
+  createSeedRequest,
+  enforceSeedRequestRateLimit,
+  notifySeedRequestSlack,
+  seedRequestSchema,
+  validateSeedRequest
+} from '../services/seed-requests.mjs';
+
+const seedRequestIdempotencyPersistence = new DynamoDBPersistenceLayer({
+  tableName: process.env.SEED_REQUESTS_TABLE_NAME ?? '',
+  keyAttr: 'requestId',
+  expiryAttr: 'expiresAt'
+});
+
+const seedRequestIdempotencyConfig = new IdempotencyConfig({
+  eventKeyJmesPath: 'headers."Idempotency-Key" || headers."idempotency-key"',
+  throwOnNoIdempotencyKey: true,
+  expiresAfterSeconds: 60 * 60 * 24
+});
+
+const processSeedRequestIdempotent = makeIdempotent(
+  async (_event, payload, contributor, correlationId) => {
+    const created = await createSeedRequest(payload, contributor);
+    await notifySeedRequestSlack(created, correlationId);
+    return {
+      requestId: created.requestId,
+      createdAt: created.createdAt
+    };
+  },
+  {
+    persistenceStore: seedRequestIdempotencyPersistence,
+    config: seedRequestIdempotencyConfig,
+    dataIndexArgument: 0
+  }
+);
 import { errorResponse, corsHeaders } from '../services/pagination.mjs';
 import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
 import { createHttpRouterHandler } from '../services/http-handler.mjs';
@@ -144,6 +186,110 @@ app.post('/submissions', async ({ req, event }) => {
   }
 });
 
+
+app.post('/requests', async ({ req, event }) => {
+  const idempotencyKey =
+    event?.headers?.['Idempotency-Key'] ?? event?.headers?.['idempotency-key'];
+  if (!idempotencyKey || String(idempotencyKey).trim().length === 0) {
+    return {
+      statusCode: 400,
+      body: {
+        error: 'MissingIdempotencyKey',
+        message: 'Idempotency-Key header is required'
+      }
+    };
+  }
+
+  const payload = await req.json();
+
+  try {
+    validate({ payload, schema: seedRequestSchema });
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      return {
+        statusCode: 422,
+        body: {
+          error: 'RequestValidationError',
+          message: 'Validation failed for request',
+          details: {
+            issues: error.errors?.map((e) => e.message) ?? [error.message]
+          }
+        }
+      };
+    }
+    throw error;
+  }
+
+  const fulfillmentError = validateSeedRequest(payload);
+  if (fulfillmentError) {
+    return {
+      statusCode: 422,
+      body: {
+        error: 'RequestValidationError',
+        message: fulfillmentError
+      }
+    };
+  }
+
+  const sourceIp = event?.requestContext?.identity?.sourceIp ?? 'unknown';
+  try {
+    await enforceSeedRequestRateLimit(sourceIp);
+  } catch (error) {
+    if (error?.code === 'SEED_REQUEST_RATE_LIMITED') {
+      return {
+        statusCode: 429,
+        body: {
+          error: 'RateLimitExceeded',
+          message: error.message,
+          retryAfterSeconds: error.retryAfterSeconds
+        }
+      };
+    }
+    throw error;
+  }
+
+  const authResult = await resolveOptionalContributor(event);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
+  const correlationId = event?.requestContext?.requestId;
+
+  try {
+    const result = await processSeedRequestIdempotent(
+      event,
+      payload,
+      authResult.contributor,
+      correlationId
+    );
+
+    return {
+      statusCode: 201,
+      body: result
+    };
+  } catch (error) {
+    if (
+      error instanceof IdempotencyItemAlreadyExistsError ||
+      error instanceof IdempotencyAlreadyInProgressError
+    ) {
+      return {
+        statusCode: 409,
+        body: {
+          error: 'IdempotencyInProgress',
+          message: 'A request with this Idempotency-Key is already being processed'
+        }
+      };
+    }
+    console.error(JSON.stringify({
+      level: 'error',
+      correlationId,
+      endpoint: 'POST /requests',
+      message: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError'
+    }));
+    throw error;
+  }
+});
 
 app.get('/okra', async () => {
   const cdnDomain = process.env.MEDIA_CDN_DOMAIN;
