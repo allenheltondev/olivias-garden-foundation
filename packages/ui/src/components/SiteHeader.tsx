@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface SiteHeaderNavItem {
   id: string;
@@ -30,10 +30,34 @@ export function SiteHeader({
   utility,
 }: SiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [navItems.length]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      const node = actionsRef.current;
+      if (node && !node.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [menuOpen]);
 
   const handleBrandClick = () => {
     setMenuOpen(false);
@@ -65,7 +89,7 @@ export function SiteHeader({
           </button>
         )}
 
-        <div className={`og-site-header__actions ${menuOpen ? 'is-open' : ''}`.trim()}>
+        <div ref={actionsRef} className={`og-site-header__actions ${menuOpen ? 'is-open' : ''}`.trim()}>
           <div className="og-site-header__controls">
             {utility ? <div className="og-site-header__utility">{utility}</div> : null}
             {navItems.length > 0 ? (

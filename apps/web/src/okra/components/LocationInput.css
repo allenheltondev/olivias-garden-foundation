@@ -22,15 +22,17 @@
 
 .location-input__text {
   flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
   font-family: var(--font-family-sans);
-  font-size: 0.9rem;
-  padding: 0.4rem 0.5rem;
+  font-size: 1rem;
+  padding: 0.65rem 0.85rem;
   border: 1px solid var(--color-neutral-300);
   border-radius: var(--radius-base);
   background: #fff;
 }
 
-.location-input__text:focus {
+.location-input__text:focus-visible {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 1px;
 }
@@ -46,14 +48,16 @@
 
 .location-input__geocode-btn {
   font-family: var(--font-family-sans);
-  font-size: 0.85rem;
-  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.9rem;
   border: 1px solid var(--color-primary-500);
   border-radius: var(--radius-base);
   background: var(--color-primary-500);
   color: #fff;
   cursor: pointer;
   white-space: nowrap;
+  touch-action: manipulation;
 }
 
 .location-input__geocode-btn:hover:not(:disabled) {
@@ -81,7 +85,7 @@
 }
 
 .location-input__map {
-  height: 200px;
+  height: 240px;
   width: 100%;
 }
 
@@ -93,15 +97,18 @@
 
 .location-input__show-map-btn {
   font-family: var(--font-family-sans);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
+  min-height: 2.25rem;
+  align-self: flex-start;
   color: var(--color-primary-600);
   background: none;
   border: none;
-  padding: 0.25rem 0;
+  padding: 0.4rem 0.1rem;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   text-decoration: underline;
   text-underline-offset: 2px;
+  touch-action: manipulation;
 }
 
 .location-input__show-map-btn:hover:not(:disabled) {

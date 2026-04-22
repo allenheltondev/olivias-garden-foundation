@@ -27,25 +27,32 @@
 .pin-popup-close {
   position: absolute;
   top: 8px;
-  right: 10px;
+  right: 8px;
   z-index: 10;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
   border: none;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  font-size: 1.1rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
   transition: background 0.2s ease-out;
 }
 
-.pin-popup-close:hover {
-  background: rgba(0, 0, 0, 0.6);
+.pin-popup-close:hover,
+.pin-popup-close:focus-visible {
+  background: rgba(0, 0, 0, 0.72);
+  outline: none;
+}
+
+.pin-popup-close:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--color-primary-500, #3f7d3a);
 }
 
 /* Photo gallery */
@@ -79,27 +86,30 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   color: #fff;
   border: none;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 1rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1.1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 5;
+  touch-action: manipulation;
   transition: background 0.2s ease-out;
 }
 
-.pin-popup-gallery-btn:hover {
-  background: rgba(0, 0, 0, 0.6);
+.pin-popup-gallery-btn:hover,
+.pin-popup-gallery-btn:focus-visible {
+  background: rgba(0, 0, 0, 0.7);
+  outline: none;
 }
 
-.pin-popup-gallery-btn--prev { left: 6px; }
-.pin-popup-gallery-btn--next { right: 6px; }
+.pin-popup-gallery-btn--prev { left: 8px; }
+.pin-popup-gallery-btn--next { right: 8px; }
 
 .pin-popup-dots {
   position: absolute;
@@ -112,17 +122,29 @@
 }
 
 .pin-popup-dot {
-  width: 8px;
-  height: 8px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
+  background: transparent;
   border: none;
   padding: 0;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+.pin-popup-dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
   transition: background 0.2s ease-out;
 }
 
-.pin-popup-dot--active {
+.pin-popup-dot--active::before {
   background: #fff;
 }
 
@@ -157,8 +179,8 @@
 
 .pin-popup-story {
   margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.9375rem;
+  line-height: 1.55;
   color: var(--color-neutral-700, #44403c);
 }
 
@@ -177,13 +199,15 @@
 .pin-popup-read-more {
   background: none;
   border: none;
-  padding: 0;
+  padding: 0.4rem 0;
   margin-top: 0.25rem;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   color: var(--color-accent-500, #d8a741);
   cursor: pointer;
   font-weight: 600;
   font-family: inherit;
+  align-self: flex-start;
+  touch-action: manipulation;
 }
 
 .pin-popup-read-more:hover {
