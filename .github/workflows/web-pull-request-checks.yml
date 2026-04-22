@@ -64,6 +64,10 @@ jobs:
         working-directory: infra/foundation-web
         run: npm ci --ignore-scripts
 
+      - name: Install foundation function dependencies
+        working-directory: infra/foundation-web/functions
+        run: npm ci --ignore-scripts
+
       - name: Build root template
         run: sam build --template-file infra/foundation-web/template.yaml
 
@@ -132,10 +136,16 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: infra/foundation-web/package-lock.json
+          cache-dependency-path: |
+            infra/foundation-web/package-lock.json
+            infra/foundation-web/functions/package-lock.json
 
       - name: Install foundation infrastructure dependencies
         working-directory: infra/foundation-web
+        run: npm ci --ignore-scripts
+
+      - name: Install foundation function dependencies
+        working-directory: infra/foundation-web/functions
         run: npm ci --ignore-scripts
 
       - name: Run foundation function tests

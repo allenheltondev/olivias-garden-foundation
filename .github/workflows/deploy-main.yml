@@ -234,7 +234,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: infra/foundation-web/package-lock.json
+          cache-dependency-path: |
+            infra/foundation-web/package-lock.json
+            infra/foundation-web/functions/package-lock.json
 
       - name: Install esbuild for SAM
         run: npm install -g esbuild
@@ -242,6 +244,13 @@ jobs:
       - name: Install foundation infrastructure dependencies
         working-directory: infra/foundation-web
         run: npm ci --ignore-scripts
+
+      - name: Install foundation function dependencies
+        working-directory: infra/foundation-web/functions
+        run: npm ci --ignore-scripts
+
+      - name: Build foundation stack
+        run: sam build --template-file infra/foundation-web/template.yaml
 
       - name: Deploy foundation stack
         env:
@@ -260,7 +269,7 @@ jobs:
 
           sam deploy \
             --debug \
-            --template-file infra/foundation-web/template.yaml \
+            --template-file infra/foundation-web/.aws-sam/build/template.yaml \
             --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
             --resolve-s3 \
             --s3-prefix "${{ env.FOUNDATION_STACK_NAME }}" \

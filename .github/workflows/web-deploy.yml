@@ -69,6 +69,10 @@ jobs:
         working-directory: infra/foundation-web
         run: npm ci --ignore-scripts
 
+      - name: Install foundation function dependencies
+        working-directory: infra/foundation-web/functions
+        run: npm ci --ignore-scripts
+
       - name: Build root template
         run: sam build --template-file infra/foundation-web/template.yaml
 
