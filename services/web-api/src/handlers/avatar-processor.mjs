@@ -1,5 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { Transformer } from '@napi-rs/image';
+import { transformToWebpPair } from '@olivias/image-processing';
 import { createDbClient } from '../../scripts/db-client.mjs';
 
 function getRegion() {
@@ -44,10 +44,12 @@ async function processAvatar(userId, avatarId) {
     );
 
     const originalBytes = await streamToBuffer(originalObj.Body);
-    const metadata = await new Transformer(originalBytes).metadata(true);
-
-    const normalized = await new Transformer(originalBytes).rotate().resize(512, 512).webp(82);
-    const thumbnail = await new Transformer(originalBytes).rotate().resize(128, 128).webp(75);
+    const { metadata, main: normalized, thumbnail } = await transformToWebpPair(originalBytes, {
+      mainSize: 512,
+      mainQuality: 82,
+      thumbnailSize: 128,
+      thumbnailQuality: 75
+    });
 
     const normalizedKey = `avatars/${userId}/${avatarId}/display.webp`;
     const thumbnailKey = `avatars/${userId}/${avatarId}/thumbnail.webp`;
