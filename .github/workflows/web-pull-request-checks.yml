@@ -15,6 +15,8 @@ on:
       - 'services/web-api/**'
       - 'packages/ui/**'
       - 'infra/foundation-web/**'
+      - 'apps/web/playwright.config.ts'
+      - 'apps/web/tests/**'
       - '.github/workflows/web-*.yml'
       - 'package.json'
       - 'package-lock.json'
@@ -221,24 +223,137 @@ jobs:
       web_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
       web_donation_slack_webhook_url: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
 
-  deployment-comment:
-    name: Comment Foundation Web PR Preview
+  stage-ui-tests:
+    name: Foundation Web Stage UI Tests
     runs-on: ubuntu-latest
     needs: [deploy]
-    if: always() && needs.deploy.result == 'success'
+    if: needs.deploy.result == 'success'
+    outputs:
+      run-url: ${{ steps.stage-ui-run.outputs.url }}
 
     steps:
-      - name: Comment on PR with preview URL
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Record workflow run URL
+        id: stage-ui-run
+        run: echo "url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Configure AWS credentials for screenshot publishing
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-FoundationWeb-Screenshots-PR-${{ github.event.pull_request.number }}
+          aws-region: us-east-1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright Stage UI suite
+        working-directory: apps/web
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.web-app-url }}
+          PLAYWRIGHT_ENABLE_DONATION_CHECKOUT: 'true'
+          PLAYWRIGHT_ENABLE_VISUAL_REGRESSION: 'false'
+        run: npm run test:e2e
+
+      - name: Capture PR screenshots
+        if: always()
+        working-directory: apps/web
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.web-app-url }}
+          PLAYWRIGHT_CAPTURE_PR_SCREENSHOTS: 'true'
+          PLAYWRIGHT_PR_SCREENSHOT_DIR: test-results/pr-screenshots
+        run: npm run test:e2e -- tests/pr-screenshots.spec.ts --workers=1
+
+      - name: Publish PR screenshots to S3 and generate 7-day links
+        if: always()
+        id: screenshot-links
+        env:
+          FRONTEND_BUCKET: ${{ needs.deploy.outputs.frontend-bucket }}
+          SCREENSHOT_PREFIX: pr-screenshots/pr-${{ github.event.pull_request.number }}/run-${{ github.run_id }}
+        run: |
+          SCREENSHOT_DIR="apps/web/test-results/pr-screenshots"
+          COMMENT_FILE="$SCREENSHOT_DIR/pr-comment.md"
+
+          mkdir -p "$SCREENSHOT_DIR"
+
+          if [ ! -d "$SCREENSHOT_DIR" ]; then
+            echo "_Stage screenshots were not generated in this run._" > "$COMMENT_FILE"
+            exit 0
+          fi
+
+          declare -A LABELS=(
+            ["homepage-desktop.png"]="Homepage desktop"
+            ["donate-desktop.png"]="Donate desktop"
+            ["homepage-mobile.png"]="Homepage mobile"
+          )
+
+          {
+            echo "### Stage Screenshots"
+            echo
+          } > "$COMMENT_FILE"
+
+          for file in homepage-desktop.png donate-desktop.png homepage-mobile.png; do
+            SOURCE_PATH="$SCREENSHOT_DIR/$file"
+            if [ ! -f "$SOURCE_PATH" ]; then
+              continue
+            fi
+
+            TARGET_KEY="$SCREENSHOT_PREFIX/$file"
+            aws s3 cp "$SOURCE_PATH" "s3://$FRONTEND_BUCKET/$TARGET_KEY" \
+              --content-type "image/png" \
+              --cache-control "private, max-age=0, no-store"
+
+            PRESIGNED_URL=$(aws s3 presign "s3://$FRONTEND_BUCKET/$TARGET_KEY" --expires-in 604800)
+
+            {
+              echo "**${LABELS[$file]}**"
+              echo
+              echo "![${LABELS[$file]}]($PRESIGNED_URL)"
+              echo
+            } >> "$COMMENT_FILE"
+          done
+
+      - name: Comment on PR with preview URL and screenshots
+        if: always()
         uses: actions/github-script@v7
+        env:
+          WEB_APP_URL: ${{ needs.deploy.outputs.web-app-url }}
+          WEB_API_URL: ${{ needs.deploy.outputs.web-api-url }}
+          STAGE_UI_RUN_URL: ${{ steps.stage-ui-run.outputs.url }}
+          STAGE_UI_RESULT: ${{ job.status }}
+          COMMENT_FILE: apps/web/test-results/pr-screenshots/pr-comment.md
         with:
           script: |
+            const fs = require('node:fs');
+            const screenshotMarkdown = fs.existsSync(process.env.COMMENT_FILE)
+              ? fs.readFileSync(process.env.COMMENT_FILE, 'utf8').trim()
+              : '_Stage screenshots were not generated in this run._';
+
             const body = `#### Foundation Web PR Preview Ready
 
             **Environment:** \`staging\`
-            **Frontend URL:** ${{ needs.deploy.outputs.frontend-url }}
-            **Web API URL:** ${{ needs.deploy.outputs.web-api-url }}
+            **Web App URL:** ${process.env.WEB_APP_URL}
+            **Web API URL:** ${process.env.WEB_API_URL}
+            **Stage UI run:** ${process.env.STAGE_UI_RUN_URL}
+            **Screenshot artifact:** \`foundation-web-playwright-screenshots\`
+            **Stage UI result:** \`${process.env.STAGE_UI_RESULT}\`
 
-            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to the shared foundation staging stack.`;
+            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to the shared foundation staging stack. The inline screenshot links below expire after 7 days.
+
+            ${screenshotMarkdown}`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -246,3 +361,33 @@ jobs:
               issue_number: context.issue.number,
               body,
             });
+
+      - name: Publish screenshot summary
+        if: always()
+        run: |
+          {
+            echo "## Foundation Web UI Artifacts"
+            echo
+            echo "- Workflow run: ${{ steps.stage-ui-run.outputs.url }}"
+            echo "- Screenshot artifact: \`foundation-web-playwright-screenshots\`"
+            echo "- Screenshot links expire after: 7 days"
+            echo "- Debug artifact: \`foundation-web-playwright-report\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Playwright screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-web-playwright-screenshots
+          path: apps/web/test-results
+          if-no-files-found: ignore
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundation-web-playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore

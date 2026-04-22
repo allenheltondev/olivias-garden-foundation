@@ -508,12 +508,23 @@ export function ContactPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [referral, setReferral] = useState('');
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const canSend = message.trim().length > 0;
+
+  const clearFeedback = () => {
+    if (feedback) {
+      setFeedback(null);
+    }
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSend) {
+      setFeedback({
+        type: 'error',
+        message: 'Add a message before opening your email app.',
+      });
       return;
     }
 
@@ -531,6 +542,10 @@ export function ContactPage() {
     ].filter(Boolean);
 
     const href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    setFeedback({
+      type: 'success',
+      message: `Your email app should open with this note pre-filled. If it does not, email ${CONTACT_EMAIL} directly.`,
+    });
     window.location.href = href;
   };
 
@@ -582,7 +597,10 @@ export function ContactPage() {
                 type="text"
                 placeholder="Your name"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  clearFeedback();
+                  setName(event.target.value);
+                }}
                 autoComplete="name"
               />
             </label>
@@ -592,7 +610,10 @@ export function ContactPage() {
                 type="email"
                 placeholder="Your email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  clearFeedback();
+                  setEmail(event.target.value);
+                }}
                 autoComplete="email"
               />
             </label>
@@ -602,7 +623,10 @@ export function ContactPage() {
                 rows={6}
                 placeholder="How can we help?"
                 value={message}
-                onChange={(event) => setMessage(event.target.value)}
+                onChange={(event) => {
+                  clearFeedback();
+                  setMessage(event.target.value);
+                }}
                 required
               />
             </label>
@@ -612,7 +636,10 @@ export function ContactPage() {
                 type="text"
                 placeholder="Instagram, friend, work day, etc."
                 value={referral}
-                onChange={(event) => setReferral(event.target.value)}
+                onChange={(event) => {
+                  clearFeedback();
+                  setReferral(event.target.value);
+                }}
               />
             </label>
             <button
@@ -622,6 +649,14 @@ export function ContactPage() {
             >
               Open email to send
             </button>
+            {feedback ? (
+              <p
+                className={`contact-form__feedback contact-form__feedback--${feedback.type}`.trim()}
+                role={feedback.type === 'error' ? 'alert' : 'status'}
+              >
+                {feedback.message}
+              </p>
+            ) : null}
           </form>
         </Card>
       </div>

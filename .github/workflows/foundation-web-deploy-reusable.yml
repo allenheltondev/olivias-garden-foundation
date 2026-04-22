@@ -53,6 +53,9 @@ on:
       web_donation_slack_webhook_url:
         required: false
     outputs:
+      web-app-url:
+        description: Foundation Web app URL
+        value: ${{ jobs.deploy.outputs.web-app-url }}
       frontend-url:
         description: Foundation Web frontend URL
         value: ${{ jobs.deploy.outputs.frontend-url }}
@@ -74,10 +77,14 @@ jobs:
   deploy:
     name: Deploy Foundation Web
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment_name }}
+      url: ${{ steps.stack-outputs.outputs.web-app-url }}
     concurrency:
       group: foundation-stack-${{ inputs.foundation_web_stack_name }}
       cancel-in-progress: false
     outputs:
+      web-app-url: ${{ steps.stack-outputs.outputs.web-app-url }}
       frontend-url: ${{ steps.stack-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}
       cloudfront-distribution-id: ${{ steps.stack-outputs.outputs.cloudfront-distribution-id }}
@@ -319,11 +326,22 @@ jobs:
             --output text)
 
           echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "web-app-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
           echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
           echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
           echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
+
+      - name: Publish deployment summary
+        run: |
+          {
+            echo "## Foundation Web Deployment"
+            echo
+            echo "- Environment: \`${{ inputs.environment_name }}\`"
+            echo "- Web app URL: ${{ steps.stack-outputs.outputs.web-app-url }}"
+            echo "- Web API URL: ${{ steps.web-api-stack.outputs.api-url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js for okra deploy
         uses: actions/setup-node@v4

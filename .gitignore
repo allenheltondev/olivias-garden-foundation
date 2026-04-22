@@ -41,6 +41,8 @@ apps/*/dist/
 apps/*/build/
 apps/*/.cache/
 apps/*/coverage/
+apps/*/playwright-report/
+apps/*/test-results/
 services/*/node_modules/
 services/*/target/
 services/*/**/*.rs.bk
