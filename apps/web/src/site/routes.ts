@@ -79,6 +79,13 @@ export const routes: AppRoute[] = [
     seoImage: '/images/home/sunset-garden.jpg',
   },
   {
+    path: '/profile',
+    label: 'Profile',
+    title: 'Your profile',
+    description: "Personalize your Olivia's Garden profile and review your history of seed requests, okra submissions, and donations.",
+    allowIndex: false,
+  },
+  {
     path: '/contact',
     label: 'Contact',
     showInFooter: true,

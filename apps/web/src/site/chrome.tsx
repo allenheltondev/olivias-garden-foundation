@@ -1,8 +1,86 @@
-import type { MouseEvent, ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Button, SiteFooter as SharedSiteFooter, SiteHeader as SharedSiteHeader } from '@olivias/ui';
 import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
 import { facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
+
+function AvatarMenu({
+  initials,
+  label,
+  onNavigate,
+  onLogout,
+}: {
+  initials: string;
+  label: string;
+  onNavigate: (path: string) => void;
+  onLogout?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (event: Event) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const select = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+
+  return (
+    <div className="og-auth-menu" ref={containerRef}>
+      <button
+        type="button"
+        className="og-auth-utility__avatar"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        title={label}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        {initials}
+      </button>
+      {open ? (
+        <div className="og-auth-menu__popover" role="menu">
+          <button
+            type="button"
+            className="og-auth-menu__item"
+            role="menuitem"
+            onClick={() => select(() => onNavigate('/profile'))}
+          >
+            Profile
+          </button>
+          {onLogout ? (
+            <button
+              type="button"
+              className="og-auth-menu__item"
+              role="menuitem"
+              onClick={() => select(onLogout)}
+            >
+              Log out
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function getUserInitials(session: AuthSession | null) {
   if (!session) {
@@ -30,6 +108,7 @@ export function SiteHeader({
   authSession,
   authBusy,
   authError,
+  onLogout,
 }: {
   pathname: string;
   onNavigate: (path: string) => void;
@@ -37,6 +116,7 @@ export function SiteHeader({
   authSession: AuthSession | null;
   authBusy: boolean;
   authError: string | null;
+  onLogout?: () => void;
 }) {
   const initials = getUserInitials(authSession);
   const avatarLabel = authSession
@@ -61,10 +141,10 @@ export function SiteHeader({
     {
       id: authSession ? 'profile' : 'login',
       label: authSession ? 'Profile' : 'Log in',
-      href: '/login',
-      active: pathname === '/login',
+      href: authSession ? '/profile' : '/login',
+      active: authSession ? pathname === '/profile' : pathname === '/login',
       mobileOnly: true,
-      onSelect: () => onNavigate('/login'),
+      onSelect: () => onNavigate(authSession ? '/profile' : '/login'),
     },
     {
       id: 'donate',
@@ -86,18 +166,12 @@ export function SiteHeader({
       utility={(
         <div className="og-auth-utility">
           {authSession ? (
-            <a
-              className="og-auth-utility__avatar"
-              href="/login"
-              onClick={(event) => {
-                event.preventDefault();
-                onNavigate('/login');
-              }}
-              aria-label={avatarLabel}
-              title={avatarLabel}
-            >
-              {initials}
-            </a>
+            <AvatarMenu
+              initials={initials}
+              label={avatarLabel}
+              onNavigate={onNavigate}
+              onLogout={onLogout}
+            />
           ) : (
             <a
               className="og-auth-utility__login"
