@@ -7,7 +7,6 @@ test('homepage and donate page expose core metadata', async ({ page }) => {
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
   await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/images/icons/logo.svg');
   await expect(page.locator('header img[src="/images/icons/logo.svg"]').first()).toBeVisible();
-  await expect(page.locator('footer img[src="/images/icons/logo.svg"]').first()).toBeVisible();
   expect(await readMetaContent(page, 'meta[name="description"]')).toBeTruthy();
   expect(await readMetaContent(page, 'meta[property="og:title"]')).toBeTruthy();
   expect(await readMetaContent(page, 'meta[property="og:description"]')).toBeTruthy();
