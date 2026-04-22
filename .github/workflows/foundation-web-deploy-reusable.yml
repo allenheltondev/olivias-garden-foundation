@@ -68,6 +68,12 @@ on:
       cloudfront-distribution-id:
         description: Foundation Web CloudFront distribution ID
         value: ${{ jobs.deploy.outputs.cloudfront-distribution-id }}
+      ci-admin-username:
+        description: Cognito username of the deploy-rotated CI admin user (non-secret)
+        value: ${{ jobs.deploy.outputs.ci-admin-username }}
+      ci-admin-password:
+        description: Cognito password of the deploy-rotated CI admin user (masked)
+        value: ${{ jobs.deploy.outputs.ci-admin-password }}
 
 permissions:
   id-token: write
@@ -89,6 +95,8 @@ jobs:
       frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}
       cloudfront-distribution-id: ${{ steps.stack-outputs.outputs.cloudfront-distribution-id }}
       web-api-url: ${{ steps.web-api-stack.outputs.api-url }}
+      ci-admin-username: ${{ steps.okra-ci-auth.outputs.username }}
+      ci-admin-password: ${{ steps.okra-ci-auth.outputs.password }}
 
     steps:
       - name: Checkout code
@@ -362,6 +370,7 @@ jobs:
         run: |
           echo "username=okra-ci-admin+${{ inputs.environment_name }}@ogf.local" >> "$GITHUB_OUTPUT"
           PASSWORD=$(python -c "import secrets; print(f'OgF{secrets.token_hex(12)}!9a')")
+          echo "::add-mask::$PASSWORD"
           echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
 
       - name: Deploy okra backend stack

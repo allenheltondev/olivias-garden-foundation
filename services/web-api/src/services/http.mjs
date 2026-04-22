@@ -1,7 +1,7 @@
 export const corsHeaders = {
   'access-control-allow-origin': process.env.ORIGIN ?? '*',
   'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
-  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-methods': 'GET,POST,PUT,OPTIONS',
   'access-control-max-age': '3600'
 };
 
@@ -60,6 +60,10 @@ export function mapApiError(error, correlationId) {
 
   if (message.includes('Invalid access token')) {
     return errorResponse(401, message, correlationId);
+  }
+
+  if (message.includes('No uploaded avatar found')) {
+    return errorResponse(404, message, correlationId);
   }
 
   if (message.includes('is not configured')) {

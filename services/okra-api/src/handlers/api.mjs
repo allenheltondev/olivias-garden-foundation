@@ -29,6 +29,7 @@ import {
   validateSeedRequest
 } from '../services/seed-requests.mjs';
 import { publishSubmissionCreatedEvent } from '../services/submission-notifications.mjs';
+import { getUserActivity } from '../services/user-activity.mjs';
 
 const seedRequestIdempotencyPersistence = new DynamoDBPersistenceLayer({
   tableName: process.env.SEED_REQUESTS_TABLE_NAME ?? '',
@@ -425,6 +426,37 @@ app.get('/okra/stats', async () => {
       endpoint: 'GET /okra/stats'
     }));
     return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+  } finally {
+    await client.end();
+  }
+});
+
+app.get('/me/activity', async ({ event }) => {
+  const authResult = await resolveOptionalContributor(event);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
+  const cognitoSub = authResult.contributor?.sub;
+  if (!cognitoSub) {
+    return {
+      statusCode: 401,
+      body: {
+        error: 'Unauthorized',
+        message: 'Sign in to view your activity'
+      }
+    };
+  }
+
+  const client = await createDbClient();
+  await client.connect();
+
+  try {
+    const activity = await getUserActivity(client, cognitoSub);
+    return {
+      statusCode: 200,
+      body: activity
+    };
   } finally {
     await client.end();
   }

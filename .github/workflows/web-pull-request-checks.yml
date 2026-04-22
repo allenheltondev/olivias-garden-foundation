@@ -266,6 +266,8 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.web-app-url }}
           PLAYWRIGHT_ENABLE_DONATION_CHECKOUT: 'true'
           PLAYWRIGHT_ENABLE_VISUAL_REGRESSION: 'false'
+          OGF_CI_USERNAME: ${{ needs.deploy.outputs.ci-admin-username }}
+          OGF_CI_PASSWORD: ${{ needs.deploy.outputs.ci-admin-password }}
         run: npm run test:e2e
 
       - name: Capture PR screenshots
