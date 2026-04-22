@@ -27,8 +27,9 @@
 
 .seed-request__input {
   font-family: inherit;
-  font-size: 0.95rem;
-  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.85rem;
   border: 1px solid rgba(76, 52, 38, 0.18);
   border-radius: 0.55rem;
   background: #fff;
@@ -36,7 +37,7 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.seed-request__input:focus {
+.seed-request__input:focus-visible {
   outline: none;
   border-color: var(--color-primary-600);
   box-shadow: 0 0 0 3px rgba(76, 52, 38, 0.12);
@@ -49,7 +50,8 @@
 
 .seed-request__textarea {
   resize: vertical;
-  min-height: 4.5rem;
+  min-height: 6rem;
+  line-height: 1.5;
 }
 
 .seed-request__hint {
@@ -68,6 +70,7 @@
 
 .seed-request__toggle-btn {
   flex: 1 1 180px;
+  min-height: 2.75rem;
   padding: 0.7rem 1rem;
   border: 1px solid rgba(76, 52, 38, 0.18);
   border-radius: 999px;
@@ -75,7 +78,8 @@
   color: var(--color-neutral-800);
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
+  touch-action: manipulation;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 

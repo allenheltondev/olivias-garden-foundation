@@ -30,6 +30,7 @@ html {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ── Login page backdrop (web-app-specific background image) ───────── */

@@ -91,8 +91,20 @@
 /* Grid with thumbnails + placeholders */
 .photo-uploader__grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+@media (min-width: 600px) {
+  .photo-uploader__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .photo-uploader__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 .photo-uploader__thumb {
@@ -138,9 +150,10 @@
 }
 
 .photo-uploader__placeholder-plus {
-  font-size: 1.25rem;
+  font-size: 2rem;
   color: var(--color-neutral-400);
   font-weight: 300;
+  line-height: 1;
 }
 
 .photo-uploader__counter {
@@ -155,26 +168,30 @@
 /* Remove button */
 .photo-uploader__remove-btn {
   position: absolute;
-  top: 3px;
-  right: 3px;
+  top: 2px;
+  right: 2px;
   z-index: 2;
-  width: 18px;
-  height: 18px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.6);
   color: #fff;
-  font-size: 0.6rem;
+  font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  touch-action: manipulation;
+  transition: background 0.15s ease-out;
 }
 
-.photo-uploader__remove-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
+.photo-uploader__remove-btn:hover,
+.photo-uploader__remove-btn:focus-visible {
+  background: rgba(0, 0, 0, 0.8);
+  outline: none;
 }
 
 /* State overlays */
