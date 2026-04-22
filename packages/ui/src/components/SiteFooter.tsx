@@ -95,7 +95,6 @@ export function SiteFooter({
             </div>
           </div>
         ) : null}
-
         <p className="og-site-footer__meta">{meta}</p>
       </div>
     </footer>

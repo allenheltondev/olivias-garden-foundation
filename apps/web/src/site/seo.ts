@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import type { AppRoute } from './routes';
-import { facebookUrl, instagramUrl, siteUrl } from './routes';
+import { facebookUrl, instagramUrl, siteUrl, socialShareImage } from './routes';
+
+const socialShareImageAlt = "Olivia's Garden Foundation social sharing image.";
+const logoImage = '/images/icons/logo.svg';
 
 type GtagCommand = (
   command: 'event' | 'config' | 'js',
@@ -68,7 +71,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
   useEffect(() => {
     const pageTitle = buildPageTitle(route);
     const pageUrl = absoluteUrl(pathname === '/' ? '/' : pathname);
-    const pageImage = absoluteUrl(route.seoImage ?? '/images/home/garden-landscaping.jpg');
+    const pageImage = absoluteUrl(route.seoImage ?? socialShareImage);
     const robots = route.allowIndex === false
       ? 'noindex, nofollow, noarchive'
       : 'index, follow, max-image-preview:large';
@@ -82,10 +85,12 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     ensureMeta('meta[property="og:description"]', { property: 'og:description' }, route.description);
     ensureMeta('meta[property="og:url"]', { property: 'og:url' }, pageUrl);
     ensureMeta('meta[property="og:image"]', { property: 'og:image' }, pageImage);
+    ensureMeta('meta[property="og:image:alt"]', { property: 'og:image:alt' }, socialShareImageAlt);
     ensureMeta('meta[name="twitter:card"]', { name: 'twitter:card' }, 'summary_large_image');
     ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title' }, pageTitle);
     ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description' }, route.description);
     ensureMeta('meta[name="twitter:image"]', { name: 'twitter:image' }, pageImage);
+    ensureMeta('meta[name="twitter:image:alt"]', { name: 'twitter:image:alt' }, socialShareImageAlt);
     ensureLink('link[rel="canonical"]', 'canonical', pageUrl);
 
     ensureStructuredData('organization', {
@@ -93,6 +98,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
       '@type': 'NonprofitOrganization',
       name: "Olivia's Garden Foundation",
       url: siteUrl,
+      logo: absoluteUrl(logoImage),
       sameAs: [instagramUrl, facebookUrl],
     });
 

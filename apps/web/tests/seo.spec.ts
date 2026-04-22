@@ -5,16 +5,21 @@ test('homepage and donate page expose core metadata', async ({ page }) => {
   await gotoAndWait(page, '/');
   await expect(page).toHaveTitle(/Olivia's Garden Foundation/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/$/);
+  await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/images/icons/logo.svg');
+  await expect(page.locator('header img[src="/images/icons/logo.svg"]').first()).toBeVisible();
   expect(await readMetaContent(page, 'meta[name="description"]')).toBeTruthy();
   expect(await readMetaContent(page, 'meta[property="og:title"]')).toBeTruthy();
   expect(await readMetaContent(page, 'meta[property="og:description"]')).toBeTruthy();
-  expect(await readMetaContent(page, 'meta[property="og:image"]')).toBeTruthy();
+  expect(await readMetaContent(page, 'meta[property="og:image"]')).toContain('/images/home/og-image.png');
+  expect(await readMetaContent(page, 'meta[property="og:image:alt"]')).toBeTruthy();
   expect(await readMetaContent(page, 'meta[property="og:url"]')).toBeTruthy();
 
   await gotoAndWait(page, '/donate');
   await expect(page).toHaveTitle(/Support Olivia's Garden/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/donate$/);
   expect(await readMetaContent(page, 'meta[name="description"]')).toBeTruthy();
+  expect(await readMetaContent(page, 'meta[name="twitter:image"]')).toContain('/images/home/og-image.png');
+  expect(await readMetaContent(page, 'meta[name="twitter:image:alt"]')).toBeTruthy();
 });
 
 test('main internal routes respond without broken links', async ({ page, request, baseURL }) => {
