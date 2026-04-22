@@ -21,7 +21,6 @@ export interface SiteFooterProps {
 }
 
 export function SiteFooter({
-  tagline,
   meta,
   links = [],
   socialLinks = [],
@@ -30,44 +29,39 @@ export function SiteFooter({
     <footer className="og-site-footer">
       <div className="og-site-footer__inner">
         {links.length > 0 ? (
-          <div className="og-site-footer__links-block">
+          <nav className="og-site-footer__links-block" aria-label="Footer">
             <p className="og-site-footer__label">Pages</p>
-              <div className="og-site-footer__links">
+              <ul className="og-site-footer__links">
                 {links.map((link) => (
-                  link.href ? (
-                    <a
-                      key={link.id}
-                      href={link.href}
-                      className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
-                      onClick={(event) => {
-                        if (link.onSelect) {
-                          event.preventDefault();
-                          link.onSelect();
-                        }
-                      }}
-                    >
-                      {link.label}
-                    </a>
-                  ) : (
-                    <button
-                      key={link.id}
-                      type="button"
-                      className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
-                      onClick={link.onSelect}
-                    >
-                      {link.label}
-                    </button>
-                  )
+                  <li key={link.id} className="og-site-footer__link-item">
+                    {link.href ? (
+                      <a
+                        href={link.href}
+                        className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
+                        aria-current={link.active ? 'page' : undefined}
+                        onClick={(event) => {
+                          if (link.onSelect) {
+                            event.preventDefault();
+                            link.onSelect();
+                          }
+                        }}
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`og-site-footer__link ${link.active ? 'is-active' : ''}`.trim()}
+                        onClick={link.onSelect}
+                      >
+                        {link.label}
+                      </button>
+                    )}
+                  </li>
                 ))}
-              </div>
-          </div>
+              </ul>
+          </nav>
         ) : null}
-
-        <div className="og-site-footer__copy">
-          <p className="og-site-footer__label">Olivia&apos;s Garden Foundation</p>
-          <p className="og-site-footer__tagline">{tagline}</p>
-          <p className="og-site-footer__meta">{meta}</p>
-        </div>
 
         {socialLinks.length > 0 ? (
           <div className="og-site-footer__social-block">
@@ -101,6 +95,8 @@ export function SiteFooter({
             </div>
           </div>
         ) : null}
+
+        <p className="og-site-footer__meta">{meta}</p>
       </div>
     </footer>
   );

@@ -115,6 +115,9 @@ export function OkraExperience({
             <li>
               <PromiseIcon kind="check" /> No sign-up required
             </li>
+            <li>
+              <PromiseIcon kind="check" /> Grow something new
+            </li>
           </ul>
         </div>
 
