@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadStripe, type StripeEmbeddedCheckout } from '@stripe/stripe-js';
-import { Button } from '@olivias/ui';
+import { Button, FormFeedback } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { CtaButton, PageHero } from '../chrome';
 import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
@@ -625,7 +625,7 @@ export function DonatePage({
                   </div>
                 </div>
 
-                {error ? <p className="donate-form-card__error" role="alert">{error}</p> : null}
+                {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
               </>
             )}
           </div>
