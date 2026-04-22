@@ -70,6 +70,9 @@ Globals:
         OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
         OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
         ALLOWED_RETURN_URL_ORIGINS: !ImportValue OGF-WebFrontendUrl
+        MEDIA_BUCKET_NAME: !ImportValue OGF-AssetsBucketName
+        MEDIA_CDN_DOMAIN: !ImportValue OGF-AssetsPublicDomainName
+        AVATAR_PROCESSING_EVENT_BUS_NAME: default
 
 Metadata:
   esbuild-properties: &esbuild-properties
@@ -93,7 +96,7 @@ Resources:
       TracingEnabled: false
       StageName: api
       Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: !If
           - DeploySharedApiBasePathMapping
@@ -130,6 +133,18 @@ Resources:
       Handler: src/handlers/api.handler
       Policies:
         - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/avatars/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
       Events:
         ApiProxy:
           Type: Api
@@ -143,6 +158,44 @@ Resources:
             RestApiId: !Ref Api
             Path: /
             Method: ANY
+
+  AvatarProcessorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - ./src/handlers/avatar-processor.mjs
+        External:
+          - '@aws-sdk/*'
+          - '@napi-rs/image'
+          - '@napi-rs/image-linux-arm64-gnu'
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/avatar-processor.handler
+      Timeout: 60
+      MemorySize: 1024
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/avatars/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+      Events:
+        AvatarClaimedEvent:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - ogf.web-api.avatars
+              detail-type:
+                - avatar.claimed
 
   StripeEventConsumerFunction:
     Type: AWS::Serverless::Function

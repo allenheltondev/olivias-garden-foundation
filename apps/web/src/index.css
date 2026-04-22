@@ -1866,6 +1866,18 @@ html {
   object-fit: cover;
 }
 
+.profile-form__avatar-actions {
+  display: grid;
+  gap: 0.5rem;
+  align-content: center;
+}
+
+.profile-form__hint {
+  color: var(--site-muted, #6c5540);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .profile-form__grid {
   display: grid;
   gap: 0.85rem;

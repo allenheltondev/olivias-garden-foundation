@@ -13,7 +13,6 @@ export const profileUpdateSchema = {
     region: { type: ['string', 'null'], maxLength: 120 },
     country: { type: ['string', 'null'], maxLength: 120 },
     timezone: { type: ['string', 'null'], maxLength: 120 },
-    avatarUrl: { type: ['string', 'null'], maxLength: 2000 },
     websiteUrl: { type: ['string', 'null'], maxLength: 2000 }
   }
 };
@@ -52,6 +51,13 @@ function validateUrl(value, fieldName) {
   }
 }
 
+function buildCdnUrl(s3Key) {
+  if (!s3Key) return null;
+  const cdnDomain = process.env.MEDIA_CDN_DOMAIN;
+  if (!cdnDomain) return null;
+  return `https://${cdnDomain}/${s3Key}`;
+}
+
 function mapProfileRow(row, authContext) {
   if (!row) {
     return {
@@ -66,6 +72,9 @@ function mapProfileRow(row, authContext) {
       country: null,
       timezone: null,
       avatarUrl: null,
+      avatarThumbnailUrl: null,
+      avatarStatus: 'none',
+      avatarProcessingError: null,
       websiteUrl: null,
       tier: null,
       gardenClubStatus: 'none',
@@ -89,7 +98,10 @@ function mapProfileRow(row, authContext) {
     region: row.region,
     country: row.country,
     timezone: row.timezone,
-    avatarUrl: row.avatar_url,
+    avatarUrl: buildCdnUrl(row.avatar_s3_key),
+    avatarThumbnailUrl: buildCdnUrl(row.avatar_thumbnail_s3_key),
+    avatarStatus: row.avatar_status ?? 'none',
+    avatarProcessingError: row.avatar_processing_error ?? null,
     websiteUrl: row.website_url,
     tier: row.tier,
     gardenClubStatus: row.garden_club_status ?? 'none',
@@ -101,6 +113,15 @@ function mapProfileRow(row, authContext) {
     profileUpdatedAt: row.profile_updated_at
   };
 }
+
+const PROFILE_SELECT_COLUMNS = `
+  id::text as id, email::text as email, display_name, tier,
+  first_name, last_name, bio, city, region, country, timezone,
+  website_url, garden_club_status,
+  avatar_s3_key, avatar_thumbnail_s3_key, avatar_status, avatar_processing_error,
+  donation_total_cents, donation_count, last_donated_at,
+  created_at, updated_at, profile_updated_at
+`;
 
 async function ensureUserRow(client, authContext) {
   await client.query(
@@ -129,16 +150,7 @@ export async function getProfile(event) {
     await ensureUserRow(client, authContext);
 
     const result = await client.query(
-      `
-        select id::text as id, email::text as email, display_name, tier,
-               first_name, last_name, bio, city, region, country, timezone,
-               avatar_url, website_url, garden_club_status,
-               donation_total_cents, donation_count, last_donated_at,
-               created_at, updated_at, profile_updated_at
-          from users
-         where id = $1::uuid
-           and deleted_at is null
-      `,
+      `select ${PROFILE_SELECT_COLUMNS} from users where id = $1::uuid and deleted_at is null`,
       [authContext.userId]
     );
 
@@ -162,7 +174,6 @@ export async function updateProfile(event, payload) {
   const region = normalizeOptionalString(payload.region, 120);
   const country = normalizeOptionalString(payload.country, 120);
   const timezone = normalizeOptionalString(payload.timezone, 120);
-  const avatarUrl = validateUrl(normalizeOptionalString(payload.avatarUrl, 2000), 'avatarUrl');
   const websiteUrl = validateUrl(normalizeOptionalString(payload.websiteUrl, 2000), 'websiteUrl');
 
   const client = await createDbClient();
@@ -182,17 +193,12 @@ export async function updateProfile(event, payload) {
                region = $7,
                country = $8,
                timezone = $9,
-               avatar_url = $10,
-               website_url = $11,
+               website_url = $10,
                profile_updated_at = now(),
                updated_at = now()
          where id = $1::uuid
            and deleted_at is null
-         returning id::text as id, email::text as email, display_name, tier,
-                   first_name, last_name, bio, city, region, country, timezone,
-                   avatar_url, website_url, garden_club_status,
-                   donation_total_cents, donation_count, last_donated_at,
-                   created_at, updated_at, profile_updated_at
+         returning ${PROFILE_SELECT_COLUMNS}
       `,
       [
         authContext.userId,
@@ -204,7 +210,6 @@ export async function updateProfile(event, payload) {
         region,
         country,
         timezone,
-        avatarUrl,
         websiteUrl
       ]
     );

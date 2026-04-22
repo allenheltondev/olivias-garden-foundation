@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Button } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { createOkraHeaders, okraApiUrl } from '../../okra/api';
 import { PageHero, Section } from '../chrome';
 import { webApiBase } from '../routes';
+
+type AvatarStatus = 'none' | 'uploaded' | 'processing' | 'ready' | 'failed';
 
 type ProfileResponse = {
   userId: string | null;
@@ -17,6 +19,9 @@ type ProfileResponse = {
   country: string | null;
   timezone: string | null;
   avatarUrl: string | null;
+  avatarThumbnailUrl: string | null;
+  avatarStatus: AvatarStatus;
+  avatarProcessingError: string | null;
   websiteUrl: string | null;
   tier: string | null;
   gardenClubStatus: string | null;
@@ -26,6 +31,15 @@ type ProfileResponse = {
   createdAt: string | null;
   updatedAt: string | null;
   profileUpdatedAt: string | null;
+};
+
+type AvatarUploadIntent = {
+  avatarId: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  s3Key: string;
+  expiresInSeconds: number;
 };
 
 type DonationActivityItem = {
@@ -109,7 +123,7 @@ async function saveProfile(
   payload: Partial<ProfileResponse>,
 ): Promise<ProfileResponse> {
   const response = await fetch(webApiUrl('/profile'), {
-    method: 'POST',
+    method: 'PUT',
     headers: authHeaders(authSession, true),
     body: JSON.stringify(payload),
   });
@@ -181,6 +195,46 @@ function detectBrowserTimezone() {
   }
 }
 
+async function requestAvatarUploadIntent(
+  authSession: AuthSession,
+  contentType: string,
+): Promise<AvatarUploadIntent> {
+  const response = await fetch(webApiUrl('/profile/avatar'), {
+    method: 'POST',
+    headers: authHeaders(authSession, true),
+    body: JSON.stringify({ contentType }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error ?? 'Unable to start avatar upload.');
+  }
+
+  return (await response.json()) as AvatarUploadIntent;
+}
+
+async function putAvatarToS3(intent: AvatarUploadIntent, file: File) {
+  const response = await fetch(intent.uploadUrl, {
+    method: 'PUT',
+    headers: intent.headers,
+    body: file,
+  });
+  if (!response.ok) {
+    throw new Error(`Upload to storage failed (${response.status}).`);
+  }
+}
+
+async function completeAvatarUpload(authSession: AuthSession): Promise<void> {
+  const response = await fetch(webApiUrl('/profile/avatar/complete'), {
+    method: 'POST',
+    headers: authHeaders(authSession, false),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error ?? 'Unable to finalize avatar upload.');
+  }
+}
+
 type EditableProfile = {
   firstName: string;
   lastName: string;
@@ -190,7 +244,6 @@ type EditableProfile = {
   region: string;
   country: string;
   timezone: string;
-  avatarUrl: string;
   websiteUrl: string;
 };
 
@@ -204,7 +257,6 @@ function toEditable(profile: ProfileResponse | null): EditableProfile {
     region: profile?.region ?? '',
     country: profile?.country ?? '',
     timezone: profile?.timezone ?? '',
-    avatarUrl: profile?.avatarUrl ?? '',
     websiteUrl: profile?.websiteUrl ?? '',
   };
 }
@@ -236,6 +288,10 @@ export function ProfilePage({
   const [submissions, setSubmissions] = useState<SubmissionActivityItem[]>([]);
   const [seedRequests, setSeedRequests] = useState<SeedRequestActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
+
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authSession) {
@@ -332,7 +388,6 @@ export function ProfilePage({
         region: form.region.trim() || null,
         country: form.country.trim() || null,
         timezone: form.timezone.trim() || null,
-        avatarUrl: form.avatarUrl.trim() || null,
         websiteUrl: form.websiteUrl.trim() || null,
       };
 
@@ -346,6 +401,60 @@ export function ProfilePage({
       setIsSaving(false);
     }
   };
+
+  const handleAvatarFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !authSession) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setAvatarError('Please choose a JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAvatarError('Image is too large. Please pick one under 8 MB.');
+      return;
+    }
+
+    setAvatarError(null);
+    setAvatarUploading(true);
+
+    try {
+      const intent = await requestAvatarUploadIntent(authSession, file.type);
+      await putAvatarToS3(intent, file);
+      await completeAvatarUpload(authSession);
+      const refreshed = await fetchProfile(authSession);
+      setProfile(refreshed);
+    } catch (error) {
+      setAvatarError(error instanceof Error ? error.message : 'Unable to upload avatar.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  // Poll profile while the avatar is processing so the UI picks up the final URL.
+  useEffect(() => {
+    if (!authSession || profile?.avatarStatus !== 'processing') return;
+
+    let cancelled = false;
+    const interval = window.setInterval(async () => {
+      try {
+        const fresh = await fetchProfile(authSession);
+        if (cancelled) return;
+        setProfile(fresh);
+        if (fresh.avatarStatus !== 'processing') {
+          window.clearInterval(interval);
+        }
+      } catch {
+        // Keep polling; transient failures are fine.
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [authSession, profile?.avatarStatus]);
 
   if (!authSession) {
     return (
@@ -380,21 +489,41 @@ export function ProfilePage({
           <form className="profile-form" onSubmit={handleSubmit}>
             <div className="profile-form__avatar-row">
               <div className="profile-form__avatar-preview" aria-hidden="true">
-                {form.avatarUrl ? (
-                  <img src={form.avatarUrl} alt="" />
+                {profile?.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="" />
                 ) : (
                   <span>{(displayName[0] ?? '?').toUpperCase()}</span>
                 )}
               </div>
-              <label className="profile-form__field profile-form__field--wide">
-                <span>Avatar image URL</span>
+              <div className="profile-form__avatar-actions">
                 <input
-                  type="url"
-                  value={form.avatarUrl}
-                  onChange={handleChange('avatarUrl')}
-                  placeholder="https://…"
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAvatarFile}
+                  hidden
                 />
-              </label>
+                <Button
+                  className="site-cta"
+                  type="button"
+                  variant="secondary"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading || profile?.avatarStatus === 'processing'}
+                >
+                  {avatarUploading
+                    ? 'Uploading…'
+                    : profile?.avatarStatus === 'processing'
+                      ? 'Processing…'
+                      : profile?.avatarUrl
+                        ? 'Replace avatar'
+                        : 'Upload avatar'}
+                </Button>
+                <p className="profile-form__hint">JPEG, PNG, or WebP — up to 8 MB. We&apos;ll resize and optimize it automatically.</p>
+                {profile?.avatarStatus === 'failed' && profile.avatarProcessingError ? (
+                  <p className="profile-error" role="alert">Avatar failed: {profile.avatarProcessingError}</p>
+                ) : null}
+                {avatarError ? <p className="profile-error" role="alert">{avatarError}</p> : null}
+              </div>
             </div>
 
             <div className="profile-form__grid">

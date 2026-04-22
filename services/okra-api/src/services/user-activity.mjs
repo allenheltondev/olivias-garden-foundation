@@ -1,5 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+
+const SEED_REQUESTS_BY_CONTRIBUTOR_INDEX = 'contributorCognitoSub-createdAt-index';
 
 let cachedDocClient = null;
 
@@ -67,44 +69,28 @@ async function listUserSeedRequests(cognitoSub) {
     return [];
   }
 
-  const items = [];
-  let lastKey;
+  const result = await getDocClient().send(new QueryCommand({
+    TableName: tableName,
+    IndexName: SEED_REQUESTS_BY_CONTRIBUTOR_INDEX,
+    KeyConditionExpression: 'contributorCognitoSub = :sub',
+    ExpressionAttributeValues: {
+      ':sub': cognitoSub
+    },
+    ScanIndexForward: false,
+    Limit: 200
+  }));
 
-  do {
-    const result = await getDocClient().send(new ScanCommand({
-      TableName: tableName,
-      FilterExpression: 'contributorCognitoSub = :sub and begins_with(requestId, :prefix)',
-      ExpressionAttributeValues: {
-        ':sub': cognitoSub,
-        ':prefix': ''
-      },
-      ExclusiveStartKey: lastKey,
-      Limit: 200
-    }));
-
-    for (const item of result.Items ?? []) {
-      // Skip internal bookkeeping rows (rate-limit entries use `ratelimit#` prefix).
-      if (typeof item.requestId === 'string' && item.requestId.startsWith('ratelimit#')) {
-        continue;
-      }
-      items.push({
-        id: item.requestId,
-        type: 'seed_request',
-        name: item.name ?? null,
-        fulfillmentMethod: item.fulfillmentMethod ?? null,
-        shippingCity: item.shippingAddress?.city ?? null,
-        shippingRegion: item.shippingAddress?.region ?? null,
-        shippingCountry: item.shippingAddress?.country ?? null,
-        message: item.message ?? null,
-        createdAt: item.createdAt
-      });
-    }
-
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey && items.length < 200);
-
-  items.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  return items;
+  return (result.Items ?? []).map((item) => ({
+    id: item.requestId,
+    type: 'seed_request',
+    name: item.name ?? null,
+    fulfillmentMethod: item.fulfillmentMethod ?? null,
+    shippingCity: item.shippingAddress?.city ?? null,
+    shippingRegion: item.shippingAddress?.region ?? null,
+    shippingCountry: item.shippingAddress?.country ?? null,
+    message: item.message ?? null,
+    createdAt: item.createdAt
+  }));
 }
 
 export async function getUserActivity(client, cognitoSub) {

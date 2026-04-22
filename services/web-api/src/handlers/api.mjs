@@ -14,6 +14,11 @@ import {
   updateProfile
 } from '../services/profile.mjs';
 import {
+  avatarUploadIntentSchema,
+  completeAvatarUpload,
+  createAvatarUploadIntent
+} from '../services/avatar.mjs';
+import {
   corsHeaders,
   errorResponse,
   getCorrelationId,
@@ -104,7 +109,7 @@ app.get('/profile', async ({ event }) => {
   }
 });
 
-app.post('/profile', async ({ req, event }) => {
+app.put('/profile', async ({ req, event }) => {
   const correlationId = getCorrelationId(event);
   const payload = await req.json();
 
@@ -153,6 +158,55 @@ app.get('/profile/activity', async ({ event }) => {
       statusCode: 200,
       headers: { 'x-correlation-id': correlationId },
       body: activity
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/profile/avatar', async ({ req, event }) => {
+  const correlationId = getCorrelationId(event);
+  const payload = await req.json();
+
+  try {
+    validate({ payload, schema: avatarUploadIntentSchema });
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      return {
+        statusCode: 422,
+        headers: { 'x-correlation-id': correlationId },
+        body: {
+          error: 'RequestValidationError',
+          message: 'Validation failed for request',
+          details: {
+            issues: error.errors?.map((issue) => issue.message) ?? [error.message]
+          }
+        }
+      };
+    }
+    throw error;
+  }
+
+  try {
+    const intent = await createAvatarUploadIntent(event, payload);
+    return {
+      statusCode: 201,
+      headers: { 'x-correlation-id': correlationId },
+      body: intent
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/profile/avatar/complete', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await completeAvatarUpload(event);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
     };
   } catch (error) {
     return mapApiError(error, correlationId);

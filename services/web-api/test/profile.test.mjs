@@ -58,8 +58,11 @@ function baseProfileRow(overrides = {}) {
     region: 'TX',
     country: 'US',
     timezone: 'America/Chicago',
-    avatar_url: 'https://cdn.example.com/olivia.png',
     website_url: 'https://olivia.example',
+    avatar_s3_key: null,
+    avatar_thumbnail_s3_key: null,
+    avatar_status: 'none',
+    avatar_processing_error: null,
     garden_club_status: 'active',
     donation_total_cents: 5000,
     donation_count: 2,
@@ -151,12 +154,12 @@ describe('web-api profile handler', () => {
     });
   });
 
-  describe('POST /profile', () => {
+  describe('PUT /profile', () => {
     it('rejects extra properties with a 422 validation error', async () => {
       resolveOptionalAuthContextMock.mockResolvedValue({ userId: USER_ID });
 
       const response = await handler(createApiGatewayEvent({
-        method: 'POST',
+        method: 'PUT',
         path: '/profile',
         body: { firstName: 'Olivia', sneaky: 'field' }
       }));
@@ -166,7 +169,7 @@ describe('web-api profile handler', () => {
       expect(createDbClientMock).not.toHaveBeenCalled();
     });
 
-    it('rejects an invalid avatar URL with 500 mapped error', async () => {
+    it('rejects an invalid website URL with 500 mapped error', async () => {
       resolveOptionalAuthContextMock.mockResolvedValue({
         userId: USER_ID,
         email: 'olivia@example.com',
@@ -182,13 +185,13 @@ describe('web-api profile handler', () => {
       createDbClientMock.mockResolvedValue(client);
 
       const response = await handler(createApiGatewayEvent({
-        method: 'POST',
+        method: 'PUT',
         path: '/profile',
-        body: { avatarUrl: 'not-a-url' }
+        body: { websiteUrl: 'not-a-url' }
       }));
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.body).error).toContain('avatarUrl must be a valid absolute URL');
+      expect(JSON.parse(response.body).error).toContain('websiteUrl must be a valid absolute URL');
     });
 
     it('persists trimmed profile fields and returns the updated profile', async () => {
@@ -206,7 +209,6 @@ describe('web-api profile handler', () => {
         region: 'TX',
         country: 'US',
         timezone: 'America/Chicago',
-        avatar_url: 'https://cdn.example.com/new.png',
         website_url: 'https://olivia.example'
       });
 
@@ -219,7 +221,7 @@ describe('web-api profile handler', () => {
       createDbClientMock.mockResolvedValue(client);
 
       const response = await handler(createApiGatewayEvent({
-        method: 'POST',
+        method: 'PUT',
         path: '/profile',
         body: {
           firstName: '  Liv  ',
@@ -229,7 +231,6 @@ describe('web-api profile handler', () => {
           region: 'TX',
           country: 'US',
           timezone: 'America/Chicago',
-          avatarUrl: 'https://cdn.example.com/new.png',
           websiteUrl: 'https://olivia.example'
         }
       }));
@@ -238,7 +239,7 @@ describe('web-api profile handler', () => {
       const body = JSON.parse(response.body);
       expect(body.firstName).toBe('Liv');
       expect(body.city).toBe('Austin');
-      expect(body.avatarUrl).toBe('https://cdn.example.com/new.png');
+      expect(body.websiteUrl).toBe('https://olivia.example');
 
       const updateCall = client.query.mock.calls.find(([sql]) => sql.includes('update users'));
       expect(updateCall).toBeDefined();
@@ -246,7 +247,7 @@ describe('web-api profile handler', () => {
       expect(params[0]).toBe(USER_ID);
       expect(params[1]).toBe('Liv');
       expect(params[5]).toBe('Austin');
-      expect(params[9]).toBe('https://cdn.example.com/new.png');
+      expect(params[9]).toBe('https://olivia.example/');
     });
 
     it('normalizes empty-string fields to null so they clear out existing values', async () => {
@@ -265,7 +266,7 @@ describe('web-api profile handler', () => {
       createDbClientMock.mockResolvedValue(client);
 
       const response = await handler(createApiGatewayEvent({
-        method: 'POST',
+        method: 'PUT',
         path: '/profile',
         body: { bio: '   ', city: '' }
       }));
@@ -347,6 +348,70 @@ describe('web-api profile handler', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({ donations: [] });
+    });
+  });
+
+  describe('avatar URL composition', () => {
+    it('builds avatarUrl and avatarThumbnailUrl from MEDIA_CDN_DOMAIN and the stored S3 keys', async () => {
+      process.env.MEDIA_CDN_DOMAIN = 'cdn.example.com';
+      resolveOptionalAuthContextMock.mockResolvedValue({
+        userId: USER_ID,
+        email: 'olivia@example.com',
+        name: 'Olivia'
+      });
+
+      const row = baseProfileRow({
+        avatar_s3_key: `avatars/${USER_ID}/abc/display.webp`,
+        avatar_thumbnail_s3_key: `avatars/${USER_ID}/abc/thumbnail.webp`,
+        avatar_status: 'ready'
+      });
+
+      const client = createClientMock((sql) => {
+        if (sql.trim().startsWith('insert into users')) {
+          return Promise.resolve({ rowCount: 1 });
+        }
+        return Promise.resolve({ rows: [row], rowCount: 1 });
+      });
+      createDbClientMock.mockResolvedValue(client);
+
+      const response = await handler(createApiGatewayEvent({ method: 'GET', path: '/profile' }));
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.avatarUrl).toBe(`https://cdn.example.com/avatars/${USER_ID}/abc/display.webp`);
+      expect(body.avatarThumbnailUrl).toBe(`https://cdn.example.com/avatars/${USER_ID}/abc/thumbnail.webp`);
+      expect(body.avatarStatus).toBe('ready');
+
+      delete process.env.MEDIA_CDN_DOMAIN;
+    });
+  });
+
+  describe('POST /profile/avatar/complete', () => {
+    it('returns 400 when unauthenticated', async () => {
+      resolveOptionalAuthContextMock.mockResolvedValue(null);
+
+      const response = await handler(createApiGatewayEvent({
+        method: 'POST',
+        path: '/profile/avatar/complete'
+      }));
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toBe('Authorization token is required');
+    });
+
+    it('returns 404 when there is no uploaded avatar to finalize', async () => {
+      resolveOptionalAuthContextMock.mockResolvedValue({ userId: USER_ID });
+
+      const client = createClientMock(() => Promise.resolve({ rows: [], rowCount: 0 }));
+      createDbClientMock.mockResolvedValue(client);
+
+      const response = await handler(createApiGatewayEvent({
+        method: 'POST',
+        path: '/profile/avatar/complete'
+      }));
+
+      expect(response.statusCode).toBe(404);
+      expect(JSON.parse(response.body).error).toBe('No uploaded avatar found to process');
     });
   });
 });
