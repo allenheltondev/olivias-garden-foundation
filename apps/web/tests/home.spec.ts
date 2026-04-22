@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoAndWait, trackBrowserErrors } from './test-helpers';
+import { expectNoHorizontalOverflow, gotoAndWait, trackBrowserErrors } from './test-helpers';
 
 test('homepage loads with working nav and footer', async ({ page }) => {
   const assertNoBrowserErrors = trackBrowserErrors(page);
@@ -22,4 +22,21 @@ test('homepage loads with working nav and footer', async ({ page }) => {
   await expect(footer.getByRole('link', { name: /facebook/i })).toBeVisible();
 
   await assertNoBrowserErrors();
+});
+
+test.describe('homepage mobile', () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+  });
+
+  test('homepage keeps core content usable on mobile', async ({ page }) => {
+    await gotoAndWait(page, '/');
+
+    await expect(page.getByRole('heading', { level: 1, name: /learn to grow food/i })).toBeVisible();
+    await expect(page.locator('.home-mobile-image-break').first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Get involved' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Donate' }).first()).toBeVisible();
+
+    await expectNoHorizontalOverflow(page);
+  });
 });

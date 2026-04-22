@@ -14,6 +14,14 @@ test('mobile navigation opens, routes, and keeps layout intact', async ({ page }
 
   const primaryNav = page.getByRole('navigation', { name: 'Primary' });
   await expect(primaryNav).toBeVisible();
+  await primaryNav.getByRole('link', { name: 'About' }).click();
+
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(page.getByRole('heading', { level: 1, name: /about olivia's garden/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /open navigation menu/i })).toBeVisible();
+
+  await page.getByRole('button', { name: /open navigation menu/i }).click();
+  await expect(primaryNav).toBeVisible();
   await primaryNav.getByRole('link', { name: 'Okra Project' }).click();
 
   await expect(page).toHaveURL(/\/okra$/);
@@ -24,6 +32,21 @@ test('mobile navigation opens, routes, and keeps layout intact', async ({ page }
     }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: /request free seeds/i }).first()).toBeVisible();
+  await expect(page.getByRole('region', { name: /request seeds/i })).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
+});
+
+test('mobile navigation closes when tapping outside the menu', async ({ page }) => {
+  await gotoAndWait(page, '/');
+
+  const menuButton = page.getByRole('button', { name: /open navigation menu/i });
+  const primaryNav = page.getByRole('navigation', { name: 'Primary' });
+
+  await menuButton.click();
+  await expect(primaryNav).toBeVisible();
+
+  await page.locator('main').click({ position: { x: 20, y: 20 } });
+  await expect(primaryNav).not.toBeVisible();
+  await expect(page.getByRole('button', { name: /open navigation menu/i })).toBeVisible();
 });
