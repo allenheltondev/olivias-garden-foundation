@@ -42,10 +42,14 @@ describe('submission notifier', () => {
     );
 
     const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.text).toContain('*:pushpin: New okra submission awaiting review*');
     expect(payload.text).toContain('Okra Grower');
     expect(payload.blocks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: 'header' }),
+        expect.objectContaining({
+          type: 'section',
+          text: expect.objectContaining({ text: '*:pushpin: New okra submission awaiting review*' })
+        }),
         expect.objectContaining({ type: 'image', image_url: 'https://assets.oliviasgarden.test/temp-photos/photo-1/original' }),
         expect.objectContaining({
           type: 'actions',
@@ -83,6 +87,7 @@ describe('submission notifier', () => {
 
     const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(payload.text).toContain('Okra &lt;Grower&gt; &amp; &lt;!channel&gt;');
+    expect(payload.text).not.toContain('cog-');
     expect(payload.blocks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

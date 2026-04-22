@@ -49,11 +49,10 @@ function buildSlackPayload(detail) {
   const reviewUrl = buildAdminReviewUrl(detail.submissionId);
   const blocks = [
     {
-      type: 'header',
+      type: 'section',
       text: {
-        type: 'plain_text',
-        text: 'New okra submission awaiting review',
-        emoji: true
+        type: 'mrkdwn',
+        text: '*:pushpin: New okra submission awaiting review*'
       }
     },
     {
@@ -138,7 +137,7 @@ function buildSlackPayload(detail) {
   }
 
   return {
-    text: `New okra submission from ${contributorName}`,
+    text: `*:pushpin: New okra submission awaiting review*\nContributor: ${contributorName}`,
     blocks
   };
 }

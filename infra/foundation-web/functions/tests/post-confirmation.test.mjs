@@ -85,7 +85,7 @@ describe("extractSignupContext", () => {
 describe("buildSlackPayload", () => {
   it("includes the key signup details", () => {
     const payload = buildSlackPayload(extractSignupContext(buildEvent()));
-    assert.match(payload.text, /New foundation signup/);
+    assert.match(payload.text, /\*:boom: New foundation signup\*/);
     assert.match(payload.text, /Olivia Garden/);
     assert.match(payload.text, /Newsletter opt-in: yes/);
   });

@@ -97,6 +97,8 @@ function mockSubmissionInsertSuccess() {
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.MEDIA_CDN_DOMAIN = 'assets.oliviasgarden.test';
+  mockClient.connect.mockResolvedValue(undefined);
+  mockClient.end.mockResolvedValue(undefined);
   mockResolveOptionalContributor.mockResolvedValue({ ok: true, contributor: null });
   mockSubmissionInsertSuccess();
 });
@@ -208,5 +210,40 @@ describe('submit endpoint optional auth enrichment', () => {
     const payload = JSON.parse(String(res.body));
     expect(payload.error).toBe('Unauthorized');
     expect(mockClient.connect).not.toHaveBeenCalled();
+  });
+});
+
+describe('submit endpoint error handling', () => {
+  it('logs structured context and returns 500 when database connection fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockClient.connect.mockRejectedValueOnce(new Error('database offline'));
+
+    const res = await handler(
+      makeRestApiEvent(
+        '/submissions',
+        'POST',
+        JSON.stringify({
+          contributorName: 'Guest',
+          storyText: 'Found some okra',
+          rawLocationText: 'Austin, TX',
+          displayLat: 30.2672,
+          displayLng: -97.7431,
+          photoIds: ['550e8400-e29b-41d4-a716-446655440001']
+        })
+      )
+    );
+
+    expect(res.statusCode).toBe(500);
+    const payload = JSON.parse(String(res.body));
+    expect(payload.error.code).toBe('INTERNAL_ERROR');
+
+    const logLine = consoleSpy.mock.calls
+      .map(([entry]) => String(entry))
+      .find((entry) => entry.includes('"endpoint":"POST /submissions"'));
+
+    expect(logLine).toBeDefined();
+    expect(logLine).toContain('"correlationId":"req-submit"');
+
+    consoleSpy.mockRestore();
   });
 });
