@@ -98,7 +98,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Build foundation stack
-        run: sam build --template-file infra/foundation-web/template.yaml
+        run: sam build --template-file infra/foundation-web/template.yaml --build-dir infra/foundation-web/.aws-sam/build
 
       - name: Deploy foundation stack
         env:

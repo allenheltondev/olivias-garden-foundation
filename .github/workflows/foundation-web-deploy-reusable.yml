@@ -183,7 +183,7 @@ jobs:
           fi
 
       - name: Build shared foundation web stack
-        run: sam build --template-file infra/foundation-web/template.yaml
+        run: sam build --template-file infra/foundation-web/template.yaml --build-dir infra/foundation-web/.aws-sam/build
 
       - name: Deploy shared foundation web stack
         env:
