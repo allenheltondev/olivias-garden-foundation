@@ -6,11 +6,6 @@ Parameters:
   DatabaseUrl:
     Type: String
     Description: PostgreSQL connection string (e.g., from Neon)
-  SignupSlackWebhookUrl:
-    Type: String
-    Default: ''
-    NoEcho: true
-    Description: Optional Slack webhook URL reused for rich okra submission review notifications.
   CiAdminUsername:
     Type: String
     Default: ''
@@ -28,7 +23,7 @@ Parameters:
     Type: String
     Default: ''
     NoEcho: true
-    Description: General-purpose Slack incoming webhook used for Okra API notifications (e.g., seed requests).
+    Description: General-purpose Slack incoming webhook used for Okra notifications (seed requests, submission reviews, etc.).
 
 Conditions:
   DeploySharedApiBasePathMapping: !Not [!Equals [!Ref DomainName, '']]
@@ -159,7 +154,7 @@ Resources:
       Handler: src/handlers/submission-notifier.handler
       Environment:
         Variables:
-          SLACK_WEBHOOK_URL: !Ref SignupSlackWebhookUrl
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
           OKRA_ADMIN_FRONTEND_URL: !If
             - DeploySharedApiBasePathMapping
             - !Sub 'https://admin.${DomainName}'
