@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { MapView, type PinData, type StatsData } from './components/MapView';
+import { SeedRequestModal } from './components/SeedRequestModal';
 import { SubmissionModal } from './components/SubmissionModal';
 import './theme.css';
 import './OkraExperience.css';
@@ -66,12 +67,13 @@ export function OkraExperience({
   const [stats, setStats] = useState<StatsData | null>(null);
   const [focusPin, setFocusPin] = useState<PinData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSeedModalOpen, setIsSeedModalOpen] = useState(false);
 
   const handlePinsLoaded = useCallback((data: PinData[]) => setPins(data), []);
   const handleStatsLoaded = useCallback((data: StatsData) => setStats(data), []);
   const handleSidebarPinClick = useCallback((pin: PinData) => setFocusPin(pin), []);
   const openSubmission = useCallback(() => setIsModalOpen(true), []);
-  const requestSeeds = useCallback(() => onNavigate('/seeds'), [onNavigate]);
+  const requestSeeds = useCallback(() => setIsSeedModalOpen(true), []);
 
   const recentPins = pins.slice(0, 5);
   const hasGrowers = stats !== null && stats.total_pins > 0;
@@ -99,7 +101,7 @@ export function OkraExperience({
               Request free seeds
             </button>
             <button type="button" className="ok-btn ok-btn--ghost ok-btn--lg" onClick={openSubmission}>
-              I&apos;m already growing this
+              Add my okra patch
             </button>
           </div>
 
@@ -299,6 +301,15 @@ export function OkraExperience({
       <SubmissionModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        authEnabled={authEnabled}
+        authSession={authSession}
+        onLogin={onLogin}
+        onSignup={onSignup}
+      />
+
+      <SeedRequestModal
+        open={isSeedModalOpen}
+        onClose={() => setIsSeedModalOpen(false)}
         authEnabled={authEnabled}
         authSession={authSession}
         onLogin={onLogin}

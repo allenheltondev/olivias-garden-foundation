@@ -52,6 +52,98 @@ paths:
         '429':
           description: Rate limit exceeded
 
+  /requests:
+    post:
+      operationId: createSeedRequest
+      summary: Create a free okra seed request (US/CA mail or in-person exchange)
+      tags:
+        - requests
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Client-generated UUID; repeat submissions with the same key within 24h return the cached result.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - fulfillmentMethod
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                email:
+                  type: string
+                  format: email
+                fulfillmentMethod:
+                  type: string
+                  enum: [mail, in_person]
+                  description: "\"mail\" requires shippingAddress (US or CA only); \"in_person\" uses optional visitDetails."
+                shippingAddress:
+                  type: object
+                  required:
+                    - line1
+                    - city
+                    - region
+                    - postalCode
+                    - country
+                  properties:
+                    line1:
+                      type: string
+                    line2:
+                      type: string
+                    city:
+                      type: string
+                    region:
+                      type: string
+                    postalCode:
+                      type: string
+                    country:
+                      type: string
+                      enum: [US, CA]
+                visitDetails:
+                  type: object
+                  properties:
+                    approximateDate:
+                      type: string
+                    notes:
+                      type: string
+                message:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Seed request recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - requestId
+                  - createdAt
+                properties:
+                  requestId:
+                    type: string
+                    format: uuid
+                  createdAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Missing Idempotency-Key header
+        '409':
+          description: A request with this Idempotency-Key is already being processed
+        '422':
+          description: Validation error (e.g. unsupported shipping country)
+        '429':
+          description: Rate limit exceeded for this source IP
+
   /submissions:
     post:
       operationId: createSubmission

@@ -1,0 +1,111 @@
+.seed-request__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 0.9rem;
+}
+
+.seed-request__grid--address {
+  margin-top: 0.9rem;
+}
+
+.seed-request__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.seed-request__field--wide {
+  grid-column: 1 / -1;
+}
+
+.seed-request__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-neutral-700);
+  letter-spacing: 0.02em;
+}
+
+.seed-request__input {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(76, 52, 38, 0.18);
+  border-radius: 0.55rem;
+  background: #fff;
+  color: var(--color-neutral-800);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.seed-request__input:focus {
+  outline: none;
+  border-color: var(--color-primary-600);
+  box-shadow: 0 0 0 3px rgba(76, 52, 38, 0.12);
+}
+
+.seed-request__input:disabled {
+  background: var(--color-neutral-100);
+  cursor: not-allowed;
+}
+
+.seed-request__textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.seed-request__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-neutral-700);
+  line-height: 1.45;
+}
+
+.seed-request__toggle {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.seed-request__toggle-btn {
+  flex: 1 1 180px;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(76, 52, 38, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-neutral-800);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.seed-request__toggle-btn:hover:not(:disabled) {
+  background: var(--color-neutral-100);
+}
+
+.seed-request__toggle-btn--active,
+.seed-request__toggle-btn--active:hover:not(:disabled) {
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: #fff;
+}
+
+.seed-request__error {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  color: #991b1b;
+  font-size: 0.9rem;
+}
+
+.seed-request__submit {
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .seed-request__grid {
+    grid-template-columns: 1fr;
+  }
+}
