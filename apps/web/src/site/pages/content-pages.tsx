@@ -1,4 +1,4 @@
-import { Card } from '@olivias/ui';
+import { Card, FormFeedback, Input, Textarea } from '@olivias/ui';
 import { lazy, Suspense, useState, type FormEvent } from 'react';
 import type { AuthSession } from '../../auth/session';
 import { CtaButton, PageHero, Section, WorkIcon } from '../chrome';
@@ -591,57 +591,47 @@ export function ContactPage() {
             own inbox — easier for us to reply to you directly.
           </p>
           <form className="contact-form" onSubmit={handleSubmit} noValidate>
-            <label>
-              <span>Name</span>
-              <input
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={(event) => {
-                  clearFeedback();
-                  setName(event.target.value);
-                }}
-                autoComplete="name"
-              />
-            </label>
-            <label>
-              <span>Email</span>
-              <input
-                type="email"
-                placeholder="Your email"
-                value={email}
-                onChange={(event) => {
-                  clearFeedback();
-                  setEmail(event.target.value);
-                }}
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              <span>Message</span>
-              <textarea
-                rows={6}
-                placeholder="How can we help?"
-                value={message}
-                onChange={(event) => {
-                  clearFeedback();
-                  setMessage(event.target.value);
-                }}
-                required
-              />
-            </label>
-            <label>
-              <span>How did you hear about us? (optional)</span>
-              <input
-                type="text"
-                placeholder="Instagram, friend, work day, etc."
-                value={referral}
-                onChange={(event) => {
-                  clearFeedback();
-                  setReferral(event.target.value);
-                }}
-              />
-            </label>
+            <Input
+              label="Name"
+              placeholder="Your name"
+              value={name}
+              onChange={(event) => {
+                clearFeedback();
+                setName(event.target.value);
+              }}
+              autoComplete="name"
+            />
+            <Input
+              type="email"
+              label="Email"
+              placeholder="Your email"
+              value={email}
+              onChange={(event) => {
+                clearFeedback();
+                setEmail(event.target.value);
+              }}
+              autoComplete="email"
+            />
+            <Textarea
+              label="Message"
+              rows={6}
+              placeholder="How can we help?"
+              value={message}
+              onChange={(event) => {
+                clearFeedback();
+                setMessage(event.target.value);
+              }}
+              required
+            />
+            <Input
+              label="How did you hear about us? (optional)"
+              placeholder="Instagram, friend, work day, etc."
+              value={referral}
+              onChange={(event) => {
+                clearFeedback();
+                setReferral(event.target.value);
+              }}
+            />
             <button
               type="submit"
               className="site-cta og-button og-button--primary og-button--md"
@@ -650,12 +640,7 @@ export function ContactPage() {
               Open email to send
             </button>
             {feedback ? (
-              <p
-                className={`contact-form__feedback contact-form__feedback--${feedback.type}`.trim()}
-                role={feedback.type === 'error' ? 'alert' : 'status'}
-              >
-                {feedback.message}
-              </p>
+              <FormFeedback tone={feedback.type}>{feedback.message}</FormFeedback>
             ) : null}
           </form>
         </Card>

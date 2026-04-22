@@ -1,0 +1,8 @@
+{
+  "name": "@olivias/foundation-web-functions",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
