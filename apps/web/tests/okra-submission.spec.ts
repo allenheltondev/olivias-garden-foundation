@@ -2,7 +2,19 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { gotoAndWait, trackBrowserErrors } from './test-helpers';
 
-const TEST_IMAGE_PATH = fileURLToPath(new URL('../public/images/okra/olivia-okra.jpg', import.meta.url));
+const OKRA_IMAGE_PATHS = [
+  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra1.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra2.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra3.webp', import.meta.url)),
+  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra4.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../services/okra-api/scripts/integration/img/okra5.webp', import.meta.url)),
+];
+
+function pickRandomOkraImages() {
+  const shuffled = [...OKRA_IMAGE_PATHS].sort(() => Math.random() - 0.5);
+  const count = Math.floor(Math.random() * OKRA_IMAGE_PATHS.length) + 1;
+  return shuffled.slice(0, count);
+}
 
 test.describe('okra submission flow (staging)', () => {
   test('opens the modal, uploads an okra photo, submits, and shows success', async ({ page, baseURL }) => {
@@ -12,6 +24,7 @@ test.describe('okra submission flow (staging)', () => {
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
     const contributorName = `Playwright Grower ${runId}`;
     const storyText = `A small backyard okra patch submitted by Playwright run ${runId}.`;
+    const selectedImages = pickRandomOkraImages();
 
     await gotoAndWait(page, '/okra');
 
@@ -21,8 +34,8 @@ test.describe('okra submission flow (staging)', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Submit your garden' })).toBeDisabled();
 
-    await dialog.locator('input[type="file"]').setInputFiles(TEST_IMAGE_PATH);
-    await expect(dialog.getByLabel('Upload complete')).toBeVisible({ timeout: 30000 });
+    await dialog.locator('input[type="file"]').setInputFiles(selectedImages);
+    await expect(dialog.getByLabel('Upload complete')).toHaveCount(selectedImages.length, { timeout: 30000 });
 
     await dialog.getByLabel('Your name (optional)').fill(contributorName);
     await dialog.getByLabel('Your garden story (optional)').fill(storyText);

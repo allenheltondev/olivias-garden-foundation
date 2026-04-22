@@ -40,5 +40,6 @@ npm run test:e2e -- okra-submission.spec.ts
 ## Notes
 
 - The okra submission test creates a real submission in the target environment.
+- The okra seed request test creates a real seed request in the target environment.
 - The donation flow opens a real staging Stripe checkout session.
 - Signed-in profile tests still require valid staging credentials.
