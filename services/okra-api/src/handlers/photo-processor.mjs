@@ -1,5 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { transformToWebpPair } from '@olivias/image-processing';
+import { transformToWebpPair } from '../vendor/image-processing/index.mjs';
 import { createDbClient } from '../../scripts/db-client.mjs';
 
 function getRegion() {
