@@ -138,8 +138,6 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expiresAt
         Enabled: true
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
 
   SubmissionNotifierFunction:
     Type: AWS::Serverless::Function
