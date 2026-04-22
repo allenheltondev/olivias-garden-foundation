@@ -39,15 +39,19 @@ function computeValidation(input: ValidationInput): { canSubmit: boolean; missin
     missing.push(input.hasFailedPhotos ? 'Photo uploads failed — retry or add new photos' : 'At least one photo is required');
   }
 
-  if (input.location.rawLocationText.trim().length === 0) {
-    missing.push('Location text is required');
-  }
-
   const lat = input.location.displayLat;
   const lng = input.location.displayLng;
 
-  if (lat === null || lng === null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    missing.push('Select a location on the map');
+  const hasLocationText = input.location.rawLocationText.trim().length > 0;
+  const hasValidCoordinates = lat !== null
+    && lng !== null
+    && lat >= -90
+    && lat <= 90
+    && lng >= -180
+    && lng <= 180;
+
+  if (!hasLocationText || !hasValidCoordinates) {
+    missing.push('Location is required');
   }
 
   if (input.hasUploadingPhotos) {

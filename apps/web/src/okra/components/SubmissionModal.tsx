@@ -46,9 +46,6 @@ export function SubmissionModal({
 
   const photosComplete = photoUploader.hasUploaded;
   const aboutComplete = form.contributorName.trim().length > 0 || form.storyText.trim().length > 0;
-  const locationComplete =
-    locationPicker.location.displayLat !== null && locationPicker.location.displayLng !== null;
-  const [privacyTouched, setPrivacyTouched] = useState(false);
 
   const photosRef = useRef(photoUploader.photos);
   photosRef.current = photoUploader.photos;
@@ -69,7 +66,6 @@ export function SubmissionModal({
 
   const handleDiscard = useCallback(() => {
     setShowConfirm(false);
-    setPrivacyTouched(false);
     photoUploader.reset();
     locationPicker.reset();
     form.reset();
@@ -131,7 +127,6 @@ export function SubmissionModal({
       photoUploader.reset();
       locationPicker.reset();
       form.reset();
-      setPrivacyTouched(false);
       onClose();
     }, 2000);
 
@@ -174,31 +169,22 @@ export function SubmissionModal({
             </div>
           ) : (
             <>
-              {authEnabled ? (
+              {authEnabled && !authSession ? (
                 <section className="submission-modal__auth">
-                  {authSession ? (
-                    <>
-                      <p className="submission-modal__auth-eyebrow">Signed in</p>
-                      <p className="submission-modal__auth-title">
-                        This submission can stay connected to {authSession.user.name ?? authSession.user.email ?? 'your Good Roots Network account'}.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="submission-modal__auth-eyebrow">Anonymous is still fine</p>
-                      <p className="submission-modal__auth-title">
-                        Log in only if you want us to remember your okra submissions so you can update them later.
-                      </p>
-                      <div className="submission-modal__auth-actions">
-                        <button type="button" className="submission-modal__auth-button" onClick={onLogin}>
-                          Log in
-                        </button>
-                        <button type="button" className="submission-modal__auth-button submission-modal__auth-button--primary" onClick={onSignup}>
-                          Sign up
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <>
+                    <p className="submission-modal__auth-eyebrow">Anonymous is still fine</p>
+                    <p className="submission-modal__auth-title">
+                      Log in only if you want us to remember your okra submissions so you can update them later.
+                    </p>
+                    <div className="submission-modal__auth-actions">
+                      <button type="button" className="submission-modal__auth-button" onClick={onLogin}>
+                        Log in
+                      </button>
+                      <button type="button" className="submission-modal__auth-button submission-modal__auth-button--primary" onClick={onSignup}>
+                        Sign up
+                      </button>
+                    </div>
+                  </>
                 </section>
               ) : null}
 
@@ -246,14 +232,6 @@ export function SubmissionModal({
               </section>
 
               <section className="submission-modal__section">
-                <h3 className="submission-modal__section-heading">
-                  Location{' '}
-                  {locationComplete ? (
-                    <span className="submission-modal__check" aria-label="Section complete">
-                      OK
-                    </span>
-                  ) : null}
-                </h3>
                 <LocationInput
                   location={locationPicker.location}
                   onTextChange={locationPicker.setRawText}
@@ -267,20 +245,9 @@ export function SubmissionModal({
               </section>
 
               <section className="submission-modal__section">
-                <h3 className="submission-modal__section-heading">
-                  Privacy{' '}
-                  {privacyTouched ? (
-                    <span className="submission-modal__check" aria-label="Section complete">
-                      OK
-                    </span>
-                  ) : null}
-                </h3>
                 <PrivacySelector
                   value={form.privacyMode}
-                  onChange={(mode) => {
-                    setPrivacyTouched(true);
-                    form.setPrivacyMode(mode);
-                  }}
+                  onChange={form.setPrivacyMode}
                   disabled={form.isSubmitting}
                 />
               </section>

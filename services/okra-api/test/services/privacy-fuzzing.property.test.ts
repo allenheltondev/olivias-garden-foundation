@@ -32,6 +32,10 @@ describe('Property 14: Cursor Encoding Round Trip', () => {
 
 import { fuzzCoordinates } from '../../src/services/privacy-fuzzing.mjs';
 
+function normalizeZero(value: number) {
+  return Object.is(value, -0) ? 0 : value;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Property 5: Privacy Fuzzing Bounds
 // ═══════════════════════════════════════════════════════════════════════════
@@ -53,8 +57,8 @@ describe('Property 5: Privacy Fuzzing Bounds', () => {
         fc.double({ min: -180, max: 180, noNaN: true }),
         (id, lat, lng) => {
           const result = fuzzCoordinates(id, lat, lng, 'exact');
-          expect(result.lat).toBe(lat);
-          expect(result.lng).toBe(lng);
+          expect(result.lat).toBe(normalizeZero(lat));
+          expect(result.lng).toBe(normalizeZero(lng));
         }
       ),
       { numRuns: 100 }

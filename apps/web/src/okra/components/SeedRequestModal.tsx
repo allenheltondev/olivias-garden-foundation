@@ -245,36 +245,26 @@ export function SeedRequestModal({
             </div>
           ) : (
             <>
-              {authEnabled ? (
+              {authEnabled && !authSession ? (
                 <section className="submission-modal__auth">
-                  {authSession ? (
-                    <>
-                      <p className="submission-modal__auth-eyebrow">Signed in</p>
-                      <p className="submission-modal__auth-title">
-                        We&apos;ll tie this request to{' '}
-                        {authSession.user.name ?? authSession.user.email ?? 'your account'}.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="submission-modal__auth-eyebrow">Anonymous is fine</p>
-                      <p className="submission-modal__auth-title">
-                        No sign-in required. Log in if you&apos;d like to track this request later.
-                      </p>
-                      <div className="submission-modal__auth-actions">
-                        <button type="button" className="submission-modal__auth-button" onClick={onLogin}>
-                          Log in
-                        </button>
-                        <button
-                          type="button"
-                          className="submission-modal__auth-button submission-modal__auth-button--primary"
-                          onClick={onSignup}
-                        >
-                          Sign up
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <>
+                    <p className="submission-modal__auth-eyebrow">Anonymous is fine</p>
+                    <p className="submission-modal__auth-title">
+                      No sign-in required. Log in if you&apos;d like to track this request later.
+                    </p>
+                    <div className="submission-modal__auth-actions">
+                      <button type="button" className="submission-modal__auth-button" onClick={onLogin}>
+                        Log in
+                      </button>
+                      <button
+                        type="button"
+                        className="submission-modal__auth-button submission-modal__auth-button--primary"
+                        onClick={onSignup}
+                      >
+                        Sign up
+                      </button>
+                    </div>
+                  </>
                 </section>
               ) : null}
 
@@ -434,14 +424,19 @@ export function SeedRequestModal({
 
               <section className="submission-modal__section">
                 <h3 className="submission-modal__section-heading">Message (optional)</h3>
-                <textarea
-                  className="seed-request__input seed-request__textarea"
-                  rows={3}
-                  placeholder="Tell us a bit about where these seeds are going."
-                  value={form.message}
-                  onChange={(e) => update('message', e.target.value)}
-                  disabled={isSubmitting}
-                />
+                <div className="seed-request__grid">
+                  <label className="seed-request__field seed-request__field--wide">
+                    <span className="seed-request__label">Message</span>
+                    <textarea
+                      className="seed-request__input seed-request__textarea"
+                      rows={3}
+                      placeholder="Tell us a bit about where these seeds are going."
+                      value={form.message}
+                      onChange={(e) => update('message', e.target.value)}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                </div>
               </section>
 
               <section className="submission-modal__section submission-modal__section--submit">

@@ -64,6 +64,35 @@
         ]
       }
     },
+    "donate/bee-example.png": {
+      "original": "donate/bee-example.png",
+      "width": 1459,
+      "height": 1078,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/donate/bee-example-480.avif",
+            "bytes": 47394
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/donate/bee-example-768.avif",
+            "bytes": 82668
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/donate/bee-example-1280.avif",
+            "bytes": 137343
+          },
+          {
+            "width": 1459,
+            "path": "images/responsive/donate/bee-example-1459.avif",
+            "bytes": 153238
+          }
+        ]
+      }
+    },
     "home/bee-suit.jpg": {
       "original": "home/bee-suit.jpg",
       "width": 979,

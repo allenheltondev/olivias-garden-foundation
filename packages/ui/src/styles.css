@@ -329,7 +329,14 @@ body {
 .og-site-footer__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.og-site-footer__link-item {
+  margin: 0;
 }
 
 .og-site-footer__tagline {
@@ -394,27 +401,28 @@ body {
 }
 
 .og-site-footer__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0;
   border: 0;
-  border-radius: var(--og-radius-pill);
-  padding: 0.28rem 0.45rem;
   background: transparent;
   color: rgba(255, 250, 241, 0.84);
-  cursor: pointer;
   font: inherit;
   font-size: 0.9rem;
   text-decoration: none;
-  transition: background-color var(--duration-fast) var(--easing-out), color var(--duration-fast) var(--easing-out), transform var(--duration-fast) var(--easing-out);
+  transition: color var(--duration-fast) var(--easing-out), text-decoration-color var(--duration-fast) var(--easing-out);
 }
 
 .og-site-footer__link:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 250, 241, 0.12);
   color: var(--og-color-paper);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .og-site-footer__link.is-active {
   background: transparent;
-  color: rgba(255, 250, 241, 0.9);
+  color: rgba(255, 250, 241, 0.96);
+  text-decoration: none;
 }
 
 .og-side-layout {
