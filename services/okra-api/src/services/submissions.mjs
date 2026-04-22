@@ -48,35 +48,64 @@ export function enrichSubmissionPayload(payload, contributor) {
   };
 }
 
+async function submissionsHasContributorAuthColumn(client) {
+  const result = await client.query(
+    `
+      select 1
+        from information_schema.columns
+       where table_schema = current_schema()
+         and table_name = 'submissions'
+         and column_name = 'contributor_cognito_sub'
+       limit 1
+    `
+  );
+
+  return result.rowCount > 0;
+}
+
 export async function insertPendingSubmissionWithPhotos(client, payload) {
   await client.query('begin');
 
   try {
+    const hasContributorAuthColumn = await submissionsHasContributorAuthColumn(client);
+    if (!hasContributorAuthColumn) {
+      console.warn(JSON.stringify({
+        level: 'warn',
+        message: 'submissions.contributor_cognito_sub is missing; storing submission without contributor auth linkage'
+      }));
+    }
+
+    const insertColumns = [
+      'contributor_name',
+      'contributor_email',
+      ...(hasContributorAuthColumn ? ['contributor_cognito_sub'] : []),
+      'story_text',
+      'raw_location_text',
+      'privacy_mode',
+      'display_lat',
+      'display_lng',
+      'status'
+    ];
+    const insertValues = [
+      payload.contributorName ?? null,
+      payload.contributorEmail ?? null,
+      ...(hasContributorAuthColumn ? [payload.contributorCognitoSub ?? null] : []),
+      payload.storyText ?? null,
+      payload.rawLocationText,
+      payload.privacyMode ?? 'city',
+      payload.displayLat,
+      payload.displayLng
+    ];
+    const insertPlaceholders = insertValues.map((_, index) => `$${index + 1}`);
+
     const submissionResult = await client.query(
       `
         insert into submissions (
-          contributor_name,
-          contributor_email,
-          contributor_cognito_sub,
-          story_text,
-          raw_location_text,
-          privacy_mode,
-          display_lat,
-          display_lng,
-          status
-        ) values ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_review')
+          ${insertColumns.join(',\n          ')}
+        ) values (${insertPlaceholders.join(', ')}, 'pending_review')
         returning id, status, created_at
       `,
-      [
-        payload.contributorName ?? null,
-        payload.contributorEmail ?? null,
-        payload.contributorCognitoSub ?? null,
-        payload.storyText ?? null,
-        payload.rawLocationText,
-        payload.privacyMode ?? 'city',
-        payload.displayLat,
-        payload.displayLng
-      ]
+      insertValues
     );
 
     const created = submissionResult.rows[0];

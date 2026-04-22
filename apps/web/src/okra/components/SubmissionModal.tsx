@@ -44,9 +44,6 @@ export function SubmissionModal({
     authSession?.user.name ?? authSession?.user.email ?? undefined,
   );
 
-  const photosComplete = photoUploader.hasUploaded;
-  const aboutComplete = form.contributorName.trim().length > 0 || form.storyText.trim().length > 0;
-
   const photosRef = useRef(photoUploader.photos);
   photosRef.current = photoUploader.photos;
 
@@ -189,14 +186,7 @@ export function SubmissionModal({
               ) : null}
 
               <section className="submission-modal__section">
-                <h3 className="submission-modal__section-heading">
-                  Photos{' '}
-                  {photosComplete ? (
-                    <span className="submission-modal__check" aria-label="Section complete">
-                      OK
-                    </span>
-                  ) : null}
-                </h3>
+                <h3 className="submission-modal__section-heading">Photos</h3>
                 <PhotoUploader
                   photos={photoUploader.photos}
                   onAddFiles={photoUploader.addFiles}
@@ -214,14 +204,7 @@ export function SubmissionModal({
               </section>
 
               <section className="submission-modal__section">
-                <h3 className="submission-modal__section-heading">
-                  About Your Garden{' '}
-                  {aboutComplete ? (
-                    <span className="submission-modal__check" aria-label="Section complete">
-                      OK
-                    </span>
-                  ) : null}
-                </h3>
+                <h3 className="submission-modal__section-heading">About Your Garden</h3>
                 <ContributorFields
                   name={form.contributorName}
                   story={form.storyText}
@@ -240,7 +223,6 @@ export function SubmissionModal({
                   geocodeError={locationPicker.geocodeError}
                   isGeocoding={locationPicker.isGeocoding}
                   disabled={form.isSubmitting}
-                  privacyMode={form.privacyMode}
                 />
               </section>
 

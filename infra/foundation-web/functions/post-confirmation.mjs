@@ -58,7 +58,7 @@ export function extractSignupContext(event) {
 
 export function buildSlackPayload(context, foundationEnvironment = FOUNDATION_ENVIRONMENT) {
   const lines = [
-    ":seedling: New foundation signup",
+    "*:boom: New foundation signup*",
     `Environment: ${foundationEnvironment}`,
     `Email: ${context.email ?? "missing"}`,
     `User ID: ${context.userId}`,

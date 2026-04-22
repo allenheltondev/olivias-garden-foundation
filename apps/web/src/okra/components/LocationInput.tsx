@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import type { LocationData } from '../hooks/useLocationPicker';
-import type { PrivacyMode } from '../hooks/useSubmissionForm';
 import './LocationInput.css';
 
 export interface LocationInputProps {
@@ -13,19 +13,23 @@ export interface LocationInputProps {
   isGeocoding: boolean;
   disabled: boolean;
   validationError?: string;
-  privacyMode?: PrivacyMode;
 }
 
 const DEFAULT_CENTER: [number, number] = [20, 0];
 const DEFAULT_ZOOM = 2;
 
-/** Approximate radius in meters for each privacy mode, based on backend fuzzing radii */
-const PRIVACY_RADIUS_METERS: Record<string, number> = {
-  exact: 0,
-  nearby: 550,
-  neighborhood: 2200,
-  city: 5500,
-};
+const LOCATION_PICKER_PIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+  <path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="#3f7d3a"/>
+  <path d="M14 8c-1.5 0-3 1.2-3 3.5 0 2.5 1.5 5 3 7 1.5-2 3-4.5 3-7C17 9.2 15.5 8 14 8z" fill="#fff" opacity="0.9"/>
+  <path d="M14 12v6M12 14c1-1 3-1 4 0" stroke="#3f7d3a" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+</svg>`;
+
+const locationPickerIcon = L.divIcon({
+  html: LOCATION_PICKER_PIN_SVG,
+  className: 'location-input__marker',
+  iconSize: [28, 36],
+  iconAnchor: [14, 36],
+});
 
 /** Inner component that listens for map click events. */
 function MapClickHandler({
@@ -54,7 +58,6 @@ export function LocationInput({
   isGeocoding,
   disabled,
   validationError,
-  privacyMode = 'city',
 }: LocationInputProps) {
   const textInputId = 'location-text-input';
   const errorId = 'location-error';
@@ -130,14 +133,7 @@ export function LocationInput({
               disabled={disabled}
             />
             {hasCoordinates && (
-              <Marker position={[location.displayLat!, location.displayLng!]} />
-            )}
-            {hasCoordinates && privacyMode !== 'exact' && (
-              <Circle
-                center={[location.displayLat!, location.displayLng!]}
-                radius={PRIVACY_RADIUS_METERS[privacyMode] ?? 0}
-                pathOptions={{ color: '#3f7d3a', fillColor: '#3f7d3a', fillOpacity: 0.1, weight: 1 }}
-              />
+              <Marker position={[location.displayLat!, location.displayLng!]} icon={locationPickerIcon} />
             )}
           </MapContainer>
         </div>

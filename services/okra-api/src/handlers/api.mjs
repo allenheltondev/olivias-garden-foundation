@@ -121,7 +121,27 @@ app.post('/photos', async ({ req, event }) => {
 });
 
 app.post('/submissions', async ({ req, event }) => {
-  const payload = await req.json();
+  const correlationId = getCorrelationId(event);
+  let payload;
+
+  try {
+    payload = await req.json();
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'warn',
+      message: 'Invalid JSON body for okra submission',
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      endpoint: 'POST /submissions',
+      correlationId
+    }));
+    return {
+      statusCode: 400,
+      body: {
+        error: 'InvalidJson',
+        message: 'Request body must be valid JSON'
+      }
+    };
+  }
 
   try {
     validate({ payload, schema: submissionSchema });
@@ -146,10 +166,12 @@ app.post('/submissions', async ({ req, event }) => {
     return authResult;
   }
 
-  const client = await createDbClient();
-  await client.connect();
+  let client;
 
   try {
+    client = await createDbClient();
+    await client.connect();
+
     const created = await insertPendingSubmissionWithPhotos(
       client,
       enrichSubmissionPayload(payload, authResult.contributor)
@@ -177,7 +199,7 @@ app.post('/submissions', async ({ req, event }) => {
           return `https://${cdnDomain}/${photo.original_s3_key}`;
         }).filter(Boolean)
       },
-      getCorrelationId(event)
+      correlationId
     );
 
     return {
@@ -200,6 +222,13 @@ app.post('/submissions', async ({ req, event }) => {
     }
 
     if ((error?.message ?? '').includes('Failed to publish')) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        endpoint: 'POST /submissions',
+        correlationId
+      }));
       return {
         statusCode: 502,
         body: {
@@ -209,9 +238,16 @@ app.post('/submissions', async ({ req, event }) => {
       };
     }
 
-    throw error;
+    console.error(JSON.stringify({
+      level: 'error',
+      message: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      endpoint: 'POST /submissions',
+      correlationId
+    }));
+    return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
   } finally {
-    await client.end();
+    await client?.end?.();
   }
 });
 

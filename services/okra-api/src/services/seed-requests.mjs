@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 export const SUPPORTED_COUNTRIES = ['US', 'CA'];
 
@@ -37,6 +37,7 @@ export const seedRequestSchema = {
 };
 
 let cachedClient = null;
+const SEED_REQUEST_COUNTER_KEY = 'stats#seed-requests';
 
 function getDocClient() {
   if (!cachedClient) {
@@ -132,9 +133,10 @@ export function validateSeedRequest(payload) {
 export async function createSeedRequest(payload, contributor) {
   const now = new Date();
   const requestId = randomUUID();
+  const createdAt = now.toISOString();
   const item = {
     requestId,
-    createdAt: now.toISOString(),
+    createdAt,
     name: payload.name.trim(),
     email: payload.email.trim().toLowerCase(),
     fulfillmentMethod: payload.fulfillmentMethod,
@@ -145,17 +147,40 @@ export async function createSeedRequest(payload, contributor) {
     expiresAt: Math.floor(now.getTime() / 1000) + 60 * 60 * 24 * 365 * 5
   };
 
-  await getDocClient().send(new PutCommand({
-    TableName: getTableName(),
-    Item: item,
-    ConditionExpression: 'attribute_not_exists(requestId)'
+  await getDocClient().send(new TransactWriteCommand({
+    TransactItems: [
+      {
+        Put: {
+          TableName: getTableName(),
+          Item: item,
+          ConditionExpression: 'attribute_not_exists(requestId)'
+        }
+      },
+      {
+        Update: {
+          TableName: getTableName(),
+          Key: { requestId: SEED_REQUEST_COUNTER_KEY },
+          UpdateExpression: 'ADD #count :one SET #entityType = if_not_exists(#entityType, :entityType), #updatedAt = :updatedAt',
+          ExpressionAttributeNames: {
+            '#count': 'count',
+            '#entityType': 'entityType',
+            '#updatedAt': 'updatedAt'
+          },
+          ExpressionAttributeValues: {
+            ':one': 1,
+            ':entityType': 'seed_request_stats',
+            ':updatedAt': createdAt
+          }
+        }
+      }
+    ]
   }));
 
   return item;
 }
 
 function slackText(request) {
-  const lines = [':seedling: New okra seed request'];
+  const lines = ['*:clipboard: New okra seed request*'];
   lines.push(`Name: ${request.name}`);
   lines.push(`Email: ${request.email}`);
   if (request.fulfillmentMethod === 'mail') {
@@ -174,11 +199,6 @@ function slackText(request) {
   }
   if (request.message) {
     lines.push(`Message: ${request.message}`);
-  }
-  if (request.contributorCognitoSub) {
-    lines.push(`Signed-in user: ${request.contributorCognitoSub}`);
-  } else {
-    lines.push('Signed-in user: (anonymous)');
   }
   return lines.join('\n');
 }

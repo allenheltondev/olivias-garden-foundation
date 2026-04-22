@@ -1,99 +1,63 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { gotoAndWait } from './test-helpers';
+import { gotoAndWait, trackBrowserErrors } from './test-helpers';
 
-const TEST_IMAGE_PATH = fileURLToPath(new URL('../public/images/okra/olivia-okra.jpg', import.meta.url));
+const OKRA_IMAGE_PATHS = [
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra1.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra2.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra3.webp', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra4.jpg', import.meta.url)),
+  fileURLToPath(new URL('../../../services/okra-api/scripts/integration/img/okra5.webp', import.meta.url)),
+];
 
-test('okra submission flow uploads a photo and submits a garden entry', async ({ page }) => {
-  let submissionBody: Record<string, unknown> | null = null;
+function pickRandomOkraImages() {
+  const shuffled = [...OKRA_IMAGE_PATHS].sort(() => Math.random() - 0.5);
+  const count = Math.floor(Math.random() * OKRA_IMAGE_PATHS.length) + 1;
+  return shuffled.slice(0, count);
+}
 
-  await page.route('**/api/okra', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
-    });
-  });
+test.describe('okra submission flow (staging)', () => {
+  test('opens the modal, uploads an okra photo, submits, and shows success', async ({ page, baseURL }) => {
+    expect(baseURL).toBeTruthy();
 
-  await page.route('**/api/okra/stats', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ total_pins: 0, country_count: 0 }),
-    });
-  });
+    const assertNoBrowserErrors = trackBrowserErrors(page);
+    const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const contributorName = `Playwright Grower ${runId}`;
+    const storyText = `A small backyard okra patch submitted by Playwright run ${runId}.`;
+    const selectedImages = pickRandomOkraImages();
 
-  await page.route('https://nominatim.openstreetmap.org/search?*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          lat: '33.1976',
-          lon: '-96.6153',
-        },
-      ]),
-    });
-  });
+    await gotoAndWait(page, '/okra');
 
-  await page.route('**/api/photos', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        photoId: 'photo-test-1',
-        uploadUrl: 'http://127.0.0.1:4173/test-upload/photo-test-1',
-      }),
-    });
-  });
+    await page.getByRole('button', { name: 'Add my okra patch' }).first().click();
 
-  await page.route('**/test-upload/*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      body: '',
-    });
-  });
+    const dialog = page.getByRole('dialog', { name: 'Add my okra patch' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Submit your garden' })).toBeDisabled();
 
-  await page.route('**/api/submissions', async (route) => {
-    submissionBody = (await route.request().postDataJSON()) as Record<string, unknown>;
-    await route.fulfill({
-      status: 201,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: true }),
-    });
-  });
+    await dialog.locator('input[type="file"]').setInputFiles(selectedImages);
+    await expect(dialog.getByLabel('Upload complete')).toHaveCount(selectedImages.length, { timeout: 30000 });
 
-  await gotoAndWait(page, '/okra');
+    await dialog.getByLabel('Your name (optional)').fill(contributorName);
+    await dialog.getByLabel('Your garden story (optional)').fill(storyText);
+    await dialog.getByLabel('Location (city, state, or address)').fill('McKinney, Texas');
 
-  await page.getByRole('button', { name: 'Add my okra patch' }).first().click();
+    await dialog.getByRole('button', { name: 'Or click to pick on map' }).click();
 
-  const dialog = page.getByRole('dialog', { name: 'Add my okra patch' });
-  await expect(dialog).toBeVisible();
+    const map = dialog.locator('.location-input__map');
+    await expect(map).toBeVisible();
+    await map.click({ position: { x: 160, y: 120 } });
 
-  await dialog.locator('input[type="file"]').setInputFiles(TEST_IMAGE_PATH);
+    await expect(dialog.getByText(/Coordinates:/)).toBeVisible();
+    await dialog.getByRole('radio', { name: /City/ }).check();
+    await expect(dialog.getByRole('button', { name: 'Submit your garden' })).toBeEnabled();
 
-  await expect(dialog.getByLabel('Upload complete')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Submit your garden' }).click();
 
-  await dialog.getByLabel('Your name (optional)').fill('Playwright Grower');
-  await dialog.getByLabel('Your garden story (optional)').fill('A small backyard okra patch for the test flow.');
-  await dialog.getByLabel('Location (city, state, or address)').fill('McKinney, Texas');
-  await dialog.getByRole('button', { name: 'Find on map' }).click();
+    await expect(dialog.getByRole('status')).toContainText(
+      'Your garden has been submitted and is pending review. Thank you.',
+      { timeout: 30000 },
+    );
 
-  await expect(dialog.getByText(/Coordinates:/)).toContainText('33.1976, -96.6153');
-
-  await dialog.getByRole('radio', { name: /City/ }).check();
-  await dialog.getByRole('button', { name: 'Submit your garden' }).click();
-
-  await expect(dialog.getByRole('status')).toContainText(/pending review/i);
-
-  expect(submissionBody).not.toBeNull();
-  expect(submissionBody).toMatchObject({
-    photoIds: ['photo-test-1'],
-    rawLocationText: 'McKinney, Texas',
-    displayLat: 33.1976,
-    displayLng: -96.6153,
-    contributorName: 'Playwright Grower',
-    storyText: 'A small backyard okra patch for the test flow.',
-    privacyMode: 'city',
+    await assertNoBrowserErrors();
   });
 });
