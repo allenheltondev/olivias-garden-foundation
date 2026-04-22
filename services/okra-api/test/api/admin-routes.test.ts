@@ -3,6 +3,8 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 let queryResponses: Record<string, any>;
+let scanResponses: any[];
+const mockDynamoSend = vi.hoisted(() => vi.fn());
 
 const mockClient = {
   connect: vi.fn(),
@@ -36,6 +38,18 @@ const mockEventBridgeSend = vi.hoisted(() => vi.fn(() => Promise.resolve({})));
 vi.mock('@aws-sdk/client-eventbridge', () => ({
   EventBridgeClient: vi.fn(() => ({ send: mockEventBridgeSend })),
   PutEventsCommand: vi.fn((params: any) => ({ _params: params, _type: 'PutEventsCommand' })),
+}));
+
+vi.mock('@aws-sdk/client-dynamodb', () => ({
+  DynamoDBClient: vi.fn(() => ({})),
+}));
+
+vi.mock('@aws-sdk/lib-dynamodb', () => ({
+  DynamoDBDocumentClient: {
+    from: vi.fn(() => ({ send: mockDynamoSend })),
+  },
+  ScanCommand: vi.fn((input: any) => ({ input, _type: 'ScanCommand' })),
+  UpdateCommand: vi.fn((input: any) => ({ input, _type: 'UpdateCommand' })),
 }));
 
 const mockResolveCountry = vi.hoisted(() => vi.fn(() => 'United States'));
@@ -130,13 +144,25 @@ function makeDeniedRow(overrides: Record<string, any> = {}) {
 beforeEach(() => {
   process.env.DATABASE_URL = 'postgres://localhost:5432/test';
   process.env.MEDIA_BUCKET_NAME = 'test-media-bucket';
+  process.env.SEED_REQUESTS_TABLE_NAME = 'test-seed-requests';
   queryResponses = {};
+  scanResponses = [];
   vi.clearAllMocks();
+  mockDynamoSend.mockImplementation((command: any) => {
+    if (command?._type === 'ScanCommand') {
+      return Promise.resolve(scanResponses.shift() ?? { Items: [] });
+    }
+    if (command?._type === 'UpdateCommand') {
+      return Promise.resolve({ Attributes: {} });
+    }
+    return Promise.resolve({});
+  });
 });
 
 afterEach(() => {
   delete process.env.DATABASE_URL;
   delete process.env.MEDIA_BUCKET_NAME;
+  delete process.env.SEED_REQUESTS_TABLE_NAME;
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -750,6 +776,82 @@ describe('Error response consistency', () => {
     expect(statusCode).toBe(500);
     expect(body.error.code).toBe('INTERNAL_ERROR');
     expect(body.error.message).not.toContain('ECONNREFUSED');
+  });
+});
+
+describe('seed request admin queue', () => {
+  it('lists only open seed requests in reverse chronological order', async () => {
+    scanResponses = [{
+      Items: [
+        {
+          requestId: '11111111-1111-1111-1111-111111111111',
+          createdAt: '2026-04-20T12:00:00.000Z',
+          name: 'Older Request',
+          email: 'older@example.com',
+          fulfillmentMethod: 'mail',
+          shippingAddress: { city: 'McKinney', region: 'TX', country: 'US' },
+        },
+        {
+          requestId: '22222222-2222-2222-2222-222222222222',
+          createdAt: '2026-04-21T12:00:00.000Z',
+          name: 'Newest Request',
+          email: 'new@example.com',
+          fulfillmentMethod: 'in_person',
+          visitDetails: { approximateDate: 'late May' },
+        },
+        {
+          requestId: 'stats#seed-requests',
+          createdAt: '2026-04-22T12:00:00.000Z',
+        },
+      ],
+    }];
+
+    const { statusCode, body } = parseRes(
+      await handler(makeRestApiEvent('/requests/review-queue'))
+    );
+
+    expect(statusCode).toBe(200);
+    expect(body.data).toHaveLength(2);
+    expect(body.data[0].id).toBe('22222222-2222-2222-2222-222222222222');
+    expect(body.data[1].id).toBe('11111111-1111-1111-1111-111111111111');
+  });
+
+  it('marks a seed request as handled', async () => {
+    mockDynamoSend.mockImplementationOnce((command: any) => {
+      expect(command._type).toBe('UpdateCommand');
+      return Promise.resolve({
+        Attributes: {
+          requestId: '33333333-3333-3333-3333-333333333333',
+          requestStatus: 'handled',
+          handledAt: '2026-04-22T12:00:00.000Z',
+          handledByCognitoSub: 'admin-cognito-sub-1',
+          reviewNotes: 'Handled in admin dashboard.',
+        },
+      });
+    });
+
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'handled', review_notes: 'Handled in admin dashboard.' },
+      })
+    ));
+
+    expect(statusCode).toBe(200);
+    expect(body.requestStatus).toBe('handled');
+    expect(body.handledByCognitoSub).toBe('admin-cognito-sub-1');
+  });
+
+  it('returns INVALID_ACTION for unsupported seed request action', async () => {
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'approved' },
+      })
+    ));
+
+    expect(statusCode).toBe(400);
+    expect(body.error.code).toBe('INVALID_ACTION');
   });
 });
 

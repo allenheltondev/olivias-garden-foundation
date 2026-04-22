@@ -34,6 +34,28 @@ export interface OkraSubmission {
   photos: string[];
 }
 
+export interface SeedRequestQueueItem {
+  id: string;
+  name: string | null;
+  email: string | null;
+  fulfillmentMethod: 'mail' | 'in_person' | null;
+  shippingAddress: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    region?: string;
+    postalCode?: string;
+    country?: string;
+  } | null;
+  visitDetails: {
+    approximateDate?: string;
+    notes?: string;
+  } | null;
+  message: string | null;
+  createdAt: string | null;
+  requestStatus: 'open' | 'handled';
+}
+
 export interface UpsertStoreProductRequest {
   slug: string;
   name: string;
@@ -143,6 +165,29 @@ export async function reviewOkraSubmission(
 ): Promise<void> {
   await requestJson(
     `${getOkraAdminApiBaseUrl()}/submissions/${submissionId}/statuses`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function listSeedRequestQueue(accessToken: string): Promise<SeedRequestQueueItem[]> {
+  const response = await requestJson<{ data: SeedRequestQueueItem[] }>(
+    `${getOkraAdminApiBaseUrl()}/requests/review-queue`,
+    accessToken
+  );
+  return response.data;
+}
+
+export async function markSeedRequestHandled(
+  accessToken: string,
+  requestId: string,
+  payload: { status: 'handled'; review_notes?: string }
+): Promise<void> {
+  await requestJson(
+    `${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`,
     accessToken,
     {
       method: 'POST',
