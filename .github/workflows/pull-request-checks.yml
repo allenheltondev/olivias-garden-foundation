@@ -71,6 +71,7 @@ jobs:
               - 'services/admin-api/**'
             admin_frontend:
               - 'apps/admin/**'
+              - 'packages/**'
             okra_backend:
               - 'services/okra-api/**'
 
@@ -325,9 +326,6 @@ jobs:
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/admin
 
     steps:
       - name: Checkout code
@@ -341,19 +339,16 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --workspaces=false --ignore-scripts
+        run: npm ci
 
       - name: Run ESLint
-        run: npm run lint
+        run: npm --workspace @olivias/admin run lint
 
   admin-frontend-typecheck:
     name: Admin Frontend Type Check
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/admin
 
     steps:
       - name: Checkout code
@@ -367,19 +362,16 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --workspaces=false --ignore-scripts
+        run: npm ci
 
       - name: Type check
-        run: npm run typecheck
+        run: npm --workspace @olivias/admin run typecheck
 
   admin-frontend-tests:
     name: Admin Frontend Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/admin
 
     steps:
       - name: Checkout code
@@ -393,19 +385,16 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --workspaces=false --ignore-scripts
+        run: npm ci
 
       - name: Run tests
-        run: npm test
+        run: npm --workspace @olivias/admin run test
 
   admin-frontend-build:
     name: Admin Frontend Build Check
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.admin_frontend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/admin
 
     steps:
       - name: Checkout code
@@ -419,10 +408,10 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install --workspaces=false --ignore-scripts
+        run: npm ci
 
       - name: Build check
-        run: npm run build
+        run: npm --workspace @olivias/admin run build
 
   backend-functions-tests:
     name: GRN Backend Functions (Node.js) Lint & Tests
