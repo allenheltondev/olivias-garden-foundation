@@ -166,6 +166,23 @@ describe('POST /requests', () => {
     expect(mockCreateSeedRequest).not.toHaveBeenCalled();
   });
 
+  it('enforces the rate limit inside the idempotent wrapper', async () => {
+    // With our passthrough mock of makeIdempotent, the wrapper's body runs on
+    // every call. Asserting both rate-limit and create were called proves the
+    // check happens inside the wrapped function, not on the outer route.
+    await handler(
+      makeRestApiEvent('/requests', 'POST', JSON.stringify(mailPayload), {
+        'Idempotency-Key': 'k-inside'
+      })
+    );
+
+    expect(mockEnforceRateLimit).toHaveBeenCalledWith('203.0.113.5');
+    expect(mockCreateSeedRequest).toHaveBeenCalledOnce();
+    const enforceOrder = mockEnforceRateLimit.mock.invocationCallOrder[0];
+    const createOrder = mockCreateSeedRequest.mock.invocationCallOrder[0];
+    expect(enforceOrder).toBeLessThan(createOrder);
+  });
+
   it('creates a mail request and returns 201 with requestId', async () => {
     const res = await handler(
       makeRestApiEvent('/requests', 'POST', JSON.stringify(mailPayload), {

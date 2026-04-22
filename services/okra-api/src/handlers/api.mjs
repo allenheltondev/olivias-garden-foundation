@@ -41,8 +41,12 @@ const seedRequestIdempotencyConfig = new IdempotencyConfig({
   expiresAfterSeconds: 60 * 60 * 24
 });
 
+// Rate-limit + work live inside the idempotent wrapper so Idempotency-Key replays
+// (cached 201s) skip both quota consumption and the actual side effects.
 const processSeedRequestIdempotent = makeIdempotent(
-  async (_event, payload, contributor, correlationId) => {
+  async (event, payload, contributor, correlationId) => {
+    const sourceIp = event?.requestContext?.identity?.sourceIp ?? 'unknown';
+    await enforceSeedRequestRateLimit(sourceIp);
     const created = await createSeedRequest(payload, contributor);
     await notifySeedRequestSlack(created, correlationId);
     return {
@@ -231,23 +235,6 @@ app.post('/requests', async ({ req, event }) => {
     };
   }
 
-  const sourceIp = event?.requestContext?.identity?.sourceIp ?? 'unknown';
-  try {
-    await enforceSeedRequestRateLimit(sourceIp);
-  } catch (error) {
-    if (error?.code === 'SEED_REQUEST_RATE_LIMITED') {
-      return {
-        statusCode: 429,
-        body: {
-          error: 'RateLimitExceeded',
-          message: error.message,
-          retryAfterSeconds: error.retryAfterSeconds
-        }
-      };
-    }
-    throw error;
-  }
-
   const authResult = await resolveOptionalContributor(event);
   if (!authResult.ok) {
     return authResult;
@@ -268,6 +255,16 @@ app.post('/requests', async ({ req, event }) => {
       body: result
     };
   } catch (error) {
+    if (error?.code === 'SEED_REQUEST_RATE_LIMITED') {
+      return {
+        statusCode: 429,
+        body: {
+          error: 'RateLimitExceeded',
+          message: error.message,
+          retryAfterSeconds: error.retryAfterSeconds
+        }
+      };
+    }
     if (
       error instanceof IdempotencyItemAlreadyExistsError ||
       error instanceof IdempotencyAlreadyInProgressError

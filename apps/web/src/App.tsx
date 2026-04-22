@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   confirmPasswordReset,
   confirmSignUp,
@@ -261,6 +261,7 @@ function App() {
             }
           />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/seeds" element={<Navigate to="/okra" replace />} />
           <Route path="*" element={<HomePage onNavigate={navigate} />} />
         </Routes>
       </main>

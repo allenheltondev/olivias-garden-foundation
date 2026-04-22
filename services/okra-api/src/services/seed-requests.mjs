@@ -62,22 +62,41 @@ export async function enforceSeedRequestRateLimit(sourceIp) {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const expiresAt = nowSeconds + windowSeconds;
 
-  const result = await getDocClient().send(new UpdateCommand({
-    TableName: getTableName(),
-    Key: { requestId: `ratelimit#${ip}` },
-    UpdateExpression: 'ADD #count :one SET #exp = if_not_exists(#exp, :exp)',
-    ExpressionAttributeNames: {
-      '#count': 'count',
-      '#exp': 'expiresAt'
-    },
-    ExpressionAttributeValues: {
-      ':one': 1,
-      ':exp': expiresAt
-    },
-    ReturnValues: 'ALL_NEW'
-  }));
+  const tableName = getTableName();
+  const key = { requestId: `ratelimit#${ip}` };
+  const client = getDocClient();
 
-  const count = Number(result.Attributes?.count ?? 0);
+  let count;
+  try {
+    // Attempt 1: start a fresh window (record absent, or the existing window has expired).
+    // DynamoDB TTL deletion is asynchronous, so we can't rely on it to clear stale rows.
+    const result = await client.send(new UpdateCommand({
+      TableName: tableName,
+      Key: key,
+      UpdateExpression: 'SET #count = :one, #exp = :exp',
+      ConditionExpression: 'attribute_not_exists(#count) OR #exp <= :now',
+      ExpressionAttributeNames: { '#count': 'count', '#exp': 'expiresAt' },
+      ExpressionAttributeValues: { ':one': 1, ':exp': expiresAt, ':now': nowSeconds },
+      ReturnValues: 'ALL_NEW'
+    }));
+    count = Number(result.Attributes?.count ?? 0);
+  } catch (error) {
+    if (error?.name !== 'ConditionalCheckFailedException') {
+      throw error;
+    }
+    // Attempt 2: window is live — increment without touching expiresAt.
+    const result = await client.send(new UpdateCommand({
+      TableName: tableName,
+      Key: key,
+      UpdateExpression: 'ADD #count :one',
+      ConditionExpression: 'attribute_exists(#exp) AND #exp > :now',
+      ExpressionAttributeNames: { '#count': 'count', '#exp': 'expiresAt' },
+      ExpressionAttributeValues: { ':one': 1, ':now': nowSeconds },
+      ReturnValues: 'ALL_NEW'
+    }));
+    count = Number(result.Attributes?.count ?? 0);
+  }
+
   if (count > maxRequests) {
     const error = new Error('Too many seed requests from this IP. Please wait and try again later.');
     error.code = 'SEED_REQUEST_RATE_LIMITED';
