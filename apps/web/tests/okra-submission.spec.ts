@@ -81,7 +81,7 @@ test('okra submission flow uploads a photo and submits a garden entry', async ({
 
   await expect(dialog.getByText(/Coordinates:/)).toContainText('33.1976, -96.6153');
 
-  await dialog.getByLabel('City').check();
+  await dialog.getByRole('radio', { name: /City/ }).check();
   await dialog.getByRole('button', { name: 'Submit your garden' }).click();
 
   await expect(dialog.getByRole('status')).toContainText(/pending review/i);
