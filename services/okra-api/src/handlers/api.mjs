@@ -268,6 +268,10 @@ app.post('/requests', async ({ req, event }) => {
   const correlationId = event?.requestContext?.requestId;
 
   try {
+    if (event?.lambdaContext) {
+      seedRequestIdempotencyConfig.registerLambdaContext(event.lambdaContext);
+    }
+
     const result = await processSeedRequestIdempotent(
       event,
       payload,

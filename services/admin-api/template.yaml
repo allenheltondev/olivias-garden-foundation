@@ -70,6 +70,7 @@ Resources:
   Api:
     Type: AWS::Serverless::Api
     Properties:
+      Name: !Sub "Olivia's Garden Foundation Admin API (${EnvironmentName})"
       TracingEnabled: false
       StageName: api
       Cors:

@@ -141,7 +141,7 @@ export async function createSeedRequest(payload, contributor) {
     shippingAddress: payload.shippingAddress,
     visitDetails: payload.visitDetails,
     message: payload.message?.trim() || undefined,
-    contributorCognitoSub: contributor?.sub ?? null,
+    ...(contributor?.sub ? { contributorCognitoSub: contributor.sub } : {}),
     expiresAt: Math.floor(now.getTime() / 1000) + 60 * 60 * 24 * 365 * 5
   };
 

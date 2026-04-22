@@ -94,6 +94,7 @@ Resources:
   Api:
     Type: AWS::Serverless::Api
     Properties:
+      Name: !Sub "Good Roots Network API (${EnvironmentName})"
       TracingEnabled: false
       StageName: api
       Cors:

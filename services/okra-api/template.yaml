@@ -65,6 +65,7 @@ Resources:
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
+      Name: "Okra Public API"
       TracingEnabled: true
       StageName: api
       Cors:
@@ -75,6 +76,7 @@ Resources:
   AdminApiGateway:
     Type: AWS::Serverless::Api
     Properties:
+      Name: "Okra Admin API"
       TracingEnabled: true
       StageName: admin
       Cors:

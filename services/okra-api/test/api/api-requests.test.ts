@@ -5,13 +5,15 @@ const {
   mockCreateSeedRequest,
   mockNotifySeedRequestSlack,
   mockEnforceRateLimit,
-  mockMakeIdempotent
+  mockMakeIdempotent,
+  mockRegisterLambdaContext
 } = vi.hoisted(() => ({
   mockResolveOptionalContributor: vi.fn(),
   mockCreateSeedRequest: vi.fn(),
   mockNotifySeedRequestSlack: vi.fn(),
   mockEnforceRateLimit: vi.fn(),
-  mockMakeIdempotent: vi.fn((fn: (...args: unknown[]) => unknown) => fn)
+  mockMakeIdempotent: vi.fn((fn: (...args: unknown[]) => unknown) => fn),
+  mockRegisterLambdaContext: vi.fn()
 }));
 
 vi.mock('../../src/services/auth.mjs', async () => {
@@ -38,8 +40,22 @@ vi.mock('@aws-lambda-powertools/idempotency', async () => {
   const actual = await vi.importActual<typeof import('@aws-lambda-powertools/idempotency')>(
     '@aws-lambda-powertools/idempotency'
   );
+
+  class MockIdempotencyConfig {
+    constructor(config: Record<string, unknown>) {
+      Object.assign(this, config);
+    }
+
+    registerLambdaContext = mockRegisterLambdaContext;
+
+    isEnabled() {
+      return true;
+    }
+  }
+
   return {
     ...actual,
+    IdempotencyConfig: MockIdempotencyConfig,
     makeIdempotent: mockMakeIdempotent
   };
 });
@@ -196,6 +212,24 @@ describe('POST /requests', () => {
     expect(mockEnforceRateLimit).toHaveBeenCalledWith('203.0.113.5');
     expect(mockCreateSeedRequest).toHaveBeenCalledOnce();
     expect(mockNotifySeedRequestSlack).toHaveBeenCalledOnce();
+  });
+
+  it('registers Lambda context before invoking the idempotent request wrapper', async () => {
+    const context = {
+      awsRequestId: 'ctx-123',
+      getRemainingTimeInMillis: () => 1_000
+    };
+
+    const res = await handler(
+      makeRestApiEvent('/requests', 'POST', JSON.stringify(mailPayload), {
+        'Idempotency-Key': 'k-context'
+      }),
+      context
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(mockRegisterLambdaContext).toHaveBeenCalledWith(context);
+    expect(mockCreateSeedRequest).toHaveBeenCalledOnce();
   });
 
   it('accepts an in-person request without a shipping address', async () => {

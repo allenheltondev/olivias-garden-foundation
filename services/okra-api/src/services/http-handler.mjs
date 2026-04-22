@@ -118,7 +118,10 @@ function logHandlerError(handlerName, error, event) {
 
 export function createHttpRouterHandler({ app, handlerName }) {
   return async (event, context) => {
-    const normalizedEvent = normalizeRouterEvent(event);
+    const normalizedEvent = {
+      ...normalizeRouterEvent(event),
+      lambdaContext: context
+    };
 
     if (normalizedEvent.httpMethod === 'OPTIONS') {
       return finalizeResponse({ statusCode: 204, headers: {}, body: '' }, normalizedEvent);
