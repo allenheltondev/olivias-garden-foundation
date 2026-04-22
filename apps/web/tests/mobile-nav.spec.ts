@@ -12,8 +12,9 @@ test('mobile navigation opens, routes, and keeps layout intact', async ({ page }
   await expect(menuButton).toBeVisible();
   await menuButton.click();
 
-  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
-  await page.getByRole('link', { name: 'Okra Project' }).click();
+  const primaryNav = page.getByRole('navigation', { name: 'Primary' });
+  await expect(primaryNav).toBeVisible();
+  await primaryNav.getByRole('link', { name: 'Okra Project' }).click();
 
   await expect(page).toHaveURL(/\/okra$/);
   await expect(page.getByRole('heading', { level: 1, name: /the okra project/i })).toBeVisible();

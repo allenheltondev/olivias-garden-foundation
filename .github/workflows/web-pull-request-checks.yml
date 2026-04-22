@@ -230,7 +230,6 @@ jobs:
     if: needs.deploy.result == 'success'
     outputs:
       run-url: ${{ steps.stage-ui-run.outputs.url }}
-      screenshot-markdown: ${{ steps.screenshot-links.outputs.markdown }}
 
     steps:
       - name: Checkout code
@@ -286,13 +285,12 @@ jobs:
           SCREENSHOT_PREFIX: pr-screenshots/pr-${{ github.event.pull_request.number }}/run-${{ github.run_id }}
         run: |
           SCREENSHOT_DIR="apps/web/test-results/pr-screenshots"
+          COMMENT_FILE="$SCREENSHOT_DIR/pr-comment.md"
+
+          mkdir -p "$SCREENSHOT_DIR"
 
           if [ ! -d "$SCREENSHOT_DIR" ]; then
-            {
-              echo "markdown<<EOF"
-              echo "_Stage screenshots were not generated in this run._"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
+            echo "_Stage screenshots were not generated in this run._" > "$COMMENT_FILE"
             exit 0
           fi
 
@@ -303,10 +301,9 @@ jobs:
           )
 
           {
-            echo "markdown<<EOF"
             echo "### Stage Screenshots"
             echo
-          } >> "$GITHUB_OUTPUT"
+          } > "$COMMENT_FILE"
 
           for file in homepage-desktop.png donate-desktop.png homepage-mobile.png; do
             SOURCE_PATH="$SCREENSHOT_DIR/$file"
@@ -326,10 +323,44 @@ jobs:
               echo
               echo "![${LABELS[$file]}]($PRESIGNED_URL)"
               echo
-            } >> "$GITHUB_OUTPUT"
+            } >> "$COMMENT_FILE"
           done
 
-          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Comment on PR with preview URL and screenshots
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          WEB_APP_URL: ${{ needs.deploy.outputs.web-app-url }}
+          WEB_API_URL: ${{ needs.deploy.outputs.web-api-url }}
+          STAGE_UI_RUN_URL: ${{ steps.stage-ui-run.outputs.url }}
+          STAGE_UI_RESULT: ${{ job.status }}
+          COMMENT_FILE: apps/web/test-results/pr-screenshots/pr-comment.md
+        with:
+          script: |
+            const fs = require('node:fs');
+            const screenshotMarkdown = fs.existsSync(process.env.COMMENT_FILE)
+              ? fs.readFileSync(process.env.COMMENT_FILE, 'utf8').trim()
+              : '_Stage screenshots were not generated in this run._';
+
+            const body = `#### Foundation Web PR Preview Ready
+
+            **Environment:** \`staging\`
+            **Web App URL:** ${process.env.WEB_APP_URL}
+            **Web API URL:** ${process.env.WEB_API_URL}
+            **Stage UI run:** ${process.env.STAGE_UI_RUN_URL}
+            **Screenshot artifact:** \`foundation-web-playwright-screenshots\`
+            **Stage UI result:** \`${process.env.STAGE_UI_RESULT}\`
+
+            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to the shared foundation staging stack. The inline screenshot links below expire after 7 days.
+
+            ${screenshotMarkdown}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
 
       - name: Publish screenshot summary
         if: always()
@@ -360,34 +391,3 @@ jobs:
             apps/web/playwright-report
             apps/web/test-results
           if-no-files-found: ignore
-
-  deployment-comment:
-    name: Comment Foundation Web PR Preview
-    runs-on: ubuntu-latest
-    needs: [deploy, stage-ui-tests]
-    if: always() && needs.deploy.result == 'success'
-
-    steps:
-      - name: Comment on PR with preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = `#### Foundation Web PR Preview Ready
-
-            **Environment:** \`staging\`
-            **Web App URL:** ${{ needs.deploy.outputs.web-app-url }}
-            **Web API URL:** ${{ needs.deploy.outputs.web-api-url }}
-            **Stage UI run:** ${{ needs.stage-ui-tests.outputs.run-url }}
-            **Screenshot artifact:** \`foundation-web-playwright-screenshots\`
-            **Stage UI result:** \`${{ needs.stage-ui-tests.result }}\`
-
-            This deploy publishes the current PR's \`apps/web\` assets and \`services/web-api\` changes to the shared foundation staging stack. The inline screenshot links below expire after 7 days.
-
-            ${{ needs.stage-ui-tests.outputs.screenshot-markdown }}`;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
