@@ -150,12 +150,12 @@ export function SubmissionModal({
         ref={dialogRef}
         className="submission-modal__dialog"
         role="dialog"
-        aria-label="Submit your garden"
+        aria-label="Add my okra patch"
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="submission-modal__header">
-          <h2 className="submission-modal__title">Submit your garden</h2>
+          <h2 className="submission-modal__title">Add my okra patch</h2>
           <button
             className="submission-modal__close-btn"
             type="button"
@@ -187,7 +187,7 @@ export function SubmissionModal({
                     <>
                       <p className="submission-modal__auth-eyebrow">Anonymous is still fine</p>
                       <p className="submission-modal__auth-title">
-                        Log in only if you want us to remember your okra submissions across Good Roots Network.
+                        Log in only if you want us to remember your okra submissions so you can update them later.
                       </p>
                       <div className="submission-modal__auth-actions">
                         <button type="button" className="submission-modal__auth-button" onClick={onLogin}>

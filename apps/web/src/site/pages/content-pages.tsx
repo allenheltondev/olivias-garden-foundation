@@ -335,9 +335,9 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
             The easiest way into this is okra. It&apos;s one of the most forgiving plants you can grow.
             It tolerates heat, bounces back from neglect, and produces more than you expect.
           </p>
-          <CtaButton href="/seeds" onClick={(event) => {
+          <CtaButton href="/okra" onClick={(event) => {
             event?.preventDefault?.();
-            onNavigate('/seeds');
+            onNavigate('/okra');
           }}>Request your free okra seeds</CtaButton>
         </Card>
 
@@ -445,34 +445,6 @@ export function OkraPage({
         onSignup={onSignup}
       />
     </Suspense>
-  );
-}
-
-export function SeedsPage({ onNavigate }: { onNavigate: (path: string) => void; }) {
-  return (
-    <>
-      <PageHero
-        eyebrow="Seeds"
-        title="Request free okra seeds"
-        body="The seed request flow is still being set up, but the program itself is real. The foundation gives away free okra seeds from a line of plants Olivia grew herself."
-      />
-
-      <Section
-        title="What you get"
-        body="Free okra seeds for people in the United States who want to start growing food and take part in the Okra Project."
-      >
-        <p className="page-kicker">Simple, low-friction, and meant to get you growing quickly.</p>
-        <p className="page-text">
-          This is meant to be an easy entry point. Start with one crop, get it in the ground, and
-          see where it leads. When it grows, we ask that you send back photos so the project can
-          show how that seed line keeps moving through other gardens.
-        </p>
-        <CtaButton href="/contact" onClick={(event) => {
-          event?.preventDefault?.();
-          onNavigate('/contact');
-        }}>Contact us for seeds</CtaButton>
-      </Section>
-    </>
   );
 }
 
