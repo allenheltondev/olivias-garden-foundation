@@ -17,7 +17,13 @@ test('mobile navigation opens, routes, and keeps layout intact', async ({ page }
   await primaryNav.getByRole('link', { name: 'Okra Project' }).click();
 
   await expect(page).toHaveURL(/\/okra$/);
-  await expect(page.getByRole('heading', { level: 1, name: /the okra project/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: /these seeds came from olivia's garden\. now they're growing everywhere\./i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /request free seeds/i }).first()).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
 });
