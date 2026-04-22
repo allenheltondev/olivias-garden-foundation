@@ -6,6 +6,10 @@ const RADIUS_BY_MODE = {
   city: 0.05,
 };
 
+function normalizeZero(value) {
+  return Object.is(value, -0) ? 0 : value;
+}
+
 /**
  * Compute fuzzed coordinates from a SHA-256 hash buffer.
  * Extracts two 32-bit unsigned integers from the first 8 bytes,
@@ -22,8 +26,8 @@ function computeFromHash(hash, displayLat, displayLng, maxRadius) {
   const lngOffset = distance * Math.sin(angle);
 
   return {
-    lat: displayLat + latOffset,
-    lng: displayLng + lngOffset,
+    lat: normalizeZero(displayLat + latOffset),
+    lng: normalizeZero(displayLng + lngOffset),
   };
 }
 
@@ -40,7 +44,10 @@ function computeFromHash(hash, displayLat, displayLng, maxRadius) {
  */
 export function fuzzCoordinates(submissionId, displayLat, displayLng, privacyMode) {
   if (privacyMode === 'exact') {
-    return { lat: displayLat, lng: displayLng };
+    return {
+      lat: normalizeZero(displayLat),
+      lng: normalizeZero(displayLng),
+    };
   }
 
   const maxRadius = RADIUS_BY_MODE[privacyMode];
