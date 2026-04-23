@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { SiteFooter, SiteHeader } from '@olivias/ui';
+import { AvatarMenu, SiteFooter, SiteHeader } from '@olivias/ui';
 import { signOut } from 'aws-amplify/auth';
 import type { AdminSession } from '../auth/session';
 
@@ -36,86 +36,6 @@ function getInitials(session: AdminSession): string {
   const parts = base.split(/[._-]+/).filter(Boolean);
   if (parts.length === 0) return source.slice(0, 2).toUpperCase();
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || base.slice(0, 2).toUpperCase();
-}
-
-function AvatarMenu({
-  session,
-  onLogout,
-}: {
-  session: AdminSession;
-  onLogout: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const initials = getInitials(session);
-  const label = session.email || 'Administrator';
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (event: Event) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="og-auth-menu" ref={containerRef}>
-      <button
-        type="button"
-        className="og-auth-utility__avatar"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={label}
-        title={label}
-        onClick={() => setOpen((current) => !current)}
-      >
-        {initials}
-      </button>
-      {open ? (
-        <div className="og-auth-menu__popover" role="menu">
-          <div className="og-auth-menu__section-label" role="presentation">
-            Signed in as
-          </div>
-          <div className="og-auth-menu__email">{session.email ?? 'Admin account'}</div>
-          <div className="og-auth-menu__divider" role="separator" />
-          <a
-            className="og-auth-menu__item og-auth-menu__item--link"
-            role="menuitem"
-            href={foundationHomeUrl}
-          >
-            Foundation home
-          </a>
-          <a
-            className="og-auth-menu__item og-auth-menu__item--link"
-            role="menuitem"
-            href={grnUrl}
-          >
-            Good Roots Network
-          </a>
-          <div className="og-auth-menu__divider" role="separator" />
-          <button
-            type="button"
-            className="og-auth-menu__item"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onLogout();
-            }}
-          >
-            Log out
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 export interface AppShellProps {
@@ -157,7 +77,15 @@ export function AppShell({ session, children }: AppShellProps) {
         navItems={headerNavItems}
         utility={(
           <div className="og-auth-utility">
-            <AvatarMenu session={session} onLogout={handleLogout} />
+            <AvatarMenu
+              initials={getInitials(session)}
+              label={session.email || 'Administrator'}
+              appLinks={[
+                { id: 'foundation', label: 'Foundation home', href: foundationHomeUrl },
+                { id: 'grn', label: 'Good Roots Network', href: grnUrl },
+              ]}
+              onLogout={handleLogout}
+            />
           </div>
         )}
       />

@@ -65,6 +65,15 @@ export const routes: AppRoute[] = [
     seoImage: socialShareImage,
   },
   {
+    path: '/good-roots',
+    label: 'Good Roots Network',
+    title: 'Good Roots Network',
+    description: 'A community platform that connects home growers with neighbors and organizations who need fresh food. Plan your garden, see local food gaps, and share what you have extra.',
+    seoImage: socialShareImage,
+    allowIndex: false,
+    prerender: true,
+  },
+  {
     path: '/impact',
     label: 'Impact',
     title: "What we're building",
@@ -103,7 +112,7 @@ export const footerRoutes = routes.filter((route) => route.showInFooter);
 export const prerenderRoutes = routes.filter((route) => route.prerender);
 export const internalPaths = new Set(routes.map((route) => route.path));
 
-export const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://goodroots.network';
+export const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://grn.oliviasgarden.org';
 export const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.oliviasgarden.org';
 export const instagramUrl = 'https://instagram.com/oliviasgardentx';
 export const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';

@@ -34,8 +34,8 @@ export interface OkraSubmission {
   photos: string[];
 }
 
-export interface SeedRequest {
-  requestId: string;
+export interface SeedRequestQueueItem {
+  id: string;
   name: string | null;
   email: string | null;
   fulfillmentMethod: 'mail' | 'in_person' | null;
@@ -52,8 +52,8 @@ export interface SeedRequest {
     notes?: string;
   } | null;
   message: string | null;
-  createdAt: string;
-  status: 'open' | 'handled';
+  createdAt: string | null;
+  requestStatus: 'open' | 'handled';
 }
 
 export interface AdminStats {
@@ -187,9 +187,9 @@ export async function reviewOkraSubmission(
   );
 }
 
-export async function listSeedRequests(accessToken: string): Promise<SeedRequest[]> {
-  const response = await requestJson<{ data: SeedRequest[] }>(
-    `${getOkraAdminApiBaseUrl()}/requests`,
+export async function listSeedRequestQueue(accessToken: string): Promise<SeedRequestQueueItem[]> {
+  const response = await requestJson<{ data: SeedRequestQueueItem[] }>(
+    `${getOkraAdminApiBaseUrl()}/requests/review-queue`,
     accessToken
   );
   return response.data;
@@ -198,14 +198,14 @@ export async function listSeedRequests(accessToken: string): Promise<SeedRequest
 export async function markSeedRequestHandled(
   accessToken: string,
   requestId: string,
-  reviewNotes?: string
-): Promise<SeedRequest> {
-  return requestJson<SeedRequest>(
+  payload: { status: 'handled'; review_notes?: string }
+): Promise<void> {
+  await requestJson(
     `${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`,
     accessToken,
     {
       method: 'POST',
-      body: JSON.stringify({ status: 'handled', review_notes: reviewNotes ?? null }),
+      body: JSON.stringify(payload),
     }
   );
 }

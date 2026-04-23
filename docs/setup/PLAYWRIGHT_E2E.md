@@ -18,6 +18,8 @@ Playwright tests in `apps/web/tests` are intended to verify real UI workflows ag
 
 - `OGF_CI_USERNAME` / `OGF_CI_PASSWORD`
   Required for signed-in profile workflow tests.
+- `PLAYWRIGHT_ADMIN_BASE_URL`
+  Optional override for the admin app origin. When omitted, tests derive it from `PLAYWRIGHT_BASE_URL` as `admin.<host>`.
 
 ## PowerShell examples
 
@@ -40,6 +42,9 @@ npm run test:e2e -- okra-submission.spec.ts
 ## Notes
 
 - The okra submission test creates a real submission in the target environment.
+- The authenticated okra submission test creates a real signed-in submission and verifies it lands in profile activity.
 - The okra seed request test creates a real seed request in the target environment.
-- The donation flow opens a real staging Stripe checkout session.
+- The authenticated okra seed request test creates a real signed-in request and verifies it lands in profile activity.
+- The donation flow completes a real staging Stripe test-mode checkout using Stripe's standard test card.
+- The admin moderation tests create real okra submissions and seed requests, then clear them through the admin app.
 - Signed-in profile tests still require valid staging credentials.

@@ -1,4 +1,5 @@
 export { AvatarBadge } from './components/AvatarBadge.tsx';
+export { AvatarMenu } from './components/AvatarMenu.tsx';
 export { Button } from './components/Button.tsx';
 export { Card } from './components/Card.tsx';
 export { Checkbox } from './components/Checkbox.tsx';
@@ -29,6 +30,7 @@ export type { FormFeedbackProps, FormFeedbackTone } from './components/FormFeedb
 export type { FormFieldProps } from './components/FormField.tsx';
 export type { InputProps } from './components/Input.tsx';
 export type { TextareaProps } from './components/Textarea.tsx';
+export type { AvatarMenuAppLink, AvatarMenuProps } from './components/AvatarMenu.tsx';
 export type { ButtonProps } from './components/Button.tsx';
 export type { CardProps } from './components/Card.tsx';
 export type { CheckboxProps } from './components/Checkbox.tsx';

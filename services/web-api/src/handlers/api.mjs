@@ -18,6 +18,7 @@ import {
   completeAvatarUpload,
   createAvatarUploadIntent
 } from '../services/avatar.mjs';
+import { contactInquirySchema, submitContactInquiry } from '../services/contact.mjs';
 import {
   corsHeaders,
   errorResponse,
@@ -207,6 +208,44 @@ app.post('/profile/avatar/complete', async ({ event }) => {
       statusCode: 200,
       headers: { 'x-correlation-id': correlationId },
       body: result
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/contact', async ({ req, event }) => {
+  const correlationId = getCorrelationId(event);
+  const payload = await req.json();
+
+  try {
+    validate({ payload, schema: contactInquirySchema });
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      logger.warn('Contact inquiry validation failed', {
+        correlationId,
+        issues: error.errors?.map((issue) => issue.message) ?? [error.message]
+      });
+      return {
+        statusCode: 422,
+        headers: { 'x-correlation-id': correlationId },
+        body: {
+          error: 'RequestValidationError',
+          message: 'Validation failed for request',
+          details: {
+            issues: error.errors?.map((issue) => issue.message) ?? [error.message]
+          }
+        }
+      };
+    }
+    throw error;
+  }
+
+  try {
+    await submitContactInquiry(payload, correlationId);
+    return {
+      statusCode: 204,
+      headers: { 'x-correlation-id': correlationId }
     };
   } catch (error) {
     return mapApiError(error, correlationId);

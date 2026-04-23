@@ -72,6 +72,12 @@ const prerenderRoutes = [
     description: "Contact Olivia's Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.",
     seoImage: defaultImage,
   },
+  {
+    path: '/good-roots',
+    title: 'Good Roots Network',
+    description: 'A community platform that connects home growers with neighbors and organizations who need fresh food. Plan your garden, see local food gaps, and share what you have extra.',
+    seoImage: defaultImage,
+  },
 ];
 
 function buildPageTitle(route) {

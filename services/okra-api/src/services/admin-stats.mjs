@@ -1,17 +1,72 @@
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import {
   CognitoIdentityProviderClient,
   DescribeUserPoolCommand
 } from '@aws-sdk/client-cognito-identity-provider';
 import { createDbClient } from '../../scripts/db-client.mjs';
-import { countOpenSeedRequests } from './seed-requests-admin.mjs';
 
+let dynamoClient;
 let cognitoClient;
+
+function getDynamoClient() {
+  if (!dynamoClient) {
+    dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+      marshallOptions: { removeUndefinedValues: true }
+    });
+  }
+  return dynamoClient;
+}
 
 function getCognitoClient() {
   if (!cognitoClient) {
     cognitoClient = new CognitoIdentityProviderClient({});
   }
   return cognitoClient;
+}
+
+function getSeedRequestsTableName() {
+  const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
+  if (!tableName) {
+    throw new Error('SEED_REQUESTS_TABLE_NAME is not configured');
+  }
+  return tableName;
+}
+
+function isSeedRequestItem(item) {
+  const requestId = String(item?.requestId ?? '');
+  return (
+    requestId.length > 0 &&
+    !requestId.startsWith('ratelimit#') &&
+    !requestId.startsWith('stats#') &&
+    typeof item?.createdAt === 'string'
+  );
+}
+
+export async function countOpenSeedRequests() {
+  const client = getDynamoClient();
+  const tableName = getSeedRequestsTableName();
+  let total = 0;
+  let ExclusiveStartKey;
+
+  do {
+    const page = await client.send(new ScanCommand({
+      TableName: tableName,
+      FilterExpression: 'attribute_exists(createdAt) AND (attribute_not_exists(#status) OR #status = :open)',
+      ExpressionAttributeNames: { '#status': 'requestStatus' },
+      ExpressionAttributeValues: { ':open': 'open' },
+      ExclusiveStartKey
+    }));
+
+    for (const item of page.Items ?? []) {
+      if (isSeedRequestItem(item)) {
+        total += 1;
+      }
+    }
+    ExclusiveStartKey = page.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+
+  return total;
 }
 
 export async function getUserCount() {
@@ -53,7 +108,14 @@ export async function countPendingOkraSubmissions() {
 export async function getAdminStats() {
   const [userCount, openSeedRequestCount, pendingOkraCount] = await Promise.all([
     getUserCount(),
-    countOpenSeedRequests(),
+    countOpenSeedRequests().catch((error) => {
+      console.warn(JSON.stringify({
+        level: 'warn',
+        message: 'Failed to count open seed requests',
+        error: error instanceof Error ? error.message : String(error)
+      }));
+      return 0;
+    }),
     countPendingOkraSubmissions().catch((error) => {
       console.warn(JSON.stringify({
         level: 'warn',

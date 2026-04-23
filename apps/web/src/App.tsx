@@ -21,6 +21,7 @@ import {
   AuthCallbackPage,
   ContactPage,
   GetInvolvedPage,
+  GoodRootsPage,
   HomePage,
   ImpactPage,
   OkraPage,
@@ -307,6 +308,10 @@ function App() {
             }
           />
           <Route path="/contact" element={<ContactPage />} />
+          <Route
+            path="/good-roots"
+            element={<GoodRootsPage authSession={authSession} onNavigate={navigate} />}
+          />
           <Route path="/seeds" element={<Navigate to="/okra" replace />} />
           <Route path="*" element={<HomePage onNavigate={navigate} />} />
         </Routes>

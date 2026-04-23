@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import {
-  listSeedRequests,
+  listSeedRequestQueue,
   markSeedRequestHandled,
-  type SeedRequest,
+  type SeedRequestQueueItem,
 } from '../api';
 import type { AdminSession } from '../auth/session';
 
@@ -11,7 +11,7 @@ export interface SeedRequestsPageProps {
   session: AdminSession;
 }
 
-function formatAddress(request: SeedRequest): string {
+function formatAddress(request: SeedRequestQueueItem): string {
   if (request.fulfillmentMethod !== 'mail' || !request.shippingAddress) {
     return 'In-person exchange';
   }
@@ -22,14 +22,14 @@ function formatAddress(request: SeedRequest): string {
 }
 
 export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
-  const [requests, setRequests] = useState<SeedRequest[]>([]);
+  const [requests, setRequests] = useState<SeedRequestQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
-    return listSeedRequests(session.accessToken)
+    return listSeedRequestQueue(session.accessToken)
       .then((next) => {
         setRequests(next);
         setError(null);
@@ -42,7 +42,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
 
   useEffect(() => {
     let active = true;
-    listSeedRequests(session.accessToken)
+    listSeedRequestQueue(session.accessToken)
       .then((next) => {
         if (!active) return;
         setRequests(next);
@@ -60,12 +60,15 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
     };
   }, [session.accessToken]);
 
-  const handleMarkDone = async (request: SeedRequest) => {
-    setBusyId(request.requestId);
+  const handleMarkDone = async (request: SeedRequestQueueItem) => {
+    setBusyId(request.id);
     setError(null);
     try {
-      await markSeedRequestHandled(session.accessToken, request.requestId);
-      setRequests((current) => current.filter((item) => item.requestId !== request.requestId));
+      await markSeedRequestHandled(session.accessToken, request.id, {
+        status: 'handled',
+        review_notes: 'Handled in admin dashboard.',
+      });
+      setRequests((current) => current.filter((item) => item.id !== request.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to mark request as done.');
     } finally {
@@ -97,13 +100,13 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
       ) : (
         <div className="admin-stack">
           {requests.map((request) => (
-            <Card key={request.requestId} className="admin-request-card">
+            <Card key={request.id} className="admin-request-card">
               <div className="admin-request-card__meta">
                 <div>
                   <h3>{request.name || 'Unknown contributor'}</h3>
                   <p>{request.email || 'No email provided'}</p>
                 </div>
-                <span>{new Date(request.createdAt).toLocaleString()}</span>
+                <span>{request.createdAt ? new Date(request.createdAt).toLocaleString() : '—'}</span>
               </div>
               <dl className="admin-request-card__details">
                 <div>
@@ -134,7 +137,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
               <div className="admin-request-card__actions">
                 <Button
                   onClick={() => void handleMarkDone(request)}
-                  loading={busyId === request.requestId}
+                  loading={busyId === request.id}
                   disabled={busyId !== null}
                 >
                   Mark as done
