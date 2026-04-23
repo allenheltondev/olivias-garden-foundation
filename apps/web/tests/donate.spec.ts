@@ -97,7 +97,9 @@ test.describe('donation flow', () => {
       'email input',
     )).fill(donorEmail);
 
-    await checkout.getByRole('radio', { name: /^Card$/i }).check();
+    const cardButton = checkout.locator('button[data-testid="card-accordion-item-button"]');
+    await expect(cardButton).toBeVisible({ timeout: 30000 });
+    await cardButton.click();
 
     await expect(checkout.getByText(/Card information/i)).toBeVisible({ timeout: 30000 });
     await (await waitForEmbeddedCheckoutLocator(
