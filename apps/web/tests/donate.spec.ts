@@ -1,94 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { gotoAndWait, trackBrowserErrors } from './test-helpers';
-
-type StripeFieldKind = 'cardNumber' | 'expiry' | 'cvc';
-
-function stripeFieldLocators(frame: Page['mainFrame'], kind: StripeFieldKind) {
-  switch (kind) {
-    case 'cardNumber':
-      return [
-        frame.locator('input[name="number"]').first(),
-        frame.locator('input[autocomplete="cc-number"]').first(),
-        frame.getByPlaceholder(/4242|1234 1234|Card number/i).first(),
-        frame.getByLabel(/Card number|Card information/i).first(),
-      ];
-    case 'expiry':
-      return [
-        frame.locator('input[name="expiry"]').first(),
-        frame.locator('input[autocomplete="cc-exp"]').first(),
-        frame.getByPlaceholder(/MM\s*\/\s*YY|Expiration/i).first(),
-        frame.getByLabel(/Expiration date|Expiry/i).first(),
-      ];
-    case 'cvc':
-      return [
-        frame.locator('input[name="cvc"]').first(),
-        frame.locator('input[autocomplete="cc-csc"]').first(),
-        frame.getByPlaceholder(/CVC|CVV|Security code/i).first(),
-        frame.getByLabel(/Security code|CVV|CVC/i).first(),
-      ];
-  }
-}
-
-async function fillStripeField(page: Page, kind: StripeFieldKind, value: string) {
-  const deadline = Date.now() + 60000;
-
-  while (Date.now() < deadline) {
-    if (page.isClosed()) {
-      throw new Error(`Page closed while waiting for Stripe field ${kind}`);
-    }
-
-    for (const frame of page.frames()) {
-      try {
-        if (!frame.url().includes('js.stripe.com')) {
-          continue;
-        }
-
-        for (const field of stripeFieldLocators(frame, kind)) {
-          if (await field.count()) {
-            await field.fill(value);
-            return;
-          }
-        }
-      } catch {
-        // Keep scanning other frames while Stripe mounts.
-      }
-    }
-
-    await page.waitForTimeout(250);
-  }
-
-  throw new Error(`Timed out finding Stripe field ${kind}`);
-}
-
-async function clickStripePayButton(page: Page) {
-  const deadline = Date.now() + 60000;
-
-  while (Date.now() < deadline) {
-    if (page.isClosed()) {
-      throw new Error('Page closed while waiting for Stripe pay button');
-    }
-
-    for (const frame of page.frames()) {
-      try {
-        if (!frame.url().includes('js.stripe.com')) {
-          continue;
-        }
-        const button = frame.getByRole('button', { name: /pay|donate|subscribe/i }).last();
-        if (await button.count()) {
-          await expect(button).toBeEnabled({ timeout: 5000 });
-          await button.click();
-          return;
-        }
-      } catch {
-        // Keep scanning other frames while Stripe mounts.
-      }
-    }
-
-    await page.waitForTimeout(250);
-  }
-
-  throw new Error('Timed out finding Stripe pay button');
-}
 
 test.describe('donation flow', () => {
   test('donate flow completes a real Stripe test checkout from staging', async ({ page, baseURL }) => {
@@ -97,6 +8,7 @@ test.describe('donation flow', () => {
 
     const assertNoBrowserErrors = trackBrowserErrors(page);
     const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const donorEmail = `playwright-donor-${runId}@example.com`;
 
     await gotoAndWait(page, '/');
 
@@ -111,7 +23,7 @@ test.describe('donation flow', () => {
     await expect(page.getByRole('button', { name: '$100' })).toBeVisible();
 
     await page.getByLabel(/^Name/).fill(`Playwright Stage Donor ${runId}`);
-    await page.getByLabel(/^Email/).fill(`playwright-donor-${runId}@example.com`);
+    await page.getByLabel(/^Email/).fill(donorEmail);
     await page.getByLabel(/Who should we name your bee after/i).fill(`Playwright Bee ${runId}`);
     await page.getByRole('button', { name: 'Make donation' }).click();
 
@@ -119,12 +31,22 @@ test.describe('donation flow', () => {
       timeout: 30000,
     });
 
-    await expect(page.locator('.donate-embedded-checkout__mount iframe')).toBeVisible({ timeout: 30000 });
+    const checkout = page.frameLocator('iframe[title="Embedded checkout"]');
+    await expect(checkout.getByText(/Payment method/i)).toBeVisible({ timeout: 30000 });
 
-    await fillStripeField(page, 'cardNumber', '4242424242424242');
-    await fillStripeField(page, 'expiry', '1234');
-    await fillStripeField(page, 'cvc', '123');
-    await clickStripePayButton(page);
+    await checkout.getByLabel(/^Email$/i).fill(donorEmail);
+    await checkout.getByRole('radio', { name: /^Card$/i }).check();
+
+    await expect(checkout.getByText(/Card information/i)).toBeVisible({ timeout: 30000 });
+    await checkout.getByPlaceholder('1234 1234 1234 1234').fill('4242 4242 4242 4242');
+    await checkout.getByPlaceholder('MM / YY').fill('12 / 34');
+    await checkout.getByPlaceholder('CVC').fill('123');
+    await checkout.getByPlaceholder('Full name on card').fill(`Playwright Stage Donor ${runId}`);
+    await checkout.getByPlaceholder('ZIP').fill('75069');
+
+    const donateButton = checkout.getByRole('button', { name: /^Donate$/i });
+    await expect(donateButton).toBeEnabled({ timeout: 30000 });
+    await donateButton.click();
 
     await expect(page).toHaveURL(/\/donate\?session_id=/, { timeout: 60000 });
     await expect(page.getByText('Donation complete')).toBeVisible({ timeout: 30000 });
