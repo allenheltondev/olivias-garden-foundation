@@ -110,6 +110,8 @@ Configure these in your repository settings under Settings â†' Secrets and va
 - `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING`
 - `FOUNDATION_WEB_DOMAIN_NAME_PROD`
 - `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD`
+- `FOUNDATION_WEB_ENABLE_GOOGLE_ON_USER_POOL_CLIENT_STAGING`
+- `FOUNDATION_WEB_ENABLE_GOOGLE_ON_USER_POOL_CLIENT_PROD`
 
 If the domain variables are omitted, the foundation web workflow publishes to the CloudFront default domain exposed by the stack outputs.
 
@@ -131,6 +133,15 @@ The foundation stack derives the Cognito Hosted UI domain as `auth.<FOUNDATION_W
 - `GOOGLE_OAUTH_CLIENT_SECRET_PROD`
 
 If both the Google client ID and secret are present for an environment, the workflow passes them to the foundation stack and enables the Google Cognito identity provider for that environment.
+
+### Google rollout note for existing Cognito stacks
+
+For an already-deployed user pool/client, roll out Google in two deploys:
+
+1. Set the Google OAuth secrets for the environment and keep `FOUNDATION_WEB_ENABLE_GOOGLE_ON_USER_POOL_CLIENT_<ENV>` set to `false` or unset.
+2. Deploy once so the Google identity provider is created in the user pool.
+3. Set `FOUNDATION_WEB_ENABLE_GOOGLE_ON_USER_POOL_CLIENT_<ENV>` to `true`.
+4. Deploy again so the existing user pool client adds `Google` to `SupportedIdentityProviders`.
 
 ## Multi-Account Strategy
 

@@ -41,6 +41,10 @@ on:
         required: false
         type: string
         default: ""
+      enable_google_on_user_pool_client:
+        required: false
+        type: string
+        default: "false"
     secrets:
       aws_role_arn:
         required: true
@@ -170,6 +174,7 @@ jobs:
           ENVIRONMENT_NAME: ${{ inputs.environment_name }}
           DOMAIN_NAME: ${{ inputs.domain_name }}
           DOMAIN_HOSTED_ZONE_ID: ${{ inputs.domain_hosted_zone_id }}
+          ENABLE_GOOGLE_ON_USER_POOL_CLIENT: ${{ inputs.enable_google_on_user_pool_client }}
         run: |
           if [ -n "$DOMAIN_NAME" ] && [ -z "$DOMAIN_HOSTED_ZONE_ID" ]; then
             echo "Foundation Web domain_name is set but domain_hosted_zone_id is missing."
@@ -183,6 +188,11 @@ jobs:
 
           if [ "$ENVIRONMENT_NAME" = "prod" ] && [ -z "$DOMAIN_NAME" ]; then
             echo "Production Foundation Web deploys require FOUNDATION_WEB_DOMAIN_NAME_PROD and FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD."
+            exit 1
+          fi
+
+          if [ "$ENABLE_GOOGLE_ON_USER_POOL_CLIENT" != "true" ] && [ "$ENABLE_GOOGLE_ON_USER_POOL_CLIENT" != "false" ]; then
+            echo "Foundation Web enable_google_on_user_pool_client must be 'true' or 'false'."
             exit 1
           fi
 
@@ -201,6 +211,7 @@ jobs:
           PARAM_OVERRIDES=(
             "EnvironmentName=${{ inputs.environment_name }}"
             "DatabaseUrl=$DATABASE_URL"
+            "EnableGoogleOnUserPoolClient=${{ inputs.enable_google_on_user_pool_client }}"
           )
           if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
             PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
