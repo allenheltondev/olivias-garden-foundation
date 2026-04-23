@@ -54,6 +54,9 @@ export function mapApiError(error, correlationId) {
     || message.includes('returnUrl origin is not allowed')
     || message.includes('Invalid authorization header format')
     || message.includes('Authorization token is required')
+    || message.includes('Unsupported contact kind')
+    || message.includes('email must be a valid email address')
+    || message.includes('contactName is required')
   ) {
     return errorResponse(400, message, correlationId);
   }

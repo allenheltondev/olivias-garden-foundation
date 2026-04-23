@@ -4,7 +4,7 @@ import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
 import { adminUrl, facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
 
-function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
+export function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
   try {
     const target = new URL(targetUrl);
     const payload = btoa(JSON.stringify({
@@ -180,14 +180,6 @@ export function SiteHeader({
       active: pathname === route.path,
       onSelect: () => onNavigate(route.path),
     })),
-    ...(authSession
-      ? [{
-          id: 'good-roots-network',
-          label: 'Good Roots Network',
-          href: goodRootsNetworkUrl,
-          active: false,
-        }]
-      : []),
     {
       id: authSession ? 'profile' : 'login',
       label: authSession ? 'Profile' : 'Log in',
@@ -336,12 +328,14 @@ export function PageHero({
 }
 
 export function Section({
+  id,
   title,
   body,
   children,
   intro,
   className,
 }: {
+  id?: string;
   title: string;
   body?: string;
   intro?: string;
@@ -349,7 +343,7 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section className={`page-section ${className ?? ''}`.trim()}>
+    <section id={id} className={`page-section ${className ?? ''}`.trim()}>
       <div className="page-section__heading">
         <h2>{title}</h2>
         {intro ? <p className="page-section__intro">{intro}</p> : null}

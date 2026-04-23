@@ -28,6 +28,14 @@ test.describe('PR screenshots', () => {
       fullPage: true,
     });
   });
+
+  test('capture good-roots desktop screenshot', async ({ page }) => {
+    await gotoAndWait(page, '/good-roots');
+    await page.screenshot({
+      path: screenshotPath('good-roots-desktop.png'),
+      fullPage: true,
+    });
+  });
 });
 
 test.describe('PR screenshots mobile', () => {
@@ -38,6 +46,14 @@ test.describe('PR screenshots mobile', () => {
     await gotoAndWait(page, '/');
     await page.screenshot({
       path: screenshotPath('homepage-mobile.png'),
+      fullPage: true,
+    });
+  });
+
+  test('capture good-roots mobile screenshot', async ({ page }) => {
+    await gotoAndWait(page, '/good-roots');
+    await page.screenshot({
+      path: screenshotPath('good-roots-mobile.png'),
       fullPage: true,
     });
   });

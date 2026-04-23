@@ -9,6 +9,7 @@ export const mainPaths = [
   '/contact',
   '/seeds',
   '/okra',
+  '/good-roots',
 ];
 
 export function trackBrowserErrors(page: Page) {
