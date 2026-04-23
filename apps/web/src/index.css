@@ -1778,6 +1778,25 @@ html {
   outline: none;
 }
 
+.og-auth-menu__item--link {
+  display: block;
+  text-decoration: none;
+}
+
+.og-auth-menu__section-label {
+  padding: 0.55rem 0.85rem 0.2rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a6a4a;
+}
+
+.og-auth-menu__divider {
+  height: 1px;
+  margin: 0.35rem 0.5rem;
+  background: rgba(58, 42, 29, 0.12);
+}
+
 .profile-hero {
   min-height: auto;
 }

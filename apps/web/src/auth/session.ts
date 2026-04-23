@@ -5,6 +5,7 @@ export interface AuthUser {
   firstName: string | null;
   lastName: string | null;
   tier: string | null;
+  isAdmin: boolean;
 }
 
 export interface AuthSession {
@@ -48,6 +49,12 @@ function deriveTier(claims: Record<string, unknown> | null): string | null {
   return firstString(claims.tier);
 }
 
+function deriveIsAdmin(claims: Record<string, unknown> | null): boolean {
+  if (!claims) return false;
+  const groups = claims['cognito:groups'];
+  return Array.isArray(groups) && groups.some((group) => String(group).toLowerCase() === 'admin');
+}
+
 export function buildAuthSession(tokens: {
   access_token: string;
   id_token: string;
@@ -69,6 +76,7 @@ export function buildAuthSession(tokens: {
       firstName: firstString(claims?.given_name),
       lastName: firstString(claims?.family_name),
       tier: deriveTier(claims),
+      isAdmin: deriveIsAdmin(claims),
     },
   };
 }
@@ -80,12 +88,14 @@ export function readStoredSession(): AuthSession | null {
     const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthSession;
+    const claims = decodeJwtPayload(parsed.idToken);
     return {
       ...parsed,
       user: {
         ...parsed.user,
         firstName: parsed.user?.firstName ?? null,
         lastName: parsed.user?.lastName ?? null,
+        isAdmin: parsed.user?.isAdmin ?? deriveIsAdmin(claims),
       },
     };
   } catch {

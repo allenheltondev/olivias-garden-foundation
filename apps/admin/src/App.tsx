@@ -12,9 +12,10 @@ import {
 } from './api';
 import { loadAdminSession, type AdminSession } from './auth/session';
 
-const foundationLoginUrl = import.meta.env.VITE_FOUNDATION_URL
-  ? `${import.meta.env.VITE_FOUNDATION_URL.replace(/\/+$/, '')}/login`
-  : 'https://oliviasgarden.org/login';
+const foundationHomeUrl = import.meta.env.VITE_FOUNDATION_URL
+  ? import.meta.env.VITE_FOUNDATION_URL.replace(/\/+$/, '')
+  : 'https://oliviasgarden.org';
+const foundationLoginUrl = `${foundationHomeUrl}/login`;
 
 const emptyProductForm: UpsertStoreProductRequest = {
   slug: '',
@@ -117,7 +118,11 @@ export default function App() {
         <Card className="admin-restricted">
           <p className="admin-eyebrow">Restricted</p>
           <h1>Administrator access is required.</h1>
-          <p>This account is authenticated, but it does not carry the `admin` role in Cognito.</p>
+          <div className="admin-restricted__actions">
+            <Button onClick={() => window.location.assign(foundationHomeUrl)}>
+              Back to Olivia&apos;s Garden
+            </Button>
+          </div>
         </Card>
       </div>
     );

@@ -130,6 +130,12 @@ body {
   line-height: 1.1;
 }
 
+.admin-restricted__actions {
+  margin-top: 1.25rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
 .submission-meta,
 .store-header {
   display: flex;
