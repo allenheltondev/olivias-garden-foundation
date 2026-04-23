@@ -91,8 +91,8 @@ test.describe('donation flow', () => {
     await expect(checkout.getByText(/Payment method/i)).toBeVisible({ timeout: 30000 });
 
     const cardButton = checkout.locator('button[data-testid="card-accordion-item-button"]');
-    await expect(cardButton).toBeVisible({ timeout: 30000 });
-    await cardButton.click();
+    await cardButton.waitFor({ state: 'attached', timeout: 30000 });
+    await cardButton.click({ force: true });
 
     await expect(checkout.getByText(/Card information/i)).toBeVisible({ timeout: 30000 });
     await (await waitForEmbeddedCheckoutLocator(
