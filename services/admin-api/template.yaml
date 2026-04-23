@@ -54,8 +54,12 @@ Globals:
   Function:
     Architectures: [arm64]
     Tracing: Disabled
-    Timeout: 5
+    Timeout: 10
     MemorySize: 1024
+    Environment:
+      Variables:
+        POWERTOOLS_LOG_LEVEL: DEBUG
+        NODE_OPTIONS: --enable-source-maps
 
 Metadata:
   esbuild-properties: &esbuild-properties

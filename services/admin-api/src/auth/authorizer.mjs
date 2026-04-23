@@ -2,7 +2,7 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
 const verifierCache = new Map();
-const logger = new Logger({ serviceName: 'admin-authorizer' });
+const logger = new Logger({ serviceName: 'admin-authorizer', logLevel: 'DEBUG' });
 
 export function getApiArnPattern(methodArn = '') {
   const [part1, part2] = methodArn.split('/');
@@ -41,6 +41,7 @@ function getVerifier(userPoolId, userPoolClientId) {
   const cacheKey = `${userPoolId}:${userPoolClientId}`;
 
   if (!verifierCache.has(cacheKey)) {
+    logger.info('Creating Cognito JWT verifier', { userPoolId, userPoolClientId });
     verifierCache.set(
       cacheKey,
       CognitoJwtVerifier.create({
@@ -62,7 +63,10 @@ export async function verifyAdminToken(
     verifyJwt ??
     ((jwt) => getVerifier(userPoolId, userPoolClientId).verify(jwt));
 
+  logger.debug('Verifying JWT');
   const claims = await jwtVerifier(token);
+  logger.debug('JWT verified', { sub: claims?.sub, groups: claims?.['cognito:groups'] });
+
   const groups = Array.isArray(claims['cognito:groups'])
     ? claims['cognito:groups']
     : [];
@@ -84,9 +88,24 @@ export function createHandler({
   verifyJwt = undefined
 } = {}) {
   return async function handler(event) {
-    const apiArn = getApiArnPattern(event?.methodArn ?? '');
+    const method = event?.httpMethod;
+    const path = event?.path;
+    const methodArn = event?.methodArn;
+    const hasAuthHeader = Boolean(getAuthorizationHeader(event?.headers));
 
-    if (event?.httpMethod === 'OPTIONS' || isPublicRoute(event)) {
+    logger.info('Authorizer invoked', {
+      method,
+      path,
+      methodArn,
+      hasAuthHeader,
+      userPoolConfigured: Boolean(userPoolId),
+      clientConfigured: Boolean(userPoolClientId)
+    });
+
+    const apiArn = getApiArnPattern(methodArn ?? '');
+
+    if (method === 'OPTIONS' || isPublicRoute(event)) {
+      logger.info('Bypassing auth for public route', { method, path });
       return generatePolicy('anonymous', 'Allow', apiArn);
     }
 
@@ -108,15 +127,18 @@ export function createHandler({
         verifyJwt
       });
 
+      logger.info('Authorization allowed', { sub: claims.sub, path, method });
       return generatePolicy(claims.sub, 'Allow', apiArn, {
         userId: claims.sub,
         isAdmin: 'true'
       });
     } catch (error) {
-      logger.warn('Authorization failed', {
+      logger.error('Authorization failed', {
         error: error instanceof Error ? error.message : String(error),
-        path: event?.path,
-        method: event?.httpMethod
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        stack: error instanceof Error ? error.stack : undefined,
+        path,
+        method
       });
       return generatePolicy('anonymous', 'Deny', apiArn);
     }
