@@ -1,7 +1,32 @@
 import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { FormFeedback, Input } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
-import { getUserInitials } from '../chrome';
+
+function redirectAfterAuth(session: AuthSession, onNavigate: (path: string) => void) {
+  const redirectTo = new URLSearchParams(window.location.search).get('redirect');
+  if (!redirectTo) {
+    onNavigate('/');
+    return;
+  }
+
+  try {
+    const redirectOrigin = new URL(redirectTo, window.location.origin).origin;
+    const isCrossOrigin = redirectOrigin !== window.location.origin;
+    if (isCrossOrigin) {
+      const payload = btoa(JSON.stringify({
+        accessToken: session.accessToken,
+        idToken: session.idToken,
+        refreshToken: session.refreshToken,
+        expiresAt: session.expiresAt,
+      }));
+      window.location.assign(`${redirectTo}#session=${payload}`);
+    } else {
+      window.location.assign(redirectTo);
+    }
+  } catch {
+    onNavigate('/');
+  }
+}
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -147,7 +172,6 @@ export function LoginPage({
   onResendSignupCode,
   onRequestPasswordReset,
   onConfirmPasswordReset,
-  onLogout,
   onNavigate,
 }: {
   authEnabled: boolean;
@@ -167,12 +191,10 @@ export function LoginPage({
   onResendSignupCode: (email: string) => Promise<void>;
   onRequestPasswordReset: (email: string) => Promise<void>;
   onConfirmPasswordReset: (email: string, code: string, password: string) => Promise<void>;
-  onLogout: () => void;
   onNavigate: (path: string) => void;
 }) {
-  const displayName = authSession?.user.name ?? authSession?.user.email ?? 'Good Roots Network member';
-  const initials = getUserInitials(authSession);
   const [mode, setMode] = useState<'login' | 'signup' | 'verify' | 'forgot'>(defaultMode);
+  const redirectedRef = useRef(false);
   const [forgotStep, setForgotStep] = useState<'request' | 'confirm'>('request');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -192,6 +214,13 @@ export function LoginPage({
     setStatusMessage(null);
     setShowPasswordHint(false);
   }, [defaultMode]);
+
+  useEffect(() => {
+    if (redirectedRef.current) return;
+    if (!authEnabled || authBusy || !authSession) return;
+    redirectedRef.current = true;
+    redirectAfterAuth(authSession, onNavigate);
+  }, [authEnabled, authBusy, authSession, onNavigate]);
 
   const handleModeChange = (nextMode: 'login' | 'signup') => {
     setMode(nextMode);
@@ -319,28 +348,8 @@ export function LoginPage({
     try {
       if (mode === 'login') {
         const session = await onSubmitLogin(trimmedEmail, password);
-        const redirectTo = new URLSearchParams(window.location.search).get('redirect');
-        if (redirectTo) {
-          try {
-            const redirectOrigin = new URL(redirectTo).origin;
-            const isCrossOrigin = redirectOrigin !== window.location.origin;
-            if (isCrossOrigin) {
-              const payload = btoa(JSON.stringify({
-                accessToken: session.accessToken,
-                idToken: session.idToken,
-                refreshToken: session.refreshToken,
-                expiresAt: session.expiresAt,
-              }));
-              window.location.assign(`${redirectTo}#session=${payload}`);
-            } else {
-              window.location.assign(redirectTo);
-            }
-          } catch {
-            onNavigate('/');
-          }
-        } else {
-          onNavigate('/');
-        }
+        redirectedRef.current = true;
+        redirectAfterAuth(session, onNavigate);
         return;
       }
 
@@ -408,28 +417,9 @@ export function LoginPage({
         <div className="og-login-page__card">
           {authEnabled ? (
             authSession ? (
-              <>
-                <p className="og-login-page__eyebrow">Olivia&apos;s Garden</p>
-                <div className="og-login-page__account">
-                  <div className="og-login-page__account-avatar" aria-hidden="true">{initials}</div>
-                  <div className="og-login-page__account-copy">
-                    <p className="og-login-page__account-eyebrow">Signed in</p>
-                    <p className="og-login-page__account-name">{displayName}</p>
-                    <p className="og-login-page__account-body">
-                      You&apos;re all set. Head back to the okra project or sign out here.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="og-login-page__footer">
-                  <button type="button" className="og-login-page__link" onClick={() => onNavigate('/okra')}>
-                    Back to the Okra Project
-                  </button>
-                  <button type="button" className="og-login-page__link og-login-page__link--danger" onClick={onLogout}>
-                    Log out
-                  </button>
-                </div>
-              </>
+              <p className="og-login-page__note" role="status" aria-live="polite">
+                Redirecting...
+              </p>
             ) : (
               <>
                 <p className="og-login-page__eyebrow">Olivia&apos;s Garden</p>
