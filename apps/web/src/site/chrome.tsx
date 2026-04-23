@@ -2,20 +2,43 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 're
 import { Button, SiteFooter as SharedSiteFooter, SiteHeader as SharedSiteHeader } from '@olivias/ui';
 import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
-import { facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
+import { adminUrl, facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
+
+function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
+  try {
+    const target = new URL(targetUrl);
+    const payload = btoa(JSON.stringify({
+      accessToken: session.accessToken,
+      idToken: session.idToken,
+      refreshToken: session.refreshToken,
+      expiresAt: session.expiresAt,
+    }));
+    return `${target.origin}${target.pathname}${target.search}#session=${payload}`;
+  } catch {
+    return targetUrl;
+  }
+}
 
 const foundationLogo = '/images/icons/logo.svg';
+
+interface AvatarAppLink {
+  id: string;
+  label: string;
+  href: string;
+}
 
 function AvatarMenu({
   initials,
   label,
   avatarUrl,
+  appLinks,
   onNavigate,
   onLogout,
 }: {
   initials: string;
   label: string;
   avatarUrl?: string | null;
+  appLinks: AvatarAppLink[];
   onNavigate: (path: string) => void;
   onLogout?: () => void;
 }) {
@@ -74,6 +97,23 @@ function AvatarMenu({
           >
             Profile
           </button>
+          {appLinks.length > 0 ? (
+            <>
+              <div className="og-auth-menu__section-label" role="presentation">Apps</div>
+              {appLinks.map((link) => (
+                <a
+                  key={link.id}
+                  className="og-auth-menu__item og-auth-menu__item--link"
+                  role="menuitem"
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <div className="og-auth-menu__divider" role="separator" />
+            </>
+          ) : null}
           {onLogout ? (
             <button
               type="button"
@@ -182,6 +222,12 @@ export function SiteHeader({
               initials={initials}
               label={avatarLabel}
               avatarUrl={avatarUrl}
+              appLinks={[
+                { id: 'grn', label: 'Good Roots Network', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
+                ...(authSession.user.isAdmin
+                  ? [{ id: 'admin', label: 'Admin', href: buildCrossAppUrl(adminUrl, authSession) }]
+                  : []),
+              ]}
               onNavigate={onNavigate}
               onLogout={onLogout}
             />

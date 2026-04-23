@@ -104,6 +104,7 @@ export const prerenderRoutes = routes.filter((route) => route.prerender);
 export const internalPaths = new Set(routes.map((route) => route.path));
 
 export const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://goodroots.network';
+export const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.oliviasgarden.org';
 export const instagramUrl = 'https://instagram.com/oliviasgardentx';
 export const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
 export const siteUrl = (import.meta.env.VITE_SITE_URL ?? 'https://oliviasgarden.org').replace(/\/+$/, '');
