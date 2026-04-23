@@ -56,6 +56,12 @@ export interface SeedRequestQueueItem {
   requestStatus: 'open' | 'handled';
 }
 
+export interface AdminStats {
+  userCount: number | null;
+  openSeedRequestCount: number | null;
+  pendingOkraCount: number | null;
+}
+
 export interface UpsertStoreProductRequest {
   slug: string;
   name: string;
@@ -75,12 +81,16 @@ export interface UpsertStoreProductRequest {
   metadata: Record<string, unknown>;
 }
 
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
 function getAdminApiBaseUrl(): string {
   const baseUrl = import.meta.env.VITE_ADMIN_API_URL;
   if (!baseUrl) {
     throw new Error('Missing VITE_ADMIN_API_URL for admin app.');
   }
-  return baseUrl;
+  return trimTrailingSlash(baseUrl);
 }
 
 function getOkraAdminApiBaseUrl(): string {
@@ -88,7 +98,7 @@ function getOkraAdminApiBaseUrl(): string {
   if (!baseUrl) {
     throw new Error('Missing VITE_OKRA_ADMIN_API_URL for admin app.');
   }
-  return baseUrl;
+  return trimTrailingSlash(baseUrl);
 }
 
 async function requestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
@@ -105,11 +115,15 @@ async function requestJson<T>(url: string, accessToken: string, init?: RequestIn
     let message = response.statusText;
     try {
       const payload = await response.json();
-      message = payload.message || payload.error || message;
+      message = payload.message || payload.error?.message || payload.error || message;
     } catch {
       // noop
     }
     throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;
@@ -193,5 +207,12 @@ export async function markSeedRequestHandled(
       method: 'POST',
       body: JSON.stringify(payload),
     }
+  );
+}
+
+export async function getAdminStats(accessToken: string): Promise<AdminStats> {
+  return requestJson<AdminStats>(
+    `${getOkraAdminApiBaseUrl()}/stats`,
+    accessToken
   );
 }

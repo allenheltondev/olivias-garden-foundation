@@ -263,12 +263,16 @@ paths:
           required: false
           schema:
             type: string
-            default: pending_review
             enum:
+              - pending
               - pending_review
               - approved
               - denied
-          description: Filter submissions by status. Defaults to pending_review.
+          description: >-
+            Filter submissions by status. Omit to return every submission
+            regardless of status. `pending` is an alias for `pending_review`
+            and restricts the result to submissions that also have at least
+            one ready photo (matching the moderation review queue).
         - name: limit
           in: query
           required: false

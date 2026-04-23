@@ -7,6 +7,7 @@ import { createDbClient } from '../../scripts/db-client.mjs';
 import { isUuid } from '../services/photos.mjs';
 import { encodeCursor, decodeCursor, errorResponse } from '../services/pagination.mjs';
 import { resolveCountry } from '../services/reverse-geocoder.mjs';
+import { getAdminStats } from '../services/admin-stats.mjs';
 
 const s3 = new S3Client({});
 const eventBridge = new EventBridgeClient({});
@@ -306,11 +307,16 @@ export function registerAdminRoutes(app) {
   });
 
   // ─── GET /submissions ───────────────────────────────────────────
+  // Canonical REST listing. Omit `status` to return every submission; pass
+  // `status=pending` (alias for `pending_review`) to match the review-queue
+  // filter (only entries with a ready photo).
   app.get('/submissions', async (ctx) => {
     const params = ctx.event.queryStringParameters || {};
-    const status = params.status || 'pending_review';
-    if (!VALID_STATUSES.includes(status)) {
-      return errorResponse(400, 'INVALID_STATUS', `Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(', ')}`);
+    const rawStatus = params.status;
+    const status = rawStatus === 'pending' ? 'pending_review' : rawStatus;
+
+    if (status !== undefined && status !== null && !VALID_STATUSES.includes(status)) {
+      return errorResponse(400, 'INVALID_STATUS', `Invalid status: ${rawStatus}. Must be one of: ${VALID_STATUSES.concat('pending').join(', ')}`);
     }
 
     const limitResult = validateLimit(params.limit);
@@ -321,33 +327,52 @@ export function registerAdminRoutes(app) {
     if (!cursorResult.valid) return cursorResult.response;
     const cursor = cursorResult.value;
 
+    const filterByStatus = Boolean(status);
+    const requireReadyPhoto = status === 'pending_review';
+
+    const statusClause = filterByStatus ? 's.status = $1' : 'TRUE';
+    const photoClause = requireReadyPhoto
+      ? `AND EXISTS (
+            SELECT 1 FROM submission_photos sp
+             WHERE sp.submission_id = s.id AND sp.status = 'ready'
+          )`
+      : '';
+    const baseParams = filterByStatus ? [status] : [];
+
     const client = await createDbClient();
     await client.connect();
     try {
       let queryText;
       let queryParams;
       if (cursor) {
+        const cursorPlaceholder1 = `$${baseParams.length + 1}`;
+        const cursorPlaceholder2 = `$${baseParams.length + 2}`;
+        const limitPlaceholder = `$${baseParams.length + 3}`;
         queryText = `
           SELECT s.id, s.contributor_name, s.story_text, s.raw_location_text,
                  s.privacy_mode, s.display_lat, s.display_lng, s.status, s.created_at,
                  s.created_at::text AS created_at_raw
           FROM submissions s
-          WHERE s.status = $1 AND (s.created_at, s.id) > ($2::timestamptz, $3)
+          WHERE ${statusClause}
+            ${photoClause}
+            AND (s.created_at, s.id) > (${cursorPlaceholder1}::timestamptz, ${cursorPlaceholder2})
           ORDER BY s.created_at ASC, s.id ASC
-          LIMIT $4
+          LIMIT ${limitPlaceholder}
         `;
-        queryParams = [status, cursor.created_at, cursor.id, limit + 1];
+        queryParams = [...baseParams, cursor.created_at, cursor.id, limit + 1];
       } else {
+        const limitPlaceholder = `$${baseParams.length + 1}`;
         queryText = `
           SELECT s.id, s.contributor_name, s.story_text, s.raw_location_text,
                  s.privacy_mode, s.display_lat, s.display_lng, s.status, s.created_at,
                  s.created_at::text AS created_at_raw
           FROM submissions s
-          WHERE s.status = $1
+          WHERE ${statusClause}
+            ${photoClause}
           ORDER BY s.created_at ASC, s.id ASC
-          LIMIT $2
+          LIMIT ${limitPlaceholder}
         `;
-        queryParams = [status, limit + 1];
+        queryParams = [...baseParams, limit + 1];
       }
 
       const submissionsResult = await client.query(queryText, queryParams);
@@ -432,6 +457,22 @@ export function registerAdminRoutes(app) {
     }
 
     return handleDenial(ctx, submissionId, { reason, review_notes });
+  });
+
+  // ─── GET /stats ────────────────────────────────────────────────
+  app.get('/stats', async () => {
+    try {
+      const stats = await getAdminStats();
+      return stats;
+    } catch (err) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: err instanceof Error ? err.message : String(err),
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+        endpoint: 'GET /admin/stats'
+      }));
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    }
   });
 }
 
