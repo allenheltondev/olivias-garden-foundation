@@ -2,11 +2,14 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { Button, Card, FormFeedback, Input, Select, Textarea } from '@olivias/ui';
 import {
   createStoreProduct,
+  listSeedRequestQueue,
   listOkraReviewQueue,
   listStoreProducts,
+  markSeedRequestHandled,
   reviewOkraSubmission,
   updateStoreProduct,
   type OkraSubmission,
+  type SeedRequestQueueItem,
   type StoreProduct,
   type UpsertStoreProductRequest,
 } from './api';
@@ -68,9 +71,10 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [okraQueue, setOkraQueue] = useState<OkraSubmission[]>([]);
+  const [seedRequestQueue, setSeedRequestQueue] = useState<SeedRequestQueueItem[]>([]);
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [productForm, setProductForm] = useState<UpsertStoreProductRequest>(emptyProductForm);
-  const [activeTab, setActiveTab] = useState<'moderation' | 'store'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'requests' | 'store'>('moderation');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -93,10 +97,12 @@ export default function App() {
     void Promise.all([
       listStoreProducts(session.accessToken),
       listOkraReviewQueue(session.accessToken),
+      listSeedRequestQueue(session.accessToken),
     ])
-      .then(([nextProducts, nextQueue]) => {
+      .then(([nextProducts, nextQueue, nextSeedRequests]) => {
         setProducts(nextProducts);
         setOkraQueue(nextQueue);
+        setSeedRequestQueue(nextSeedRequests);
       })
       .catch((error: Error) => {
         setLoadError(error.message);
@@ -157,12 +163,14 @@ export default function App() {
   };
 
   const refreshData = async () => {
-    const [nextProducts, nextQueue] = await Promise.all([
+    const [nextProducts, nextQueue, nextSeedRequests] = await Promise.all([
       listStoreProducts(session.accessToken),
       listOkraReviewQueue(session.accessToken),
+      listSeedRequestQueue(session.accessToken),
     ]);
     setProducts(nextProducts);
     setOkraQueue(nextQueue);
+    setSeedRequestQueue(nextSeedRequests);
   };
 
   const submitProduct = async (event: FormEvent) => {
@@ -218,6 +226,18 @@ export default function App() {
     }
   };
 
+  const handleSeedRequest = async (request: SeedRequestQueueItem) => {
+    try {
+      await markSeedRequestHandled(session.accessToken, request.id, {
+        status: 'handled',
+        review_notes: 'Handled in admin dashboard.',
+      });
+      await refreshData();
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to update seed request status.');
+    }
+  };
+
   return (
     <div className="admin-shell">
       <header className="admin-hero">
@@ -238,6 +258,13 @@ export default function App() {
           onClick={() => setActiveTab('moderation')}
         >
           Okra queue
+        </button>
+        <button
+          type="button"
+          className={activeTab === 'requests' ? 'is-active' : ''}
+          onClick={() => setActiveTab('requests')}
+        >
+          Seed requests
         </button>
         <button
           type="button"
@@ -275,6 +302,51 @@ export default function App() {
                   </Button>
                   <Button variant="outline" onClick={() => void handleReview(submission, 'denied')}>
                     Deny
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </section>
+      ) : activeTab === 'requests' ? (
+        <section className="admin-grid">
+          {seedRequestQueue.length === 0 ? (
+            <Card><p>No open seed requests.</p></Card>
+          ) : (
+            seedRequestQueue.map((request) => (
+              <Card key={request.id} className="admin-card--submission">
+                <div className="submission-meta">
+                  <div>
+                    <h2>{request.name || 'Anonymous requester'}</h2>
+                    <p>{request.email || 'No email provided'}</p>
+                  </div>
+                  <span>{request.createdAt ? new Date(request.createdAt).toLocaleString() : 'Unknown time'}</span>
+                </div>
+                <p>
+                  {request.fulfillmentMethod === 'in_person' ? 'In-person exchange' : 'Mail fulfillment'}
+                </p>
+                {request.shippingAddress ? (
+                  <p className="submission-location">
+                    {[
+                      request.shippingAddress.line1,
+                      request.shippingAddress.line2,
+                      request.shippingAddress.city,
+                      request.shippingAddress.region,
+                      request.shippingAddress.postalCode,
+                      request.shippingAddress.country,
+                    ].filter(Boolean).join(', ')}
+                  </p>
+                ) : null}
+                {request.visitDetails?.approximateDate ? (
+                  <p>Visit timing: {request.visitDetails.approximateDate}</p>
+                ) : null}
+                {request.visitDetails?.notes ? (
+                  <p>{request.visitDetails.notes}</p>
+                ) : null}
+                {request.message ? <p>{request.message}</p> : null}
+                <div className="submission-actions">
+                  <Button onClick={() => void handleSeedRequest(request)}>
+                    Mark handled
                   </Button>
                 </div>
               </Card>
