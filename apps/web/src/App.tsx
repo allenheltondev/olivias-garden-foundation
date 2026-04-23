@@ -238,7 +238,6 @@ function App() {
                 onResendSignupCode={resendSignupVerification}
                 onRequestPasswordReset={submitPasswordResetRequest}
                 onConfirmPasswordReset={submitPasswordResetConfirm}
-                onLogout={handleLogout}
                 onNavigate={navigate}
               />
             }
