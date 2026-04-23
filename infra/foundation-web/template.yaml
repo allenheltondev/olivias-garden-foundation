@@ -56,7 +56,6 @@ Conditions:
   EnableProdCognitoCustomDomain: !And
     - !Condition IsProdEnvironment
     - !Condition DeployCustomDomain
-  DisableProdCognitoCustomDomain: !Not [!Condition EnableProdCognitoCustomDomain]
 
 Metadata:
   esbuild-properties: &esbuild-properties
@@ -218,7 +217,6 @@ Resources:
 
   FoundationUserPoolPrefixDomain:
     Type: AWS::Cognito::UserPoolDomain
-    Condition: DisableProdCognitoCustomDomain
     Properties:
       UserPoolId: !Ref FoundationUserPool
       Domain: !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
