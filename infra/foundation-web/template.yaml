@@ -28,6 +28,15 @@ Parameters:
     Default: ''
     NoEcho: true
     Description: Optional Slack webhook URL for foundation signup notifications.
+  GoogleClientId:
+    Type: String
+    Default: ''
+    Description: Optional Google OAuth client ID for Cognito social sign-in.
+  GoogleClientSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Optional Google OAuth client secret for Cognito social sign-in.
 
 Globals:
   Function:
@@ -37,9 +46,17 @@ Globals:
     MemorySize: 512
 
 Conditions:
+  IsProdEnvironment: !Equals [!Ref EnvironmentName, 'prod']
   DeployCustomDomain: !And
     - !Not [!Equals [!Ref DomainName, '']]
     - !Not [!Equals [!Ref DomainHostedZoneId, '']]
+  EnableGoogleIdentityProvider: !And
+    - !Not [!Equals [!Ref GoogleClientId, '']]
+    - !Not [!Equals [!Ref GoogleClientSecret, '']]
+  EnableProdCognitoCustomDomain: !And
+    - !Condition IsProdEnvironment
+    - !Condition DeployCustomDomain
+  DisableProdCognitoCustomDomain: !Not [!Condition EnableProdCognitoCustomDomain]
 
 Metadata:
   esbuild-properties: &esbuild-properties
@@ -173,6 +190,7 @@ Resources:
           - !Ref AWS::NoValue
       SupportedIdentityProviders:
         - COGNITO
+        - !If [EnableGoogleIdentityProvider, Google, !Ref AWS::NoValue]
 
   FoundationFreeTierGroup:
     Type: AWS::Cognito::UserPoolGroup
@@ -198,11 +216,74 @@ Resources:
       Description: Pro tier users with pro foundation and GRN features
       Precedence: 1
 
-  FoundationUserPoolDomain:
+  FoundationUserPoolPrefixDomain:
     Type: AWS::Cognito::UserPoolDomain
+    Condition: DisableProdCognitoCustomDomain
     Properties:
       UserPoolId: !Ref FoundationUserPool
       Domain: !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
+      ManagedLoginVersion: 2
+
+  FoundationUserPoolCustomDomainCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      DomainName: !Sub 'auth.${DomainName}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Sub 'auth.${DomainName}'
+          HostedZoneId: !Ref DomainHostedZoneId
+
+  FoundationUserPoolCustomDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      UserPoolId: !Ref FoundationUserPool
+      Domain: !Sub 'auth.${DomainName}'
+      ManagedLoginVersion: 2
+      CustomDomainConfig:
+        CertificateArn: !Ref FoundationUserPoolCustomDomainCertificate
+
+  FoundationUserPoolCustomDomainRecordA:
+    Type: AWS::Route53::RecordSet
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      HostedZoneId: !Ref DomainHostedZoneId
+      Name: !Sub 'auth.${DomainName}'
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt FoundationUserPoolCustomDomain.CloudFrontDistribution
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  FoundationUserPoolCustomDomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      HostedZoneId: !Ref DomainHostedZoneId
+      Name: !Sub 'auth.${DomainName}'
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt FoundationUserPoolCustomDomain.CloudFrontDistribution
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  FoundationGoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Condition: EnableGoogleIdentityProvider
+    Properties:
+      UserPoolId: !Ref FoundationUserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        authorize_scopes: openid email profile
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+      AttributeMapping:
+        email: email
+        email_verified: email_verified
+        given_name: given_name
+        family_name: family_name
+        name: name
+        username: sub
 
   WebFrontendBucket:
     Type: AWS::S3::Bucket
@@ -633,6 +714,14 @@ Outputs:
 
   UserPoolDomain:
     Description: Cognito Hosted UI domain for the foundation web app.
-    Value: !Sub '${FoundationUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Value: !If
+      - EnableProdCognitoCustomDomain
+      - !Sub 'auth.${DomainName}'
+      - !Sub '${FoundationUserPoolPrefixDomain}.auth.${AWS::Region}.amazoncognito.com'
     Export:
       Name: OGF-UserPoolDomain
+
+  UserPoolDomainCloudFrontTarget:
+    Condition: EnableProdCognitoCustomDomain
+    Description: CloudFront distribution target for the Cognito custom domain alias.
+    Value: !GetAtt FoundationUserPoolCustomDomain.CloudFrontDistribution

@@ -412,16 +412,6 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
   );
 }
 
-export function AuthCallbackPage() {
-  return (
-    <PageHero
-      eyebrow="Sign in"
-      title="Sign in from the login page"
-      body="This route was kept so older auth links do not break, but the site now uses a custom sign-in form on the login page."
-    />
-  );
-}
-
 export function OkraPage({
   onNavigate,
   authEnabled,
@@ -498,6 +488,277 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
         body="The best way to understand the foundation is to see the work as it happens: what is growing, what is getting built, what worked, and what had to be adjusted."
       >
         <CtaButton variant="secondary">Follow on Instagram</CtaButton>
+      </Section>
+    </>
+  );
+}
+
+export function PrivacyPolicyPage() {
+  return (
+    <>
+      <PageHero
+        eyebrow="Legal"
+        title="Privacy Policy"
+        body="This policy explains what information Olivia's Garden Foundation collects, how we use it, and the choices available to people who visit, donate, sign up, or participate in our programs and online tools."
+      />
+
+      <Section title="Who we are" className="about-prose-block">
+        <p className="page-text">
+          Olivia&apos;s Garden Foundation is a nonprofit organization based in Texas. We operate
+          oliviasgarden.org and related experiences, including account features, donation flows,
+          seed request tools, and community applications tied to the foundation&apos;s work.
+        </p>
+      </Section>
+
+      <Section title="Information we collect" className="about-prose-block">
+        <p className="page-text">
+          We may collect information you provide directly, including your name, email address,
+          mailing address, donation details, account profile details, messages you send us, seed
+          request submissions, photo submissions, and any other information you choose to provide.
+        </p>
+        <p className="page-text">
+          We may also collect technical and usage information such as device type, browser
+          information, approximate location data, pages viewed, referring pages, and interactions
+          with our website or forms. Payment card information is generally processed by our payment
+          providers and is not stored directly by us except for limited transaction metadata.
+        </p>
+      </Section>
+
+      <Section title="How we use information" className="about-prose-block">
+        <p className="page-text">
+          We use information to operate the website, provide requested services, process donations,
+          manage accounts, respond to inquiries, administer programs, improve the user experience,
+          protect the platform from misuse, and communicate updates related to the foundation and
+          its work.
+        </p>
+        <p className="page-text">
+          If you opt in to receive updates, we may send occasional emails about foundation news,
+          programs, donations, events, or related community opportunities. You can unsubscribe from
+          promotional emails at any time.
+        </p>
+      </Section>
+
+      <Section title="How we share information" className="about-prose-block">
+        <p className="page-text">
+          We do not sell personal information. We may share information with service providers who
+          help us operate the website and foundation operations, including hosting providers,
+          authentication providers, analytics providers, payment processors, email platforms, and
+          software vendors that support communication, fulfillment, moderation, and administration.
+        </p>
+        <p className="page-text">
+          We may also disclose information when reasonably necessary to comply with law, protect the
+          rights and safety of the foundation or others, investigate abuse or fraud, or in
+          connection with a reorganization, merger, or transfer of assets.
+        </p>
+      </Section>
+
+      <Section title="Account and sign-in data" className="about-prose-block">
+        <p className="page-text">
+          When you create an account or sign in using services such as Google or, later, Facebook,
+          we receive profile and authentication information made available by that provider based on
+          your permissions and our configuration. We use that information to authenticate you,
+          create or maintain your account, and support access across foundation experiences.
+        </p>
+      </Section>
+
+      <Section title="Cookies and analytics" className="about-prose-block">
+        <p className="page-text">
+          We and our service providers may use cookies, local storage, pixels, and similar
+          technologies to keep you signed in, remember preferences, understand site usage, measure
+          campaign effectiveness, and improve performance. You can control cookies through your
+          browser settings, though some site features may not function properly if disabled.
+        </p>
+      </Section>
+
+      <Section title="Data retention" className="about-prose-block">
+        <p className="page-text">
+          We retain information for as long as reasonably necessary to operate the website, fulfill
+          donations or program obligations, maintain records, resolve disputes, enforce our
+          agreements, and comply with legal, tax, accounting, or reporting requirements.
+        </p>
+      </Section>
+
+      <Section title="Children's privacy" className="about-prose-block">
+        <p className="page-text">
+          Our website and tools are intended for general audiences and family participation, but
+          account creation and donations should be completed by an adult or authorized guardian. If
+          you believe a child has provided personal information to us inappropriately, contact us so
+          we can review and address the situation.
+        </p>
+      </Section>
+
+      <Section title="Your choices" className="about-prose-block">
+        <p className="page-text">
+          You may contact us to request access to, correction of, or deletion of certain personal
+          information, subject to legal and operational limits. You may also opt out of promotional
+          emails through the unsubscribe link included in those messages.
+        </p>
+      </Section>
+
+      <Section title="Security" className="about-prose-block">
+        <p className="page-text">
+          We use reasonable administrative, technical, and organizational measures to protect
+          information, but no method of transmission or storage is completely secure. You use the
+          website and provide information at your own risk.
+        </p>
+      </Section>
+
+      <Section title="Changes to this policy" className="about-prose-block">
+        <p className="page-text">
+          We may update this Privacy Policy from time to time. When we do, we will post the updated
+          version on this page and update the effective date below. Continued use of the website
+          after an update means you accept the revised policy.
+        </p>
+      </Section>
+
+      <Section title="Contact" className="about-prose-block">
+        <p className="page-text">
+          Questions about this Privacy Policy can be sent through the contact information provided
+          on this website.
+        </p>
+        <p className="page-text">
+          Effective date: April 23, 2026.
+        </p>
+      </Section>
+    </>
+  );
+}
+
+export function TermsOfServicePage() {
+  return (
+    <>
+      <PageHero
+        eyebrow="Legal"
+        title="Terms of Service"
+        body="These terms govern access to and use of Olivia's Garden Foundation websites, accounts, donation experiences, and related community tools."
+      />
+
+      <Section title="Acceptance of terms" className="about-prose-block">
+        <p className="page-text">
+          By accessing or using this website or any related foundation service, you agree to these
+          Terms of Service. If you do not agree, do not use the site or related services.
+        </p>
+      </Section>
+
+      <Section title="Use of the site" className="about-prose-block">
+        <p className="page-text">
+          You may use the site only for lawful purposes and in a way that does not interfere with
+          the operation, security, or availability of the website or the rights of others. You
+          agree not to misuse accounts, attempt unauthorized access, submit fraudulent information,
+          scrape restricted areas, upload malicious content, or use the services in violation of
+          applicable law.
+        </p>
+      </Section>
+
+      <Section title="Accounts" className="about-prose-block">
+        <p className="page-text">
+          If you create an account, you are responsible for maintaining the confidentiality of your
+          login credentials and for activity that occurs under your account. You agree to provide
+          accurate information and to notify us if you believe your account has been compromised.
+        </p>
+      </Section>
+
+      <Section title="Donations and payments" className="about-prose-block">
+        <p className="page-text">
+          Donations, purchases, and other payments made through the site may be processed by
+          third-party payment providers. Additional terms from those providers may apply. Except
+          where required by law or expressly stated otherwise, donations are generally final and
+          non-refundable.
+        </p>
+      </Section>
+
+      <Section title="User submissions" className="about-prose-block">
+        <p className="page-text">
+          If you submit photos, messages, profile content, seed requests, or other material, you
+          represent that you have the right to provide that content and that it does not violate the
+          rights of any other person. You grant Olivia&apos;s Garden Foundation a non-exclusive,
+          worldwide, royalty-free license to host, store, reproduce, adapt, display, and use that
+          content as needed to operate the site, administer programs, highlight community
+          participation, and support the foundation&apos;s mission.
+        </p>
+        <p className="page-text">
+          We may remove or moderate content at our discretion, including content that is unlawful,
+          misleading, abusive, inappropriate, infringing, unsafe, or inconsistent with the
+          foundation&apos;s mission.
+        </p>
+      </Section>
+
+      <Section title="Intellectual property" className="about-prose-block">
+        <p className="page-text">
+          Unless otherwise stated, the website, design, text, graphics, logos, photos, videos, and
+          other content provided by Olivia&apos;s Garden Foundation are owned by or licensed to the
+          foundation and are protected by applicable intellectual property laws. You may not copy,
+          reproduce, distribute, or create derivative works from site content except as permitted by
+          law or with prior written permission.
+        </p>
+      </Section>
+
+      <Section title="Third-party services and links" className="about-prose-block">
+        <p className="page-text">
+          The site may link to third-party services or rely on third-party platforms for payments,
+          sign-in, analytics, maps, hosting, or communications. We are not responsible for the
+          content, policies, or practices of third-party services.
+        </p>
+      </Section>
+
+      <Section title="Disclaimers" className="about-prose-block">
+        <p className="page-text">
+          The website and services are provided on an &quot;as is&quot; and &quot;as available&quot;
+          basis without warranties of any kind, whether express or implied, to the fullest extent
+          permitted by law. We do not guarantee uninterrupted access, error-free operation, or that
+          the site will always be secure or free from harmful components.
+        </p>
+      </Section>
+
+      <Section title="Limitation of liability" className="about-prose-block">
+        <p className="page-text">
+          To the fullest extent permitted by law, Olivia&apos;s Garden Foundation and its officers,
+          directors, volunteers, employees, and affiliates will not be liable for any indirect,
+          incidental, special, consequential, or punitive damages, or for any loss of data,
+          profits, goodwill, or business opportunities arising from or related to use of the site or
+          services.
+        </p>
+      </Section>
+
+      <Section title="Indemnification" className="about-prose-block">
+        <p className="page-text">
+          You agree to indemnify and hold harmless Olivia&apos;s Garden Foundation from claims,
+          liabilities, damages, losses, and expenses arising out of your use of the site, your
+          submissions, or your violation of these terms or applicable law.
+        </p>
+      </Section>
+
+      <Section title="Termination" className="about-prose-block">
+        <p className="page-text">
+          We may suspend or terminate access to the site or specific features at any time if we
+          believe it is necessary to protect the foundation, users, or the public, or to address
+          violations of these terms.
+        </p>
+      </Section>
+
+      <Section title="Governing law" className="about-prose-block">
+        <p className="page-text">
+          These terms are governed by the laws of the State of Texas, without regard to conflict of
+          law principles, except where superseded by applicable federal law.
+        </p>
+      </Section>
+
+      <Section title="Changes to these terms" className="about-prose-block">
+        <p className="page-text">
+          We may update these terms from time to time. The updated version will be posted on this
+          page with a revised effective date. Continued use of the site after changes become
+          effective means you accept the updated terms.
+        </p>
+      </Section>
+
+      <Section title="Contact" className="about-prose-block">
+        <p className="page-text">
+          Questions about these Terms of Service can be sent through the contact information
+          provided on this website.
+        </p>
+        <p className="page-text">
+          Effective date: April 23, 2026.
+        </p>
       </Section>
     </>
   );

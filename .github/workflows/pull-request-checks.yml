@@ -596,3 +596,5 @@ jobs:
       stripe_secret_key_staging: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
       stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       foundation_signup_slack_webhook_url_staging: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+      google_oauth_client_id_staging: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID_STAGING }}
+      google_oauth_client_secret_staging: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET_STAGING }}

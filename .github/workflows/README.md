@@ -121,6 +121,17 @@ If the domain variables are omitted, the foundation web workflow publishes to th
 
 For production foundation web deploys, both `FOUNDATION_WEB_DOMAIN_NAME_PROD` and `FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD` must be set.
 
+The foundation stack derives the Cognito Hosted UI domain as `auth.<FOUNDATION_WEB_DOMAIN_NAME_PROD>` for production and creates the ACM certificate plus Route 53 alias in IaC.
+
+### Optional Google OAuth secrets for foundation web deployments
+
+- `GOOGLE_OAUTH_CLIENT_ID_STAGING`
+- `GOOGLE_OAUTH_CLIENT_SECRET_STAGING`
+- `GOOGLE_OAUTH_CLIENT_ID_PROD`
+- `GOOGLE_OAUTH_CLIENT_SECRET_PROD`
+
+If both the Google client ID and secret are present for an environment, the workflow passes them to the foundation stack and enables the Google Cognito identity provider for that environment.
+
 ## Multi-Account Strategy
 
 The workflows support deploying to different AWS accounts:

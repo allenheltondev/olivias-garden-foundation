@@ -105,6 +105,24 @@ export const routes: AppRoute[] = [
     seoImage: socialShareImage,
     prerender: true,
   },
+  {
+    path: '/privacy',
+    label: 'Privacy Policy',
+    showInFooter: true,
+    title: 'Privacy Policy',
+    description: "Read how Olivia's Garden Foundation collects, uses, stores, and protects information across the foundation website, donations, and account features.",
+    allowIndex: true,
+    prerender: true,
+  },
+  {
+    path: '/terms',
+    label: 'Terms of Service',
+    showInFooter: true,
+    title: 'Terms of Service',
+    description: "Review the terms that govern use of Olivia's Garden Foundation websites, accounts, donations, community tools, and submitted content.",
+    allowIndex: true,
+    prerender: true,
+  },
 ];
 
 export const navRoutes = routes.filter((route) => route.showInNav);

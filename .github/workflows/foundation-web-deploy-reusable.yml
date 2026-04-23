@@ -46,6 +46,10 @@ on:
         required: true
       database_url:
         required: true
+      google_oauth_client_id:
+        required: false
+      google_oauth_client_secret:
+        required: false
       signup_slack_webhook_url:
         required: false
       web_stripe_secret_key:
@@ -190,6 +194,8 @@ jobs:
           DOMAIN_NAME: ${{ inputs.domain_name }}
           DOMAIN_HOSTED_ZONE_ID: ${{ inputs.domain_hosted_zone_id }}
           DATABASE_URL: ${{ secrets.database_url }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.google_oauth_client_id }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.google_oauth_client_secret }}
           SIGNUP_SLACK_WEBHOOK_URL: ${{ secrets.signup_slack_webhook_url }}
         run: |
           PARAM_OVERRIDES=(
@@ -198,6 +204,12 @@ jobs:
           )
           if [ -n "$DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
             PARAM_OVERRIDES+=("DomainName=$DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+          if [ -n "$GOOGLE_OAUTH_CLIENT_ID" ] && [ -n "$GOOGLE_OAUTH_CLIENT_SECRET" ]; then
+            PARAM_OVERRIDES+=(
+              "GoogleClientId=$GOOGLE_OAUTH_CLIENT_ID"
+              "GoogleClientSecret=$GOOGLE_OAUTH_CLIENT_SECRET"
+            )
           fi
           if [ -n "$SIGNUP_SLACK_WEBHOOK_URL" ]; then
             PARAM_OVERRIDES+=("SignupSlackWebhookUrl=$SIGNUP_SLACK_WEBHOOK_URL")

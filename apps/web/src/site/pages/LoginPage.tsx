@@ -1,31 +1,17 @@
 import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { FormFeedback, Input } from '@olivias/ui';
+import { redirectAfterAuth } from '../../auth/redirect';
 import type { AuthSession } from '../../auth/session';
 
-function redirectAfterAuth(session: AuthSession, onNavigate: (path: string) => void) {
-  const redirectTo = new URLSearchParams(window.location.search).get('redirect');
-  if (!redirectTo) {
-    onNavigate('/');
-    return;
-  }
-
-  try {
-    const redirectOrigin = new URL(redirectTo, window.location.origin).origin;
-    const isCrossOrigin = redirectOrigin !== window.location.origin;
-    if (isCrossOrigin) {
-      const payload = btoa(JSON.stringify({
-        accessToken: session.accessToken,
-        idToken: session.idToken,
-        refreshToken: session.refreshToken,
-        expiresAt: session.expiresAt,
-      }));
-      window.location.assign(`${redirectTo}#session=${payload}`);
-    } else {
-      window.location.assign(redirectTo);
-    }
-  } catch {
-    onNavigate('/');
-  }
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="og-login-page__provider-icon">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.8-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.3 14.6 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12S6.7 21.6 12 21.6c6.9 0 9.1-4.8 9.1-7.3 0-.5 0-.8-.1-1.1H12Z" />
+      <path fill="#34A853" d="M2.4 12c0 5.3 4.3 9.6 9.6 9.6 4 0 6.6-1.3 8.8-3.6l-3.4-2.6c-.9.7-2.2 1.2-5.4 1.2-3.3 0-6-2.2-7-5.2l-2.6 2V12Z" />
+      <path fill="#4A90E2" d="M5 14.4c-.3-.8-.4-1.6-.4-2.4s.1-1.6.4-2.4l-2.6-2C1.7 9 1.3 10.4 1.3 12s.4 3 1.1 4.4l2.6-2Z" />
+      <path fill="#FBBC05" d="M12 5.8c2.3 0 3.8 1 4.7 1.8l3.4-3.3C18.6 2.9 16 2 12 2 6.7 2 2.4 6.3 2.4 11.6c0 1.6.4 3 1.1 4.4l2.6-2c1-3 3.7-5.2 7-5.2Z" />
+    </svg>
+  );
 }
 
 function isValidEmail(value: string) {
@@ -162,10 +148,12 @@ function VerificationCodeInput({
 
 export function LoginPage({
   authEnabled,
+  hostedUiEnabled,
   authSession,
   authBusy,
   authError,
   defaultMode,
+  onStartGoogleLogin,
   onSubmitLogin,
   onSubmitSignup,
   onConfirmSignup,
@@ -175,10 +163,12 @@ export function LoginPage({
   onNavigate,
 }: {
   authEnabled: boolean;
+  hostedUiEnabled: boolean;
   authSession: AuthSession | null;
   authBusy: boolean;
   authError: string | null;
   defaultMode: 'login' | 'signup';
+  onStartGoogleLogin: (mode: 'login' | 'signup') => void;
   onSubmitLogin: (email: string, password: string) => Promise<AuthSession>;
   onSubmitSignup: (
     email: string,
@@ -435,28 +425,16 @@ export function LoginPage({
                           : 'Choose a new password.'}
                 </h1>
 
-                {mode === 'signup' ? (
-                  <div className="og-login-page__benefits">
-                    <p className="og-login-page__benefits-title">With an account you can:</p>
-                    <ul className="og-login-page__benefits-list">
-                      <li>Access the Good Roots Network</li>
-                      <li>Edit your okra photo submissions instead of starting over each time.</li>
-                    </ul>
-                  </div>
-                ) : null}
-
                 {mode === 'forgot' ? (
                   <p className="og-login-page__body">
                     {forgotStep === 'request'
-                      ? 'Enter your email and we will send a verification code to reset your password.'
-                      : 'Use the code from your email and choose a new password.'}
+                      ? 'Enter your email to get a reset code.'
+                      : 'Enter the code from your email and choose a new password.'}
                   </p>
                 ) : null}
 
                 {mode === 'verify' ? (
-                  <p className="og-login-page__body">
-                    Enter the verification code we sent to your email to finish setting up your account.
-                  </p>
+                  <p className="og-login-page__body">Enter the code from your email.</p>
                 ) : null}
 
                 {mode !== 'forgot' && mode !== 'verify' ? (
@@ -608,6 +586,26 @@ export function LoginPage({
                     </button>
                   </div>
                 </form>
+
+                {mode !== 'forgot' && mode !== 'verify' && hostedUiEnabled ? (
+                  <div className="og-login-page__social" aria-label="Social sign-in options">
+                    <div className="og-login-page__divider">
+                      <span>Or sign in with</span>
+                    </div>
+                    <div className="og-login-page__provider-row">
+                      <button
+                        type="button"
+                        className="og-login-page__provider-button"
+                        onClick={() => onStartGoogleLogin(mode === 'signup' ? 'signup' : 'login')}
+                        disabled={authBusy}
+                        aria-label="Continue with Google"
+                        title="Continue with Google"
+                      >
+                        <GoogleIcon />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="og-login-page__footer">
                   {mode === 'verify' ? (

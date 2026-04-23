@@ -9,6 +9,7 @@ import {
   restoreAuthSession,
   signInWithPassword,
   signOut,
+  startHostedLogin,
   signUpWithPassword,
 } from './auth/cognito';
 import type { AuthSession } from './auth/session';
@@ -16,16 +17,19 @@ import { SiteFooter, SiteHeader } from './site/chrome';
 import { webApiBase } from './site/routes';
 import { useRouteSeo } from './site/seo';
 import { LoginPage } from './site/pages/LoginPage';
+import { readRedirectTargetFromSearch } from './auth/redirect';
 import {
   AboutPage,
-  AuthCallbackPage,
   ContactPage,
   GetInvolvedPage,
   GoodRootsPage,
   HomePage,
   ImpactPage,
   OkraPage,
+  PrivacyPolicyPage,
+  TermsOfServicePage,
 } from './site/pages/content-pages';
+import { AuthCallbackPage } from './site/pages/AuthCallbackPage';
 import { getRouteByPath } from './site/routes';
 import { usePathname } from './site/usePathname';
 
@@ -234,6 +238,24 @@ function App() {
     signOut(authConfig);
   };
 
+  const handleAuthSuccess = (session: AuthSession) => {
+    setAuthSession(session);
+    setAuthError(null);
+  };
+
+  const handleGoogleLogin = (mode: 'login' | 'signup') => {
+    if (!authConfig.hostedUiEnabled) {
+      setAuthError('Google sign-in is not configured for this environment yet.');
+      return;
+    }
+
+    setAuthError(null);
+    startHostedLogin(authConfig, 'Google', {
+      mode,
+      redirectTo: readRedirectTargetFromSearch(),
+    });
+  };
+
   const routeFallback = <div className="page-section"><p className="page-text">Loading page...</p></div>;
 
   return (
@@ -251,16 +273,28 @@ function App() {
       <main className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}>
         <Routes>
           <Route path="/" element={<HomePage onNavigate={navigate} />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route
+            path="/auth/callback"
+            element={
+              <AuthCallbackPage
+                authConfig={authConfig}
+                authEnabled={authConfig.enabled}
+                onAuthSuccess={handleAuthSuccess}
+                onNavigate={navigate}
+              />
+            }
+          />
           <Route
             path="/login"
             element={
               <LoginPage
                 authEnabled={authConfig.enabled}
+                hostedUiEnabled={authConfig.hostedUiEnabled}
                 authSession={authSession}
                 authBusy={authBusy || !authReady}
                 authError={authError}
                 defaultMode={loginModePreference}
+                onStartGoogleLogin={handleGoogleLogin}
                 onSubmitLogin={submitLogin}
                 onSubmitSignup={submitSignup}
                 onConfirmSignup={submitSignUpConfirmation}
@@ -308,6 +342,8 @@ function App() {
             }
           />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           <Route
             path="/good-roots"
             element={<GoodRootsPage authSession={authSession} onNavigate={navigate} />}
