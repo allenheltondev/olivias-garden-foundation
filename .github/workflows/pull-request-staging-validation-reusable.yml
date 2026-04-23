@@ -185,6 +185,7 @@ jobs:
     outputs:
       api-url: ${{ steps.get-outputs.outputs.api-url }}
       admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
+      ci-auth-token-function: ${{ steps.get-outputs.outputs.ci-auth-token-function }}
 
     steps:
       - name: Checkout code
@@ -269,8 +270,15 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='AdminApiUrl'].OutputValue" \
             --output text)
 
+          OKRA_CI_AUTH_TOKEN_FUNCTION=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.OKRA_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='CiAuthTokenFunctionName'].OutputValue" \
+            --output text)
+
           echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
           echo "admin-api-url=$OKRA_ADMIN_API_URL" >> $GITHUB_OUTPUT
+          echo "ci-auth-token-function=$OKRA_CI_AUTH_TOKEN_FUNCTION" >> $GITHUB_OUTPUT
 
   deploy-staging-backend:
     name: Deploy GRN Staging Backend
@@ -914,6 +922,156 @@ jobs:
             --env-var "growerAuthToken=${{ steps.ci-auth.outputs.pro-auth-token }}" \
             --env-var "gathererAuthToken=${{ steps.ci-auth.outputs.gatherer-auth-token }}"
 
+  okra-api-integration:
+    name: Okra API Integration (Staging)
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-okra]
+    if: inputs.shared_all == 'true' || inputs.okra_backend == 'true'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Okra-Integration-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install okra-api dependencies
+        run: npm ci --workspace services/okra-api --include-workspace-root=false --ignore-scripts
+
+      - name: Mint CI admin token
+        id: admin-token
+        env:
+          CI_AUTH_TOKEN_FUNCTION: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
+        run: |
+          if [ -z "$CI_AUTH_TOKEN_FUNCTION" ] || [ "$CI_AUTH_TOKEN_FUNCTION" = "None" ]; then
+            echo "CiAuthTokenFunctionName output missing from okra stack."
+            exit 1
+          fi
+
+          aws lambda invoke \
+            --function-name "$CI_AUTH_TOKEN_FUNCTION" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-admin-token-response.json > /dev/null
+
+          TOKEN=$(jq -r '.accessToken // empty' ci-admin-token-response.json)
+          if [ -z "$TOKEN" ]; then
+            echo "No accessToken in response:"
+            cat ci-admin-token-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "admin-token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Run okra-api integration tests
+        env:
+          API_BASE_URL: ${{ needs.deploy-staging-okra.outputs.api-url }}
+          ADMIN_API_BASE_URL: ${{ needs.deploy-staging-okra.outputs.admin-api-url }}
+          ADMIN_TOKEN: ${{ steps.admin-token.outputs.admin-token }}
+          DATABASE_URL: ${{ secrets.database_url_staging }}
+        run: npm --workspace services/okra-api run test:integration
+
+  admin-api-integration:
+    name: Admin API Integration (Staging)
+    runs-on: ubuntu-latest
+    needs: [deploy-staging-okra, deploy-staging-admin-backend]
+    if: |
+      always() && !cancelled()
+      && (inputs.shared_all == 'true' || inputs.admin_backend == 'true')
+      && needs.deploy-staging-admin-backend.result == 'success'
+      && (needs.deploy-staging-okra.result == 'success' || needs.deploy-staging-okra.result == 'skipped')
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      OKRA_STACK_NAME: ogf-okra-staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Admin-Integration-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install admin-api dependencies
+        run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
+
+      - name: Resolve okra CI auth function
+        id: okra-ci-auth-function
+        env:
+          UPSTREAM: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
+        run: |
+          # If deploy-staging-okra ran, use its output. Otherwise pull the function
+          # name straight from the pre-existing CloudFormation stack.
+          if [ -n "$UPSTREAM" ] && [ "$UPSTREAM" != "None" ]; then
+            echo "function-name=$UPSTREAM" >> "$GITHUB_OUTPUT"
+          else
+            FUNCTION_NAME=$(aws cloudformation describe-stacks \
+              --stack-name "${{ env.OKRA_STACK_NAME }}" \
+              --region "${{ env.AWS_REGION }}" \
+              --query "Stacks[0].Outputs[?OutputKey=='CiAuthTokenFunctionName'].OutputValue" \
+              --output text)
+            if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+              echo "Could not resolve CiAuthTokenFunctionName from okra stack."
+              exit 1
+            fi
+            echo "function-name=$FUNCTION_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mint CI admin token
+        id: admin-token
+        env:
+          CI_AUTH_TOKEN_FUNCTION: ${{ steps.okra-ci-auth-function.outputs.function-name }}
+        run: |
+          aws lambda invoke \
+            --function-name "$CI_AUTH_TOKEN_FUNCTION" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-admin-token-response.json > /dev/null
+
+          TOKEN=$(jq -r '.accessToken // empty' ci-admin-token-response.json)
+          if [ -z "$TOKEN" ]; then
+            echo "No accessToken in response:"
+            cat ci-admin-token-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "admin-token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Run admin-api integration tests
+        env:
+          ADMIN_API_BASE_URL: ${{ needs.deploy-staging-admin-backend.outputs.api-url }}
+          ADMIN_TOKEN: ${{ steps.admin-token.outputs.admin-token }}
+        run: npm --workspace services/admin-api run test:integration
+
   staging-validation-summary:
     name: Shared Staging Validation Summary
     runs-on: ubuntu-latest
@@ -927,6 +1085,8 @@ jobs:
       - staging-public-api-smoke
       - postman-public-smoke
       - postman-api-tests
+      - okra-api-integration
+      - admin-api-integration
     if: always()
 
     steps:
@@ -950,5 +1110,7 @@ jobs:
           check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
           check_result "postman-public-smoke" "${{ needs.postman-public-smoke.result }}"
           check_result "postman-api-tests" "${{ needs.postman-api-tests.result }}"
+          check_result "okra-api-integration" "${{ needs.okra-api-integration.result }}"
+          check_result "admin-api-integration" "${{ needs.admin-api-integration.result }}"
 
           echo "Shared staging validation passed"
