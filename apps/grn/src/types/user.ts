@@ -18,6 +18,8 @@ export interface GrowerProfile {
   lat?: number;
   lng?: number;
   shareRadiusMiles: number;
+  isOrganization: boolean;
+  organizationName?: string;
   units: 'metric' | 'imperial';
   locale: string;
   createdAt?: string;

@@ -78,6 +78,56 @@ describe('GrowerWizard', () => {
           homeZone: '8a',
           address: '123 Main St, Springfield, IL',
           shareRadiusMiles: 5,
+          isOrganization: false,
+        })
+      );
+    });
+  });
+
+  it('requires organization name for organization growers', async () => {
+    render(<GrowerWizard onComplete={mockOnComplete} />);
+
+    fireEvent.change(screen.getByLabelText(/Address/i), {
+      target: { value: '123 Main St, Springfield, IL' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    fireEvent.change(await screen.findByLabelText(/USDA Hardiness Zone/i), {
+      target: { value: '8a' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    fireEvent.click(screen.getByLabelText(/We are growing as an organization/i));
+    fireEvent.click(await screen.findByRole('button', { name: /complete setup/i }));
+
+    expect(await screen.findByText('Organization name is required')).toBeInTheDocument();
+    expect(mockOnComplete).not.toHaveBeenCalled();
+  });
+
+  it('submits organization grower data', async () => {
+    render(<GrowerWizard onComplete={mockOnComplete} />);
+
+    fireEvent.change(screen.getByLabelText(/Address/i), {
+      target: { value: '800 Community Garden Way, Austin, TX 78701' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    fireEvent.change(await screen.findByLabelText(/USDA Hardiness Zone/i), {
+      target: { value: '8a' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+
+    fireEvent.click(screen.getByLabelText(/We are growing as an organization/i));
+    fireEvent.change(screen.getByLabelText(/Organization name/i), {
+      target: { value: 'North Austin Community Garden' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /complete setup/i }));
+
+    await waitFor(() => {
+      expect(mockOnComplete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isOrganization: true,
+          organizationName: 'North Austin Community Garden',
         })
       );
     });

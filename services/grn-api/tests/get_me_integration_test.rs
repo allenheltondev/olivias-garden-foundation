@@ -30,6 +30,8 @@ mod get_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusKm": "5.0",
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             },
@@ -62,6 +64,8 @@ mod get_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusKm": "5.0",
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             },
@@ -82,6 +86,8 @@ mod get_me_tests {
         assert!(grower_profile.get("lat").is_some());
         assert!(grower_profile.get("lng").is_some());
         assert!(grower_profile.get("shareRadiusKm").is_some());
+        assert!(grower_profile.get("isOrganization").is_some());
+        assert!(grower_profile.get("organizationName").is_some());
         assert!(grower_profile.get("units").is_some());
         assert!(grower_profile.get("locale").is_some());
     }
@@ -202,6 +208,8 @@ mod get_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusKm": "5.0",
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             },
@@ -253,6 +261,40 @@ mod get_me_tests {
         assert_eq!(
             gatherer_profile["organizationAffiliation"],
             "Community Food Bank"
+        );
+    }
+
+    #[test]
+    fn test_grower_with_organization_profile() {
+        let grower_with_org = json!({
+            "id": "550e8400-e29b-41d4-a716-446655440006",
+            "email": "garden@example.com",
+            "displayName": "Neighborhood Garden",
+            "isVerified": false,
+            "userType": "grower",
+            "onboardingCompleted": true,
+            "createdAt": "2024-01-01T00:00:00Z",
+            "growerProfile": {
+                "homeZone": "8a",
+                "address": "800 Community Garden Way, Austin, TX 78701",
+                "geoKey": "9q8yy9m",
+                "lat": 30.2672,
+                "lng": -97.7431,
+                "shareRadiusKm": "12.0",
+                "isOrganization": true,
+                "organizationName": "North Austin Community Garden",
+                "units": "imperial",
+                "locale": "en-US"
+            },
+            "gathererProfile": null,
+            "ratingSummary": null
+        });
+
+        let grower_profile = &grower_with_org["growerProfile"];
+        assert_eq!(grower_profile["isOrganization"], true);
+        assert_eq!(
+            grower_profile["organizationName"],
+            "North Austin Community Garden"
         );
     }
 

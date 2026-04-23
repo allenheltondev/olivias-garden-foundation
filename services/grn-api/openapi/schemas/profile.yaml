@@ -132,6 +132,11 @@ GrowerProfile:
       nullable: true
     shareRadiusMiles:
       type: string
+    isOrganization:
+      type: boolean
+    organizationName:
+      type: string
+      nullable: true
     units:
       type: string
       enum: [imperial, metric]
@@ -151,6 +156,12 @@ GrowerProfileInput:
       type: number
       format: double
       exclusiveMinimum: 0
+    isOrganization:
+      type: boolean
+      default: false
+    organizationName:
+      type: string
+      nullable: true
     units:
       type: string
       enum: [imperial, metric]

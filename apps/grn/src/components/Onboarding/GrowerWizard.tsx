@@ -14,6 +14,8 @@ interface FormData {
   homeZone: string;
   address: string;
   shareRadiusMiles: number;
+  isOrganization: boolean;
+  organizationName: string;
   units: 'metric' | 'imperial';
   locale: string;
 }
@@ -22,6 +24,7 @@ interface ValidationErrors {
   homeZone?: string;
   location?: string;
   shareRadiusMiles?: string;
+  organizationName?: string;
 }
 
 async function reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
@@ -63,6 +66,8 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
     homeZone: '',
     address: '',
     shareRadiusMiles: 5,
+    isOrganization: false,
+    organizationName: '',
     units: 'imperial',
     locale: navigator.language || 'en-US',
   });
@@ -164,6 +169,10 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
       newErrors.shareRadiusMiles = 'Share radius must be 100 or less';
     }
 
+    if (formData.isOrganization && !formData.organizationName.trim()) {
+      newErrors.organizationName = 'Organization name is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -208,6 +217,8 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
         homeZone: formData.homeZone.trim(),
         address: formData.address.trim(),
         shareRadiusMiles: formData.shareRadiusMiles,
+        isOrganization: formData.isOrganization,
+        organizationName: formData.organizationName.trim() || undefined,
         units: formData.units,
         locale: formData.locale,
       };
@@ -342,6 +353,55 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
             </div>
 
             <div className="space-y-4">
+              <div className="rounded-base border border-neutral-200 bg-white p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.isOrganization}
+                    onChange={(e) => {
+                      const isOrganization = e.target.checked;
+                      setFormData((prev) => ({
+                        ...prev,
+                        isOrganization,
+                        organizationName: isOrganization ? prev.organizationName : '',
+                      }));
+                      if (errors.organizationName) {
+                        setErrors((prev) => ({ ...prev, organizationName: undefined }));
+                      }
+                    }}
+                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-neutral-900">
+                      We are growing as an organization
+                    </span>
+                    <span className="block text-sm text-neutral-600">
+                      Use this for community gardens, schools, churches, food pantries, and other groups sharing surplus together.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              {formData.isOrganization && (
+                <Input
+                  label="Organization name"
+                  type="text"
+                  value={formData.organizationName}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      organizationName: e.target.value,
+                    }));
+                    if (errors.organizationName) {
+                      setErrors((prev) => ({ ...prev, organizationName: undefined }));
+                    }
+                  }}
+                  placeholder="North Austin Community Garden"
+                  error={errors.organizationName}
+                  required
+                />
+              )}
+
               <div>
                 <label className="text-sm font-medium text-neutral-700 mb-2 block">
                   Share Radius

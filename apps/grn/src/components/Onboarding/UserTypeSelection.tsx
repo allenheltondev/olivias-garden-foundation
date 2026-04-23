@@ -115,7 +115,7 @@ export function UserTypeSelection({ onSelect }: UserTypeSelectionProps) {
               {/* Description */}
               <p className="text-neutral-600 text-sm leading-relaxed">
                 I grow food and want to share my surplus with the community.
-                I'll post what's available from my garden.
+                This can be my own garden or a shared organization plot.
               </p>
 
               {/* Selected Indicator */}

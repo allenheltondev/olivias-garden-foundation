@@ -53,6 +53,8 @@ mod put_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusMiles": 5.0,
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             }
@@ -66,6 +68,8 @@ mod put_me_tests {
         assert_eq!(profile["lat"], 37.7749);
         assert_eq!(profile["lng"], -122.4194);
         assert_eq!(profile["shareRadiusMiles"], 5.0);
+        assert_eq!(profile["isOrganization"], false);
+        assert!(profile["organizationName"].is_null());
         assert_eq!(profile["units"], "imperial");
         assert_eq!(profile["locale"], "en-US");
 
@@ -83,6 +87,8 @@ mod put_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusMiles": "5.0",
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             },
@@ -218,6 +224,8 @@ mod put_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusMiles": 5.0,
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             }
@@ -237,6 +245,8 @@ mod put_me_tests {
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "shareRadiusMiles": "5.0",
+                "isOrganization": false,
+                "organizationName": null,
                 "units": "imperial",
                 "locale": "en-US"
             },
@@ -265,6 +275,49 @@ mod put_me_tests {
 
         let profile = &invalid_request["growerProfile"];
         assert!(profile["shareRadiusMiles"].as_f64().unwrap() < 0.0);
+    }
+
+    #[test]
+    fn test_org_grower_profile_upsert() {
+        let grower_profile_request = json!({
+            "userType": "grower",
+            "growerProfile": {
+                "homeZone": "8a",
+                "address": "800 Community Garden Way, Austin, TX 78701",
+                "shareRadiusMiles": 12.0,
+                "isOrganization": true,
+                "organizationName": "North Austin Community Garden",
+                "units": "imperial",
+                "locale": "en-US"
+            }
+        });
+
+        let profile = &grower_profile_request["growerProfile"];
+        assert_eq!(profile["isOrganization"], true);
+        assert_eq!(profile["organizationName"], "North Austin Community Garden");
+
+        let expected_response = json!({
+            "userType": "grower",
+            "onboardingCompleted": true,
+            "growerProfile": {
+                "homeZone": "8a",
+                "address": "800 Community Garden Way, Austin, TX 78701",
+                "geoKey": "9q8yy9m",
+                "lat": 30.2672,
+                "lng": -97.7431,
+                "shareRadiusMiles": "12.0",
+                "isOrganization": true,
+                "organizationName": "North Austin Community Garden",
+                "units": "imperial",
+                "locale": "en-US"
+            }
+        });
+
+        assert_eq!(expected_response["growerProfile"]["isOrganization"], true);
+        assert_eq!(
+            expected_response["growerProfile"]["organizationName"],
+            "North Austin Community Garden"
+        );
     }
 
     #[test]

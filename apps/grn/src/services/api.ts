@@ -147,6 +147,8 @@ export interface UpdateUserProfileRequest {
     homeZone: string;
     address: string;
     shareRadiusMiles: number;
+    isOrganization?: boolean;
+    organizationName?: string;
     units: GrowerProfile['units'];
     locale: string;
   };
