@@ -267,6 +267,9 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/admin-api.handler
+      Environment:
+        Variables:
+          SEED_REQUESTS_TABLE_NAME: !Ref SeedRequestsTable
       Policies:
         - Version: '2012-10-17'
           Statement:
@@ -280,6 +283,19 @@ Resources:
               Action:
                 - events:PutEvents
               Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:UpdateItem
+              Resource:
+                - !GetAtt SeedRequestsTable.Arn
+                - !Sub '${SeedRequestsTable.Arn}/index/*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:DescribeUserPool
+              Resource: !Sub
+                - 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
+                - UserPoolId: !ImportValue OGF-UserPoolId
       Events:
         AdminApiProxy:
           Type: Api
@@ -331,6 +347,15 @@ Resources:
       Stage: api
       BasePath: okra
 
+  SharedAdminApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeploySharedApiBasePathMapping
+    Properties:
+      DomainName: !Sub 'api.${DomainName}'
+      RestApiId: !Ref AdminApiGateway
+      Stage: admin
+      BasePath: okra-admin
+
   AdminUserPoolGroup:
     Type: AWS::Cognito::UserPoolGroup
     Properties:
@@ -379,7 +404,12 @@ Outputs:
       - !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/api'
   AdminApiUrl:
     Description: Base URL for the Admin API
-    Value: !Sub 'https://${AdminApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+    Value: !If
+      - DeploySharedApiBasePathMapping
+      - !Sub
+        - 'https://api.${RootDomainName}/okra-admin'
+        - RootDomainName: !Ref DomainName
+      - !Sub 'https://${AdminApiGateway}.execute-api.${AWS::Region}.amazonaws.com/admin'
   PhotoProcessingEventBusName:
     Description: EventBridge bus used for claimed-photo processing events
     Value: default
