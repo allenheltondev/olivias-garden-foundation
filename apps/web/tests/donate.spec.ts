@@ -1,5 +1,60 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Frame, type Locator, type Page } from '@playwright/test';
 import { gotoAndWait, trackBrowserErrors } from './test-helpers';
+
+async function getEmbeddedCheckoutFrame(page: Page) {
+  await expect(page.locator('iframe[title="Embedded checkout"]')).toBeVisible({ timeout: 30000 });
+
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    const frame = page.frames().find((candidate) => candidate.name() === 'embedded-checkout');
+    if (frame) {
+      return frame;
+    }
+    await page.waitForTimeout(250);
+  }
+
+  throw new Error('Timed out finding Stripe embedded checkout frame');
+}
+
+function isDescendantFrame(frame: Frame, ancestor: Frame) {
+  let current: Frame | null = frame;
+  while (current) {
+    if (current === ancestor) {
+      return true;
+    }
+    current = current.parentFrame();
+  }
+  return false;
+}
+
+async function waitForEmbeddedCheckoutLocator(
+  page: Page,
+  embeddedFrame: Frame,
+  locatorFactory: (scope: Frame) => Locator,
+  description: string,
+  timeoutMs = 30000,
+) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const candidateFrames = page.frames().filter((frame) => isDescendantFrame(frame, embeddedFrame));
+
+    for (const frame of candidateFrames) {
+      try {
+        const locator = locatorFactory(frame).first();
+        if (await locator.count()) {
+          return locator;
+        }
+      } catch {
+        // Stripe can re-render frames during mount; keep scanning.
+      }
+    }
+
+    await page.waitForTimeout(250);
+  }
+
+  throw new Error(`Timed out finding Stripe element: ${description}`);
+}
 
 test.describe('donation flow', () => {
   test('donate flow completes a real Stripe test checkout from staging', async ({ page, baseURL }) => {
@@ -31,18 +86,61 @@ test.describe('donation flow', () => {
       timeout: 30000,
     });
 
+    const embeddedFrame = await getEmbeddedCheckoutFrame(page);
     const checkout = page.frameLocator('iframe[title="Embedded checkout"]');
     await expect(checkout.getByText(/Payment method/i)).toBeVisible({ timeout: 30000 });
 
-    await checkout.locator('input[name="email"]').fill(donorEmail);
+    await (await waitForEmbeddedCheckoutLocator(
+      page,
+      embeddedFrame,
+      (scope) => scope.locator('input[name="email"]'),
+      'email input',
+    )).fill(donorEmail);
+
     await checkout.getByRole('radio', { name: /^Card$/i }).check();
 
     await expect(checkout.getByText(/Card information/i)).toBeVisible({ timeout: 30000 });
-    await checkout.locator('input[name="cardNumber"]').fill('4242 4242 4242 4242');
-    await checkout.locator('input[name="cardExpiry"]').fill('12 / 34');
-    await checkout.locator('input[name="cardCvc"]').fill('123');
-    await checkout.locator('input[name="billingName"]').fill(`Playwright Stage Donor ${runId}`);
-    await checkout.locator('input[name="billingPostalCode"]').fill('75069');
+    await (await waitForEmbeddedCheckoutLocator(
+      page,
+      embeddedFrame,
+      (scope) => scope.locator('input[name="cardNumber"]'),
+      'card number input',
+      60000,
+    )).fill('4242 4242 4242 4242');
+    await (await waitForEmbeddedCheckoutLocator(
+      page,
+      embeddedFrame,
+      (scope) => scope.locator('input[name="cardExpiry"]'),
+      'card expiry input',
+      60000,
+    )).fill('12 / 34');
+    await (await waitForEmbeddedCheckoutLocator(
+      page,
+      embeddedFrame,
+      (scope) => scope.locator('input[name="cardCvc"]'),
+      'card cvc input',
+      60000,
+    )).fill('123');
+    await (await waitForEmbeddedCheckoutLocator(
+      page,
+      embeddedFrame,
+      (scope) => scope.locator('input[name="billingName"]'),
+      'billing name input',
+      60000,
+    )).fill(`Playwright Stage Donor ${runId}`);
+    await (await waitForEmbeddedCheckoutLocator(
+      page,
+      embeddedFrame,
+      (scope) => scope.locator('input[name="billingPostalCode"]'),
+      'billing postal code input',
+      60000,
+    )).fill('75069');
+
+    const saveInfoCheckbox = checkout.getByRole('checkbox', { name: /Save my information for faster checkout/i });
+    await expect(saveInfoCheckbox).toBeVisible({ timeout: 30000 });
+    if (await saveInfoCheckbox.isChecked()) {
+      await saveInfoCheckbox.uncheck();
+    }
 
     const donateButton = checkout.locator('button[data-testid="hosted-payment-submit-button"]');
     await expect(donateButton).toBeEnabled({ timeout: 30000 });

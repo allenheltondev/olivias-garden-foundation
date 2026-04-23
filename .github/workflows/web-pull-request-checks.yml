@@ -286,7 +286,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy.outputs.web-app-url }}
           PLAYWRIGHT_CAPTURE_PR_SCREENSHOTS: 'true'
           PLAYWRIGHT_PR_SCREENSHOT_DIR: test-results/pr-screenshots
-        run: npm run test:e2e -- tests/pr-screenshots.spec.ts --workers=1
+        run: npm run test:e2e -- tests/pr-screenshots.spec.ts --workers=1 --output=test-results/pr-screenshot-run
 
       - name: Publish PR screenshots to S3 and generate 7-day links
         if: always()
