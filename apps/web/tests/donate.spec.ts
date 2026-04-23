@@ -2,11 +2,18 @@ import { expect, test, type Page } from '@playwright/test';
 import { gotoAndWait, trackBrowserErrors } from './test-helpers';
 
 async function fillStripeField(page: Page, label: RegExp, value: string) {
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 60000;
 
   while (Date.now() < deadline) {
+    if (page.isClosed()) {
+      throw new Error(`Page closed while waiting for Stripe field ${label}`);
+    }
+
     for (const frame of page.frames()) {
       try {
+        if (!frame.url().includes('js.stripe.com')) {
+          continue;
+        }
         const field = frame.getByLabel(label).first();
         if (await field.count()) {
           await field.fill(value);
@@ -24,11 +31,18 @@ async function fillStripeField(page: Page, label: RegExp, value: string) {
 }
 
 async function clickStripePayButton(page: Page) {
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 60000;
 
   while (Date.now() < deadline) {
+    if (page.isClosed()) {
+      throw new Error('Page closed while waiting for Stripe pay button');
+    }
+
     for (const frame of page.frames()) {
       try {
+        if (!frame.url().includes('js.stripe.com')) {
+          continue;
+        }
         const button = frame.getByRole('button', { name: /pay|donate|subscribe/i }).last();
         if (await button.count()) {
           await expect(button).toBeEnabled({ timeout: 5000 });
@@ -48,6 +62,7 @@ async function clickStripePayButton(page: Page) {
 
 test.describe('donation flow', () => {
   test('donate flow completes a real Stripe test checkout from staging', async ({ page, baseURL }) => {
+    test.setTimeout(120000);
     expect(baseURL).toBeTruthy();
 
     const assertNoBrowserErrors = trackBrowserErrors(page);
