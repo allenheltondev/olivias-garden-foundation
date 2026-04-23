@@ -1,5 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { Transformer } from '@napi-rs/image';
+import { transformToWebpPair } from '../vendor/image-processing/index.mjs';
 import { createDbClient } from '../../scripts/db-client.mjs';
 
 function getRegion() {
@@ -48,11 +48,12 @@ async function processPhoto(photoId) {
     );
 
     const originalBytes = await streamToBuffer(originalObj.Body);
-    const transformer = new Transformer(originalBytes);
-    const metadata = await transformer.metadata(true);
-
-    const normalized = await new Transformer(originalBytes).rotate().resize(1600, 1600).webp(82);
-    const thumbnail = await new Transformer(originalBytes).rotate().resize(320, 320).webp(75);
+    const { metadata, main: normalized, thumbnail } = await transformToWebpPair(originalBytes, {
+      mainSize: 1600,
+      mainQuality: 82,
+      thumbnailSize: 320,
+      thumbnailQuality: 75
+    });
 
     const normalizedKey = `submissions/${photo.submission_id}/${photo.id}/normalized.webp`;
     const thumbnailKey = `submissions/${photo.submission_id}/${photo.id}/thumbnail.webp`;

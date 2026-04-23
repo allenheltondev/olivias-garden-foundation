@@ -247,11 +247,27 @@ type EditableProfile = {
   websiteUrl: string;
 };
 
-function toEditable(profile: ProfileResponse | null): EditableProfile {
+function toEditable(
+  profile: ProfileResponse | null,
+  authSession: AuthSession | null,
+): EditableProfile {
+  // A profile that has never been saved lets us prefill from the Cognito
+  // registration claims; once the user saves the form, we stop overriding.
+  const neverSaved = Boolean(profile) && !profile?.profileUpdatedAt;
+  const sessionFirst = authSession?.user.firstName?.trim() ?? '';
+  const sessionLast = authSession?.user.lastName?.trim() ?? '';
+
+  const firstName = profile?.firstName ?? (neverSaved ? sessionFirst : '');
+  const lastName = profile?.lastName ?? (neverSaved ? sessionLast : '');
+
+  const displayName = neverSaved
+    ? `${firstName}${lastName}`
+    : profile?.displayName ?? '';
+
   return {
-    firstName: profile?.firstName ?? '',
-    lastName: profile?.lastName ?? '',
-    displayName: profile?.displayName ?? '',
+    firstName,
+    lastName,
+    displayName,
     bio: profile?.bio ?? '',
     city: profile?.city ?? '',
     region: profile?.region ?? '',
@@ -261,14 +277,19 @@ function toEditable(profile: ProfileResponse | null): EditableProfile {
   };
 }
 
+const AVATAR_POLL_INTERVAL_MS = 3000;
+const AVATAR_POLL_MAX_ATTEMPTS = 20; // ~60 seconds total
+
 export function ProfilePage({
   authSession,
   authReady,
   onNavigate,
+  onAvatarUrlChange,
 }: {
   authSession: AuthSession | null;
   authReady: boolean;
   onNavigate: (path: string) => void;
+  onAvatarUrlChange?: (url: string | null) => void;
 }) {
   useEffect(() => {
     if (authReady && !authSession) {
@@ -277,8 +298,9 @@ export function ProfilePage({
   }, [authReady, authSession, onNavigate]);
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
-  const [form, setForm] = useState<EditableProfile>(toEditable(null));
+  const [form, setForm] = useState<EditableProfile>(() => toEditable(null, null));
   const [isLoading, setIsLoading] = useState(true);
+  const [avatarPollTimedOut, setAvatarPollTimedOut] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -306,7 +328,8 @@ export function ProfilePage({
       .then((data) => {
         if (cancelled) return;
         setProfile(data);
-        setForm(toEditable(data));
+        setForm(toEditable(data, authSession));
+        onAvatarUrlChange?.(data.avatarThumbnailUrl ?? data.avatarUrl ?? null);
       })
       .catch((error: Error) => {
         if (cancelled) return;
@@ -402,7 +425,7 @@ export function ProfilePage({
 
       const saved = await saveProfile(authSession, payload);
       setProfile(saved);
-      setForm(toEditable(saved));
+      setForm(toEditable(saved, authSession));
       setSaveSuccess(true);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Unable to save your profile.');
@@ -426,6 +449,7 @@ export function ProfilePage({
     }
 
     setAvatarError(null);
+    setAvatarPollTimedOut(false);
     setAvatarUploading(true);
 
     try {
@@ -434,6 +458,7 @@ export function ProfilePage({
       await completeAvatarUpload(authSession);
       const refreshed = await fetchProfile(authSession);
       setProfile(refreshed);
+      onAvatarUrlChange?.(refreshed.avatarThumbnailUrl ?? refreshed.avatarUrl ?? null);
     } catch (error) {
       setAvatarError(error instanceof Error ? error.message : 'Unable to upload avatar.');
     } finally {
@@ -441,29 +466,51 @@ export function ProfilePage({
     }
   };
 
+  const refreshAvatarManually = async () => {
+    if (!authSession) return;
+    setAvatarPollTimedOut(false);
+    try {
+      const fresh = await fetchProfile(authSession);
+      setProfile(fresh);
+      onAvatarUrlChange?.(fresh.avatarThumbnailUrl ?? fresh.avatarUrl ?? null);
+    } catch {
+      // Ignore; the user can try again.
+    }
+  };
+
   // Poll profile while the avatar is processing so the UI picks up the final URL.
+  // Cap attempts so a stuck backend doesn't leave the UI spinning forever.
   useEffect(() => {
     if (!authSession || profile?.avatarStatus !== 'processing') return;
 
     let cancelled = false;
+    let attempts = 0;
     const interval = window.setInterval(async () => {
+      attempts += 1;
       try {
         const fresh = await fetchProfile(authSession);
         if (cancelled) return;
         setProfile(fresh);
         if (fresh.avatarStatus !== 'processing') {
           window.clearInterval(interval);
+          onAvatarUrlChange?.(fresh.avatarThumbnailUrl ?? fresh.avatarUrl ?? null);
+          return;
         }
       } catch {
         // Keep polling; transient failures are fine.
       }
-    }, 3000);
+
+      if (attempts >= AVATAR_POLL_MAX_ATTEMPTS && !cancelled) {
+        window.clearInterval(interval);
+        setAvatarPollTimedOut(true);
+      }
+    }, AVATAR_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [authSession, profile?.avatarStatus]);
+  }, [authSession, profile?.avatarStatus, onAvatarUrlChange]);
 
   if (!authSession) {
     return (
@@ -491,9 +538,9 @@ export function ProfilePage({
 
       <Section title="Your details" intro="These fields appear anywhere we show your name — seed requests, submissions, and Garden Club.">
         {isLoading ? (
-          <p className="page-text">Loading your profile…</p>
+          <ProfileFormSkeleton />
         ) : loadError ? (
-          <p className="profile-error" role="alert">{loadError}</p>
+          <FormFeedback tone="error">{loadError}</FormFeedback>
         ) : (
           <Panel tone="paper" className="profile-form-panel">
             <form className="profile-form" onSubmit={handleSubmit}>
@@ -533,6 +580,15 @@ export function ProfilePage({
                     <FormFeedback tone="error">Avatar failed: {profile.avatarProcessingError}</FormFeedback>
                   ) : null}
                   {avatarError ? <FormFeedback tone="error">{avatarError}</FormFeedback> : null}
+                  {avatarPollTimedOut && profile?.avatarStatus === 'processing' ? (
+                    <FormFeedback tone="info">
+                      Still processing your photo. This usually takes under a minute.{' '}
+                      <button type="button" className="profile-link-button" onClick={() => void refreshAvatarManually()}>
+                        Check again
+                      </button>
+                      {' '}or try uploading a different image.
+                    </FormFeedback>
+                  ) : null}
                 </div>
               </div>
 
@@ -660,6 +716,34 @@ export function ProfilePage({
         )}
       </Section>
     </>
+  );
+}
+
+function ProfileFormSkeleton() {
+  return (
+    <Panel tone="paper" className="profile-form-panel" aria-busy="true" aria-label="Loading your profile">
+      <div className="profile-form profile-form--skeleton">
+        <div className="profile-form__avatar-row">
+          <div className="profile-skeleton profile-skeleton--avatar" />
+          <div className="profile-skeleton__stack">
+            <div className="profile-skeleton profile-skeleton--button" />
+            <div className="profile-skeleton profile-skeleton--hint" />
+          </div>
+        </div>
+        <div className="profile-form__grid">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="profile-skeleton__field">
+              <div className="profile-skeleton profile-skeleton--label" />
+              <div className="profile-skeleton profile-skeleton--input" />
+            </div>
+          ))}
+          <div className="profile-skeleton__field profile-form__field--wide">
+            <div className="profile-skeleton profile-skeleton--label" />
+            <div className="profile-skeleton profile-skeleton--textarea" />
+          </div>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
