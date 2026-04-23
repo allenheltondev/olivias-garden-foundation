@@ -92,7 +92,9 @@ test.describe('donation flow', () => {
 
     const cardButton = checkout.locator('button[data-testid="card-accordion-item-button"]');
     await cardButton.waitFor({ state: 'attached', timeout: 30000 });
-    await cardButton.click({ force: true });
+    await cardButton.evaluate((element: HTMLButtonElement) => {
+      element.click();
+    });
 
     await expect(checkout.getByText(/Card information/i)).toBeVisible({ timeout: 30000 });
     await (await waitForEmbeddedCheckoutLocator(
