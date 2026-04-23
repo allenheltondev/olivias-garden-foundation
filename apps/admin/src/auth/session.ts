@@ -4,6 +4,7 @@ import { readRoleFromClaims } from '@olivias/auth';
 export interface AdminSession {
   accessToken: string;
   email: string | null;
+  displayName: string | null;
   isAdmin: boolean;
 }
 
@@ -58,10 +59,19 @@ export async function loadAdminSession(): Promise<AdminSession | null> {
           : typeof tokens.idPayload.email === 'string'
             ? (tokens.idPayload.email as string)
             : null;
+    const displayName =
+      typeof tokens.idPayload.name === 'string'
+        ? (tokens.idPayload.name as string)
+        : typeof payload.name === 'string'
+          ? (payload.name as string)
+          : typeof tokens.idPayload.given_name === 'string' || typeof tokens.idPayload.family_name === 'string'
+            ? [tokens.idPayload.given_name, tokens.idPayload.family_name].filter((part): part is string => typeof part === 'string' && part.trim().length > 0).join(' ')
+            : null;
 
     return {
       accessToken: tokens.accessToken!,
       email,
+      displayName,
       isAdmin:
         readRoleFromClaims({ 'cognito:groups': groups }) === 'admin' || hasAdminGroup(groups),
     };

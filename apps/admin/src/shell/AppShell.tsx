@@ -11,7 +11,7 @@ const foundationHomeUrl = import.meta.env.VITE_FOUNDATION_URL
   : 'https://oliviasgarden.org';
 
 const grnUrl = (import.meta.env.VITE_GRN_URL as string | undefined)?.replace(/\/+$/, '')
-  ?? 'https://goodroots.network';
+  ?? 'https://grn.oliviasgarden.org';
 
 const instagramUrl = 'https://instagram.com/oliviasgardentx';
 const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
@@ -30,12 +30,14 @@ const footerLinks = [
 ];
 
 function getInitials(session: AdminSession): string {
-  const source = session.email?.trim() ?? '';
+  const source = session.displayName?.trim() || session.email?.trim() || '';
   if (!source) return 'A';
-  const base = source.split('@')[0];
-  const parts = base.split(/[._-]+/).filter(Boolean);
-  if (parts.length === 0) return source.slice(0, 2).toUpperCase();
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || base.slice(0, 2).toUpperCase();
+  const parts = source
+    .replace(/@.*/, '')
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || source.slice(0, 2).toUpperCase();
 }
 
 export interface AppShellProps {
@@ -71,7 +73,7 @@ export function AppShell({ session, children }: AppShellProps) {
         brandLogoSrc={foundationLogo}
         brandLogoAlt=""
         brandEyebrow="Olivia's Garden Foundation"
-        brandTitle="Admin console"
+        brandTitle="Homesteading, growing, and community"
         brandHref="/"
         onBrandClick={() => navigate('/')}
         navItems={headerNavItems}
@@ -79,7 +81,7 @@ export function AppShell({ session, children }: AppShellProps) {
           <div className="og-auth-utility">
             <AvatarMenu
               initials={getInitials(session)}
-              label={session.email || 'Administrator'}
+              label={session.displayName || session.email || 'Administrator'}
               appLinks={[
                 { id: 'foundation', label: 'Foundation home', href: foundationHomeUrl },
                 { id: 'grn', label: 'Good Roots Network', href: grnUrl },
@@ -93,8 +95,13 @@ export function AppShell({ session, children }: AppShellProps) {
         <div className="admin-layout">
           <aside className="admin-layout__sidebar" aria-label="Admin sections">
             <nav className="og-side-nav admin-side-nav" aria-label="Admin sections">
-              <p className="og-side-nav__eyebrow">Admin</p>
-              <h2 className="og-side-nav__title">Olivia&apos;s Garden</h2>
+              <div className="admin-side-nav__intro">
+                <p className="og-side-nav__eyebrow">Admin</p>
+                <h2 className="og-side-nav__title">Admin console</h2>
+                <p className="og-side-nav__body">
+                  Review public submissions, manage seed requests, and keep the store catalog current.
+                </p>
+              </div>
               <div className="og-side-nav__list">
                 {navItems.map((item) => (
                   <NavLink
