@@ -20,7 +20,7 @@ body:
       "userType": "grower",
       "growerProfile": {
         "homeZone": "8a",
-        "address": "123 Test St, Austin, TX 78701",
+        "address": "1100 Congress Ave, Austin, TX 78701",
         "shareRadiusMiles": 5,
         "isOrganization": false,
         "units": "imperial",
