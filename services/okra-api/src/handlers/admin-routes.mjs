@@ -5,6 +5,11 @@ import { createDbClient } from '../../scripts/db-client.mjs';
 import { isUuid } from '../services/photos.mjs';
 import { encodeCursor, decodeCursor, errorResponse } from '../services/pagination.mjs';
 import { resolveCountry } from '../services/reverse-geocoder.mjs';
+import {
+  listOpenSeedRequests,
+  markSeedRequestHandled
+} from '../services/seed-requests-admin.mjs';
+import { getAdminStats } from '../services/admin-stats.mjs';
 
 const s3 = new S3Client({});
 const eventBridge = new EventBridgeClient({});
@@ -303,6 +308,72 @@ export function registerAdminRoutes(app) {
     }
 
     return handleDenial(ctx, submissionId, { reason, review_notes });
+  });
+
+  // ─── GET /stats ────────────────────────────────────────────────
+  app.get('/stats', async () => {
+    try {
+      const stats = await getAdminStats();
+      return stats;
+    } catch (err) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: err instanceof Error ? err.message : String(err),
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+        endpoint: 'GET /admin/stats'
+      }));
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    }
+  });
+
+  // ─── GET /requests ─────────────────────────────────────────────
+  app.get('/requests', async () => {
+    try {
+      const data = await listOpenSeedRequests();
+      return { data };
+    } catch (err) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: err instanceof Error ? err.message : String(err),
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+        endpoint: 'GET /admin/requests'
+      }));
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    }
+  });
+
+  // ─── POST /requests/:id/statuses ───────────────────────────────
+  app.post('/requests/:id/statuses', async (ctx) => {
+    const requestId = ctx.params.id;
+
+    if (!isUuid(requestId)) {
+      return errorResponse(400, 'INVALID_ID', 'Request ID must be a valid UUID');
+    }
+
+    const body = JSON.parse(ctx.event.body || '{}');
+    const { status, review_notes } = body;
+    if (status !== 'handled') {
+      return errorResponse(400, 'INVALID_ACTION', 'status must be "handled"');
+    }
+
+    const cognitoSub = ctx.event.requestContext?.authorizer?.sub || 'system';
+
+    try {
+      const updated = await markSeedRequestHandled(requestId, cognitoSub, review_notes);
+      if (!updated) {
+        return errorResponse(409, 'INVALID_STATE', 'Seed request is missing or already handled');
+      }
+      return updated;
+    } catch (err) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: err instanceof Error ? err.message : String(err),
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+        endpoint: 'POST /admin/requests/:id/statuses',
+        requestId
+      }));
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    }
   });
 }
 

@@ -34,6 +34,34 @@ export interface OkraSubmission {
   photos: string[];
 }
 
+export interface SeedRequest {
+  requestId: string;
+  name: string | null;
+  email: string | null;
+  fulfillmentMethod: 'mail' | 'in_person' | null;
+  shippingAddress: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    region?: string;
+    postalCode?: string;
+    country?: string;
+  } | null;
+  visitDetails: {
+    approximateDate?: string;
+    notes?: string;
+  } | null;
+  message: string | null;
+  createdAt: string;
+  status: 'open' | 'handled';
+}
+
+export interface AdminStats {
+  userCount: number | null;
+  openSeedRequestCount: number;
+  pendingOkraCount: number | null;
+}
+
 export interface UpsertStoreProductRequest {
   slug: string;
   name: string;
@@ -53,12 +81,16 @@ export interface UpsertStoreProductRequest {
   metadata: Record<string, unknown>;
 }
 
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
 function getAdminApiBaseUrl(): string {
   const baseUrl = import.meta.env.VITE_ADMIN_API_URL;
   if (!baseUrl) {
     throw new Error('Missing VITE_ADMIN_API_URL for admin app.');
   }
-  return baseUrl;
+  return trimTrailingSlash(baseUrl);
 }
 
 function getOkraAdminApiBaseUrl(): string {
@@ -66,7 +98,7 @@ function getOkraAdminApiBaseUrl(): string {
   if (!baseUrl) {
     throw new Error('Missing VITE_OKRA_ADMIN_API_URL for admin app.');
   }
-  return baseUrl;
+  return trimTrailingSlash(baseUrl);
 }
 
 async function requestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
@@ -83,11 +115,15 @@ async function requestJson<T>(url: string, accessToken: string, init?: RequestIn
     let message = response.statusText;
     try {
       const payload = await response.json();
-      message = payload.message || payload.error || message;
+      message = payload.message || payload.error?.message || payload.error || message;
     } catch {
       // noop
     }
     throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;
@@ -148,5 +184,35 @@ export async function reviewOkraSubmission(
       method: 'POST',
       body: JSON.stringify(payload),
     }
+  );
+}
+
+export async function listSeedRequests(accessToken: string): Promise<SeedRequest[]> {
+  const response = await requestJson<{ data: SeedRequest[] }>(
+    `${getOkraAdminApiBaseUrl()}/requests`,
+    accessToken
+  );
+  return response.data;
+}
+
+export async function markSeedRequestHandled(
+  accessToken: string,
+  requestId: string,
+  reviewNotes?: string
+): Promise<SeedRequest> {
+  return requestJson<SeedRequest>(
+    `${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify({ status: 'handled', review_notes: reviewNotes ?? null }),
+    }
+  );
+}
+
+export async function getAdminStats(accessToken: string): Promise<AdminStats> {
+  return requestJson<AdminStats>(
+    `${getOkraAdminApiBaseUrl()}/stats`,
+    accessToken
   );
 }
