@@ -1,4 +1,5 @@
 import { Logger } from '@aws-lambda-powertools/logger';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
 const verifierCache = new Map();
 const logger = new Logger({ serviceName: 'admin-authorizer' });
@@ -36,11 +37,10 @@ function getAuthorizationHeader(headers = {}) {
   return headers.authorization ?? headers.Authorization ?? null;
 }
 
-async function getVerifier(userPoolId, userPoolClientId) {
+function getVerifier(userPoolId, userPoolClientId) {
   const cacheKey = `${userPoolId}:${userPoolClientId}`;
 
   if (!verifierCache.has(cacheKey)) {
-    const { CognitoJwtVerifier } = await import('aws-jwt-verify');
     verifierCache.set(
       cacheKey,
       CognitoJwtVerifier.create({
@@ -60,7 +60,7 @@ export async function verifyAdminToken(
 ) {
   const jwtVerifier =
     verifyJwt ??
-    (async (jwt) => (await getVerifier(userPoolId, userPoolClientId)).verify(jwt));
+    ((jwt) => getVerifier(userPoolId, userPoolClientId).verify(jwt));
 
   const claims = await jwtVerifier(token);
   const groups = Array.isArray(claims['cognito:groups'])
