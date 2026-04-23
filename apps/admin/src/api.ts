@@ -58,7 +58,7 @@ export interface SeedRequestQueueItem {
 
 export interface AdminStats {
   userCount: number | null;
-  openSeedRequestCount: number;
+  openSeedRequestCount: number | null;
   pendingOkraCount: number | null;
 }
 

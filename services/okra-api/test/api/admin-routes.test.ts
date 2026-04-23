@@ -177,7 +177,7 @@ describe('GET /admin/submissions', () => {
     };
   }
 
-  it('defaults to status=pending_review and limit=20', async () => {
+  it('returns every submission when no status filter is supplied (limit=20)', async () => {
     setupListMocks();
     const res = await handler(makeRestApiEvent('/submissions'));
     const { statusCode, body } = parseRes(res);
@@ -187,8 +187,36 @@ describe('GET /admin/submissions', () => {
       (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions')
     );
     expect(queryCall).toBeDefined();
-    expect(queryCall![1]).toContain('pending_review');
+    expect(queryCall![0]).not.toContain("'pending_review'");
+    expect(queryCall![0]).not.toContain('submission_photos');
+    expect(queryCall![1]).not.toContain('pending_review');
     expect(queryCall![1]).toContain(21);
+  });
+
+  it('maps status=pending to pending_review and requires a ready photo', async () => {
+    setupListMocks();
+    const res = await handler(
+      makeRestApiEvent('/submissions', 'GET', { queryStringParameters: { status: 'pending' } })
+    );
+    expect(parseRes(res).statusCode).toBe(200);
+    const queryCall = mockClient.query.mock.calls.find(
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s')
+    );
+    expect(queryCall).toBeDefined();
+    expect(queryCall![0]).toMatch(/submission_photos sp/);
+    expect(queryCall![0]).toMatch(/sp\.status = 'ready'/);
+    expect(queryCall![1]).toContain('pending_review');
+  });
+
+  it('applies the ready-photo filter for status=pending_review', async () => {
+    setupListMocks();
+    await handler(
+      makeRestApiEvent('/submissions', 'GET', { queryStringParameters: { status: 'pending_review' } })
+    );
+    const queryCall = mockClient.query.mock.calls.find(
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s')
+    );
+    expect(queryCall![0]).toMatch(/submission_photos sp/);
   });
 
   it('accepts valid status filter: approved', async () => {

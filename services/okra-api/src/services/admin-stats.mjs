@@ -90,14 +90,23 @@ export async function getUserCount() {
   }
 }
 
+// Mirrors the GET /submissions?status=pending_review review-queue filter:
+// a submission only counts as actionable when it has at least one
+// submission_photos row in `ready` status. Without this, the dashboard
+// inflates the backlog whenever photo processing lags or fails.
 export async function countPendingOkraSubmissions() {
   const client = await createDbClient();
   await client.connect();
   try {
     const result = await client.query(
       `SELECT COUNT(*)::int AS count
-         FROM submissions
-        WHERE status = 'pending_review'`
+         FROM submissions s
+        WHERE s.status = 'pending_review'
+          AND EXISTS (
+            SELECT 1 FROM submission_photos sp
+             WHERE sp.submission_id = s.id
+               AND sp.status = 'ready'
+          )`
     );
     return result.rows[0]?.count ?? 0;
   } finally {
@@ -108,13 +117,16 @@ export async function countPendingOkraSubmissions() {
 export async function getAdminStats() {
   const [userCount, openSeedRequestCount, pendingOkraCount] = await Promise.all([
     getUserCount(),
+    // Return null (not 0) on failure so the UI can show an unknown/errored
+    // state. Reporting 0 here is indistinguishable from a real empty queue
+    // and can hide requests that still need fulfillment.
     countOpenSeedRequests().catch((error) => {
       console.warn(JSON.stringify({
         level: 'warn',
         message: 'Failed to count open seed requests',
         error: error instanceof Error ? error.message : String(error)
       }));
-      return 0;
+      return null;
     }),
     countPendingOkraSubmissions().catch((error) => {
       console.warn(JSON.stringify({
