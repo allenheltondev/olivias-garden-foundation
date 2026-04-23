@@ -53,6 +53,7 @@ Conditions:
   EnableGoogleIdentityProvider: !And
     - !Not [!Equals [!Ref GoogleClientId, '']]
     - !Not [!Equals [!Ref GoogleClientSecret, '']]
+  DisableGoogleIdentityProvider: !Not [!Condition EnableGoogleIdentityProvider]
   EnableProdCognitoCustomDomain: !And
     - !Condition IsProdEnvironment
     - !Condition DeployCustomDomain
@@ -139,6 +140,7 @@ Resources:
 
   FoundationUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
+    Condition: DisableGoogleIdentityProvider
     Properties:
       UserPoolId: !Ref FoundationUserPool
       ClientName: !Sub '${AWS::StackName}-web-client'
@@ -189,7 +191,63 @@ Resources:
           - !Ref AWS::NoValue
       SupportedIdentityProviders:
         - COGNITO
-        - !If [EnableGoogleIdentityProvider, Google, !Ref AWS::NoValue]
+
+  FoundationUserPoolClientWithGoogle:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: EnableGoogleIdentityProvider
+    DependsOn:
+      - FoundationGoogleIdentityProvider
+    Properties:
+      UserPoolId: !Ref FoundationUserPool
+      ClientName: !Sub '${AWS::StackName}-web-client'
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_AUTH
+      AuthSessionValidity: 3
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - 'http://localhost:4174/auth/callback'
+        - !Sub 'https://${WebFrontendDistribution.DomainName}/auth/callback'
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://${DomainName}/auth/callback'
+          - !Ref AWS::NoValue
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://www.${DomainName}/auth/callback'
+          - !Ref AWS::NoValue
+      LogoutURLs:
+        - 'http://localhost:4174/'
+        - !Sub 'https://${WebFrontendDistribution.DomainName}/'
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://${DomainName}/'
+          - !Ref AWS::NoValue
+        - !If
+          - DeployCustomDomain
+          - !Sub 'https://www.${DomainName}/'
+          - !Ref AWS::NoValue
+      SupportedIdentityProviders:
+        - COGNITO
+        - Google
 
   FoundationFreeTierGroup:
     Type: AWS::Cognito::UserPoolGroup
@@ -703,7 +761,10 @@ Outputs:
 
   UserPoolClientId:
     Description: Cognito User Pool App Client ID for the foundation web app.
-    Value: !Ref FoundationUserPoolClient
+    Value: !If
+      - EnableGoogleIdentityProvider
+      - !Ref FoundationUserPoolClientWithGoogle
+      - !Ref FoundationUserPoolClient
     Export:
       Name: OGF-UserPoolClientId
 
