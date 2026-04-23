@@ -759,7 +759,9 @@ export function GoodRootsPage({
           <p>
             Good Roots Network is a living map of the gardens in your area and the people who want to eat
             from them. Register your garden, watch the local picture take shape, and turn your extra harvest
-            into something your neighbors will thank you for.
+            into something your neighbors will thank you for. And because it's built around real gardens
+            run by real people, every season you spend in the network is a season you get better — follow
+            growers near you, see what worked for them, and borrow their lessons for next year.
           </p>
         </div>
       </section>
@@ -856,7 +858,7 @@ export function GoodRootsPage({
           <article className={`good-roots-tier${tier === 'supporter' ? ' good-roots-tier--current' : ''}`}>
             <header>
               <p className="good-roots-tier__eyebrow">Supporter</p>
-              <p className="good-roots-tier__price">For neighbors who want to chip in</p>
+              <p className="good-roots-tier__price">$10/month</p>
             </header>
             <ul className="site-list">
               <li>Everything in Free</li>
@@ -914,11 +916,6 @@ export function GoodRootsPage({
           </Card>
         </div>
       </Section>
-
-      <Section
-        title="Every season you get better."
-        body="Good Roots is built around the idea that growing food is a skill anyone can learn — and the fastest way to learn is to do it alongside other people. Follow growers near you, see what worked for them this season, and borrow their lessons for next year."
-      />
 
       <section className="page-section good-roots-closing">
         <div className="good-roots-closing__copy">

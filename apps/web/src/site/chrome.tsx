@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { Button, SiteFooter as SharedSiteFooter, SiteHeader as SharedSiteHeader } from '@olivias/ui';
+import { type MouseEvent, type ReactNode } from 'react';
+import {
+  AvatarMenu,
+  Button,
+  SiteFooter as SharedSiteFooter,
+  SiteHeader as SharedSiteHeader,
+} from '@olivias/ui';
 import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
 import { adminUrl, facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
@@ -20,115 +25,6 @@ export function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
 }
 
 const foundationLogo = '/images/icons/logo.svg';
-
-interface AvatarAppLink {
-  id: string;
-  label: string;
-  href: string;
-}
-
-function AvatarMenu({
-  initials,
-  label,
-  avatarUrl,
-  appLinks,
-  onNavigate,
-  onLogout,
-}: {
-  initials: string;
-  label: string;
-  avatarUrl?: string | null;
-  appLinks: AvatarAppLink[];
-  onNavigate: (path: string) => void;
-  onLogout?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handleClickOutside = (event: Event) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
-
-  const select = (action: () => void) => {
-    setOpen(false);
-    action();
-  };
-
-  return (
-    <div className="og-auth-menu" ref={containerRef}>
-      <button
-        type="button"
-        className={`og-auth-utility__avatar${avatarUrl ? ' og-auth-utility__avatar--image' : ''}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={label}
-        title={label}
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="og-auth-utility__avatar-img" />
-        ) : (
-          initials
-        )}
-      </button>
-      {open ? (
-        <div className="og-auth-menu__popover" role="menu">
-          <button
-            type="button"
-            className="og-auth-menu__item"
-            role="menuitem"
-            onClick={() => select(() => onNavigate('/profile'))}
-          >
-            Profile
-          </button>
-          {appLinks.length > 0 ? (
-            <>
-              <div className="og-auth-menu__section-label" role="presentation">Apps</div>
-              {appLinks.map((link) => (
-                <a
-                  key={link.id}
-                  className="og-auth-menu__item og-auth-menu__item--link"
-                  role="menuitem"
-                  href={link.href}
-                  onClick={() => setOpen(false)}
-                >
-                  {link.label}
-                </a>
-              ))}
-              <div className="og-auth-menu__divider" role="separator" />
-            </>
-          ) : null}
-          {onLogout ? (
-            <button
-              type="button"
-              className="og-auth-menu__item"
-              role="menuitem"
-              onClick={() => select(onLogout)}
-            >
-              Log out
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function getUserInitials(session: AuthSession | null) {
   if (!session) {
@@ -220,7 +116,7 @@ export function SiteHeader({
                   ? [{ id: 'admin', label: 'Admin', href: buildCrossAppUrl(adminUrl, authSession) }]
                   : []),
               ]}
-              onNavigate={onNavigate}
+              onProfile={() => onNavigate('/profile')}
               onLogout={onLogout}
             />
           ) : (
