@@ -56,6 +56,29 @@ async function waitForEmbeddedCheckoutLocator(
   throw new Error(`Timed out finding Stripe element: ${description}`);
 }
 
+async function ensureStripeEmail(page: Page, embeddedFrame: Frame, donorEmail: string) {
+  const emailInput = await waitForEmbeddedCheckoutLocator(
+    page,
+    embeddedFrame,
+    (scope) => scope.locator('input[name="email"]'),
+    'email input',
+  );
+
+  await expect(emailInput).toBeVisible({ timeout: 30000 });
+
+  const currentValue = (await emailInput.inputValue().catch(() => ''))?.trim();
+  if (currentValue) {
+    return;
+  }
+
+  const disabled = await emailInput.isDisabled().catch(() => false);
+  if (disabled) {
+    return;
+  }
+
+  await emailInput.fill(donorEmail);
+}
+
 test.describe('donation flow', () => {
   test('donate flow completes a real Stripe test checkout from staging', async ({ page, baseURL }) => {
     test.setTimeout(120000);
@@ -90,12 +113,7 @@ test.describe('donation flow', () => {
     const checkout = page.frameLocator('iframe[title="Embedded checkout"]');
     await expect(checkout.getByText(/Payment method/i)).toBeVisible({ timeout: 30000 });
 
-    await (await waitForEmbeddedCheckoutLocator(
-      page,
-      embeddedFrame,
-      (scope) => scope.locator('input[name="email"]'),
-      'email input',
-    )).fill(donorEmail);
+    await ensureStripeEmail(page, embeddedFrame, donorEmail);
 
     const cardButton = checkout.locator('button[data-testid="card-accordion-item-button"]');
     await expect(cardButton).toBeVisible({ timeout: 30000 });
