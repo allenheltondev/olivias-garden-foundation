@@ -69,6 +69,11 @@ Metadata:
       - .js=.mjs
     Target: es2022
     Sourcemap: false
+    # Match the pattern okra-api uses: inject createRequire so bundled CJS
+    # dependencies (aws-jwt-verify, pg, and their transitive deps) can still
+    # resolve runtime require() calls inside the ESM output.
+    Banner:
+      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
 
 Resources:
   Api:
