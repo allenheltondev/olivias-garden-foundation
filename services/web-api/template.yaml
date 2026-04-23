@@ -42,6 +42,11 @@ Parameters:
     Default: ""
     NoEcho: true
     Description: Optional Slack webhook URL used for donation notifications
+  ContactSlackWebhookUrl:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Slack webhook URL used for contact / organization inquiry notifications
 
 Conditions:
   DeploySharedApiBasePathMapping: !And
@@ -66,6 +71,7 @@ Globals:
           - "*"
         STRIPE_SECRET_KEY: !Ref StripeSecretKey
         SLACK_WEBHOOK_URL: !Ref DonationSlackWebhookUrl
+        CONTACT_SLACK_WEBHOOK_URL: !Ref ContactSlackWebhookUrl
         FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
         OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
         OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId

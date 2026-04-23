@@ -1,9 +1,9 @@
-import { Card, FormFeedback, Input, Textarea } from '@olivias/ui';
-import { lazy, Suspense, useState, type FormEvent } from 'react';
+import { Button, Card, FormFeedback, Input, Select, Textarea } from '@olivias/ui';
+import { lazy, Suspense, useState, type FormEvent, type MouseEvent } from 'react';
 import type { AuthSession } from '../../auth/session';
-import { CtaButton, PageHero, Section, WorkIcon } from '../chrome';
+import { buildCrossAppUrl, CtaButton, PageHero, Section, WorkIcon } from '../chrome';
 import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
-import { facebookUrl, instagramUrl } from '../routes';
+import { facebookUrl, goodRootsNetworkUrl, instagramUrl, webApiBase } from '../routes';
 
 const CONTACT_EMAIL = 'allen@oliviasgarden.org';
 
@@ -499,6 +499,448 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
       >
         <CtaButton variant="secondary">Follow on Instagram</CtaButton>
       </Section>
+    </>
+  );
+}
+
+const ORG_TYPE_OPTIONS = [
+  { value: 'food-pantry', label: 'Food pantry' },
+  { value: 'shelter', label: 'Shelter' },
+  { value: 'school', label: 'School or youth program' },
+  { value: 'mutual-aid', label: 'Mutual aid / community fridge' },
+  { value: 'faith', label: 'Faith community' },
+  { value: 'other', label: 'Something else' },
+];
+
+interface GoodRootsHeroCopy {
+  title: string;
+  body: string;
+  primary: { label: string; href: string; signup?: boolean; internal?: boolean };
+  secondary?: { label: string; href: string; internal?: boolean };
+}
+
+function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
+  if (!session) {
+    return {
+      title: 'Grow for your neighbors. Gather from them too.',
+      body: "Good Roots Network is part of Olivia's Garden Foundation. It connects home growers with the people and organizations who need fresh food. Plan your garden, see what your neighbors are planting, and share what you have extra.",
+      primary: { label: 'Create your account', href: '/login', signup: true, internal: true },
+      secondary: { label: 'See how it works', href: '#how-it-works', internal: true },
+    };
+  }
+
+  const appHref = buildCrossAppUrl(goodRootsNetworkUrl, session);
+  const tier = session.user.tier ?? 'free';
+
+  if (tier === 'pro') {
+    return {
+      title: "Your garden is plugged in.",
+      body: 'Jump back into your plan, your listings, and your reminders.',
+      primary: { label: 'Open Good Roots Network', href: appHref },
+    };
+  }
+
+  if (tier === 'supporter') {
+    return {
+      title: 'Thanks for keeping the network growing.',
+      body: 'Want the full toolkit? Pro adds AI planting recommendations and local gap signals for $50/month, with a 30-day free trial on us.',
+      primary: { label: 'Try Pro free for 30 days', href: '#tiers', internal: true },
+      secondary: { label: 'Open Good Roots Network', href: appHref },
+    };
+  }
+
+  return {
+    title: "You're in. Now grow with the whole network behind you.",
+    body: "Your Olivia's Garden account already works in Good Roots. Upgrade to Pro for AI planting recommendations tuned to your neighborhood — free for 30 days, then $50/month.",
+    primary: { label: 'Start my 30-day Pro trial', href: '#tiers', internal: true },
+    secondary: { label: 'Open Good Roots Network', href: appHref },
+  };
+}
+
+function OrganizationInquiryForm() {
+  const [orgName, setOrgName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [orgType, setOrgType] = useState('food-pantry');
+  const [city, setCity] = useState('');
+  const [stateValue, setStateValue] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const canSubmit =
+    orgName.trim().length > 0 &&
+    contactName.trim().length > 0 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    city.trim().length > 0 &&
+    stateValue.trim().length > 0;
+
+  const clearFeedback = () => {
+    if (feedback) setFeedback(null);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSubmit || submitting) return;
+
+    setSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch(`${webApiBase}/contact`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'organization_inquiry',
+          orgName: orgName.trim(),
+          contactName: contactName.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          orgType,
+          city: city.trim(),
+          state: stateValue.trim(),
+          message: message.trim() || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Submission failed (${response.status})`);
+      }
+
+      setFeedback({
+        type: 'success',
+        message: "Thanks. We'll be in touch within a few days to get your organization verified and your team set up with free Pro access.",
+      });
+      setOrgName('');
+      setContactName('');
+      setEmail('');
+      setPhone('');
+      setCity('');
+      setStateValue('');
+      setMessage('');
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : "We couldn't send your request. Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="contact-form good-roots-org-form" onSubmit={handleSubmit} noValidate>
+      <div className="good-roots-org-form__row">
+        <Input
+          label="Organization name"
+          value={orgName}
+          onChange={(event) => { clearFeedback(); setOrgName(event.target.value); }}
+          required
+          autoComplete="organization"
+        />
+        <Select
+          label="Organization type"
+          value={orgType}
+          onChange={(value) => { clearFeedback(); setOrgType(value); }}
+          options={ORG_TYPE_OPTIONS}
+          required
+        />
+      </div>
+      <div className="good-roots-org-form__row">
+        <Input
+          label="Your name"
+          value={contactName}
+          onChange={(event) => { clearFeedback(); setContactName(event.target.value); }}
+          required
+          autoComplete="name"
+        />
+        <Input
+          type="email"
+          label="Email"
+          value={email}
+          onChange={(event) => { clearFeedback(); setEmail(event.target.value); }}
+          required
+          autoComplete="email"
+        />
+      </div>
+      <div className="good-roots-org-form__row">
+        <Input
+          label="Phone (optional)"
+          value={phone}
+          onChange={(event) => { clearFeedback(); setPhone(event.target.value); }}
+          autoComplete="tel"
+        />
+        <Input
+          label="City"
+          value={city}
+          onChange={(event) => { clearFeedback(); setCity(event.target.value); }}
+          required
+          autoComplete="address-level2"
+        />
+        <Input
+          label="State"
+          value={stateValue}
+          onChange={(event) => { clearFeedback(); setStateValue(event.target.value); }}
+          required
+          autoComplete="address-level1"
+        />
+      </div>
+      <Textarea
+        label="Tell us about the people you serve"
+        rows={5}
+        value={message}
+        onChange={(event) => { clearFeedback(); setMessage(event.target.value); }}
+      />
+      <Button type="submit" disabled={!canSubmit} loading={submitting}>
+        {submitting ? 'Sending...' : 'Apply for organization access'}
+      </Button>
+      {feedback ? <FormFeedback tone={feedback.type}>{feedback.message}</FormFeedback> : null}
+    </form>
+  );
+}
+
+export function GoodRootsPage({
+  authSession,
+  onNavigate,
+}: {
+  authSession: AuthSession | null;
+  onNavigate: (path: string) => void;
+}) {
+  const hero = heroForSession(authSession);
+  const tier = authSession?.user.tier ?? null;
+  const handleInternalClick = (href: string) => (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+    event.preventDefault();
+    if (href.startsWith('#')) {
+      const target = document.querySelector(href);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    if (href === '/login') {
+      onNavigate('/login');
+      return;
+    }
+    onNavigate(href);
+  };
+
+  return (
+    <>
+      <PageHero
+        eyebrow="Good Roots Network"
+        title={hero.title}
+        body={hero.body}
+        actions={(
+          <>
+            <CtaButton
+              href={hero.primary.href}
+              onClick={hero.primary.internal ? handleInternalClick(hero.primary.href) : undefined}
+            >
+              {hero.primary.label}
+            </CtaButton>
+            {hero.secondary ? (
+              <CtaButton
+                variant="secondary"
+                href={hero.secondary.href}
+                onClick={hero.secondary.internal ? handleInternalClick(hero.secondary.href) : undefined}
+              >
+                {hero.secondary.label}
+              </CtaButton>
+            ) : null}
+          </>
+        )}
+      />
+
+      <section className="home-mission-band" aria-label="Mission">
+        <div className="home-mission-band__copy">
+          <p className="home-mission-band__eyebrow">What it is</p>
+          <h2>More food, grown closer to home, shared with the people around you.</h2>
+          <p>
+            Good Roots Network is a living map of the gardens in your area and the people who want to eat
+            from them. Register your garden, watch the local picture take shape, and turn your extra harvest
+            into something your neighbors will thank you for. And because it's built around real gardens
+            run by real people, every season you spend in the network is a season you get better — follow
+            growers near you, see what worked for them, and borrow their lessons for next year.
+          </p>
+        </div>
+      </section>
+
+      <Section id="how-it-works" title="How it works" intro="Four steps. No middle layer between the people growing food and the people eating it.">
+        <div className="good-roots-steps">
+          <article className="good-roots-step">
+            <span className="good-roots-step__number">01</span>
+            <h3>Register your garden</h3>
+            <p>Tell us where you are and what you're planting this season.</p>
+          </article>
+          <article className="good-roots-step">
+            <span className="good-roots-step__number">02</span>
+            <h3>See the local picture</h3>
+            <p>We map every garden in the network so you can spot what's over-planted and what's missing.</p>
+          </article>
+          <article className="good-roots-step">
+            <span className="good-roots-step__number">03</span>
+            <h3>List what's extra</h3>
+            <p>When a crop comes in heavy, post it for neighbors or local organizations to claim.</p>
+          </article>
+          <article className="good-roots-step">
+            <span className="good-roots-step__number">04</span>
+            <h3>Gather what you need</h3>
+            <p>Browse nearby listings, claim what you'll use, and pick it up from the grower.</p>
+          </article>
+        </div>
+      </Section>
+
+      <section className="page-section good-roots-personas">
+        <div className="good-roots-persona">
+          <div className="good-roots-persona__media" aria-hidden="true" />
+          <div className="good-roots-persona__copy">
+            <p className="page-eyebrow">For growers</p>
+            <h2>Plant with purpose.</h2>
+            <p>
+              Most home gardens end in a pile of zucchini no one can keep up with. Good Roots helps you plan
+              around what your community actually needs — and turns surplus into something your neighbors
+              will thank you for. Track your beds, set watering and harvest reminders, and watch your little
+              patch of ground become part of something bigger.
+            </p>
+            <ul className="site-list">
+              <li>Garden planner with what-to-plant-when</li>
+              <li>Watering, fertilizer, and harvest reminders</li>
+              <li>Listings for surplus produce</li>
+              <li>A running picture of what's growing nearby</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="good-roots-persona good-roots-persona--reverse">
+          <div className="good-roots-persona__media" aria-hidden="true" />
+          <div className="good-roots-persona__copy">
+            <p className="page-eyebrow">For gatherers</p>
+            <h2>Eat closer to home.</h2>
+            <p>
+              Whether you're a family looking for fresh produce or a food pantry, shelter, or community
+              kitchen trying to feed more people, Good Roots connects you to gardens in your area. Claim
+              what's ready, meet the growers, and build a food system that doesn't start in a warehouse.
+            </p>
+            <ul className="site-list">
+              <li>Search listings by crop, distance, and availability</li>
+              <li>Claim produce in a few taps</li>
+              <li>Direct pickup from the grower — no middle layer</li>
+              <li>Free to use for individuals and community organizations</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <Section
+        title="Know what your neighborhood is growing."
+        intro="Good Roots aggregates every registered garden into a living map of local abundance and scarcity. If everyone on your block is growing tomatoes and nobody has greens, we'll tell you. Plant into the gap and you'll always have a home for your harvest."
+        className="good-roots-map-section"
+      >
+        <div className="good-roots-map-placeholder" aria-hidden="true" />
+      </Section>
+
+      <Section id="tiers" title="Pick the plot that fits you." intro="All tiers come with your Olivia's Garden account. Supporter and Pro help keep the network free for families and food organizations.">
+        <div className="good-roots-tiers">
+          <article className={`good-roots-tier${tier === 'free' ? ' good-roots-tier--current' : ''}`}>
+            <header>
+              <p className="good-roots-tier__eyebrow">Free</p>
+              <p className="good-roots-tier__price">$0</p>
+            </header>
+            <ul className="site-list">
+              <li>Register one garden</li>
+              <li>Basic planner and reminders</li>
+              <li>Browse local listings and claim produce</li>
+              <li>See your neighborhood's food map</li>
+            </ul>
+          </article>
+
+          <article className={`good-roots-tier${tier === 'supporter' ? ' good-roots-tier--current' : ''}`}>
+            <header>
+              <p className="good-roots-tier__eyebrow">Supporter</p>
+              <p className="good-roots-tier__price">$10/month</p>
+            </header>
+            <ul className="site-list">
+              <li>Everything in Free</li>
+              <li>Multiple gardens and season history</li>
+              <li>Advanced planner with crop rotation</li>
+              <li>Priority placement when you have surplus</li>
+              <li>Your support keeps the network free for families and food organizations</li>
+            </ul>
+          </article>
+
+          <article className={`good-roots-tier good-roots-tier--featured${tier === 'pro' ? ' good-roots-tier--current' : ''}`}>
+            <header>
+              <p className="good-roots-tier__eyebrow">Pro</p>
+              <p className="good-roots-tier__price">$50/month · 30-day free trial</p>
+            </header>
+            <ul className="site-list">
+              <li>Everything in Supporter</li>
+              <li>AI planting recommendations based on local gaps</li>
+              <li>Season-aware timing and rotation guidance</li>
+              <li>Scarcity and abundance signals for every crop</li>
+              <li>Troubleshooting help when something's off in the garden</li>
+            </ul>
+            <p className="good-roots-tier__note">
+              {authSession
+                ? 'Start your 30-day trial from inside the app.'
+                : 'Start your 30-day trial after you create your account.'}
+            </p>
+          </article>
+        </div>
+      </Section>
+
+      <Section
+        id="organizations"
+        title="Feeding a community? Let's make it easier."
+        intro="Food pantries, shelters, school programs, and mutual-aid groups can create a verified organization account to claim larger volumes, coordinate recurring pickups, and show up in growers' feeds as a priority recipient. We'll waive Pro fees for verified nonprofits — your work shouldn't cost extra."
+        className="good-roots-orgs-section"
+      >
+        <div className="good-roots-orgs">
+          <Card title="What organizations get" className="good-roots-orgs__perks">
+            <ul className="site-list">
+              <li>Verified organization badge on your profile</li>
+              <li>Bulk claim requests across multiple growers</li>
+              <li>Recurring pickup scheduling</li>
+              <li>Free Pro access for the whole team</li>
+              <li>Light-touch onboarding — we'll walk you through it</li>
+            </ul>
+          </Card>
+          <Card title="Apply for organization access" className="good-roots-orgs__form">
+            <p className="contact-card__eyebrow">Tell us about your org</p>
+            <p>
+              Share a few details and we'll reach out to verify your organization and get your team set up
+              with free Pro access.
+            </p>
+            <OrganizationInquiryForm />
+          </Card>
+        </div>
+      </Section>
+
+      <section className="page-section good-roots-closing">
+        <div className="good-roots-closing__copy">
+          <h2>Roots grow where hands meet dirt.</h2>
+          <p>
+            Whether you have a half-acre or a few pots on a balcony, you belong in the network. Signing up
+            is free, and your Olivia's Garden account works everywhere.
+          </p>
+          {authSession ? (
+            <CtaButton href={buildCrossAppUrl(goodRootsNetworkUrl, authSession)}>
+              Open Good Roots Network
+            </CtaButton>
+          ) : (
+            <CtaButton
+              href="/login"
+              onClick={(event) => {
+                event?.preventDefault?.();
+                onNavigate('/login');
+              }}
+            >
+              Create your account
+            </CtaButton>
+          )}
+        </div>
+      </section>
     </>
   );
 }
