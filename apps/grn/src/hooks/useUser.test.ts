@@ -31,6 +31,7 @@ describe('useUser', () => {
       lat: 37.7749,
       lng: -122.4194,
       shareRadiusMiles: 5.0,
+      isOrganization: false,
       units: 'imperial',
       locale: 'en-US',
     },
@@ -87,6 +88,7 @@ describe('useUser', () => {
     expect(result.current.user?.growerProfile).toBeDefined();
     expect(result.current.user?.growerProfile?.homeZone).toBe('8a');
     expect(result.current.user?.growerProfile?.shareRadiusMiles).toBe(5.0);
+    expect(result.current.user?.growerProfile?.isOrganization).toBe(false);
     expect(result.current.user?.gathererProfile).toBeNull();
   });
 

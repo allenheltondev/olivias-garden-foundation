@@ -146,6 +146,15 @@ scripts:
           }
       });
 
+      pm.test("growerProfile organization fields are present and reflect org-grower onboarding", function () {
+          if (jsonData.growerProfile !== null) {
+              pm.expect(jsonData.growerProfile).to.have.property("isOrganization");
+              pm.expect(jsonData.growerProfile.isOrganization).to.eql(true);
+              pm.expect(jsonData.growerProfile).to.have.property("organizationName");
+              pm.expect(jsonData.growerProfile.organizationName).to.eql("Profile Smoke Garden Team");
+          }
+      });
+
       pm.test("seasonalTimeline is an array when present", function () {
           if (jsonData.seasonalTimeline !== undefined) {
               pm.expect(Array.isArray(jsonData.seasonalTimeline)).to.eql(true);

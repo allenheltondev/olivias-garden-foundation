@@ -18,6 +18,8 @@ export interface GrowerProfileInput {
   homeZone: string;
   address: string;
   shareRadiusMiles: number;
+  isOrganization: boolean;
+  organizationName?: string;
   units: 'metric' | 'imperial';
   locale: string;
 }
@@ -80,6 +82,7 @@ export function useOnboarding(onSuccess?: () => void) {
           homeZone: profileData.homeZone,
           hasAddress: !!profileData.address,
           shareRadiusMiles: profileData.shareRadiusMiles,
+          isOrganization: profileData.isOrganization,
         });
 
         const payload: UpdateUserProfileRequest = {

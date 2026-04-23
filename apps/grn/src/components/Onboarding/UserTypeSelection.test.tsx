@@ -26,6 +26,9 @@ describe('UserTypeSelection', () => {
       screen.getByText(/I grow food and want to share my surplus/)
     ).toBeInTheDocument();
     expect(
+      screen.getByText(/shared organization plot/i)
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/I'm looking for locally grown food/)
     ).toBeInTheDocument();
   });

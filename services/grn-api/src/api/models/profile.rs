@@ -19,6 +19,8 @@ pub struct GrowerProfile {
     pub lat: Option<f64>,
     pub lng: Option<f64>,
     pub share_radius_miles: String,
+    pub is_organization: bool,
+    pub organization_name: Option<String>,
     pub units: String,
     pub locale: Option<String>,
 }
@@ -95,6 +97,9 @@ pub struct GrowerProfileInput {
     pub home_zone: String,
     pub address: String,
     pub share_radius_miles: f64,
+    #[serde(default)]
+    pub is_organization: bool,
+    pub organization_name: Option<String>,
     pub units: String,
     pub locale: String,
 }

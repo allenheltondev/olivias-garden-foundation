@@ -23,6 +23,33 @@ describe('useOnboarding', () => {
         homeZone: '8a',
         address: '123 Main St, Springfield, IL',
         shareRadiusMiles: 5.0,
+        isOrganization: false,
+        organizationName: undefined,
+        units: 'imperial' as const,
+        locale: 'en-US',
+      };
+
+      vi.mocked(api.updateMe).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useOnboarding());
+
+      await act(async () => {
+        await result.current.submitGrowerProfile(profileInput);
+      });
+
+      expect(api.updateMe).toHaveBeenCalledWith({
+        userType: 'grower',
+        growerProfile: profileInput,
+      });
+    });
+
+    it('submits organization grower profile details', async () => {
+      const profileInput = {
+        homeZone: '8a',
+        address: '800 Community Garden Way, Austin, TX 78701',
+        shareRadiusMiles: 12.0,
+        isOrganization: true,
+        organizationName: 'North Austin Community Garden',
         units: 'imperial' as const,
         locale: 'en-US',
       };

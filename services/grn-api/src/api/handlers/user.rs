@@ -159,6 +159,12 @@ async fn upsert_grower_profile(
 ) -> Result<(), lambda_http::Error> {
     let address = location::normalize_address(&profile.address);
     let geocoded = location::geocode_address(&address, correlation_id).await?;
+    let organization_name = profile
+        .organization_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
 
     let share_radius_km = miles_to_km(profile.share_radius_miles);
 
@@ -166,9 +172,9 @@ async fn upsert_grower_profile(
         .execute(
             "
             insert into grower_profiles
-                (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, units, locale)
+                (user_id, home_zone, address, geo_key, lat, lng, share_radius_km, is_organization, organization_name, units, locale)
             values
-                ($1, $2, $3, $4, $5, $6, $7, coalesce($8::text::units_system, 'imperial'::units_system), $9)
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, coalesce($10::text::units_system, 'imperial'::units_system), $11)
             on conflict (user_id) do update
             set home_zone = excluded.home_zone,
                 address = excluded.address,
@@ -176,6 +182,8 @@ async fn upsert_grower_profile(
                 lat = excluded.lat,
                 lng = excluded.lng,
                 share_radius_km = excluded.share_radius_km,
+                is_organization = excluded.is_organization,
+                organization_name = excluded.organization_name,
                 units = excluded.units,
                 locale = excluded.locale,
                 updated_at = now()
@@ -188,6 +196,8 @@ async fn upsert_grower_profile(
                 &geocoded.lat,
                 &geocoded.lng,
                 &share_radius_km,
+                &profile.is_organization,
+                &organization_name,
                 &profile.units,
                 &profile.locale,
             ],
@@ -362,6 +372,19 @@ fn validate_put_me_payload(payload: &PutMeRequest) -> Result<(), lambda_http::Er
         if grower.address.trim().is_empty() {
             return Err(lambda_http::Error::from("address is required".to_string()));
         }
+
+        if grower.is_organization {
+            let has_organization_name = grower
+                .organization_name
+                .as_ref()
+                .is_some_and(|value| !value.trim().is_empty());
+
+            if !has_organization_name {
+                return Err(lambda_http::Error::from(
+                    "organizationName is required when isOrganization is true".to_string(),
+                ));
+            }
+        }
     }
 
     if let Some(gatherer) = &payload.gatherer_profile {
@@ -518,7 +541,7 @@ async fn load_grower_profile(
 ) -> Result<Option<GrowerProfile>, lambda_http::Error> {
     let row = client
         .query_opt(
-            "select home_zone, address, geo_key, lat, lng, share_radius_km::text as share_radius_km, units::text as units, locale from grower_profiles where user_id = $1",
+            "select home_zone, address, geo_key, lat, lng, share_radius_km::text as share_radius_km, is_organization, organization_name, units::text as units, locale from grower_profiles where user_id = $1",
             &[&user_id],
         )
         .await
@@ -535,6 +558,8 @@ async fn load_grower_profile(
             .get::<_, Option<f64>>("lng")
             .map(location::round_for_response),
         share_radius_miles: km_text_to_miles_text(&grower.get::<_, String>("share_radius_km")),
+        is_organization: grower.get("is_organization"),
+        organization_name: grower.get("organization_name"),
         units: grower.get("units"),
         locale: grower.get("locale"),
     }))
@@ -705,6 +730,8 @@ mod tests {
                 home_zone: "8a".to_string(),
                 address: "123 Main St".to_string(),
                 share_radius_miles: 5.0,
+                is_organization: false,
+                organization_name: None,
                 units: "imperial".to_string(),
                 locale: "en-US".to_string(),
             }),
@@ -757,6 +784,8 @@ mod tests {
                 home_zone: "8a".to_string(),
                 address: "   ".to_string(),
                 share_radius_miles: 5.0,
+                is_organization: false,
+                organization_name: None,
                 units: "imperial".to_string(),
                 locale: "en-US".to_string(),
             }),
@@ -803,6 +832,8 @@ mod tests {
                 home_zone: "8a".to_string(),
                 address: "123 Main St".to_string(),
                 share_radius_miles: 5.0,
+                is_organization: false,
+                organization_name: None,
                 units: "imperial".to_string(),
                 locale: "en-US".to_string(),
             }),
@@ -841,6 +872,8 @@ mod tests {
                 home_zone: "8a".to_string(),
                 address: "123 Main St".to_string(),
                 share_radius_miles: 5.0,
+                is_organization: false,
+                organization_name: None,
                 units: "imperial".to_string(),
                 locale: "en-US".to_string(),
             }),
@@ -848,6 +881,31 @@ mod tests {
         };
 
         assert!(should_mark_onboarding_complete(&payload));
+    }
+
+    #[test]
+    fn test_validate_org_grower_requires_organization_name() {
+        let payload = PutMeRequest {
+            display_name: Some("Community Garden".to_string()),
+            user_type: Some(UserType::Grower),
+            grower_profile: Some(GrowerProfileInput {
+                home_zone: "8a".to_string(),
+                address: "123 Main St".to_string(),
+                share_radius_miles: 5.0,
+                is_organization: true,
+                organization_name: Some("   ".to_string()),
+                units: "imperial".to_string(),
+                locale: "en-US".to_string(),
+            }),
+            gatherer_profile: None,
+        };
+
+        let result = validate_put_me_payload(&payload);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("organizationName is required"));
     }
 
     #[test]

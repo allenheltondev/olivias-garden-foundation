@@ -21,6 +21,7 @@ describe('User Types', () => {
         lat: 37.7749,
         lng: -122.4194,
         shareRadiusMiles: 5.0,
+        isOrganization: false,
         units: 'imperial',
         locale: 'en-US',
       };
@@ -38,6 +39,7 @@ describe('User Types', () => {
         lat: 37.7749,
         lng: -122.4194,
         shareRadiusMiles: 5.0,
+        isOrganization: false,
         units: 'metric',
         locale: 'en-US',
         createdAt: '2024-01-15T10:30:00Z',
@@ -46,6 +48,24 @@ describe('User Types', () => {
 
       expect(profile.createdAt).toBeDefined();
       expect(profile.updatedAt).toBeDefined();
+    });
+
+    it('should accept organization grower metadata', () => {
+      const profile: GrowerProfile = {
+        homeZone: '8a',
+        address: '800 Community Garden Way, Austin, TX 78701',
+        geoKey: '9q8yy9',
+        lat: 30.2672,
+        lng: -97.7431,
+        shareRadiusMiles: 12.0,
+        isOrganization: true,
+        organizationName: 'North Austin Community Garden',
+        units: 'imperial',
+        locale: 'en-US',
+      };
+
+      expect(profile.isOrganization).toBe(true);
+      expect(profile.organizationName).toBe('North Austin Community Garden');
     });
   });
 
@@ -113,6 +133,7 @@ describe('User Types', () => {
           lat: 37.7749,
           lng: -122.4194,
           shareRadiusMiles: 5.0,
+          isOrganization: false,
           units: 'imperial',
           locale: 'en-US',
         },

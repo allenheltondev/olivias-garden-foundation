@@ -800,13 +800,15 @@ export function GoodRootsPage({
             <p>
               Most home gardens end in a pile of zucchini no one can keep up with. Good Roots helps you plan
               around what your community actually needs — and turns surplus into something your neighbors
-              will thank you for. Track your beds, set watering and harvest reminders, and watch your little
-              patch of ground become part of something bigger.
+              will thank you for. Whether you're growing at home, on church land, at a school, or in a
+              community garden, you can join as a grower, track your beds, set watering and harvest reminders,
+              and watch your patch of ground become part of something bigger.
             </p>
             <ul className="site-list">
               <li>Garden planner with what-to-plant-when</li>
               <li>Watering, fertilizer, and harvest reminders</li>
               <li>Listings for surplus produce</li>
+              <li>Organization growers can show who they grow on behalf of</li>
               <li>A running picture of what's growing nearby</li>
             </ul>
           </div>
@@ -893,13 +895,15 @@ export function GoodRootsPage({
       <Section
         id="organizations"
         title="Feeding a community? Let's make it easier."
-        intro="Food pantries, shelters, school programs, and mutual-aid groups can create a verified organization account to claim larger volumes, coordinate recurring pickups, and show up in growers' feeds as a priority recipient. We'll waive Pro fees for verified nonprofits — your work shouldn't cost extra."
+        intro="Community gardens, schools, churches, food pantries, shelters, and mutual-aid groups can now join Good Roots directly as growers or gatherers. If your team is coordinating larger-volume pickups or shared community plots, we'll help verify your organization and get the right setup in place."
         className="good-roots-orgs-section"
       >
         <div className="good-roots-orgs">
           <Card title="What organizations get" className="good-roots-orgs__perks">
             <ul className="site-list">
-              <li>Verified organization badge on your profile</li>
+              <li>Grower onboarding for shared gardens and community plots</li>
+              <li>Organization name visible in the app for grower accounts</li>
+              <li>Verified organization badge for larger recipient operations</li>
               <li>Bulk claim requests across multiple growers</li>
               <li>Recurring pickup scheduling</li>
               <li>Free Pro access for the whole team</li>
