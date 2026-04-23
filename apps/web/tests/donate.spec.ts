@@ -34,17 +34,17 @@ test.describe('donation flow', () => {
     const checkout = page.frameLocator('iframe[title="Embedded checkout"]');
     await expect(checkout.getByText(/Payment method/i)).toBeVisible({ timeout: 30000 });
 
-    await checkout.getByLabel(/^Email$/i).fill(donorEmail);
+    await checkout.locator('input[name="email"]').fill(donorEmail);
     await checkout.getByRole('radio', { name: /^Card$/i }).check();
 
     await expect(checkout.getByText(/Card information/i)).toBeVisible({ timeout: 30000 });
-    await checkout.getByPlaceholder('1234 1234 1234 1234').fill('4242 4242 4242 4242');
-    await checkout.getByPlaceholder('MM / YY').fill('12 / 34');
-    await checkout.getByPlaceholder('CVC').fill('123');
-    await checkout.getByPlaceholder('Full name on card').fill(`Playwright Stage Donor ${runId}`);
-    await checkout.getByPlaceholder('ZIP').fill('75069');
+    await checkout.locator('input[name="cardNumber"]').fill('4242 4242 4242 4242');
+    await checkout.locator('input[name="cardExpiry"]').fill('12 / 34');
+    await checkout.locator('input[name="cardCvc"]').fill('123');
+    await checkout.locator('input[name="billingName"]').fill(`Playwright Stage Donor ${runId}`);
+    await checkout.locator('input[name="billingPostalCode"]').fill('75069');
 
-    const donateButton = checkout.getByRole('button', { name: /^Donate$/i });
+    const donateButton = checkout.locator('button[data-testid="hosted-payment-submit-button"]');
     await expect(donateButton).toBeEnabled({ timeout: 30000 });
     await donateButton.click();
 
