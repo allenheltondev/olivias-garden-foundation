@@ -1,12 +1,40 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoAndWait, trackBrowserErrors } from './test-helpers';
 
-async function fillStripeField(page: Page, label: RegExp, value: string) {
+type StripeFieldKind = 'cardNumber' | 'expiry' | 'cvc';
+
+function stripeFieldLocators(frame: Page['mainFrame'], kind: StripeFieldKind) {
+  switch (kind) {
+    case 'cardNumber':
+      return [
+        frame.locator('input[name="number"]').first(),
+        frame.locator('input[autocomplete="cc-number"]').first(),
+        frame.getByPlaceholder(/4242|1234 1234|Card number/i).first(),
+        frame.getByLabel(/Card number|Card information/i).first(),
+      ];
+    case 'expiry':
+      return [
+        frame.locator('input[name="expiry"]').first(),
+        frame.locator('input[autocomplete="cc-exp"]').first(),
+        frame.getByPlaceholder(/MM\s*\/\s*YY|Expiration/i).first(),
+        frame.getByLabel(/Expiration date|Expiry/i).first(),
+      ];
+    case 'cvc':
+      return [
+        frame.locator('input[name="cvc"]').first(),
+        frame.locator('input[autocomplete="cc-csc"]').first(),
+        frame.getByPlaceholder(/CVC|CVV|Security code/i).first(),
+        frame.getByLabel(/Security code|CVV|CVC/i).first(),
+      ];
+  }
+}
+
+async function fillStripeField(page: Page, kind: StripeFieldKind, value: string) {
   const deadline = Date.now() + 60000;
 
   while (Date.now() < deadline) {
     if (page.isClosed()) {
-      throw new Error(`Page closed while waiting for Stripe field ${label}`);
+      throw new Error(`Page closed while waiting for Stripe field ${kind}`);
     }
 
     for (const frame of page.frames()) {
@@ -14,10 +42,12 @@ async function fillStripeField(page: Page, label: RegExp, value: string) {
         if (!frame.url().includes('js.stripe.com')) {
           continue;
         }
-        const field = frame.getByLabel(label).first();
-        if (await field.count()) {
-          await field.fill(value);
-          return;
+
+        for (const field of stripeFieldLocators(frame, kind)) {
+          if (await field.count()) {
+            await field.fill(value);
+            return;
+          }
         }
       } catch {
         // Keep scanning other frames while Stripe mounts.
@@ -27,7 +57,7 @@ async function fillStripeField(page: Page, label: RegExp, value: string) {
     await page.waitForTimeout(250);
   }
 
-  throw new Error(`Timed out finding Stripe field ${label}`);
+  throw new Error(`Timed out finding Stripe field ${kind}`);
 }
 
 async function clickStripePayButton(page: Page) {
@@ -91,9 +121,9 @@ test.describe('donation flow', () => {
 
     await expect(page.locator('.donate-embedded-checkout__mount iframe')).toBeVisible({ timeout: 30000 });
 
-    await fillStripeField(page, /Card number/i, '4242424242424242');
-    await fillStripeField(page, /Expiration date/i, '1234');
-    await fillStripeField(page, /Security code|CVV|CVC/i, '123');
+    await fillStripeField(page, 'cardNumber', '4242424242424242');
+    await fillStripeField(page, 'expiry', '1234');
+    await fillStripeField(page, 'cvc', '123');
     await clickStripePayButton(page);
 
     await expect(page).toHaveURL(/\/donate\?session_id=/, { timeout: 60000 });
