@@ -226,9 +226,12 @@ jobs:
       domain_hosted_zone_id: ${{ vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
       stripe_event_bus_name: ${{ vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}
       stripe_publishable_key: ${{ vars.STRIPE_PUBLISHABLE_KEY_STAGING || '' }}
+      enable_google_on_user_pool_client: ${{ vars.FOUNDATION_WEB_ENABLE_GOOGLE_ON_USER_POOL_CLIENT_STAGING || 'false' }}
     secrets:
       aws_role_arn: ${{ secrets.AWS_STAGING_ROLE_ARN }}
       database_url: ${{ secrets.DATABASE_URL_STAGING }}
+      google_oauth_client_id: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID_STAGING }}
+      google_oauth_client_secret: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET_STAGING }}
       signup_slack_webhook_url: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
       web_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
       web_donation_slack_webhook_url: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}

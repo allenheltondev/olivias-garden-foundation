@@ -11,7 +11,10 @@ export interface CognitoConfig {
   userPoolId: string;
   domain: string;
   enabled: boolean;
+  hostedUiEnabled: boolean;
 }
+
+export type HostedUiProvider = 'Google' | 'Facebook';
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -133,6 +136,47 @@ interface SignUpResponse {
   UserConfirmed?: boolean;
 }
 
+interface HostedUiTokenResponse {
+  access_token: string;
+  id_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type?: string;
+}
+
+interface HostedUiState {
+  mode?: 'login' | 'signup';
+  redirectTo?: string | null;
+}
+
+function getHostedUiBaseUrl(config: CognitoConfig): string {
+  if (!config.hostedUiEnabled) {
+    throw new Error('Social login is not configured for this environment.');
+  }
+
+  return `https://${config.domain}`;
+}
+
+function getAuthCallbackUrl() {
+  return new URL('/auth/callback', window.location.origin).toString();
+}
+
+function encodeHostedUiState(state: HostedUiState): string {
+  return btoa(JSON.stringify(state));
+}
+
+export function decodeHostedUiState(value: string | null): HostedUiState | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(atob(value)) as HostedUiState;
+  } catch {
+    return null;
+  }
+}
+
 export interface SignUpResult {
   userConfirmed: boolean;
 }
@@ -147,7 +191,60 @@ export function getCognitoConfig(): CognitoConfig {
     userPoolId: userPoolId ?? '',
     domain: domain ? normalizeDomain(domain) : '',
     enabled: Boolean(clientId && userPoolId),
+    hostedUiEnabled: Boolean(clientId && userPoolId && domain),
   };
+}
+
+export function startHostedLogin(
+  config: CognitoConfig,
+  provider: HostedUiProvider,
+  options?: {
+    mode?: 'login' | 'signup';
+    redirectTo?: string | null;
+  },
+) {
+  const authorizeUrl = new URL('/oauth2/authorize', getHostedUiBaseUrl(config));
+  authorizeUrl.searchParams.set('client_id', config.clientId);
+  authorizeUrl.searchParams.set('response_type', 'code');
+  authorizeUrl.searchParams.set('scope', 'openid email profile');
+  authorizeUrl.searchParams.set('redirect_uri', getAuthCallbackUrl());
+  authorizeUrl.searchParams.set('identity_provider', provider);
+  authorizeUrl.searchParams.set('state', encodeHostedUiState({
+    mode: options?.mode,
+    redirectTo: options?.redirectTo ?? null,
+  }));
+  window.location.assign(authorizeUrl.toString());
+}
+
+export async function exchangeCodeForTokens(config: CognitoConfig, code: string): Promise<AuthSession> {
+  const response = await fetch(new URL('/oauth2/token', getHostedUiBaseUrl(config)), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: config.clientId,
+      code,
+      redirect_uri: getAuthCallbackUrl(),
+    }),
+  });
+
+  const payload = (await response.json()) as Partial<HostedUiTokenResponse> & { error?: string; error_description?: string };
+
+  if (!response.ok || !payload.access_token || !payload.id_token || typeof payload.expires_in !== 'number') {
+    throw new Error(payload.error_description || payload.error || 'Unable to complete social sign-in.');
+  }
+
+  const session = buildAuthSession({
+    access_token: payload.access_token,
+    id_token: payload.id_token,
+    refresh_token: payload.refresh_token,
+    expires_in: payload.expires_in,
+  });
+
+  writeStoredSession(session);
+  return session;
 }
 
 export async function signInWithPassword(
