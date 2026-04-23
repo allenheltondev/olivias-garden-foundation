@@ -3,17 +3,6 @@ import { FormFeedback, Input } from '@olivias/ui';
 import { redirectAfterAuth } from '../../auth/redirect';
 import type { AuthSession } from '../../auth/session';
 
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="og-login-page__provider-icon">
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.8-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.3 14.6 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12S6.7 21.6 12 21.6c6.9 0 9.1-4.8 9.1-7.3 0-.5 0-.8-.1-1.1H12Z" />
-      <path fill="#34A853" d="M2.4 12c0 5.3 4.3 9.6 9.6 9.6 4 0 6.6-1.3 8.8-3.6l-3.4-2.6c-.9.7-2.2 1.2-5.4 1.2-3.3 0-6-2.2-7-5.2l-2.6 2V12Z" />
-      <path fill="#4A90E2" d="M5 14.4c-.3-.8-.4-1.6-.4-2.4s.1-1.6.4-2.4l-2.6-2C1.7 9 1.3 10.4 1.3 12s.4 3 1.1 4.4l2.6-2Z" />
-      <path fill="#FBBC05" d="M12 5.8c2.3 0 3.8 1 4.7 1.8l3.4-3.3C18.6 2.9 16 2 12 2 6.7 2 2.4 6.3 2.4 11.6c0 1.6.4 3 1.1 4.4l2.6-2c1-3 3.7-5.2 7-5.2Z" />
-    </svg>
-  );
-}
-
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -601,7 +590,8 @@ export function LoginPage({
                         aria-label="Continue with Google"
                         title="Continue with Google"
                       >
-                        <GoogleIcon />
+                        <img src="/images/icons/google-g.svg" alt="" aria-hidden="true" className="og-login-page__provider-logo" />
+                        <span>Google</span>
                       </button>
                     </div>
                   </div>

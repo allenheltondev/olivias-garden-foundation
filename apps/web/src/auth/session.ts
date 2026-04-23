@@ -36,6 +36,17 @@ function firstString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function deriveDisplayName(claims: Record<string, unknown> | null): string | null {
+  const firstName = firstString(claims?.given_name);
+  const lastName = firstString(claims?.family_name);
+  const fullNameFromParts = [firstName, lastName].filter(Boolean).join(' ').trim();
+  if (fullNameFromParts) {
+    return fullNameFromParts;
+  }
+
+  return firstString(claims?.name) ?? firstName;
+}
+
 function deriveTier(claims: Record<string, unknown> | null): string | null {
   if (!claims) return null;
 
@@ -72,7 +83,7 @@ export function buildAuthSession(tokens: {
     user: {
       sub: firstString(claims?.sub) ?? 'unknown',
       email: firstString(claims?.email),
-      name: firstString(claims?.name) ?? firstString(claims?.given_name),
+      name: deriveDisplayName(claims),
       firstName: firstString(claims?.given_name),
       lastName: firstString(claims?.family_name),
       tier: deriveTier(claims),
@@ -93,6 +104,7 @@ export function readStoredSession(): AuthSession | null {
       ...parsed,
       user: {
         ...parsed.user,
+        name: parsed.user?.name ?? deriveDisplayName(claims),
         firstName: parsed.user?.firstName ?? null,
         lastName: parsed.user?.lastName ?? null,
         isAdmin: parsed.user?.isAdmin ?? deriveIsAdmin(claims),

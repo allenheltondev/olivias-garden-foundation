@@ -70,12 +70,20 @@ export function AuthCallbackPage({
       });
   }, [authConfig, authEnabled, onAuthSuccess, onNavigate]);
 
+  if (!error) {
+    return (
+      <section className="page-section" aria-live="polite">
+        <p className="page-text">{message}</p>
+      </section>
+    );
+  }
+
   return (
     <PageHero
       eyebrow="Sign in"
-      title={error ? 'Sign-in needs attention' : 'Finishing sign-in'}
-      body={error ?? message}
-      actions={error ? (
+      title="Sign-in needs attention"
+      body={error}
+      actions={(
         <CtaButton
           href="/login"
           onClick={(event) => {
@@ -86,7 +94,7 @@ export function AuthCallbackPage({
         >
           Back to login
         </CtaButton>
-      ) : undefined}
+      )}
     />
   );
 }

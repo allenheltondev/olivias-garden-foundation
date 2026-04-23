@@ -523,6 +523,7 @@ export function ProfilePage({
   const displayName =
     profile?.displayName?.trim()
       || [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()
+      || [authSession.user.firstName, authSession.user.lastName].filter(Boolean).join(' ').trim()
       || authSession.user.name
       || authSession.user.email
       || 'Your profile';
