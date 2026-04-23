@@ -610,7 +610,7 @@ function OrganizationInquiryForm() {
 
       setFeedback({
         type: 'success',
-        message: "Thanks. We'll be in touch within a few days to get your organization verified and your team set up with free Pro access.",
+        message: "Thanks. We'll be in touch within a few days to help you get your organization set up in Good Roots Network.",
       });
       setOrgName('');
       setContactName('');
@@ -800,13 +800,15 @@ export function GoodRootsPage({
             <p>
               Most home gardens end in a pile of zucchini no one can keep up with. Good Roots helps you plan
               around what your community actually needs — and turns surplus into something your neighbors
-              will thank you for. Track your beds, set watering and harvest reminders, and watch your little
-              patch of ground become part of something bigger.
+              will thank you for. Whether you're growing at home, on church land, at a school, or in a
+              community garden, you can join as a grower, track your beds, set watering and harvest reminders,
+              and watch your patch of ground become part of something bigger.
             </p>
             <ul className="site-list">
               <li>Garden planner with what-to-plant-when</li>
               <li>Watering, fertilizer, and harvest reminders</li>
               <li>Listings for surplus produce</li>
+              <li>Organization growers can show who they grow on behalf of</li>
               <li>A running picture of what's growing nearby</li>
             </ul>
           </div>
@@ -893,24 +895,23 @@ export function GoodRootsPage({
       <Section
         id="organizations"
         title="Feeding a community? Let's make it easier."
-        intro="Food pantries, shelters, school programs, and mutual-aid groups can create a verified organization account to claim larger volumes, coordinate recurring pickups, and show up in growers' feeds as a priority recipient. We'll waive Pro fees for verified nonprofits — your work shouldn't cost extra."
+        intro="Community gardens, schools, churches, food pantries, shelters, and mutual-aid groups can now join Good Roots directly as growers or gatherers. If you're coordinating shared community plots or regular local pickups, we'll help you choose the right starting setup."
         className="good-roots-orgs-section"
       >
         <div className="good-roots-orgs">
-          <Card title="What organizations get" className="good-roots-orgs__perks">
+          <Card title="How organizations can use Good Roots" className="good-roots-orgs__perks">
             <ul className="site-list">
-              <li>Verified organization badge on your profile</li>
-              <li>Bulk claim requests across multiple growers</li>
-              <li>Recurring pickup scheduling</li>
-              <li>Free Pro access for the whole team</li>
-              <li>Light-touch onboarding — we'll walk you through it</li>
+              <li>Grower onboarding for shared gardens and community plots</li>
+              <li>Organization name visible in the app for grower accounts</li>
+              <li>Gatherer onboarding for food pantries, shelters, schools, and mutual-aid groups</li>
+              <li>Direct coordination with local growers through the existing listing flow</li>
+              <li>Light-touch onboarding guidance from our team when you need it</li>
             </ul>
           </Card>
           <Card title="Apply for organization access" className="good-roots-orgs__form">
             <p className="contact-card__eyebrow">Tell us about your org</p>
             <p>
-              Share a few details and we'll reach out to verify your organization and get your team set up
-              with free Pro access.
+              Share a few details and we'll reach out to help you get set up in the right role for how your organization participates.
             </p>
             <OrganizationInquiryForm />
           </Card>

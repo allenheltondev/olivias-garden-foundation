@@ -17,7 +17,15 @@ body:
   content: |-
     {
       "displayName": "Idempotency Test User",
-      "userType": "grower"
+      "userType": "grower",
+      "growerProfile": {
+        "homeZone": "8a",
+        "address": "123 Test St, Austin, TX 78701",
+        "shareRadiusMiles": 5,
+        "isOrganization": false,
+        "units": "imperial",
+        "locale": "en-US"
+      }
     }
 scripts:
   - type: afterResponse

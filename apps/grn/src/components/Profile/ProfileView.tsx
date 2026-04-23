@@ -137,7 +137,12 @@ export function ProfileView() {
   const phaseLabel = profile.userType === 'gatherer'
     ? 'Phase 2: Search and Request Flow'
     : 'Phase 1: Grower Listing Flow';
-  const roleLabel = profile.userType === 'gatherer' ? 'Gatherer' : 'Grower';
+  const isOrganizationGrower = profile.userType === 'grower' && profile.growerProfile?.isOrganization;
+  const roleLabel = profile.userType === 'gatherer'
+    ? 'Gatherer'
+    : isOrganizationGrower
+      ? 'Organization grower'
+      : 'Grower';
   const sectionItems = profile.userType === 'grower'
     ? [
         { id: 'profile-overview', label: 'Overview' },
@@ -176,6 +181,20 @@ export function ProfileView() {
       ),
     },
   ];
+
+  if (profile.userType === 'grower') {
+    overviewItems.push({
+      key: 'grower-type',
+      label: 'Grower setup',
+      value: (
+        <p className="text-gray-900">
+          {isOrganizationGrower
+            ? profile.growerProfile?.organizationName ?? 'Organization grower'
+            : 'Individual grower'}
+        </p>
+      ),
+    });
+  }
 
   return (
     <AppShell>

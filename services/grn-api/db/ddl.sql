@@ -231,12 +231,20 @@ create table if not exists grower_profiles (
   lat double precision,
   lng double precision,
   share_radius_km double precision not null default 5.0,
+  is_organization boolean not null default false,
+  organization_name text,
   units units_system not null default 'imperial',
   locale text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint grower_profiles_radius_positive check (share_radius_km > 0),
   constraint grower_profiles_address_nonempty check (address is null or length(btrim(address)) > 0),
+  constraint grower_profiles_organization_name_nonempty check (
+    organization_name is null or length(btrim(organization_name)) > 0
+  ),
+  constraint grower_profiles_organization_requires_name check (
+    is_organization = false or organization_name is not null
+  ),
   constraint grower_profiles_lat_lng_pair check (
     (lat is null and lng is null) or (lat is not null and lng is not null)
   )
