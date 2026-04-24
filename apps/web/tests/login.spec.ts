@@ -21,5 +21,10 @@ test.describe('login page', () => {
       await expect(googleButton).toBeVisible();
       await expect(page.getByText('Or sign in with')).toBeVisible();
     }
+
+    const facebookButton = page.getByRole('button', { name: 'Continue with Facebook' });
+    if (await facebookButton.count()) {
+      await expect(facebookButton).toBeVisible();
+    }
   });
 });

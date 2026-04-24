@@ -143,6 +143,7 @@ export function LoginPage({
   authError,
   defaultMode,
   onStartGoogleLogin,
+  onStartFacebookLogin,
   onSubmitLogin,
   onSubmitSignup,
   onConfirmSignup,
@@ -158,6 +159,7 @@ export function LoginPage({
   authError: string | null;
   defaultMode: 'login' | 'signup';
   onStartGoogleLogin: (mode: 'login' | 'signup') => void;
+  onStartFacebookLogin: (mode: 'login' | 'signup') => void;
   onSubmitLogin: (email: string, password: string) => Promise<AuthSession>;
   onSubmitSignup: (
     email: string,
@@ -592,6 +594,17 @@ export function LoginPage({
                       >
                         <img src="/images/icons/google-g.svg" alt="" aria-hidden="true" className="og-login-page__provider-logo" />
                         <span>Google</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="og-login-page__provider-button"
+                        onClick={() => onStartFacebookLogin(mode === 'signup' ? 'signup' : 'login')}
+                        disabled={authBusy}
+                        aria-label="Continue with Facebook"
+                        title="Continue with Facebook"
+                      >
+                        <img src="/images/icons/facebook-f.svg" alt="" aria-hidden="true" className="og-login-page__provider-logo" />
+                        <span>Facebook</span>
                       </button>
                     </div>
                   </div>

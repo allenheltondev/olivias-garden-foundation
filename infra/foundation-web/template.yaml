@@ -37,6 +37,15 @@ Parameters:
     Default: ''
     NoEcho: true
     Description: Optional Google OAuth client secret for Cognito social sign-in.
+  FacebookAppId:
+    Type: String
+    Default: ''
+    Description: Optional Facebook App ID for Cognito social sign-in.
+  FacebookAppSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Optional Facebook App secret for Cognito social sign-in.
 Globals:
   Function:
     Architectures: [arm64]
@@ -53,6 +62,10 @@ Conditions:
     - !Not [!Equals [!Ref GoogleClientId, '']]
     - !Not [!Equals [!Ref GoogleClientSecret, '']]
   EnableGoogleOnClient: !Condition EnableGoogleIdentityProvider
+  EnableFacebookIdentityProvider: !And
+    - !Not [!Equals [!Ref FacebookAppId, '']]
+    - !Not [!Equals [!Ref FacebookAppSecret, '']]
+  EnableFacebookOnClient: !Condition EnableFacebookIdentityProvider
   EnableProdCognitoCustomDomain: !And
     - !Condition IsProdEnvironment
     - !Condition DeployCustomDomain
@@ -190,6 +203,7 @@ Resources:
       SupportedIdentityProviders:
         - COGNITO
         - !If [EnableGoogleOnClient, Google, !Ref AWS::NoValue]
+        - !If [EnableFacebookOnClient, Facebook, !Ref AWS::NoValue]
 
   FoundationFreeTierGroup:
     Type: AWS::Cognito::UserPoolGroup
@@ -279,6 +293,25 @@ Resources:
         family_name: family_name
         name: name
         username: sub
+
+  FoundationFacebookIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Condition: EnableFacebookIdentityProvider
+    Properties:
+      UserPoolId: !Ref FoundationUserPool
+      ProviderName: Facebook
+      ProviderType: Facebook
+      ProviderDetails:
+        authorize_scopes: public_profile,email
+        client_id: !Ref FacebookAppId
+        client_secret: !Ref FacebookAppSecret
+        api_version: v18.0
+      AttributeMapping:
+        email: email
+        given_name: first_name
+        family_name: last_name
+        name: name
+        username: id
 
   WebFrontendBucket:
     Type: AWS::S3::Bucket

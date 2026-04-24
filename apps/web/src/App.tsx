@@ -256,6 +256,19 @@ function App() {
     });
   };
 
+  const handleFacebookLogin = (mode: 'login' | 'signup') => {
+    if (!authConfig.hostedUiEnabled) {
+      setAuthError('Facebook sign-in is not configured for this environment yet.');
+      return;
+    }
+
+    setAuthError(null);
+    startHostedLogin(authConfig, 'Facebook', {
+      mode,
+      redirectTo: readRedirectTargetFromSearch(),
+    });
+  };
+
   const routeFallback = <div className="page-section"><p className="page-text">Loading page...</p></div>;
 
   return (
@@ -295,6 +308,7 @@ function App() {
                 authError={authError}
                 defaultMode={loginModePreference}
                 onStartGoogleLogin={handleGoogleLogin}
+                onStartFacebookLogin={handleFacebookLogin}
                 onSubmitLogin={submitLogin}
                 onSubmitSignup={submitSignup}
                 onConfirmSignup={submitSignUpConfirmation}
