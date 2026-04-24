@@ -29,6 +29,7 @@ body {
   align-items: stretch;
   width: 100%;
   min-height: 0;
+  position: relative;
 }
 
 .admin-shell-main {
@@ -54,98 +55,51 @@ body {
   --admin-nav-width-collapsed: 4.25rem;
   --admin-nav-width-expanded: 15.5rem;
   --admin-nav-header-offset: calc(4.85rem + env(safe-area-inset-top, 0px));
+  --admin-nav-footer-reserve: 9rem;
+  --admin-nav-available-height: calc(100dvh - var(--admin-nav-header-offset) - var(--admin-nav-footer-reserve));
 
   position: sticky;
   top: var(--admin-nav-header-offset);
   align-self: flex-start;
-  height: calc(100dvh - var(--admin-nav-header-offset));
+  max-height: var(--admin-nav-available-height);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.85rem 0.6rem;
+  padding: 1rem 0.55rem;
   background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(249, 241, 226, 0.94));
   border-right: 1px solid rgba(79, 56, 37, 0.1);
   box-shadow: 2px 0 24px rgba(38, 23, 15, 0.05);
   width: var(--admin-nav-width-collapsed);
   transition: width var(--duration-base, 200ms) var(--easing-out, ease);
-  overflow: hidden;
 }
 
 .admin-vertical-nav.is-expanded {
   width: var(--admin-nav-width-expanded);
 }
 
-.admin-vertical-nav__toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.65rem;
-  width: 100%;
-  min-height: 2.5rem;
-  padding: 0.35rem 0.65rem;
-  margin-bottom: 0.25rem;
-  border: 1px solid transparent;
-  border-radius: var(--og-radius-pill, 999px);
-  background: transparent;
-  color: rgba(79, 56, 37, 0.7);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
-              color var(--duration-fast, 150ms) var(--easing-out, ease),
-              border-color var(--duration-fast, 150ms) var(--easing-out, ease);
-}
-
-.admin-vertical-nav__toggle svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-}
-
-.admin-vertical-nav__toggle:hover,
-.admin-vertical-nav__toggle:focus-visible {
-  background: rgba(79, 56, 37, 0.06);
-  color: var(--og-color-soil);
-  outline: none;
-}
-
-.admin-vertical-nav__toggle-label {
-  opacity: 0;
-  transform: translateX(-0.25rem);
-  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
-              transform var(--duration-fast, 150ms) var(--easing-out, ease);
-  white-space: nowrap;
-}
-
-.admin-vertical-nav.is-expanded .admin-vertical-nav__toggle-label {
-  opacity: 1;
-  transform: translateX(0);
-}
-
+/* List: top-aligned, not stretched. Overflow-y allows scroll if content
+   ever exceeds the sticky viewport budget. */
 .admin-vertical-nav__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 0.25rem;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .admin-vertical-nav__link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.85rem;
   width: 100%;
-  min-height: 2.85rem;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.9rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: none;
+  border-radius: 0.75rem;
   background: transparent;
   color: var(--og-color-soil);
   font: inherit;
@@ -154,26 +108,23 @@ body {
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
-              color var(--duration-fast, 150ms) var(--easing-out, ease),
-              transform var(--duration-fast, 150ms) var(--easing-out, ease);
+              color var(--duration-fast, 150ms) var(--easing-out, ease);
 }
 
 .admin-vertical-nav__link:hover,
 .admin-vertical-nav__link:focus-visible {
-  background: rgba(79, 56, 37, 0.07);
+  background: rgba(79, 56, 37, 0.08);
   outline: none;
 }
 
 .admin-vertical-nav__link.is-active {
-  background: linear-gradient(180deg, rgba(66, 107, 63, 0.96), rgba(79, 56, 37, 0.92));
-  color: var(--og-color-paper);
-  border-color: transparent;
-  box-shadow: 0 8px 20px rgba(38, 23, 15, 0.12);
+  background: rgba(66, 107, 63, 0.14);
+  color: var(--og-color-moss);
 }
 
-.admin-vertical-nav__link.is-active:hover {
-  background: linear-gradient(180deg, rgba(66, 107, 63, 0.96), rgba(79, 56, 37, 0.92));
-  color: var(--og-color-paper);
+.admin-vertical-nav__link.is-active:hover,
+.admin-vertical-nav__link.is-active:focus-visible {
+  background: rgba(66, 107, 63, 0.2);
 }
 
 .admin-vertical-nav__icon {
@@ -181,23 +132,18 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 0.75rem;
-  background: rgba(79, 56, 37, 0.08);
-  color: var(--og-color-soil);
-  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
-              color var(--duration-fast, 150ms) var(--easing-out, ease);
+  width: 1.6rem;
+  height: 1.6rem;
+  color: inherit;
 }
 
 .admin-vertical-nav__icon svg {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.3rem;
+  height: 1.3rem;
 }
 
 .admin-vertical-nav__link.is-active .admin-vertical-nav__icon {
-  background: rgba(255, 255, 255, 0.22);
-  color: var(--og-color-paper);
+  color: var(--og-color-moss);
 }
 
 .admin-vertical-nav__label {
@@ -206,24 +152,61 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   opacity: 0;
-  transform: translateX(-0.25rem);
-  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
-              transform var(--duration-fast, 150ms) var(--easing-out, ease);
+  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease);
 }
 
 .admin-vertical-nav.is-expanded .admin-vertical-nav__label {
   opacity: 1;
-  transform: translateX(0);
 }
 
 .admin-vertical-nav.is-collapsed .admin-vertical-nav__link {
   justify-content: center;
-  padding: 0.4rem;
+  padding: 0.55rem;
 }
 
-.admin-vertical-nav.is-collapsed .admin-vertical-nav__toggle {
+/* Collapse/expand handle: floats on the right edge of the nav, vertically
+   centered. Subtle by default, lights up on hover (of itself or the nav). */
+.admin-vertical-nav__toggle {
+  position: absolute;
+  top: 50%;
+  right: -0.85rem;
+  transform: translateY(-50%);
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 0.4rem;
+  border: 1px solid rgba(79, 56, 37, 0.15);
+  border-radius: 50%;
+  background: var(--og-color-paper);
+  color: rgba(79, 56, 37, 0.7);
+  cursor: pointer;
+  opacity: 0;
+  box-shadow: 0 4px 12px rgba(38, 23, 15, 0.1);
+  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease),
+              background-color var(--duration-fast, 150ms) var(--easing-out, ease);
+  z-index: 1;
+}
+
+.admin-vertical-nav:hover .admin-vertical-nav__toggle,
+.admin-vertical-nav:focus-within .admin-vertical-nav__toggle,
+.admin-vertical-nav__toggle:hover,
+.admin-vertical-nav__toggle:focus-visible {
+  opacity: 1;
+}
+
+.admin-vertical-nav__toggle:hover,
+.admin-vertical-nav__toggle:focus-visible {
+  background: var(--og-color-moss);
+  color: var(--og-color-paper);
+  outline: none;
+}
+
+.admin-vertical-nav__toggle svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 /* ── Mobile: horizontal scroll fallback ───────────────────────────── */
@@ -239,7 +222,7 @@ body {
     position: static;
     top: auto;
     width: 100%;
-    height: auto;
+    max-height: none;
     flex-direction: row;
     gap: 0.4rem;
     padding: 0.65rem 0.75rem;
@@ -462,6 +445,107 @@ body {
   max-height: 20rem;
   object-fit: cover;
   border-radius: var(--og-radius-lg);
+}
+
+/* ── Photo carousel ───────────────────────────────────────────────── */
+
+.admin-photo-carousel {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: var(--og-radius-lg);
+  overflow: hidden;
+  background: rgba(38, 23, 15, 0.04);
+}
+
+.admin-photo-carousel__image {
+  display: block;
+  width: 100%;
+  max-height: 26rem;
+  object-fit: contain;
+  background: rgba(38, 23, 15, 0.04);
+}
+
+.admin-photo-carousel__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(38, 23, 15, 0.55);
+  color: var(--og-color-paper);
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease);
+}
+
+.admin-photo-carousel__nav:hover,
+.admin-photo-carousel__nav:focus-visible {
+  background: rgba(38, 23, 15, 0.8);
+  outline: none;
+}
+
+.admin-photo-carousel__nav svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.admin-photo-carousel__nav--prev {
+  left: 0.5rem;
+}
+
+.admin-photo-carousel__nav--next {
+  right: 0.5rem;
+}
+
+.admin-photo-carousel__counter {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--og-radius-pill, 999px);
+  background: rgba(38, 23, 15, 0.6);
+  color: var(--og-color-paper);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.admin-photo-carousel__dots {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: var(--og-radius-pill, 999px);
+  background: rgba(38, 23, 15, 0.4);
+}
+
+.admin-photo-carousel__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              transform var(--duration-fast, 150ms) var(--easing-out, ease);
+}
+
+.admin-photo-carousel__dot:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.admin-photo-carousel__dot.is-active {
+  background: var(--og-color-paper);
+  transform: scale(1.2);
 }
 
 /* ── Store catalog ────────────────────────────────────────────────── */

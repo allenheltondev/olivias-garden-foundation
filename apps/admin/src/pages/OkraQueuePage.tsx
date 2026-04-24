@@ -7,6 +7,65 @@ import {
 } from '../api';
 import type { AdminSession } from '../auth/session';
 
+function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
+  const [index, setIndex] = useState(0);
+
+  if (photos.length === 0) return null;
+
+  const clamped = Math.min(index, photos.length - 1);
+  const showControls = photos.length > 1;
+
+  return (
+    <div className="admin-photo-carousel">
+      <img
+        className="admin-photo-carousel__image"
+        src={photos[clamped]}
+        alt={alt}
+      />
+      {showControls ? (
+        <>
+          <button
+            type="button"
+            className="admin-photo-carousel__nav admin-photo-carousel__nav--prev"
+            aria-label="Previous photo"
+            onClick={() => setIndex((i) => (i - 1 + photos.length) % photos.length)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M15.4 6.4 14 5l-7 7 7 7 1.4-1.4L9.8 12Z" fill="currentColor" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="admin-photo-carousel__nav admin-photo-carousel__nav--next"
+            aria-label="Next photo"
+            onClick={() => setIndex((i) => (i + 1) % photos.length)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8.6 6.4 10 5l7 7-7 7-1.4-1.4L14.2 12Z" fill="currentColor" />
+            </svg>
+          </button>
+          <div className="admin-photo-carousel__counter" aria-hidden="true">
+            {clamped + 1} / {photos.length}
+          </div>
+          <div className="admin-photo-carousel__dots" role="tablist" aria-label="Select photo">
+            {photos.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === clamped}
+                aria-label={`Photo ${i + 1}`}
+                className={`admin-photo-carousel__dot${i === clamped ? ' is-active' : ''}`}
+                onClick={() => setIndex(i)}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export interface OkraQueuePageProps {
   session: AdminSession;
 }
@@ -109,11 +168,10 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
               <p className="admin-submission-card__location">
                 {submission.raw_location_text || 'No location text provided.'}
               </p>
-              {submission.photos?.[0] ? (
-                <img
-                  className="admin-submission-card__photo"
-                  src={submission.photos[0]}
-                  alt="Okra submission"
+              {submission.photos && submission.photos.length > 0 ? (
+                <PhotoCarousel
+                  photos={submission.photos}
+                  alt={`Okra submission from ${submission.contributor_name || 'anonymous contributor'}`}
                 />
               ) : null}
               <div className="admin-submission-card__actions">

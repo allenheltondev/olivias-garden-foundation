@@ -170,26 +170,6 @@ export function AppShell({ session, children }: AppShellProps) {
           className={`admin-vertical-nav ${expanded ? 'is-expanded' : 'is-collapsed'}`}
           aria-label="Admin sections"
         >
-          <button
-            type="button"
-            className="admin-vertical-nav__toggle"
-            aria-expanded={expanded}
-            aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
-            onClick={() => setExpanded((current) => !current)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path
-                d={expanded
-                  ? 'M15.4 6.4 14 5l-7 7 7 7 1.4-1.4L9.8 12Z'
-                  : 'M8.6 6.4 10 5l7 7-7 7-1.4-1.4L14.2 12Z'}
-                fill="currentColor"
-              />
-            </svg>
-            <span className="admin-vertical-nav__toggle-label">
-              {expanded ? 'Collapse' : 'Expand'}
-            </span>
-          </button>
-
           <ul className="admin-vertical-nav__list" role="list">
             {navItems.map((item) => (
               <li key={item.id}>
@@ -207,6 +187,24 @@ export function AppShell({ session, children }: AppShellProps) {
               </li>
             ))}
           </ul>
+
+          <button
+            type="button"
+            className="admin-vertical-nav__toggle"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
+            title={expanded ? 'Collapse navigation' : 'Expand navigation'}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d={expanded
+                  ? 'M15.4 6.4 14 5l-7 7 7 7 1.4-1.4L9.8 12Z'
+                  : 'M8.6 6.4 10 5l7 7-7 7-1.4-1.4L14.2 12Z'}
+                fill="currentColor"
+              />
+            </svg>
+          </button>
         </aside>
 
         <main className="admin-shell-main">

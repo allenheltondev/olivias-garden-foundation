@@ -119,6 +119,28 @@ function validateCursor(raw) {
   return { valid: true, value: decoded };
 }
 
+// Upsert the authenticated admin into admin_users and return the row id.
+// Anyone reaching this point has already cleared the Admin-group authorizer
+// on the admin API Gateway, so auto-provisioning on first review is safe —
+// otherwise only the CI-provisioned user could approve/deny, which is how
+// human admins were hitting 403 before.
+async function resolveAdminUserId(client, authorizer) {
+  const cognitoSub = authorizer?.sub;
+  if (!cognitoSub) return null;
+
+  const email = authorizer?.email || null;
+  const result = await client.query(
+    `INSERT INTO admin_users (cognito_sub, email, display_name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (cognito_sub) DO UPDATE SET
+       email = COALESCE(EXCLUDED.email, admin_users.email),
+       updated_at = now()
+     RETURNING id`,
+    [cognitoSub, email, email]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export function registerAdminRoutes(app) {
   app.get('/requests', async (ctx) => {
     const params = ctx.event?.queryStringParameters || {};
@@ -280,7 +302,8 @@ export function registerAdminRoutes(app) {
 
       const submissionIds = rows.map((r) => r.id);
       const photosResult = await client.query(
-        `SELECT submission_id, original_s3_key
+        `SELECT submission_id,
+                COALESCE(normalized_s3_key, original_s3_key) AS display_s3_key
          FROM submission_photos
          WHERE submission_id = ANY($1)
          ORDER BY submission_id, created_at ASC`,
@@ -292,7 +315,7 @@ export function registerAdminRoutes(app) {
         if (!photosBySubmission[photo.submission_id]) {
           photosBySubmission[photo.submission_id] = [];
         }
-        photosBySubmission[photo.submission_id].push(photo.original_s3_key);
+        photosBySubmission[photo.submission_id].push(photo.display_s3_key);
       }
 
       const bucket = process.env.MEDIA_BUCKET_NAME;
@@ -401,11 +424,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
       return errorResponse(400, 'MISSING_PHOTOS', 'At least one photo is required for approval');
     }
 
-    const cognitoSub = ctx.event.requestContext?.authorizer?.sub || 'system';
-    const adminResult = await client.query(
-      'SELECT id FROM admin_users WHERE cognito_sub = $1', [cognitoSub]
-    );
-    const adminUserId = adminResult.rows.length > 0 ? adminResult.rows[0].id : null;
+    const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
     }
@@ -508,11 +527,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
   const client = await createDbClient();
   await client.connect();
   try {
-    const cognitoSub = ctx.event.requestContext?.authorizer?.sub || 'system';
-    const adminResult = await client.query(
-      'SELECT id FROM admin_users WHERE cognito_sub = $1', [cognitoSub]
-    );
-    const adminUserId = adminResult.rows.length > 0 ? adminResult.rows[0].id : null;
+    const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
     }

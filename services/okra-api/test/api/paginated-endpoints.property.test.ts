@@ -352,7 +352,7 @@ describe('Property 10: Admin Review Queue Pagination Completeness with Photo Rea
                   if (p.status === 'ready') {
                     rows.push({
                       submission_id: s.id,
-                      original_s3_key: p.original_s3_key,
+                      display_s3_key: p.original_s3_key,
                       created_at: p.created_at,
                     });
                   }
@@ -524,7 +524,7 @@ describe('Property 11: Admin Review Queue Response Shape', () => {
                   if (p.status === 'ready') {
                     rows.push({
                       submission_id: s.id,
-                      original_s3_key: p.original_s3_key,
+                      display_s3_key: p.original_s3_key,
                       created_at: p.created_at,
                     });
                   }
@@ -661,7 +661,7 @@ describe('Property 12: Admin Review Queue Photo Ordering and Ready Filter', () =
                   if (p.status === 'ready') {
                     rows.push({
                       submission_id: s.id,
-                      original_s3_key: p.original_s3_key,
+                      display_s3_key: p.original_s3_key,
                       created_at: p.created_at,
                     });
                   }
