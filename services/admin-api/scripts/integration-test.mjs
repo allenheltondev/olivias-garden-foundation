@@ -107,7 +107,10 @@ async function run() {
   // --- Auth Boundary ---
   console.log('\n=== Auth Boundary ===');
   {
-    const dummyId = '00000000-0000-0000-0000-000000000000';
+    // Valid RFC-4122 v4 UUID that won't match any real product — the admin-api
+    // rejects the all-zeros nil UUID because its version/variant bytes fail
+    // the regex, which would make this check the wrong kind of 400.
+    const dummyId = '00000000-0000-4000-8000-000000000000';
 
     // No auth → 401 on admin routes.
     {
@@ -180,7 +183,10 @@ async function run() {
   // should 400 without reaching Stripe, so they run in every environment.
   console.log('\n=== Admin Store Validation ===');
   try {
-    const dummyId = '00000000-0000-0000-0000-000000000000';
+    // Valid RFC-4122 v4 UUID that won't match any real product — the admin-api
+    // rejects the all-zeros nil UUID because its version/variant bytes fail
+    // the regex, which would make this check the wrong kind of 400.
+    const dummyId = '00000000-0000-4000-8000-000000000000';
 
     {
       const res = await adminApi.request('/admin/store/products', {

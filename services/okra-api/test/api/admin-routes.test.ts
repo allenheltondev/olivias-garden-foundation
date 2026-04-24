@@ -208,7 +208,11 @@ describe('GET /admin/submissions', () => {
     expect(queryCall![1]).toContain('pending_review');
   });
 
-  it('applies the ready-photo filter for status=pending_review', async () => {
+  it('does NOT apply the ready-photo filter for status=pending_review', async () => {
+    // `pending_review` is the full list of pending rows — the photo filter
+    // only kicks in for the `pending` alias, which is the moderation queue.
+    // This keeps callers that poll for their own just-created submission
+    // (before the photo processor has run) from timing out.
     setupListMocks();
     await handler(
       makeRestApiEvent('/submissions', 'GET', { queryStringParameters: { status: 'pending_review' } })
@@ -216,7 +220,8 @@ describe('GET /admin/submissions', () => {
     const queryCall = mockClient.query.mock.calls.find(
       (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s')
     );
-    expect(queryCall![0]).toMatch(/submission_photos sp/);
+    expect(queryCall![0]).not.toMatch(/submission_photos sp/);
+    expect(queryCall![1]).toContain('pending_review');
   });
 
   it('accepts valid status filter: approved', async () => {
