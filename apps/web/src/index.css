@@ -2146,3 +2146,165 @@ html {
     grid-column: 1 / -1;
   }
 }
+
+/* ── Profile danger zone ─────────────────────────────────────────────── */
+
+.profile-danger-zone__panel {
+  border: 1px solid rgba(176, 54, 48, 0.35);
+  background: rgba(176, 54, 48, 0.05);
+  border-radius: 1.2rem;
+}
+
+.profile-danger-zone__body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.profile-danger-zone__heading {
+  margin: 0;
+  font-family: var(--site-display);
+  font-size: 1.15rem;
+  color: #8a1f1f;
+}
+
+.profile-danger-zone__text {
+  margin: 0;
+  color: var(--site-ink);
+  line-height: 1.55;
+  font-size: 0.96rem;
+}
+
+.profile-danger-zone__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.3rem;
+}
+
+.profile-danger-zone__button {
+  min-height: 2.75rem;
+}
+
+@media (max-width: 600px) {
+  .profile-danger-zone__panel {
+    border-radius: 1rem;
+  }
+
+  .profile-danger-zone__actions {
+    justify-content: stretch;
+  }
+
+  .profile-danger-zone__button {
+    width: 100%;
+  }
+}
+
+/* ── Profile delete confirmation dialog ──────────────────────────────── */
+
+.profile-delete-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.profile-delete-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.profile-delete-dialog__panel {
+  position: relative;
+  background: var(--site-paper, #fbf7ef);
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  padding: 1.5rem;
+  max-width: 32rem;
+  width: 100%;
+  display: grid;
+  gap: 0.8rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.profile-delete-dialog__title {
+  margin: 0;
+  font-family: var(--site-display);
+  font-size: 1.35rem;
+  color: #8a1f1f;
+}
+
+.profile-delete-dialog__body {
+  margin: 0;
+  color: var(--site-ink);
+  line-height: 1.55;
+  font-size: 0.96rem;
+}
+
+.profile-delete-dialog__label {
+  font-size: 0.9rem;
+  color: var(--site-ink);
+  margin-top: 0.3rem;
+}
+
+.profile-delete-dialog__input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--site-border, rgba(76, 52, 38, 0.25));
+  border-radius: 0.6rem;
+  background: white;
+  color: var(--site-ink);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-delete-dialog__input:focus {
+  outline: 2px solid rgba(138, 31, 31, 0.45);
+  outline-offset: 2px;
+}
+
+.profile-delete-dialog__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.profile-delete-dialog__cancel,
+.profile-delete-dialog__confirm {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 520px) {
+  .profile-delete-dialog__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  .profile-delete-dialog__cancel,
+  .profile-delete-dialog__confirm {
+    width: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-delete-dialog {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .profile-delete-dialog__panel {
+    max-width: 100%;
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.25rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    max-height: 90vh;
+  }
+}

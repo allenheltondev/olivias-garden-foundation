@@ -1,0 +1,25 @@
+$kind: http-request
+name: Delete Profile - Invalid Token
+description: |-
+  Ensure DELETE /profile rejects requests bearing a clearly-invalid bearer token.
+  The Cognito verifier should fail closed before we touch any data.
+method: DELETE
+url: '{{webBaseUrl}}/profile'
+order: 1101
+headers:
+  - key: Authorization
+    value: 'Bearer not-a-real-token'
+  - key: X-Correlation-Id
+    value: postman-delete-profile-invalid
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Invalid tokens are rejected with 400 or 401", function () {
+          pm.expect([400, 401]).to.include(pm.response.code);
+      });
+
+      pm.test("Response body surfaces an error message", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.be.a("string").and.not.empty;
+      });

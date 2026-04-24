@@ -21,6 +21,7 @@ import { readRedirectTargetFromSearch } from './auth/redirect';
 import {
   AboutPage,
   ContactPage,
+  DataDeletionPage,
   GetInvolvedPage,
   GoodRootsPage,
   HomePage,
@@ -238,6 +239,13 @@ function App() {
     signOut(authConfig);
   };
 
+  const handleAccountDeleted = () => {
+    setAuthSession(null);
+    setProfileAvatarUrl(null);
+    signOut(authConfig);
+    navigate('/');
+  };
+
   const handleAuthSuccess = (session: AuthSession) => {
     setAuthSession(session);
     setAuthError(null);
@@ -337,6 +345,7 @@ function App() {
                   authReady={authReady}
                   onNavigate={navigate}
                   onAvatarUrlChange={setProfileAvatarUrl}
+                  onAccountDeleted={handleAccountDeleted}
                 />
               </Suspense>
             }
@@ -344,6 +353,7 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/data-deletion" element={<DataDeletionPage onNavigate={navigate} />} />
           <Route
             path="/good-roots"
             element={<GoodRootsPage authSession={authSession} onNavigate={navigate} />}

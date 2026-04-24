@@ -123,6 +123,15 @@ export const routes: AppRoute[] = [
     allowIndex: true,
     prerender: true,
   },
+  {
+    path: '/data-deletion',
+    label: 'Data Deletion',
+    showInFooter: true,
+    title: 'Data and account deletion',
+    description: "How to delete your Olivia's Garden Foundation account and the personal data associated with it, including data from Facebook or Google sign-in.",
+    allowIndex: true,
+    prerender: true,
+  },
 ];
 
 export const navRoutes = routes.filter((route) => route.showInNav);

@@ -593,6 +593,11 @@ export function PrivacyPolicyPage() {
           information, subject to legal and operational limits. You may also opt out of promotional
           emails through the unsubscribe link included in those messages.
         </p>
+        <p className="page-text">
+          You can delete your account and the personal data associated with it at any time. See our{' '}
+          <a href="/data-deletion">data and account deletion page</a> for step-by-step instructions,
+          including how to remove data received from Facebook Login or Google Sign-In.
+        </p>
       </Section>
 
       <Section title="Security" className="about-prose-block">
@@ -618,6 +623,193 @@ export function PrivacyPolicyPage() {
         </p>
         <p className="page-text">
           Effective date: April 23, 2026.
+        </p>
+      </Section>
+    </>
+  );
+}
+
+export function DataDeletionPage({ onNavigate }: { onNavigate: (path: string) => void }) {
+  return (
+    <>
+      <PageHero
+        eyebrow="Legal"
+        title="Data and account deletion"
+        body="How to delete your Olivia's Garden Foundation account and the personal data associated with it, including data received from third-party sign-in providers such as Facebook and Google."
+      />
+
+      <Section title="Who this page is for" className="about-prose-block">
+        <p className="page-text">
+          This page explains how anyone with an Olivia&apos;s Garden Foundation account — including
+          accounts created with Facebook Login, Google Sign-In, or an email and password — can
+          permanently delete their account and the personal data tied to it. It is provided as a
+          standing public reference so people and platforms always have clear instructions.
+        </p>
+      </Section>
+
+      <Section title="Delete from inside your account" className="about-prose-block">
+        <p className="page-text">
+          The fastest way to delete your account is from your profile page. You must be signed in.
+        </p>
+        <ol className="site-list">
+          <li>
+            Sign in at{' '}
+            <a
+              href="/login"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/login');
+              }}
+            >
+              oliviasgarden.org/login
+            </a>
+            .
+          </li>
+          <li>
+            Open your{' '}
+            <a
+              href="/profile"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/profile');
+              }}
+            >
+              profile page
+            </a>
+            .
+          </li>
+          <li>Scroll to the <strong>Danger zone</strong> section at the bottom of the page.</li>
+          <li>Click <strong>Delete my account</strong>.</li>
+          <li>Confirm by typing <code>DELETE</code> in the pop-up and choosing <strong>Yes, delete my account</strong>.</li>
+        </ol>
+        <p className="page-text">
+          The deletion happens immediately. You&apos;ll be signed out automatically and your
+          Olivia&apos;s Garden profile, avatar, and saved preferences will be removed.
+        </p>
+      </Section>
+
+      <Section title="Request deletion by email" className="about-prose-block">
+        <p className="page-text">
+          If you can&apos;t sign in — for example, you lost access to the email address or social
+          account you signed up with — you can request deletion by emailing us instead.
+        </p>
+        <ul className="site-list">
+          <li>
+            Send a message to{' '}
+            <a href="mailto:allen@oliviasgarden.org?subject=Account%20deletion%20request">
+              allen@oliviasgarden.org
+            </a>{' '}
+            with the subject <em>Account deletion request</em>.
+          </li>
+          <li>
+            Include the email address or social sign-in (Facebook, Google) you used to create the
+            account so we can match the request to the right record.
+          </li>
+          <li>
+            We&apos;ll confirm the request and complete deletion within 30 days. We may ask a
+            verification question before deleting if we can&apos;t confirm your identity from the
+            request alone.
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="What gets deleted" className="about-prose-block">
+        <p className="page-text">
+          When your account is deleted, the following information is permanently removed or
+          irreversibly scrubbed from our systems:
+        </p>
+        <ul className="site-list">
+          <li>Your profile: name, display name, bio, location, timezone, and website.</li>
+          <li>Your avatar image and any related processed versions.</li>
+          <li>Your sign-in record, including any linked social provider identity (for example, Facebook or Google).</li>
+          <li>Your email address and contact details stored on your account.</li>
+          <li>Donor name and contact information attached to your donation history.</li>
+        </ul>
+      </Section>
+
+      <Section title="What we keep and why" className="about-prose-block">
+        <p className="page-text">
+          A small set of records may be retained after account deletion for legal, tax, or
+          accounting reasons. In every case, records kept are scrubbed of personal identifiers so
+          they can no longer be tied back to you.
+        </p>
+        <ul className="site-list">
+          <li>
+            <strong>Donation records.</strong> Nonprofit and tax reporting requires us to keep a
+            record of donations received. We remove your name, email, and dedication notes from
+            those records at deletion time, but the anonymized transaction remains in our
+            accounting.
+          </li>
+          <li>
+            <strong>Moderation and abuse records.</strong> If there is an active investigation into
+            content or abuse on the platform, we may retain the minimum information required to
+            resolve it.
+          </li>
+          <li>
+            <strong>System logs and backups.</strong> Routine operational logs and backups that
+            include account IDs roll off on normal retention schedules. Personal identifiers are
+            not restored if backups are used for recovery.
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="Third-party sign-in data (Facebook, Google)" className="about-prose-block">
+        <p className="page-text">
+          If you created an Olivia&apos;s Garden Foundation account using Facebook Login or Google
+          Sign-In, we received a limited set of profile information from that provider (such as
+          your name and email) to create and authenticate your account. When you delete your
+          account, that information is deleted from our systems along with the rest of your
+          account.
+        </p>
+        <p className="page-text">
+          Deleting your Olivia&apos;s Garden account does <strong>not</strong> delete your account
+          with Facebook, Google, or any other third-party provider. To remove Olivia&apos;s Garden
+          from the apps connected to your Facebook account, visit{' '}
+          <a href="https://www.facebook.com/settings?tab=business_tools" target="_blank" rel="noreferrer">
+            Facebook&apos;s Business Integrations settings
+          </a>{' '}
+          and remove Olivia&apos;s Garden from the list of connected apps. Removing the app from
+          Facebook revokes Facebook&apos;s ongoing sharing of your profile information with us, but
+          it does not itself delete any data we already stored — use one of the methods above to
+          delete that data.
+        </p>
+      </Section>
+
+      <Section title="How long deletion takes" className="about-prose-block">
+        <p className="page-text">
+          Account deletions initiated from the profile page take effect immediately. Email-based
+          deletion requests are processed within 30 days of our receiving a verified request, and
+          usually much sooner.
+        </p>
+      </Section>
+
+      <Section title="Questions" className="about-prose-block">
+        <p className="page-text">
+          If you have questions about data deletion or your privacy, you can reach us at{' '}
+          <a href="mailto:allen@oliviasgarden.org">allen@oliviasgarden.org</a> or through our{' '}
+          <a
+            href="/contact"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate('/contact');
+            }}
+          >
+            contact page
+          </a>
+          . Our full{' '}
+          <a
+            href="/privacy"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate('/privacy');
+            }}
+          >
+            privacy policy
+          </a>{' '}
+          has more on what we collect and how we use it.
+        </p>
+        <p className="page-text">
+          Effective date: April 24, 2026.
         </p>
       </Section>
     </>
