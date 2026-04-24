@@ -555,7 +555,50 @@ jobs:
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
 
-          echo "Stack outputs retrieved successfully"
+      - name: Diagnose failed backend deploy
+        if: ${{ failure() }}
+        run: |
+          echo "GRN backend deploy failed. Dumping CloudFormation diagnostics for ${{ env.STACK_NAME }}."
+
+          echo "==== describe-stacks ===="
+          aws cloudformation describe-stacks \
+            --stack-name "${{ env.STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" || true
+
+          echo "==== describe-stack-events (latest 50) ===="
+          aws cloudformation describe-stack-events \
+            --stack-name "${{ env.STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackEvents[:50].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true
+
+          echo "==== list-stack-resources ===="
+          aws cloudformation list-stack-resources \
+            --stack-name "${{ env.STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackResourceSummaries[*].[LogicalResourceId,ResourceType,ResourceStatus,PhysicalResourceId]" \
+            --output table || true
+
+          echo "==== list-change-sets (latest 5) ===="
+          aws cloudformation list-change-sets \
+            --stack-name "${{ env.STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "sort_by(Summaries,&CreationTime)[-5:].[ChangeSetName,Status,ExecutionStatus,StatusReason,CreationTime]" \
+            --output table || true
+
+          LATEST_CHANGE_SET=$(aws cloudformation list-change-sets \
+            --stack-name "${{ env.STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "sort_by(Summaries,&CreationTime)[-1].ChangeSetName" \
+            --output text 2>/dev/null || true)
+
+          if [ -n "$LATEST_CHANGE_SET" ] && [ "$LATEST_CHANGE_SET" != "None" ]; then
+            echo "==== describe-change-set ($LATEST_CHANGE_SET) ===="
+            aws cloudformation describe-change-set \
+              --stack-name "${{ env.STACK_NAME }}" \
+              --change-set-name "$LATEST_CHANGE_SET" \
+              --region "${{ env.AWS_REGION }}" || true
+          fi
 
   deploy-okra-backend:
     name: Deploy Okra Backend
@@ -1022,4 +1065,3 @@ jobs:
             exit 1
           fi
           echo "Deployment successful"
-
