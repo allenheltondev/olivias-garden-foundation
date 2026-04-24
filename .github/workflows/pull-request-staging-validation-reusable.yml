@@ -1034,33 +1034,16 @@ jobs:
       - name: Install admin-api dependencies
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
-      - name: Resolve okra CI auth function
-        id: okra-ci-auth-function
-        env:
-          UPSTREAM: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
-        run: |
-          # If deploy-staging-okra ran, use its output. Otherwise pull the function
-          # name straight from the pre-existing CloudFormation stack.
-          if [ -n "$UPSTREAM" ] && [ "$UPSTREAM" != "None" ]; then
-            echo "function-name=$UPSTREAM" >> "$GITHUB_OUTPUT"
-          else
-            FUNCTION_NAME=$(aws cloudformation describe-stacks \
-              --stack-name "${{ env.OKRA_STACK_NAME }}" \
-              --region "${{ env.AWS_REGION }}" \
-              --query "Stacks[0].Outputs[?OutputKey=='CiAuthTokenFunctionName'].OutputValue" \
-              --output text)
-            if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
-              echo "Could not resolve CiAuthTokenFunctionName from okra stack."
-              exit 1
-            fi
-            echo "function-name=$FUNCTION_NAME" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Mint CI admin token
         id: admin-token
         env:
-          CI_AUTH_TOKEN_FUNCTION: ${{ steps.okra-ci-auth-function.outputs.function-name }}
+          CI_AUTH_TOKEN_FUNCTION: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
         run: |
+          if [ -z "$CI_AUTH_TOKEN_FUNCTION" ] || [ "$CI_AUTH_TOKEN_FUNCTION" = "None" ]; then
+            echo "CiAuthTokenFunctionName output missing from okra stack."
+            exit 1
+          fi
+
           aws lambda invoke \
             --function-name "$CI_AUTH_TOKEN_FUNCTION" \
             --payload '{}' \
