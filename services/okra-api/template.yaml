@@ -33,8 +33,11 @@ Globals:
     Runtime: nodejs24.x
     Timeout: 10
     MemorySize: 1024
-    Architectures:
-      - arm64
+    # Architectures is set per-function below — SAM doesn't honor a
+    # per-function override when the value is also set in Globals, so the
+    # only way to have most functions on arm64 and the canvas-consuming
+    # PhotoProcessorFunction on x86_64 is to omit it here and declare it
+    # on every function explicitly.
     Environment:
       Variables:
         NODE_OPTIONS: --enable-source-maps
@@ -105,12 +108,8 @@ Resources:
       Handler: src/handlers/photo-processor.handler
       Timeout: 60
       MemorySize: 1024
-      # Overrides Globals.Function.Architectures (arm64). The public
-      # napi-rs-canvas layer at :888 only ships an x86_64 native binary,
-      # so requiring `@napi-rs/canvas-linux-arm64-gnu` at runtime fails.
-      # Stream-post-processor uses this same layer with x86_64 across the
-      # board; we pin just this function to match, so the rest of okra-api
-      # keeps its arm64 default.
+      # x86_64 because the napi-rs-canvas:888 layer only ships an x86_64
+      # native binary. Rest of the stack stays arm64; see Globals comment.
       Architectures:
         - x86_64
       Layers:
@@ -174,6 +173,8 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/submission-notifier.handler
+      Architectures:
+        - arm64
       Environment:
         Variables:
           SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
@@ -202,6 +203,8 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/api.handler
+      Architectures:
+        - arm64
       Environment:
         Variables:
           MEDIA_CDN_DOMAIN: !ImportValue OGF-AssetsPublicDomainName
@@ -261,6 +264,8 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/admin-authorizer.handler
+      Architectures:
+        - arm64
       Timeout: 5
       MemorySize: 256
 
@@ -275,6 +280,8 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/admin-api.handler
+      Architectures:
+        - arm64
       Environment:
         Variables:
           SEED_REQUESTS_TABLE_NAME: !Ref SeedRequestsTable
@@ -329,6 +336,8 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/denied-photo-cleanup.handler
+      Architectures:
+        - arm64
       Timeout: 60
       Events:
         SubmissionDeniedEvent:
@@ -382,6 +391,8 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/handlers/ci-auth-token.handler
+      Architectures:
+        - arm64
       Timeout: 15
       MemorySize: 256
       Environment:
