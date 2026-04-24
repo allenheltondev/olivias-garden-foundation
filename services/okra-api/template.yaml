@@ -105,6 +105,14 @@ Resources:
       Handler: src/handlers/photo-processor.handler
       Timeout: 60
       MemorySize: 1024
+      # Overrides Globals.Function.Architectures (arm64). The public
+      # napi-rs-canvas layer at :888 only ships an x86_64 native binary,
+      # so requiring `@napi-rs/canvas-linux-arm64-gnu` at runtime fails.
+      # Stream-post-processor uses this same layer with x86_64 across the
+      # board; we pin just this function to match, so the rest of okra-api
+      # keeps its arm64 default.
+      Architectures:
+        - x86_64
       Layers:
         - arn:aws:lambda:us-east-1:205979422636:layer:napi-rs-canvas:888
       Policies:

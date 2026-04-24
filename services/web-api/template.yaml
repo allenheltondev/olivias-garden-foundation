@@ -182,6 +182,12 @@ Resources:
       Handler: src/handlers/avatar-processor.handler
       Timeout: 60
       MemorySize: 1024
+      # Overrides Globals.Function.Architectures (arm64). The public
+      # napi-rs-canvas layer at :888 only ships an x86_64 native binary,
+      # so a Lambda running on arm64 fails at runtime when the shim
+      # requires `@napi-rs/canvas-linux-arm64-gnu`.
+      Architectures:
+        - x86_64
       Layers:
         - arn:aws:lambda:us-east-1:205979422636:layer:napi-rs-canvas:888
       Policies:
