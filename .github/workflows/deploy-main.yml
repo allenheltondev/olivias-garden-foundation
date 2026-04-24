@@ -750,8 +750,13 @@ jobs:
           if [ -n "$STRIPE_SECRET_KEY" ]; then
             PARAM_OVERRIDES+=("StripeSecretKey=$STRIPE_SECRET_KEY")
           fi
+          # Deploy the BUILT template (esbuild output), not the source
+          # template. Pointing --template-file at the source skips the
+          # esbuild artifact and packages the entire services/admin-api dir
+          # (including node_modules) — which is how admin Lambdas ended up
+          # booting with a raw src tree instead of a bundled handler.
           sam deploy \
-            --template-file services/admin-api/template.yaml \
+            --template-file .aws-sam/build/template.yaml \
             --stack-name "${{ env.ADMIN_STACK_NAME }}" \
             --resolve-s3 \
             --s3-prefix "${{ env.ADMIN_STACK_NAME }}" \
