@@ -85,8 +85,16 @@ async function run() {
   const createdPhotoIds = [];
 
   /**
-   * Clean up all test data created during this run.
-   * Uses direct DB access to delete submissions, photos, and reviews by runPrefix.
+   * Clean up test data.
+   *
+   * The admin review-queue listing is paginated at 100 items; once stale
+   * CI submissions pile up past that limit the polling checks time out
+   * before the new submission ever shows up. We run against a dedicated
+   * staging environment with no human traffic, so the safe fix is to
+   * vacuum every row this test suite could have created — both the current
+   * run (by runPrefix) and any historical CI runs (by the shared
+   * `[ci-*]` contributor_name prefix or the `@okra-test.local` email
+   * domain this script uses exclusively).
    */
   async function cleanup() {
     if (!process.env.DATABASE_URL) {
@@ -97,10 +105,10 @@ async function run() {
     const db = await createDbClient();
     await db.connect();
     try {
-      // Find all submissions created by this run via contributor_name prefix
       const subRes = await db.query(
-        `SELECT id FROM submissions WHERE contributor_name LIKE $1`,
-        [`[${runPrefix}]%`]
+        `SELECT id FROM submissions
+          WHERE contributor_name LIKE '[ci-%]%'
+             OR contributor_email LIKE '%@okra-test.local'`
       );
       const subIds = subRes.rows.map((r) => r.id);
 
@@ -109,7 +117,7 @@ async function run() {
         await db.query(`DELETE FROM submission_reviews WHERE submission_id = ANY($1)`, [subIds]);
         await db.query(`DELETE FROM submission_photos WHERE submission_id = ANY($1)`, [subIds]);
         await db.query(`DELETE FROM submissions WHERE id = ANY($1)`, [subIds]);
-        console.log(`  ✓ Deleted ${subIds.length} submission(s) and associated records`);
+        console.log(`  ✓ Deleted ${subIds.length} submission(s) and associated records (current + historical CI runs)`);
       }
 
       // Clean up any orphaned photo staging rows from this run
@@ -132,30 +140,47 @@ async function run() {
       await db.end();
     }
 
-    // Seed request cleanup (DynamoDB) — best-effort, keyed by runPrefix in the name field
+    // Seed request cleanup (DynamoDB) — remove every CI-origin row we can
+    // identify by the shared `[ci-*]` name prefix or the dedicated
+    // `@okra-test.local` email domain, not just rows tagged with the
+    // current runPrefix. Paginates through the whole table.
     const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
     if (!tableName) {
       return;
     }
     try {
       const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-      const scanRes = await ddb.send(new ScanCommand({
-        TableName: tableName,
-        FilterExpression: 'begins_with(#name, :prefix)',
-        ExpressionAttributeNames: { '#name': 'name' },
-        ExpressionAttributeValues: { ':prefix': `[${runPrefix}]` }
-      }));
-      const items = scanRes.Items ?? [];
-      for (const item of items) {
-        await ddb.send(new DeleteCommand({ TableName: tableName, Key: { requestId: item.requestId } }));
-      }
-      if (items.length > 0) {
-        console.log(`  ✓ Deleted ${items.length} seed request(s) from DynamoDB`);
+      let deleted = 0;
+      let ExclusiveStartKey;
+      do {
+        const scanRes = await ddb.send(new ScanCommand({
+          TableName: tableName,
+          FilterExpression: 'begins_with(#name, :ciPrefix) OR contains(#email, :emailDomain)',
+          ExpressionAttributeNames: { '#name': 'name', '#email': 'email' },
+          ExpressionAttributeValues: {
+            ':ciPrefix': '[ci-',
+            ':emailDomain': '@okra-test.local'
+          },
+          ExclusiveStartKey
+        }));
+        for (const item of scanRes.Items ?? []) {
+          await ddb.send(new DeleteCommand({ TableName: tableName, Key: { requestId: item.requestId } }));
+          deleted += 1;
+        }
+        ExclusiveStartKey = scanRes.LastEvaluatedKey;
+      } while (ExclusiveStartKey);
+      if (deleted > 0) {
+        console.log(`  ✓ Deleted ${deleted} seed request(s) from DynamoDB (current + historical CI runs)`);
       }
     } catch (err) {
       console.error(`  ✗ Seed request cleanup failed: ${err.message}`);
     }
   }
+
+  // Pre-run cleanup so this invocation isn't blocked by accumulated CI data
+  // from prior runs (admin queue listings are capped at 100 items — stale
+  // pending_review rows starve out the new submission the test creates).
+  await cleanup();
 
   // --- Public endpoint checks (Task 3.2) ---
   console.log('\n=== Public Endpoint Checks ===');
