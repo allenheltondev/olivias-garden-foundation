@@ -18,6 +18,10 @@ on:
       grn_stack_name:
         required: true
         type: string
+      admin_stack_name:
+        required: false
+        type: string
+        default: ""
       aws_region:
         required: false
         type: string
@@ -463,6 +467,19 @@ jobs:
             --output text 2>/dev/null || echo "")
           echo "frontend-url=$GRN_FRONTEND_URL" >> $GITHUB_OUTPUT
 
+      - name: Read admin stack frontend URL
+        id: admin-stack
+        run: |
+          ADMIN_FRONTEND_URL=""
+          if [ -n "${{ inputs.admin_stack_name }}" ]; then
+            ADMIN_FRONTEND_URL=$(aws cloudformation describe-stacks \
+              --stack-name "${{ inputs.admin_stack_name }}" \
+              --region "${{ inputs.aws_region }}" \
+              --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+              --output text 2>/dev/null || echo "")
+          fi
+          echo "frontend-url=$ADMIN_FRONTEND_URL" >> $GITHUB_OUTPUT
+
       - name: Build foundation web app
         env:
           VITE_OKRA_API_BASE: ${{ steps.okra-stack.outputs.api-url }}
@@ -470,6 +487,7 @@ jobs:
           VITE_AUTH_USER_POOL_CLIENT_ID: ${{ steps.stack-outputs.outputs.user-pool-client-id }}
           VITE_AUTH_USER_POOL_DOMAIN: ${{ steps.stack-outputs.outputs.user-pool-domain }}
           VITE_GRN_URL: ${{ steps.grn-stack.outputs.frontend-url }}
+          VITE_ADMIN_URL: ${{ steps.admin-stack.outputs.frontend-url }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ inputs.stripe_publishable_key }}
           VITE_WEB_API_BASE: ${{ steps.web-api-stack.outputs.api-url }}
         run: npm --workspace @olivias/web run build
