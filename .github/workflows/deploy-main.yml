@@ -508,22 +508,19 @@ jobs:
       - name: Get stack outputs
         id: get-outputs
         run: |
-          USER_POOL_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
+          USER_POOL_ID=$(aws cloudformation list-exports \
             --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --query "Exports[?Name=='OGF-UserPoolId'].Value | [0]" \
             --output text)
 
-          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
+          USER_POOL_CLIENT_ID=$(aws cloudformation list-exports \
             --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --query "Exports[?Name=='OGF-UserPoolClientId'].Value | [0]" \
             --output text)
 
-          USER_POOL_DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.STACK_NAME }} \
+          USER_POOL_DOMAIN=$(aws cloudformation list-exports \
             --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolDomain'].OutputValue" \
+            --query "Exports[?Name=='OGF-UserPoolDomain'].Value | [0]" \
             --output text)
 
           API_URL=$(aws cloudformation describe-stacks \
@@ -762,22 +759,19 @@ jobs:
       - name: Get admin stack outputs
         id: get-outputs
         run: |
-          USER_POOL_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+          USER_POOL_ID=$(aws cloudformation list-exports \
             --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --query "Exports[?Name=='OGF-UserPoolId'].Value | [0]" \
             --output text)
 
-          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+          USER_POOL_CLIENT_ID=$(aws cloudformation list-exports \
             --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --query "Exports[?Name=='OGF-UserPoolClientId'].Value | [0]" \
             --output text)
 
-          USER_POOL_DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.ADMIN_STACK_NAME }} \
+          USER_POOL_DOMAIN=$(aws cloudformation list-exports \
             --region ${{ env.AWS_REGION }} \
-            --query "Stacks[0].Outputs[?OutputKey=='UserPoolDomain'].OutputValue" \
+            --query "Exports[?Name=='OGF-UserPoolDomain'].Value | [0]" \
             --output text)
 
           API_URL=$(aws cloudformation describe-stacks \

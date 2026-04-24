@@ -467,32 +467,10 @@ Outputs:
         - "https://api.${RootDomainName}/grn"
         - RootDomainName: !Ref DomainName
       - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api"
-    Export:
-      Name: !Sub "${AWS::StackName}-ApiUrl"
 
   EventBusName:
     Description: Name of the EventBridge custom bus
     Value: !Ref EventBus
-    Export:
-      Name: !Sub "${AWS::StackName}-EventBusName"
-
-  UserPoolId:
-    Description: Shared Cognito User Pool ID used by GRN
-    Value: !ImportValue OGF-UserPoolId
-    Export:
-      Name: !Sub "${AWS::StackName}-UserPoolId"
-
-  UserPoolClientId:
-    Description: Shared Cognito User Pool Client ID used by GRN
-    Value: !ImportValue OGF-UserPoolClientId
-    Export:
-      Name: !Sub "${AWS::StackName}-UserPoolClientId"
-
-  UserPoolDomain:
-    Description: Shared Cognito User Pool Domain used by GRN
-    Value: !ImportValue OGF-UserPoolDomain
-    Export:
-      Name: !Sub "${AWS::StackName}-UserPoolDomain"
 
   FrontendUrl:
     Description: CloudFront distribution URL for frontend
@@ -500,20 +478,14 @@ Outputs:
       - DeployCustomDomain
       - !Sub "${DomainProtocol}://grn.${DomainName}"
       - !Sub "https://${FrontendDistribution.DomainName}"
-    Export:
-      Name: !Sub "${AWS::StackName}-FrontendUrl"
 
   FrontendBucket:
     Description: S3 bucket name for frontend deployment
     Value: !Ref FrontendBucket
-    Export:
-      Name: !Sub "${AWS::StackName}-FrontendBucket"
 
   CloudFrontDistributionId:
     Description: CloudFront distribution ID for cache invalidation
     Value: !Ref FrontendDistribution
-    Export:
-      Name: !Sub "${AWS::StackName}-CloudFrontDistributionId"
 
   CiAuthSeedUsersFunctionName:
     Description: Lambda name used to generate temporary Cognito JWTs for CI Postman runs
@@ -521,17 +493,11 @@ Outputs:
       - DeployCiAuthSeedFunction
       - !Ref CiAuthSeedUsersFunction
       - "NONE"
-    Export:
-      Name: !Sub "${AWS::StackName}-CiAuthSeedUsersFunctionName"
 
   ProAgentTaskQueueUrl:
     Description: URL of the pro agent task queue in the nested pro stack
     Value: !GetAtt ProStack.Outputs.PremiumAgentTaskQueueUrl
-    Export:
-      Name: !Sub "${AWS::StackName}-ProAgentTaskQueueUrl"
 
   ProAgentTaskQueueArn:
     Description: ARN of the pro agent task queue in the nested pro stack
     Value: !GetAtt ProStack.Outputs.PremiumAgentTaskQueueArn
-    Export:
-      Name: !Sub "${AWS::StackName}-ProAgentTaskQueueArn"

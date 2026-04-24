@@ -693,13 +693,6 @@ Outputs:
       - !Sub 'https://assets.${DomainName}'
       - !Sub 'https://${SharedAssetsDistribution.DomainName}'
 
-  SharedApiCustomDomainName:
-    Condition: DeployCustomDomain
-    Description: Shared API custom domain for service base path mappings.
-    Value: !Sub 'api.${DomainName}'
-    Export:
-      Name: OGF-SharedApiCustomDomainName
-
   SharedApiUrl:
     Condition: DeployCustomDomain
     Description: Shared API custom domain base URL.

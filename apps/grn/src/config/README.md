@@ -10,20 +10,21 @@ This directory contains the AWS Amplify configuration for the frontend applicati
 
 ### 1. Deploy Backend Infrastructure
 
-First, deploy the backend SAM template to get the required values:
+First, deploy the foundation and GRN stacks to get the required values:
 
 ```bash
-cd services/grn-api
+cd infra/foundation-web
+sam build
+sam deploy --guided
+
+cd ../../services/grn-api
 sam build
 sam deploy --guided
 ```
 
-Save the stack outputs from the deployment. You'll need:
-- `UserPoolId`
-- `UserPoolClientId`
-- `UserPoolDomain`
-- `ApiUrl`
-- `FrontendUrl` (CloudFront distribution URL)
+Save these values after deployment:
+- Foundation CloudFormation exports: `OGF-UserPoolId`, `OGF-UserPoolClientId`, `OGF-UserPoolDomain`
+- GRN stack outputs: `ApiUrl`, `FrontendUrl`
 
 ### 2. Update Configuration
 
@@ -90,9 +91,9 @@ Open `http://localhost:5173` and try signing in. You should be redirected to the
 
 ### Auth Configuration
 
-- `userPoolId`: The Cognito User Pool ID from SAM output
-- `userPoolClientId`: The Cognito User Pool Client ID from SAM output
-- `domain`: The Cognito hosted UI domain (without https://)
+- `userPoolId`: The Cognito User Pool ID from the foundation stack export
+- `userPoolClientId`: The Cognito User Pool Client ID from the foundation stack export
+- `domain`: The Cognito hosted UI domain from the foundation stack export (without https://)
 - `scopes`: OAuth scopes requested (openid, email, profile)
 - `redirectSignIn`: URLs to redirect to after successful sign-in
 - `redirectSignOut`: URLs to redirect to after sign-out
