@@ -555,6 +555,8 @@ jobs:
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
 
+          echo "Stack outputs retrieved successfully"
+
   deploy-okra-backend:
     name: Deploy Okra Backend
     runs-on: ubuntu-latest
@@ -1020,3 +1022,4 @@ jobs:
             exit 1
           fi
           echo "Deployment successful"
+
