@@ -169,7 +169,14 @@ body {
 
 .admin-vertical-nav.is-collapsed .admin-vertical-nav__link {
   justify-content: center;
+  gap: 0;
   padding: 0.55rem;
+}
+
+/* Remove the label from the flow when collapsed so the icon is truly
+   centered (opacity: 0 alone still reserves space via the label's flex: 1). */
+.admin-vertical-nav.is-collapsed .admin-vertical-nav__label {
+  display: none;
 }
 
 /* Collapse/expand handle: a small notch that grows out of the nav's right
