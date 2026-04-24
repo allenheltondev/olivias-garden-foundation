@@ -233,7 +233,9 @@ body {
     flex-direction: column;
   }
 
-  .admin-vertical-nav {
+  .admin-vertical-nav,
+  .admin-vertical-nav.is-expanded,
+  .admin-vertical-nav.is-collapsed {
     position: static;
     top: auto;
     width: 100%;
