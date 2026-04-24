@@ -227,7 +227,6 @@ jobs:
           fi
 
           sam deploy \
-            --debug \
             --template-file infra/foundation-web/.aws-sam/build/template.yaml \
             --stack-name "${{ inputs.foundation_web_stack_name }}" \
             --resolve-s3 \

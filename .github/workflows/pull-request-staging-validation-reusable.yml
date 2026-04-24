@@ -128,7 +128,6 @@ jobs:
           fi
 
           sam deploy \
-            --debug \
             --template-file infra/foundation-web/.aws-sam/build/template.yaml \
             --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
             --resolve-s3 \
