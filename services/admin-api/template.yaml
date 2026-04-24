@@ -306,5 +306,3 @@ Outputs:
   CloudFrontDistributionId:
     Description: CloudFront distribution ID for admin frontend cache invalidation
     Value: !Ref FrontendDistribution
-
-
