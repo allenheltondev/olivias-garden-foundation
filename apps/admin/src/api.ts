@@ -164,7 +164,7 @@ export async function updateStoreProduct(
 
 export async function listOkraReviewQueue(accessToken: string): Promise<OkraSubmission[]> {
   const response = await requestJson<{ data: OkraSubmission[] }>(
-    `${getOkraAdminApiBaseUrl()}/submissions/review-queue`,
+    `${getOkraAdminApiBaseUrl()}/submissions?status=pending`,
     accessToken
   );
   return response.data;
@@ -189,7 +189,7 @@ export async function reviewOkraSubmission(
 
 export async function listSeedRequestQueue(accessToken: string): Promise<SeedRequestQueueItem[]> {
   const response = await requestJson<{ data: SeedRequestQueueItem[] }>(
-    `${getOkraAdminApiBaseUrl()}/requests/review-queue`,
+    `${getOkraAdminApiBaseUrl()}/requests?status=open`,
     accessToken
   );
   return response.data;

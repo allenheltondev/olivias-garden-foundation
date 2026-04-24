@@ -87,7 +87,7 @@ async function run() {
   /**
    * Clean up test data.
    *
-   * The admin review-queue listing is paginated at 100 items; once stale
+   * The admin submissions listing is paginated at 100 items; once stale
    * CI submissions pile up past that limit the polling checks time out
    * before the new submission ever shows up. We run against a dedicated
    * staging environment with no human traffic, so the safe fix is to
@@ -237,12 +237,12 @@ async function run() {
       reporter.assert('auth-boundary', res.status === 401, `GET /admin/stats with invalid token returns 401 (got ${res.status})`, res.json);
     }
     {
-      const res = await noAuthAdmin.request('/requests/review-queue');
-      reporter.assert('auth-boundary', res.status === 401, `GET /admin/requests/review-queue without auth returns 401 (got ${res.status})`, res.json);
+      const res = await noAuthAdmin.request('/requests?status=open');
+      reporter.assert('auth-boundary', res.status === 401, `GET /admin/requests without auth returns 401 (got ${res.status})`, res.json);
     }
     {
-      const res = await badTokenAdmin.request('/requests/review-queue');
-      reporter.assert('auth-boundary', res.status === 401, `GET /admin/requests/review-queue with invalid token returns 401 (got ${res.status})`, res.json);
+      const res = await badTokenAdmin.request('/requests?status=open');
+      reporter.assert('auth-boundary', res.status === 401, `GET /admin/requests with invalid token returns 401 (got ${res.status})`, res.json);
     }
     {
       const res = await noAuthAdmin.request(`/requests/${dummyId}/statuses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'handled' }) });
@@ -577,10 +577,10 @@ async function run() {
 
     if (adminSeedRequestId) {
       // Poll admin review queue until the seed request appears.
-      console.log('  Polling /admin/requests/review-queue for new seed request...');
+      console.log('  Polling /admin/requests?status=open for new seed request...');
       let matchedItem = null;
       const queueResult = await poll({
-        fn: () => adminApi.request('/requests/review-queue'),
+        fn: () => adminApi.request('/requests?status=open'),
         until: (res) => {
           if (!Array.isArray(res.json?.data)) return false;
           matchedItem = res.json.data.find((item) => item.id === adminSeedRequestId);
@@ -633,9 +633,9 @@ async function run() {
         `replay POST /admin/requests/:id/statuses returns 409 or 404 (got ${replayRes.status})`, replayRes.json);
 
       // Poll until the request disappears from the review queue.
-      console.log('  Polling /admin/requests/review-queue until handled request is gone...');
+      console.log('  Polling /admin/requests?status=open until handled request is gone...');
       const goneResult = await poll({
-        fn: () => adminApi.request('/requests/review-queue'),
+        fn: () => adminApi.request('/requests?status=open'),
         until: (res) => {
           if (!Array.isArray(res.json?.data)) return false;
           return !res.json.data.some((item) => item.id === adminSeedRequestId);

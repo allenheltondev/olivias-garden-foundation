@@ -23,102 +23,264 @@ body {
   background: transparent;
 }
 
-.admin-app-main {
-  width: min(1320px, calc(100% - 2rem));
+.admin-shell-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 0;
+}
+
+.admin-shell-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.admin-shell-main__inner {
+  flex: 1;
+  min-width: 0;
+  width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 0 2.5rem;
-}
-
-.admin-layout {
-  display: grid;
-  gap: 1rem;
-}
-
-.admin-layout__sidebar {
-  display: grid;
-  align-content: start;
-}
-
-.admin-layout__content {
+  padding: 1.5rem clamp(1rem, 2vw, 2rem) 2.5rem;
   display: grid;
   gap: 1.25rem;
   align-content: start;
-  min-width: 0;
 }
 
-.admin-side-nav {
-  background: rgba(255, 252, 246, 0.96);
-  border: 1px solid rgba(79, 56, 37, 0.08);
-  border-radius: 1.5rem;
-  box-shadow: 0 18px 36px rgba(38, 23, 15, 0.08);
-  padding: 1rem;
+/* ── Left-docked vertical nav ─────────────────────────────────────── */
+
+.admin-vertical-nav {
+  --admin-nav-width-collapsed: 4.25rem;
+  --admin-nav-width-expanded: 15.5rem;
+  --admin-nav-header-offset: calc(4.85rem + env(safe-area-inset-top, 0px));
+
+  position: sticky;
+  top: var(--admin-nav-header-offset);
+  align-self: flex-start;
+  height: calc(100dvh - var(--admin-nav-header-offset));
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem 0.6rem;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(249, 241, 226, 0.94));
+  border-right: 1px solid rgba(79, 56, 37, 0.1);
+  box-shadow: 2px 0 24px rgba(38, 23, 15, 0.05);
+  width: var(--admin-nav-width-collapsed);
+  transition: width var(--duration-base, 200ms) var(--easing-out, ease);
+  overflow: hidden;
 }
 
-.admin-side-nav__intro {
-  display: grid;
-  gap: 0.35rem;
+.admin-vertical-nav.is-expanded {
+  width: var(--admin-nav-width-expanded);
 }
 
-.admin-side-nav .og-side-nav__body {
-  margin-top: 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.admin-side-nav .og-side-nav__list {
-  gap: 0.55rem;
-}
-
-.admin-side-nav .og-side-nav__link {
-  min-height: 3.1rem;
-  border-radius: 1rem;
-  border-color: transparent;
+.admin-vertical-nav__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.65rem;
+  margin-bottom: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--og-radius-pill, 999px);
   background: transparent;
-  padding: 0.85rem 1rem;
+  color: rgba(79, 56, 37, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease),
+              border-color var(--duration-fast, 150ms) var(--easing-out, ease);
 }
 
-.admin-side-nav .og-side-nav__link:hover {
+.admin-vertical-nav__toggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.admin-vertical-nav__toggle:hover,
+.admin-vertical-nav__toggle:focus-visible {
   background: rgba(79, 56, 37, 0.06);
-  border-color: transparent;
+  color: var(--og-color-soil);
+  outline: none;
 }
 
-.admin-side-nav .og-side-nav__link.is-active {
+.admin-vertical-nav__toggle-label {
+  opacity: 0;
+  transform: translateX(-0.25rem);
+  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
+              transform var(--duration-fast, 150ms) var(--easing-out, ease);
+  white-space: nowrap;
+}
+
+.admin-vertical-nav.is-expanded .admin-vertical-nav__toggle-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.admin-vertical-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.admin-vertical-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 2.85rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  background: transparent;
+  color: var(--og-color-soil);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease),
+              transform var(--duration-fast, 150ms) var(--easing-out, ease);
+}
+
+.admin-vertical-nav__link:hover,
+.admin-vertical-nav__link:focus-visible {
+  background: rgba(79, 56, 37, 0.07);
+  outline: none;
+}
+
+.admin-vertical-nav__link.is-active {
+  background: linear-gradient(180deg, rgba(66, 107, 63, 0.96), rgba(79, 56, 37, 0.92));
+  color: var(--og-color-paper);
+  border-color: transparent;
+  box-shadow: 0 8px 20px rgba(38, 23, 15, 0.12);
+}
+
+.admin-vertical-nav__link.is-active:hover {
+  background: linear-gradient(180deg, rgba(66, 107, 63, 0.96), rgba(79, 56, 37, 0.92));
+  color: var(--og-color-paper);
+}
+
+.admin-vertical-nav__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.75rem;
   background: rgba(79, 56, 37, 0.08);
   color: var(--og-color-soil);
-  border-color: transparent;
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease);
 }
 
-@media (min-width: 860px) {
-  .admin-layout {
-    grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .admin-layout__sidebar {
-    position: sticky;
-    top: calc(4.85rem + env(safe-area-inset-top, 0px) + 0.75rem);
-    min-height: calc(100dvh - 6rem - env(safe-area-inset-top, 0px));
-  }
-
-  .admin-side-nav {
-    min-height: inherit;
-    padding: 1.25rem 1rem;
-  }
+.admin-vertical-nav__icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
-@media (max-width: 859px) {
-  .admin-app-main {
-    width: min(1180px, calc(100% - 1rem));
-    padding-top: 1rem;
+.admin-vertical-nav__link.is-active .admin-vertical-nav__icon {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--og-color-paper);
+}
+
+.admin-vertical-nav__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateX(-0.25rem);
+  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
+              transform var(--duration-fast, 150ms) var(--easing-out, ease);
+}
+
+.admin-vertical-nav.is-expanded .admin-vertical-nav__label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.admin-vertical-nav.is-collapsed .admin-vertical-nav__link {
+  justify-content: center;
+  padding: 0.4rem;
+}
+
+.admin-vertical-nav.is-collapsed .admin-vertical-nav__toggle {
+  justify-content: center;
+  padding: 0.4rem;
+}
+
+/* ── Mobile: horizontal scroll fallback ───────────────────────────── */
+
+@media (max-width: 720px) {
+  .admin-shell-body {
+    flex-direction: column;
   }
 
-  .admin-side-nav {
+  .admin-vertical-nav {
+    position: static;
+    top: auto;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    gap: 0.4rem;
+    padding: 0.65rem 0.75rem;
+    border-right: none;
+    border-bottom: 1px solid rgba(79, 56, 37, 0.1);
+    box-shadow: 0 2px 16px rgba(38, 23, 15, 0.05);
     overflow-x: auto;
+    overflow-y: hidden;
   }
 
-  .admin-side-nav .og-side-nav__title,
-  .admin-side-nav .og-side-nav__body {
-    max-width: 38rem;
+  .admin-vertical-nav__toggle {
+    display: none;
+  }
+
+  .admin-vertical-nav__list {
+    flex: 1;
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .admin-vertical-nav__list li {
+    flex-shrink: 0;
+  }
+
+  .admin-vertical-nav__link {
+    min-height: 2.5rem;
+    padding: 0.4rem 0.85rem;
+  }
+
+  .admin-vertical-nav__label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .admin-vertical-nav__icon {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .admin-shell-main__inner {
+    padding: 1rem clamp(0.75rem, 3vw, 1.5rem) 2rem;
   }
 }
 
