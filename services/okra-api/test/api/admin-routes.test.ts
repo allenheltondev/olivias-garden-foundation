@@ -182,9 +182,9 @@ describe('GET /admin/submissions', () => {
     const res = await handler(makeRestApiEvent('/submissions'));
     const { statusCode, body } = parseRes(res);
     expect(statusCode).toBe(200);
-    expect(body).toEqual({ data: [], cursor: null });
+    expect(body).toEqual({ data: [], cursor: null, total: 0 });
     const queryCall = mockClient.query.mock.calls.find(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s') && c[0].includes('ORDER BY')
     );
     expect(queryCall).toBeDefined();
     expect(queryCall![0]).not.toContain("'pending_review'");
@@ -282,7 +282,7 @@ describe('GET /admin/submissions', () => {
       makeRestApiEvent('/submissions', 'GET', { queryStringParameters: { limit: '200' } })
     );
     const queryCall = mockClient.query.mock.calls.find(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s') && c[0].includes('ORDER BY')
     );
     expect(queryCall![1]).toContain(101);
   });

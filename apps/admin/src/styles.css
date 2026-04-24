@@ -18,9 +18,19 @@ body {
 }
 
 /* ── Admin shell layout ───────────────────────────────────────────── */
+/*
+ * The admin shell uses body-level scrolling: header and footer are pinned,
+ * the middle row (.admin-shell-body) fills the remaining viewport height,
+ * and only .admin-shell-main scrolls. This lets the side nav span the full
+ * height between header and footer at all times without driving extra
+ * page scroll.
+ */
 
 .admin-app-shell {
   background: transparent;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .admin-shell-body {
@@ -30,12 +40,15 @@ body {
   width: 100%;
   min-height: 0;
   position: relative;
+  overflow: hidden;
 }
 
 .admin-shell-main {
   flex: 1;
   min-width: 0;
   display: flex;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .admin-shell-main__inner {
@@ -54,14 +67,9 @@ body {
 .admin-vertical-nav {
   --admin-nav-width-collapsed: 4.25rem;
   --admin-nav-width-expanded: 15.5rem;
-  --admin-nav-header-offset: calc(4.85rem + env(safe-area-inset-top, 0px));
-  --admin-nav-footer-reserve: 9rem;
-  --admin-nav-available-height: calc(100dvh - var(--admin-nav-header-offset) - var(--admin-nav-footer-reserve));
 
-  position: sticky;
-  top: var(--admin-nav-header-offset);
-  align-self: flex-start;
-  max-height: var(--admin-nav-available-height);
+  position: relative;
+  height: 100%;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -164,29 +172,31 @@ body {
   padding: 0.55rem;
 }
 
-/* Collapse/expand handle: floats on the right edge of the nav, vertically
-   centered. Subtle by default, lights up on hover (of itself or the nav). */
+/* Collapse/expand handle: a small notch that grows out of the nav's right
+   border at vertical center. Picks up the nav's own background + border so
+   it reads as an extension of the rail, not a floating pill. Appears on
+   hover of the nav (or the handle itself for keyboard users). */
 .admin-vertical-nav__toggle {
   position: absolute;
   top: 50%;
-  right: -0.85rem;
+  right: -0.9rem;
   transform: translateY(-50%);
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 0.95rem;
+  height: 2.6rem;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(79, 56, 37, 0.15);
-  border-radius: 50%;
-  background: var(--og-color-paper);
-  color: rgba(79, 56, 37, 0.7);
+  border: 1px solid rgba(79, 56, 37, 0.1);
+  border-left: none;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(249, 241, 226, 0.94));
+  color: rgba(79, 56, 37, 0.65);
   cursor: pointer;
   opacity: 0;
-  box-shadow: 0 4px 12px rgba(38, 23, 15, 0.1);
   transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
               color var(--duration-fast, 150ms) var(--easing-out, ease),
-              background-color var(--duration-fast, 150ms) var(--easing-out, ease);
+              background var(--duration-fast, 150ms) var(--easing-out, ease);
   z-index: 1;
 }
 
@@ -199,14 +209,14 @@ body {
 
 .admin-vertical-nav__toggle:hover,
 .admin-vertical-nav__toggle:focus-visible {
-  background: var(--og-color-moss);
-  color: var(--og-color-paper);
+  background: rgba(66, 107, 63, 0.12);
+  color: var(--og-color-moss);
   outline: none;
 }
 
 .admin-vertical-nav__toggle svg {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.8rem;
+  height: 0.8rem;
 }
 
 /* ── Mobile: horizontal scroll fallback ───────────────────────────── */
@@ -447,22 +457,28 @@ body {
   border-radius: var(--og-radius-lg);
 }
 
-/* ── Photo carousel ───────────────────────────────────────────────── */
+/* ── Photo carousel (up to 3 thumbs at a time) ────────────────────── */
 
 .admin-photo-carousel {
   position: relative;
   display: block;
   width: 100%;
-  border-radius: var(--og-radius-lg);
-  overflow: hidden;
-  background: rgba(38, 23, 15, 0.04);
+  padding: 0 2.25rem;
+  margin-bottom: 0.75rem;
 }
 
-.admin-photo-carousel__image {
+.admin-photo-carousel__viewport {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.admin-photo-carousel__thumb {
   display: block;
   width: 100%;
-  max-height: 26rem;
-  object-fit: contain;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--og-radius-md, 0.75rem);
   background: rgba(38, 23, 15, 0.04);
 }
 
@@ -470,82 +486,79 @@ body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1px solid rgba(79, 56, 37, 0.15);
   border-radius: 50%;
-  background: rgba(38, 23, 15, 0.55);
-  color: var(--og-color-paper);
+  background: var(--og-color-paper);
+  color: var(--og-color-soil);
   cursor: pointer;
-  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease);
+  box-shadow: 0 2px 8px rgba(38, 23, 15, 0.08);
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease),
+              opacity var(--duration-fast, 150ms) var(--easing-out, ease);
 }
 
-.admin-photo-carousel__nav:hover,
-.admin-photo-carousel__nav:focus-visible {
-  background: rgba(38, 23, 15, 0.8);
+.admin-photo-carousel__nav:hover:not(:disabled),
+.admin-photo-carousel__nav:focus-visible:not(:disabled) {
+  background: var(--og-color-moss);
+  color: var(--og-color-paper);
   outline: none;
 }
 
+.admin-photo-carousel__nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .admin-photo-carousel__nav svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .admin-photo-carousel__nav--prev {
-  left: 0.5rem;
+  left: 0;
 }
 
 .admin-photo-carousel__nav--next {
-  right: 0.5rem;
+  right: 0;
 }
 
 .admin-photo-carousel__counter {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--og-radius-pill, 999px);
-  background: rgba(38, 23, 15, 0.6);
-  color: var(--og-color-paper);
-  font-size: 0.78rem;
+  margin-top: 0.5rem;
+  color: rgba(79, 56, 37, 0.6);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .admin-photo-carousel__viewport {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Space between the carousel and the approve/deny actions. */
+.admin-submission-card__actions {
+  margin-top: 0.75rem;
+}
+
+/* ── Pagination ───────────────────────────────────────────────────── */
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-pagination__status {
+  color: rgba(79, 56, 37, 0.75);
+  font-size: 0.9rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.admin-photo-carousel__dots {
-  position: absolute;
-  bottom: 0.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  gap: 0.35rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: var(--og-radius-pill, 999px);
-  background: rgba(38, 23, 15, 0.4);
-}
-
-.admin-photo-carousel__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
-              transform var(--duration-fast, 150ms) var(--easing-out, ease);
-}
-
-.admin-photo-carousel__dot:hover {
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.admin-photo-carousel__dot.is-active {
-  background: var(--og-color-paper);
-  transform: scale(1.2);
 }
 
 /* ── Store catalog ────────────────────────────────────────────────── */

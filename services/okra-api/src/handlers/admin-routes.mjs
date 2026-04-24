@@ -106,6 +106,20 @@ function validateLimit(raw) {
   return { valid: true, value: Math.min(parsed, 100) };
 }
 
+/** Validate/parse the 1-indexed `page` query parameter. Defaults to 1. */
+function validatePage(raw) {
+  if (raw == null) return { valid: true, value: 1 };
+  const trimmed = String(raw).trim();
+  if (!/^[0-9]+$/.test(trimmed)) {
+    return { valid: false, response: errorResponse(400, 'INVALID_PAGE', 'Page must be a positive integer') };
+  }
+  const parsed = parseInt(trimmed, 10);
+  if (parsed === 0) {
+    return { valid: false, response: errorResponse(400, 'INVALID_PAGE', 'Page must be a positive integer') };
+  }
+  return { valid: true, value: parsed };
+}
+
 /**
  * Validate and decode the `cursor` query parameter.
  * Returns { valid: true, value: object|null } or { valid: false, response: Response }.
@@ -154,10 +168,20 @@ export function registerAdminRoutes(app) {
       );
     }
 
+    const limitResult = validateLimit(params.limit);
+    if (!limitResult.valid) return limitResult.response;
+    const limit = limitResult.value;
+
+    const pageResult = validatePage(params.page);
+    if (!pageResult.valid) return pageResult.response;
+    const page = pageResult.value;
+
     try {
-      return {
-        data: await listOpenSeedRequests(),
-      };
+      const all = await listOpenSeedRequests();
+      const total = all.length;
+      const start = (page - 1) * limit;
+      const data = all.slice(start, start + limit);
+      return { data, total, page, limit };
     } catch (err) {
       console.error(JSON.stringify({
         level: 'error',
@@ -251,6 +275,17 @@ export function registerAdminRoutes(app) {
     const client = await createDbClient();
     await client.connect();
     try {
+      // Total count for the same filter (ignores cursor — reflects the full
+      // matching set so the UI can render "(N)" counts and page controls).
+      const countQuery = `
+        SELECT COUNT(*)::int AS total
+        FROM submissions s
+        WHERE ${statusClause}
+          ${photoClause}
+      `;
+      const countResult = await client.query(countQuery, baseParams);
+      const total = countResult.rows[0]?.total ?? 0;
+
       let queryText;
       let queryParams;
       if (cursor) {
@@ -297,7 +332,7 @@ export function registerAdminRoutes(app) {
       }
 
       if (rows.length === 0) {
-        return { data: [], cursor: null };
+        return { data: [], cursor: null, total };
       }
 
       const submissionIds = rows.map((r) => r.id);
@@ -335,7 +370,7 @@ export function registerAdminRoutes(app) {
         })
       );
 
-      return { data, cursor: nextCursor };
+      return { data, cursor: nextCursor, total };
     } catch (err) {
       console.error(JSON.stringify({
         level: 'error',
