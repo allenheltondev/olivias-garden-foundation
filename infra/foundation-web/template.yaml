@@ -37,14 +37,6 @@ Parameters:
     Default: ''
     NoEcho: true
     Description: Optional Google OAuth client secret for Cognito social sign-in.
-  EnableGoogleOnUserPoolClient:
-    Type: String
-    Default: 'false'
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Description: Set to true only after the Google identity provider already exists in the user pool.
-
 Globals:
   Function:
     Architectures: [arm64]
@@ -53,15 +45,17 @@ Globals:
     MemorySize: 512
 
 Conditions:
+  IsProdEnvironment: !Equals [!Ref EnvironmentName, 'prod']
   DeployCustomDomain: !And
     - !Not [!Equals [!Ref DomainName, '']]
     - !Not [!Equals [!Ref DomainHostedZoneId, '']]
   EnableGoogleIdentityProvider: !And
     - !Not [!Equals [!Ref GoogleClientId, '']]
     - !Not [!Equals [!Ref GoogleClientSecret, '']]
-  EnableGoogleOnClient: !And
-    - !Condition EnableGoogleIdentityProvider
-    - !Equals [!Ref EnableGoogleOnUserPoolClient, 'true']
+  EnableGoogleOnClient: !Condition EnableGoogleIdentityProvider
+  EnableProdCognitoCustomDomain: !And
+    - !Condition IsProdEnvironment
+    - !Condition DeployCustomDomain
 
 Metadata:
   esbuild-properties: &esbuild-properties
@@ -221,11 +215,51 @@ Resources:
       Description: Pro tier users with pro foundation and GRN features
       Precedence: 1
 
+  FoundationUserPoolCustomDomainCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      DomainName: !Sub 'auth.${DomainName}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Sub 'auth.${DomainName}'
+          HostedZoneId: !Ref DomainHostedZoneId
+
   FoundationUserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref FoundationUserPool
-      Domain: !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
+      Domain: !If
+        - EnableProdCognitoCustomDomain
+        - !Sub 'auth.${DomainName}'
+        - !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
+      ManagedLoginVersion: 2
+      CustomDomainConfig: !If
+        - EnableProdCognitoCustomDomain
+        - CertificateArn: !Ref FoundationUserPoolCustomDomainCertificate
+        - !Ref AWS::NoValue
+
+  FoundationUserPoolCustomDomainRecordA:
+    Type: AWS::Route53::RecordSet
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      HostedZoneId: !Ref DomainHostedZoneId
+      Name: !Sub 'auth.${DomainName}'
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt FoundationUserPoolDomain.CloudFrontDistribution
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  FoundationUserPoolCustomDomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Condition: EnableProdCognitoCustomDomain
+    Properties:
+      HostedZoneId: !Ref DomainHostedZoneId
+      Name: !Sub 'auth.${DomainName}'
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt FoundationUserPoolDomain.CloudFrontDistribution
+        HostedZoneId: Z2FDTNDATAQYW2
 
   FoundationGoogleIdentityProvider:
     Type: AWS::Cognito::UserPoolIdentityProvider
@@ -335,7 +369,7 @@ Resources:
   # asset (anything with a dot in the final segment) pass through
   # unchanged so /assets/*, /images/*, robots.txt, sitemap.xml etc. still
   # resolve. When the rewritten path has no snapshot in S3 the existing
-  # 403/404 → /index.html fallback still delivers the SPA shell.
+  # 403/404 â†’ /index.html fallback still delivers the SPA shell.
   WebFrontendRewriteFunction:
     Type: AWS::CloudFront::Function
     Properties:
@@ -668,6 +702,14 @@ Outputs:
 
   UserPoolDomain:
     Description: Cognito Hosted UI domain for the foundation web app.
-    Value: !Sub '${FoundationUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Value: !If
+      - EnableProdCognitoCustomDomain
+      - !Sub 'auth.${DomainName}'
+      - !Sub '${FoundationUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
     Export:
       Name: OGF-UserPoolDomain
+
+  UserPoolDomainCloudFrontTarget:
+    Condition: EnableProdCognitoCustomDomain
+    Description: CloudFront distribution target for the Cognito custom domain alias.
+    Value: !GetAtt FoundationUserPoolDomain.CloudFrontDistribution
