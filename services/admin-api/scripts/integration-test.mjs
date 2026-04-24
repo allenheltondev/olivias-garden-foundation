@@ -134,10 +134,15 @@ async function run() {
       reporter.assert('auth-boundary', res.status === 401, `PUT /admin/store/products/:id without auth returns 401 (got ${res.status})`, res.json);
     }
 
-    // Invalid token → 401.
+    // Invalid token → 403. API Gateway returns 401 when the Authorization
+    // header is missing (short-circuit via Auth.Identity.Headers) and 403
+    // when the Lambda authorizer runs and returns a Deny policy. Both are
+    // correct rejection paths — asserting 401 or 403 covers either.
     {
       const res = await badTokenApi.request('/admin/store/products');
-      reporter.assert('auth-boundary', res.status === 401, `GET /admin/store/products with invalid token returns 401 (got ${res.status})`, res.json);
+      reporter.assert('auth-boundary',
+        res.status === 401 || res.status === 403,
+        `GET /admin/store/products with invalid token returns 401/403 (got ${res.status})`, res.json);
     }
     {
       const res = await badTokenApi.request('/admin/store/products', {
@@ -145,7 +150,9 @@ async function run() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug: 'should-fail', name: 'should fail' })
       });
-      reporter.assert('auth-boundary', res.status === 401, `POST /admin/store/products with invalid token returns 401 (got ${res.status})`, res.json);
+      reporter.assert('auth-boundary',
+        res.status === 401 || res.status === 403,
+        `POST /admin/store/products with invalid token returns 401/403 (got ${res.status})`, res.json);
     }
   }
 
