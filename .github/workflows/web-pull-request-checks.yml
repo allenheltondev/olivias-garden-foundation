@@ -220,6 +220,7 @@ jobs:
       web_api_stack_name: ogf-web-api-staging
       okra_stack_name: ogf-okra-staging
       grn_stack_name: ogf-grn-staging
+      admin_stack_name: ogf-admin-staging
       aws_region: us-east-1
       aws_role_session_name: GitHubActions-FoundationWeb-PR-${{ github.event.pull_request.number }}
       domain_name: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}

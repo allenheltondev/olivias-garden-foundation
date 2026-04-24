@@ -90,7 +90,7 @@ export async function getUserCount() {
   }
 }
 
-// Mirrors the GET /submissions?status=pending_review review-queue filter:
+// Mirrors the GET /submissions?status=pending moderation-queue filter:
 // a submission only counts as actionable when it has at least one
 // submission_photos row in `ready` status. Without this, the dashboard
 // inflates the backlog whenever photo processing lags or fails.

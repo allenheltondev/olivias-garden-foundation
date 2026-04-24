@@ -182,9 +182,9 @@ describe('GET /admin/submissions', () => {
     const res = await handler(makeRestApiEvent('/submissions'));
     const { statusCode, body } = parseRes(res);
     expect(statusCode).toBe(200);
-    expect(body).toEqual({ data: [], cursor: null });
+    expect(body).toEqual({ data: [], cursor: null, total: 0 });
     const queryCall = mockClient.query.mock.calls.find(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s') && c[0].includes('ORDER BY')
     );
     expect(queryCall).toBeDefined();
     expect(queryCall![0]).not.toContain("'pending_review'");
@@ -282,7 +282,7 @@ describe('GET /admin/submissions', () => {
       makeRestApiEvent('/submissions', 'GET', { queryStringParameters: { limit: '200' } })
     );
     const queryCall = mockClient.query.mock.calls.find(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('FROM submissions s') && c[0].includes('ORDER BY')
     );
     expect(queryCall![1]).toContain(101);
   });
@@ -840,13 +840,35 @@ describe('seed request admin queue', () => {
     }];
 
     const { statusCode, body } = parseRes(
-      await handler(makeRestApiEvent('/requests/review-queue'))
+      await handler(makeRestApiEvent('/requests', 'GET', {
+        queryStringParameters: { status: 'open' },
+      }))
     );
 
     expect(statusCode).toBe(200);
     expect(body.data).toHaveLength(2);
     expect(body.data[0].id).toBe('22222222-2222-2222-2222-222222222222');
     expect(body.data[1].id).toBe('11111111-1111-1111-1111-111111111111');
+  });
+
+  it('returns INVALID_STATUS when status query parameter is missing', async () => {
+    const { statusCode, body } = parseRes(
+      await handler(makeRestApiEvent('/requests'))
+    );
+
+    expect(statusCode).toBe(400);
+    expect(body.error.code).toBe('INVALID_STATUS');
+  });
+
+  it('returns INVALID_STATUS for unsupported status value', async () => {
+    const { statusCode, body } = parseRes(
+      await handler(makeRestApiEvent('/requests', 'GET', {
+        queryStringParameters: { status: 'handled' },
+      }))
+    );
+
+    expect(statusCode).toBe(400);
+    expect(body.error.code).toBe('INVALID_STATUS');
   });
 
   it('marks a seed request as handled', async () => {
@@ -885,265 +907,5 @@ describe('seed request admin queue', () => {
 
     expect(statusCode).toBe(400);
     expect(body.error.code).toBe('INVALID_ACTION');
-  });
-});
-
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GET /admin/submissions/review-queue
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe('GET /admin/submissions/review-queue', () => {
-  function makeReviewQueueSubmissionRow(overrides: Record<string, any> = {}) {
-    return {
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      contributor_name: 'Alice',
-      contributor_email: 'alice@example.com',
-      story_text: 'Found okra here',
-      raw_location_text: '123 Main St',
-      privacy_mode: 'exact',
-      display_lat: 34.05,
-      display_lng: -118.24,
-      status: 'pending_review',
-      created_at: new Date('2024-01-15T10:00:00Z'),
-      created_at_raw: '2024-01-15 10:00:00.000000+00',
-      ...overrides,
-    };
-  }
-
-  function setupReviewQueueMocks(submissionRows: any[] = [], photoRows: any[] = []) {
-    queryResponses = {
-      'pending_review': { rows: submissionRows, rowCount: submissionRows.length },
-      'original_s3_key': { rows: photoRows, rowCount: photoRows.length },
-    };
-  }
-
-  // ─── Validates: Requirement 5.1 — Only pending submissions with ready photos ──
-  it('returns only pending submissions with ready photos', async () => {
-    const sub1 = makeReviewQueueSubmissionRow();
-    setupReviewQueueMocks([sub1], [
-      { submission_id: sub1.id, original_s3_key: 'photos/abc.jpg' },
-    ]);
-
-    const res = await handler(makeRestApiEvent('/submissions/review-queue'));
-    const { statusCode, body } = parseRes(res);
-
-    expect(statusCode).toBe(200);
-    expect(body.data).toHaveLength(1);
-    expect(body.data[0].id).toBe(sub1.id);
-    expect(body.data[0].status).toBe('pending_review');
-  });
-
-  // ─── Validates: Requirement 5.1, 5.4 — Submissions without ready photos excluded ──
-  it('excludes submissions with only uploaded/processing/failed photos (via DB query)', async () => {
-    // The EXISTS subquery in the handler filters at the DB level,
-    // so if the DB returns no rows, the response should be empty.
-    setupReviewQueueMocks([], []);
-
-    const res = await handler(makeRestApiEvent('/submissions/review-queue'));
-    const { statusCode, body } = parseRes(res);
-
-    expect(statusCode).toBe(200);
-    expect(body.data).toEqual([]);
-    expect(body.cursor).toBeNull();
-  });
-
-  // ─── Validates: Requirement 5.5 — Pre-signed URLs for ready photos only ──
-  it('generates pre-signed URLs for ready photos only', async () => {
-    const sub1 = makeReviewQueueSubmissionRow();
-    setupReviewQueueMocks([sub1], [
-      { submission_id: sub1.id, original_s3_key: 'photos/ready1.jpg' },
-      { submission_id: sub1.id, original_s3_key: 'photos/ready2.jpg' },
-    ]);
-
-    const res = await handler(makeRestApiEvent('/submissions/review-queue'));
-    const { body } = parseRes(res);
-
-    expect(body.data[0].photos).toHaveLength(2);
-    expect(body.data[0].photos[0]).toBe('https://s3.example.com/signed-url');
-    expect(body.data[0].photos[1]).toBe('https://s3.example.com/signed-url');
-    expect(body.data[0].photo_count).toBe(2);
-    expect(body.data[0].has_photos).toBe(true);
-  });
-
-  // ─── Validates: Requirement 5.3 — Response shape with all required fields ──
-  it('returns response with all required fields', async () => {
-    const sub1 = makeReviewQueueSubmissionRow();
-    setupReviewQueueMocks([sub1], [
-      { submission_id: sub1.id, original_s3_key: 'photos/abc.jpg' },
-    ]);
-
-    const res = await handler(makeRestApiEvent('/submissions/review-queue'));
-    const { body } = parseRes(res);
-
-    expect(body.data).toHaveLength(1);
-    const item = body.data[0];
-    for (const field of [
-      'id', 'contributor_name', 'contributor_email', 'story_text',
-      'raw_location_text', 'privacy_mode', 'display_lat', 'display_lng',
-      'status', 'created_at', 'photo_count', 'has_photos', 'photos',
-    ]) {
-      expect(item).toHaveProperty(field);
-    }
-    expect(item.photo_count).toBe(1);
-    expect(item.has_photos).toBe(true);
-    expect(Array.isArray(item.photos)).toBe(true);
-  });
-
-  // ─── Validates: Requirement 5.3 — photo_count and has_photos when no photos ──
-  it('returns photo_count=0 and has_photos=false when submission has no ready photos', async () => {
-    const sub1 = makeReviewQueueSubmissionRow();
-    setupReviewQueueMocks([sub1], []);
-
-    const res = await handler(makeRestApiEvent('/submissions/review-queue'));
-    const { body } = parseRes(res);
-
-    expect(body.data[0].photo_count).toBe(0);
-    expect(body.data[0].has_photos).toBe(false);
-    expect(body.data[0].photos).toEqual([]);
-  });
-
-  // ─── Validates: Requirement 6.2 — Existing GET /admin/submissions still works ──
-  it('existing GET /admin/submissions endpoint still works unchanged', async () => {
-    queryResponses = {
-      'FROM submissions': { rows: [], rowCount: 0 },
-    };
-
-    const res = await handler(makeRestApiEvent('/submissions'));
-    const { statusCode, body } = parseRes(res);
-
-    expect(statusCode).toBe(200);
-    expect(body).toEqual({ data: [], cursor: null });
-  });
-
-  // ─── Validates: Requirement 7.5 — Limit validation on review queue ──
-  it('returns INVALID_LIMIT for zero limit', async () => {
-    const res = await handler(
-      makeRestApiEvent('/submissions/review-queue', 'GET', {
-        queryStringParameters: { limit: '0' },
-      })
-    );
-    const { statusCode, body } = parseRes(res);
-    expect(statusCode).toBe(400);
-    expect(body.error.code).toBe('INVALID_LIMIT');
-  });
-
-  it('returns INVALID_LIMIT for negative limit', async () => {
-    const res = await handler(
-      makeRestApiEvent('/submissions/review-queue', 'GET', {
-        queryStringParameters: { limit: '-5' },
-      })
-    );
-    expect(parseRes(res).body.error.code).toBe('INVALID_LIMIT');
-  });
-
-  it('returns INVALID_LIMIT for non-numeric limit', async () => {
-    const res = await handler(
-      makeRestApiEvent('/submissions/review-queue', 'GET', {
-        queryStringParameters: { limit: 'abc' },
-      })
-    );
-    expect(parseRes(res).body.error.code).toBe('INVALID_LIMIT');
-  });
-
-  it('returns INVALID_LIMIT for decimal limit', async () => {
-    const res = await handler(
-      makeRestApiEvent('/submissions/review-queue', 'GET', {
-        queryStringParameters: { limit: '3.7' },
-      })
-    );
-    expect(parseRes(res).body.error.code).toBe('INVALID_LIMIT');
-  });
-
-  it('clamps limit above 100 to 100', async () => {
-    const sub1 = makeReviewQueueSubmissionRow();
-    setupReviewQueueMocks([sub1], []);
-
-    await handler(
-      makeRestApiEvent('/submissions/review-queue', 'GET', {
-        queryStringParameters: { limit: '200' },
-      })
-    );
-
-    // The handler should query with limit + 1 = 101
-    const queryCall = mockClient.query.mock.calls.find(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('pending_review') && c[0].includes('LIMIT')
-    );
-    expect(queryCall).toBeDefined();
-    expect(queryCall![1]).toContain(101);
-  });
-
-  // ─── Validates: Requirement 7.6 — Cursor validation on review queue ──
-  it('returns INVALID_CURSOR for malformed cursor', async () => {
-    const res = await handler(
-      makeRestApiEvent('/submissions/review-queue', 'GET', {
-        queryStringParameters: { cursor: 'not-valid' },
-      })
-    );
-    expect(parseRes(res).body.error.code).toBe('INVALID_CURSOR');
-  });
-
-  // ─── Validates: Requirement 9.1 — 500 error when MEDIA_BUCKET_NAME not set ──
-  it('returns 500 INTERNAL_ERROR when MEDIA_BUCKET_NAME is not set', async () => {
-    delete process.env.MEDIA_BUCKET_NAME;
-
-    const res = await handler(makeRestApiEvent('/submissions/review-queue'));
-    const { statusCode, body } = parseRes(res);
-
-    expect(statusCode).toBe(500);
-    expect(body.error.code).toBe('INTERNAL_ERROR');
-    expect(body.error.message).toBe('An unexpected error occurred');
-  });
-
-  // ─── Empty result set ──
-  it('returns empty result set as { data: [], cursor: null }', async () => {
-    setupReviewQueueMocks([], []);
-
-    const { body } = parseRes(
-      await handler(makeRestApiEvent('/submissions/review-queue'))
-    );
-    expect(body.data).toEqual([]);
-    expect(body.cursor).toBeNull();
-  });
-
-  // ─── Cursor is null on last page ──
-  it('cursor is null on last page', async () => {
-    const sub1 = makeReviewQueueSubmissionRow();
-    setupReviewQueueMocks([sub1], []);
-
-    const { body } = parseRes(
-      await handler(makeRestApiEvent('/submissions/review-queue'))
-    );
-    expect(body.cursor).toBeNull();
-  });
-
-  // ─── Multiple submissions with photos ──
-  it('returns multiple submissions with their respective photos', async () => {
-    const sub1 = makeReviewQueueSubmissionRow({
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      created_at: new Date('2024-01-15T10:00:00Z'),
-      created_at_raw: '2024-01-15 10:00:00.000000+00',
-    });
-    const sub2 = makeReviewQueueSubmissionRow({
-      id: '550e8400-e29b-41d4-a716-446655440002',
-      contributor_name: 'Bob',
-      created_at: new Date('2024-01-16T10:00:00Z'),
-      created_at_raw: '2024-01-16 10:00:00.000000+00',
-    });
-
-    setupReviewQueueMocks([sub1, sub2], [
-      { submission_id: sub1.id, original_s3_key: 'photos/sub1-photo.jpg' },
-      { submission_id: sub2.id, original_s3_key: 'photos/sub2-photo1.jpg' },
-      { submission_id: sub2.id, original_s3_key: 'photos/sub2-photo2.jpg' },
-    ]);
-
-    const { body } = parseRes(
-      await handler(makeRestApiEvent('/submissions/review-queue'))
-    );
-
-    expect(body.data).toHaveLength(2);
-    expect(body.data[0].photos).toHaveLength(1);
-    expect(body.data[1].photos).toHaveLength(2);
-    expect(body.data[1].photo_count).toBe(2);
   });
 });

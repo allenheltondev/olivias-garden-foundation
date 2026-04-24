@@ -18,107 +18,271 @@ body {
 }
 
 /* ── Admin shell layout ───────────────────────────────────────────── */
+/*
+ * The admin shell uses body-level scrolling: header and footer are pinned,
+ * the middle row (.admin-shell-body) fills the remaining viewport height,
+ * and only .admin-shell-main scrolls. This lets the side nav span the full
+ * height between header and footer at all times without driving extra
+ * page scroll.
+ */
 
 .admin-app-shell {
   background: transparent;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
-.admin-app-main {
-  width: min(1320px, calc(100% - 2rem));
+.admin-shell-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-shell-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.admin-shell-main__inner {
+  flex: 1;
+  min-width: 0;
+  width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 1.25rem 0 2.5rem;
-}
-
-.admin-layout {
-  display: grid;
-  gap: 1rem;
-}
-
-.admin-layout__sidebar {
-  display: grid;
-  align-content: start;
-}
-
-.admin-layout__content {
+  padding: 1.5rem clamp(1rem, 2vw, 2rem) 2.5rem;
   display: grid;
   gap: 1.25rem;
   align-content: start;
-  min-width: 0;
 }
 
-.admin-side-nav {
-  background: rgba(255, 252, 246, 0.96);
-  border: 1px solid rgba(79, 56, 37, 0.08);
-  border-radius: 1.5rem;
-  box-shadow: 0 18px 36px rgba(38, 23, 15, 0.08);
-  padding: 1rem;
+/* ── Left-docked vertical nav ─────────────────────────────────────── */
+
+.admin-vertical-nav {
+  --admin-nav-width-collapsed: 4.25rem;
+  --admin-nav-width-expanded: 15.5rem;
+
+  position: relative;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.55rem;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(249, 241, 226, 0.94));
+  border-right: 1px solid rgba(79, 56, 37, 0.1);
+  box-shadow: 2px 0 24px rgba(38, 23, 15, 0.05);
+  width: var(--admin-nav-width-collapsed);
+  transition: width var(--duration-base, 200ms) var(--easing-out, ease);
 }
 
-.admin-side-nav__intro {
-  display: grid;
-  gap: 0.35rem;
+.admin-vertical-nav.is-expanded {
+  width: var(--admin-nav-width-expanded);
 }
 
-.admin-side-nav .og-side-nav__body {
-  margin-top: 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
+/* List: top-aligned, not stretched. Overflow-y allows scroll if content
+   ever exceeds the sticky viewport budget. */
+.admin-vertical-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.admin-side-nav .og-side-nav__list {
-  gap: 0.55rem;
-}
-
-.admin-side-nav .og-side-nav__link {
-  min-height: 3.1rem;
-  border-radius: 1rem;
-  border-color: transparent;
+.admin-vertical-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: none;
+  border-radius: 0.75rem;
   background: transparent;
-  padding: 0.85rem 1rem;
-}
-
-.admin-side-nav .og-side-nav__link:hover {
-  background: rgba(79, 56, 37, 0.06);
-  border-color: transparent;
-}
-
-.admin-side-nav .og-side-nav__link.is-active {
-  background: rgba(79, 56, 37, 0.08);
   color: var(--og-color-soil);
-  border-color: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease);
 }
 
-@media (min-width: 860px) {
-  .admin-layout {
-    grid-template-columns: minmax(16rem, 18rem) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .admin-layout__sidebar {
-    position: sticky;
-    top: calc(4.85rem + env(safe-area-inset-top, 0px) + 0.75rem);
-    min-height: calc(100dvh - 6rem - env(safe-area-inset-top, 0px));
-  }
-
-  .admin-side-nav {
-    min-height: inherit;
-    padding: 1.25rem 1rem;
-  }
+.admin-vertical-nav__link:hover,
+.admin-vertical-nav__link:focus-visible {
+  background: rgba(79, 56, 37, 0.08);
+  outline: none;
 }
 
-@media (max-width: 859px) {
-  .admin-app-main {
-    width: min(1180px, calc(100% - 1rem));
-    padding-top: 1rem;
+.admin-vertical-nav__link.is-active {
+  background: rgba(66, 107, 63, 0.14);
+  color: var(--og-color-moss);
+}
+
+.admin-vertical-nav__link.is-active:hover,
+.admin-vertical-nav__link.is-active:focus-visible {
+  background: rgba(66, 107, 63, 0.2);
+}
+
+.admin-vertical-nav__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  color: inherit;
+}
+
+.admin-vertical-nav__icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.admin-vertical-nav__link.is-active .admin-vertical-nav__icon {
+  color: var(--og-color-moss);
+}
+
+.admin-vertical-nav__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease);
+}
+
+.admin-vertical-nav.is-expanded .admin-vertical-nav__label {
+  opacity: 1;
+}
+
+.admin-vertical-nav.is-collapsed .admin-vertical-nav__link {
+  justify-content: center;
+  gap: 0;
+  padding: 0.55rem;
+}
+
+/* Remove the label from the flow when collapsed so the icon is truly
+   centered (opacity: 0 alone still reserves space via the label's flex: 1). */
+.admin-vertical-nav.is-collapsed .admin-vertical-nav__label {
+  display: none;
+}
+
+/* Collapse/expand handle: a small notch that grows out of the nav's right
+   border at vertical center. Picks up the nav's own background + border so
+   it reads as an extension of the rail, not a floating pill. Appears on
+   hover of the nav (or the handle itself for keyboard users). */
+.admin-vertical-nav__toggle {
+  position: absolute;
+  top: 50%;
+  right: -0.9rem;
+  transform: translateY(-50%);
+  width: 0.95rem;
+  height: 2.6rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(79, 56, 37, 0.1);
+  border-left: none;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(249, 241, 226, 0.94));
+  color: rgba(79, 56, 37, 0.65);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease),
+              background var(--duration-fast, 150ms) var(--easing-out, ease);
+  z-index: 1;
+}
+
+.admin-vertical-nav:hover .admin-vertical-nav__toggle,
+.admin-vertical-nav:focus-within .admin-vertical-nav__toggle,
+.admin-vertical-nav__toggle:hover,
+.admin-vertical-nav__toggle:focus-visible {
+  opacity: 1;
+}
+
+.admin-vertical-nav__toggle:hover,
+.admin-vertical-nav__toggle:focus-visible {
+  background: rgba(66, 107, 63, 0.12);
+  color: var(--og-color-moss);
+  outline: none;
+}
+
+.admin-vertical-nav__toggle svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* ── Mobile: horizontal scroll fallback ───────────────────────────── */
+
+@media (max-width: 720px) {
+  .admin-shell-body {
+    flex-direction: column;
   }
 
-  .admin-side-nav {
+  .admin-vertical-nav,
+  .admin-vertical-nav.is-expanded,
+  .admin-vertical-nav.is-collapsed {
+    position: static;
+    top: auto;
+    width: 100%;
+    max-height: none;
+    flex-direction: row;
+    gap: 0.4rem;
+    padding: 0.65rem 0.75rem;
+    border-right: none;
+    border-bottom: 1px solid rgba(79, 56, 37, 0.1);
+    box-shadow: 0 2px 16px rgba(38, 23, 15, 0.05);
     overflow-x: auto;
+    overflow-y: hidden;
   }
 
-  .admin-side-nav .og-side-nav__title,
-  .admin-side-nav .og-side-nav__body {
-    max-width: 38rem;
+  .admin-vertical-nav__toggle {
+    display: none;
+  }
+
+  .admin-vertical-nav__list {
+    flex: 1;
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .admin-vertical-nav__list li {
+    flex-shrink: 0;
+  }
+
+  .admin-vertical-nav__link {
+    min-height: 2.5rem;
+    padding: 0.4rem 0.85rem;
+  }
+
+  .admin-vertical-nav__label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .admin-vertical-nav__icon {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .admin-shell-main__inner {
+    padding: 1rem clamp(0.75rem, 3vw, 1.5rem) 2rem;
   }
 }
 
@@ -298,6 +462,110 @@ body {
   max-height: 20rem;
   object-fit: cover;
   border-radius: var(--og-radius-lg);
+}
+
+/* ── Photo carousel (up to 3 thumbs at a time) ────────────────────── */
+
+.admin-photo-carousel {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0 2.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-photo-carousel__viewport {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.admin-photo-carousel__thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--og-radius-md, 0.75rem);
+  background: rgba(38, 23, 15, 0.04);
+}
+
+.admin-photo-carousel__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(79, 56, 37, 0.15);
+  border-radius: 50%;
+  background: var(--og-color-paper);
+  color: var(--og-color-soil);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(38, 23, 15, 0.08);
+  transition: background-color var(--duration-fast, 150ms) var(--easing-out, ease),
+              color var(--duration-fast, 150ms) var(--easing-out, ease),
+              opacity var(--duration-fast, 150ms) var(--easing-out, ease);
+}
+
+.admin-photo-carousel__nav:hover:not(:disabled),
+.admin-photo-carousel__nav:focus-visible:not(:disabled) {
+  background: var(--og-color-moss);
+  color: var(--og-color-paper);
+  outline: none;
+}
+
+.admin-photo-carousel__nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.admin-photo-carousel__nav svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.admin-photo-carousel__nav--prev {
+  left: 0;
+}
+
+.admin-photo-carousel__nav--next {
+  right: 0;
+}
+
+.admin-photo-carousel__counter {
+  margin-top: 0.5rem;
+  color: rgba(79, 56, 37, 0.6);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .admin-photo-carousel__viewport {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Space between the carousel and the approve/deny actions. */
+.admin-submission-card__actions {
+  margin-top: 0.75rem;
+}
+
+/* ── Pagination ───────────────────────────────────────────────────── */
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-pagination__status {
+  color: rgba(79, 56, 37, 0.75);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 /* ── Store catalog ────────────────────────────────────────────────── */

@@ -162,12 +162,20 @@ export async function updateStoreProduct(
   );
 }
 
-export async function listOkraReviewQueue(accessToken: string): Promise<OkraSubmission[]> {
-  const response = await requestJson<{ data: OkraSubmission[] }>(
-    `${getOkraAdminApiBaseUrl()}/submissions/review-queue`,
+export interface OkraReviewQueueResponse {
+  data: OkraSubmission[];
+  total: number;
+}
+
+export async function listOkraReviewQueue(accessToken: string): Promise<OkraReviewQueueResponse> {
+  const response = await requestJson<{ data: OkraSubmission[]; total?: number }>(
+    `${getOkraAdminApiBaseUrl()}/submissions?status=pending`,
     accessToken
   );
-  return response.data;
+  return {
+    data: response.data,
+    total: response.total ?? response.data.length,
+  };
 }
 
 export async function reviewOkraSubmission(
@@ -187,12 +195,32 @@ export async function reviewOkraSubmission(
   );
 }
 
-export async function listSeedRequestQueue(accessToken: string): Promise<SeedRequestQueueItem[]> {
-  const response = await requestJson<{ data: SeedRequestQueueItem[] }>(
-    `${getOkraAdminApiBaseUrl()}/requests/review-queue`,
-    accessToken
-  );
-  return response.data;
+export interface SeedRequestQueueResponse {
+  data: SeedRequestQueueItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function listSeedRequestQueue(
+  accessToken: string,
+  options: { page?: number; limit?: number } = {}
+): Promise<SeedRequestQueueResponse> {
+  const page = options.page ?? 1;
+  const limit = options.limit ?? 20;
+  const url = `${getOkraAdminApiBaseUrl()}/requests?status=open&page=${page}&limit=${limit}`;
+  const response = await requestJson<{
+    data: SeedRequestQueueItem[];
+    total?: number;
+    page?: number;
+    limit?: number;
+  }>(url, accessToken);
+  return {
+    data: response.data,
+    total: response.total ?? response.data.length,
+    page: response.page ?? page,
+    limit: response.limit ?? limit,
+  };
 }
 
 export async function markSeedRequestHandled(

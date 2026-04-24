@@ -23,6 +23,7 @@ const VALID_STATUSES = ['pending_review', 'approved', 'denied'];
 const VALID_ACTIONS = ['approved', 'denied'];
 const VALID_DENIAL_REASONS = ['spam', 'invalid_location', 'inappropriate', 'other'];
 const VALID_REQUEST_ACTIONS = ['handled'];
+const VALID_REQUEST_STATUSES = ['open'];
 
 function getSeedRequestsTableName() {
   const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
@@ -105,6 +106,20 @@ function validateLimit(raw) {
   return { valid: true, value: Math.min(parsed, 100) };
 }
 
+/** Validate/parse the 1-indexed `page` query parameter. Defaults to 1. */
+function validatePage(raw) {
+  if (raw == null) return { valid: true, value: 1 };
+  const trimmed = String(raw).trim();
+  if (!/^[0-9]+$/.test(trimmed)) {
+    return { valid: false, response: errorResponse(400, 'INVALID_PAGE', 'Page must be a positive integer') };
+  }
+  const parsed = parseInt(trimmed, 10);
+  if (parsed === 0) {
+    return { valid: false, response: errorResponse(400, 'INVALID_PAGE', 'Page must be a positive integer') };
+  }
+  return { valid: true, value: parsed };
+}
+
 /**
  * Validate and decode the `cursor` query parameter.
  * Returns { valid: true, value: object|null } or { valid: false, response: Response }.
@@ -118,18 +133,61 @@ function validateCursor(raw) {
   return { valid: true, value: decoded };
 }
 
+// Upsert the authenticated admin into admin_users and return the row id.
+// Anyone reaching this point has already cleared the Admin-group authorizer
+// on the admin API Gateway, so auto-provisioning on first review is safe —
+// otherwise only the CI-provisioned user could approve/deny, which is how
+// human admins were hitting 403 before.
+async function resolveAdminUserId(client, authorizer) {
+  const cognitoSub = authorizer?.sub;
+  if (!cognitoSub) return null;
+
+  const email = authorizer?.email || null;
+  const result = await client.query(
+    `INSERT INTO admin_users (cognito_sub, email, display_name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (cognito_sub) DO UPDATE SET
+       email = COALESCE(EXCLUDED.email, admin_users.email),
+       updated_at = now()
+     RETURNING id`,
+    [cognitoSub, email, email]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export function registerAdminRoutes(app) {
-  app.get('/requests/review-queue', async () => {
+  app.get('/requests', async (ctx) => {
+    const params = ctx.event?.queryStringParameters || {};
+    const status = params.status;
+
+    if (!status || !VALID_REQUEST_STATUSES.includes(status)) {
+      return errorResponse(
+        400,
+        'INVALID_STATUS',
+        `status query parameter is required. Must be one of: ${VALID_REQUEST_STATUSES.join(', ')}`
+      );
+    }
+
+    const limitResult = validateLimit(params.limit);
+    if (!limitResult.valid) return limitResult.response;
+    const limit = limitResult.value;
+
+    const pageResult = validatePage(params.page);
+    if (!pageResult.valid) return pageResult.response;
+    const page = pageResult.value;
+
     try {
-      return {
-        data: await listOpenSeedRequests(),
-      };
+      const all = await listOpenSeedRequests();
+      const total = all.length;
+      const start = (page - 1) * limit;
+      const data = all.slice(start, start + limit);
+      return { data, total, page, limit };
     } catch (err) {
       console.error(JSON.stringify({
         level: 'error',
         message: err instanceof Error ? err.message : String(err),
         errorName: err instanceof Error ? err.name : 'UnknownError',
-        endpoint: 'GET /admin/requests/review-queue',
+        endpoint: 'GET /admin/requests',
       }));
       return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
     }
@@ -178,134 +236,6 @@ export function registerAdminRoutes(app) {
     }
   });
 
-  // ─── GET /submissions/review-queue ──────────────────────────────
-  app.get('/submissions/review-queue', async (ctx) => {
-    const bucket = process.env.MEDIA_BUCKET_NAME;
-    if (!bucket) {
-      console.error(JSON.stringify({
-        level: 'error',
-        message: 'MEDIA_BUCKET_NAME not set — cannot generate pre-signed URLs',
-        endpoint: 'GET /admin/submissions/review-queue'
-      }));
-      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
-    }
-
-    const params = ctx.event?.queryStringParameters || {};
-
-    const limitResult = validateLimit(params.limit);
-    if (!limitResult.valid) return limitResult.response;
-    const limit = limitResult.value;
-
-    const cursorResult = validateCursor(params.cursor);
-    if (!cursorResult.valid) return cursorResult.response;
-    const cursor = cursorResult.value;
-
-    const client = await createDbClient();
-    await client.connect();
-    try {
-      let rows;
-      if (cursor) {
-        const res = await client.query(
-          `SELECT s.id, s.contributor_name, s.contributor_email, s.story_text,
-                  s.raw_location_text, s.privacy_mode, s.display_lat, s.display_lng,
-                  s.status, s.created_at,
-                  s.created_at::text AS created_at_raw
-           FROM submissions s
-           WHERE s.status = 'pending_review'
-             AND EXISTS (
-               SELECT 1 FROM submission_photos sp
-               WHERE sp.submission_id = s.id AND sp.status = 'ready'
-             )
-             AND (s.created_at, s.id) > ($1::timestamptz, $2)
-           ORDER BY s.created_at ASC, s.id ASC
-           LIMIT $3`,
-          [cursor.created_at, cursor.id, limit + 1]
-        );
-        rows = res.rows;
-      } else {
-        const res = await client.query(
-          `SELECT s.id, s.contributor_name, s.contributor_email, s.story_text,
-                  s.raw_location_text, s.privacy_mode, s.display_lat, s.display_lng,
-                  s.status, s.created_at,
-                  s.created_at::text AS created_at_raw
-           FROM submissions s
-           WHERE s.status = 'pending_review'
-             AND EXISTS (
-               SELECT 1 FROM submission_photos sp
-               WHERE sp.submission_id = s.id AND sp.status = 'ready'
-             )
-           ORDER BY s.created_at ASC, s.id ASC
-           LIMIT $1`,
-          [limit + 1]
-        );
-        rows = res.rows;
-      }
-
-      let nextCursor = null;
-      if (rows.length > limit) {
-        rows.pop();
-        nextCursor = encodeCursor(rows[rows.length - 1]);
-      }
-
-      // Batch-fetch photos for all returned submissions
-      const submissionIds = rows.map(r => r.id);
-      const photoMap = {};
-      if (submissionIds.length > 0) {
-        const photoRes = await client.query(
-          `SELECT submission_id, original_s3_key
-           FROM submission_photos
-           WHERE submission_id = ANY($1)
-             AND status = 'ready'
-           ORDER BY submission_id, created_at ASC`,
-          [submissionIds]
-        );
-        for (const photo of photoRes.rows) {
-          if (!photoMap[photo.submission_id]) {
-            photoMap[photo.submission_id] = [];
-          }
-          photoMap[photo.submission_id].push(photo.original_s3_key);
-        }
-      }
-
-      // Generate pre-signed S3 URLs for each submission's photos
-      const data = await Promise.all(
-        rows.map(async (row) => {
-          const keys = photoMap[row.id] || [];
-          const photos = await Promise.all(
-            keys.map((key) => presignPhotoUrl(bucket, key, 900))
-          );
-          return {
-            id: row.id,
-            contributor_name: row.contributor_name,
-            contributor_email: row.contributor_email,
-            story_text: row.story_text,
-            raw_location_text: row.raw_location_text,
-            privacy_mode: row.privacy_mode,
-            display_lat: row.display_lat,
-            display_lng: row.display_lng,
-            status: row.status,
-            created_at: row.created_at,
-            photo_count: photos.length,
-            has_photos: photos.length > 0,
-            photos
-          };
-        })
-      );
-
-      return { data, cursor: nextCursor };
-    } catch (err) {
-      console.error(JSON.stringify({
-        level: 'error',
-        message: err instanceof Error ? err.message : String(err),
-        errorName: err instanceof Error ? err.name : 'UnknownError',
-        endpoint: 'GET /admin/submissions/review-queue'
-      }));
-      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
-    } finally {
-      await client.end();
-    }
-  });
-
   // ─── GET /submissions ───────────────────────────────────────────
   // Canonical REST listing. Omit `status` to return every submission. Pass
   // `status=pending` (alias for `pending_review`) for the moderation-queue
@@ -345,6 +275,17 @@ export function registerAdminRoutes(app) {
     const client = await createDbClient();
     await client.connect();
     try {
+      // Total count for the same filter (ignores cursor — reflects the full
+      // matching set so the UI can render "(N)" counts and page controls).
+      const countQuery = `
+        SELECT COUNT(*)::int AS total
+        FROM submissions s
+        WHERE ${statusClause}
+          ${photoClause}
+      `;
+      const countResult = await client.query(countQuery, baseParams);
+      const total = countResult.rows[0]?.total ?? 0;
+
       let queryText;
       let queryParams;
       if (cursor) {
@@ -352,8 +293,9 @@ export function registerAdminRoutes(app) {
         const cursorPlaceholder2 = `$${baseParams.length + 2}`;
         const limitPlaceholder = `$${baseParams.length + 3}`;
         queryText = `
-          SELECT s.id, s.contributor_name, s.story_text, s.raw_location_text,
-                 s.privacy_mode, s.display_lat, s.display_lng, s.status, s.created_at,
+          SELECT s.id, s.contributor_name, s.contributor_email, s.story_text,
+                 s.raw_location_text, s.privacy_mode, s.display_lat, s.display_lng,
+                 s.status, s.created_at,
                  s.created_at::text AS created_at_raw
           FROM submissions s
           WHERE ${statusClause}
@@ -366,8 +308,9 @@ export function registerAdminRoutes(app) {
       } else {
         const limitPlaceholder = `$${baseParams.length + 1}`;
         queryText = `
-          SELECT s.id, s.contributor_name, s.story_text, s.raw_location_text,
-                 s.privacy_mode, s.display_lat, s.display_lng, s.status, s.created_at,
+          SELECT s.id, s.contributor_name, s.contributor_email, s.story_text,
+                 s.raw_location_text, s.privacy_mode, s.display_lat, s.display_lng,
+                 s.status, s.created_at,
                  s.created_at::text AS created_at_raw
           FROM submissions s
           WHERE ${statusClause}
@@ -389,12 +332,13 @@ export function registerAdminRoutes(app) {
       }
 
       if (rows.length === 0) {
-        return { data: [], cursor: null };
+        return { data: [], cursor: null, total };
       }
 
       const submissionIds = rows.map((r) => r.id);
       const photosResult = await client.query(
-        `SELECT submission_id, original_s3_key
+        `SELECT submission_id,
+                COALESCE(normalized_s3_key, original_s3_key) AS display_s3_key
          FROM submission_photos
          WHERE submission_id = ANY($1)
          ORDER BY submission_id, created_at ASC`,
@@ -406,7 +350,7 @@ export function registerAdminRoutes(app) {
         if (!photosBySubmission[photo.submission_id]) {
           photosBySubmission[photo.submission_id] = [];
         }
-        photosBySubmission[photo.submission_id].push(photo.original_s3_key);
+        photosBySubmission[photo.submission_id].push(photo.display_s3_key);
       }
 
       const bucket = process.env.MEDIA_BUCKET_NAME;
@@ -416,6 +360,7 @@ export function registerAdminRoutes(app) {
           const photos = await Promise.all(keys.map((key) => presignPhotoUrl(bucket, key)));
           return {
             id: row.id, contributor_name: row.contributor_name,
+            contributor_email: row.contributor_email,
             story_text: row.story_text, raw_location_text: row.raw_location_text,
             privacy_mode: row.privacy_mode, display_lat: row.display_lat,
             display_lng: row.display_lng, status: row.status,
@@ -425,7 +370,7 @@ export function registerAdminRoutes(app) {
         })
       );
 
-      return { data, cursor: nextCursor };
+      return { data, cursor: nextCursor, total };
     } catch (err) {
       console.error(JSON.stringify({
         level: 'error',
@@ -514,11 +459,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
       return errorResponse(400, 'MISSING_PHOTOS', 'At least one photo is required for approval');
     }
 
-    const cognitoSub = ctx.event.requestContext?.authorizer?.sub || 'system';
-    const adminResult = await client.query(
-      'SELECT id FROM admin_users WHERE cognito_sub = $1', [cognitoSub]
-    );
-    const adminUserId = adminResult.rows.length > 0 ? adminResult.rows[0].id : null;
+    const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
     }
@@ -621,11 +562,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
   const client = await createDbClient();
   await client.connect();
   try {
-    const cognitoSub = ctx.event.requestContext?.authorizer?.sub || 'system';
-    const adminResult = await client.query(
-      'SELECT id FROM admin_users WHERE cognito_sub = $1', [cognitoSub]
-    );
-    const adminUserId = adminResult.rows.length > 0 ? adminResult.rows[0].id : null;
+    const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
     }

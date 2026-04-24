@@ -138,7 +138,7 @@ function resetMocks() {
 
 // Feature: paginated-endpoints, Property 9: Invalid Cursor Rejection
 
-// Import admin handler for testing the review-queue endpoint
+// Import admin handler for testing the moderation queue endpoint
 const { handler: adminHandler } = await import('../../src/handlers/admin-api.mjs');
 
 describe('Property 9: Invalid Cursor Rejection', () => {
@@ -222,7 +222,7 @@ describe('Property 9: Invalid Cursor Rejection', () => {
     arbBase64urlJsonNonUuidId
   );
 
-  it('invalid cursor values return 400 INVALID_CURSOR on GET /admin/submissions/review-queue', async () => {
+  it('invalid cursor values return 400 INVALID_CURSOR on GET /admin/submissions?status=pending', async () => {
     await fc.assert(
       fc.asyncProperty(arbInvalidCursor, async (invalidCursor) => {
         resetMocks();
@@ -230,8 +230,8 @@ describe('Property 9: Invalid Cursor Rejection', () => {
         process.env.MEDIA_BUCKET_NAME = 'test-bucket';
 
         const res = await adminHandler(
-          makeRestApiEvent('/submissions/review-queue', 'GET', {
-            queryStringParameters: { cursor: invalidCursor },
+          makeRestApiEvent('/submissions', 'GET', {
+            queryStringParameters: { status: 'pending', cursor: invalidCursor },
           })
         );
         const { statusCode, body } = parseRes(res);
@@ -279,7 +279,15 @@ describe('Property 10: Admin Review Queue Pagination Completeness with Photo Rea
       fc.asyncProperty(
         fc.array(arbSubmissionWithPhotos, { minLength: 0, maxLength: 25 }),
         fc.integer({ min: 1, max: 8 }),
-        async (submissions, pageSize) => {
+        async (rawSubmissions, pageSize) => {
+          // Dedupe by id — fc.uuid() can shrink to identical values, and the
+          // downstream assertions assume ids are unique.
+          const seen = new Set<string>();
+          const submissions = rawSubmissions.filter((s) => {
+            if (seen.has(s.id)) return false;
+            seen.add(s.id);
+            return true;
+          });
           // Determine expected set: pending_review AND has at least one ready photo
           const hasReadyPhoto = (s: typeof submissions[number]) =>
             s.photos.some((p) => p.status === 'ready');
@@ -305,10 +313,13 @@ describe('Property 10: Admin Review Queue Pagination Completeness with Photo Rea
                   return a.id.localeCompare(b.id);
                 });
 
-              // Apply cursor if present (cursor query has 3 params: created_at, id, limit)
-              if (params.length === 3) {
-                const cursorDate = new Date(params[0]);
-                const cursorId = params[1];
+              // Apply cursor if present. With status=pending the query sends
+              // `[status, cursor.created_at, cursor.id, limit]` (length 4), or
+              // `[status, limit]` on the first page (length 2). When a cursor
+              // is present its (created_at, id) tuple sits just before limit.
+              if (params.length === 4) {
+                const cursorDate = new Date(params[1]);
+                const cursorId = params[2];
                 filtered = filtered.filter((s) => {
                   const timeDiff = s.created_at.getTime() - cursorDate.getTime();
                   if (timeDiff > 0) return true; // later created_at → comes after in ASC
@@ -341,7 +352,7 @@ describe('Property 10: Admin Review Queue Pagination Completeness with Photo Rea
                   if (p.status === 'ready') {
                     rows.push({
                       submission_id: s.id,
-                      original_s3_key: p.original_s3_key,
+                      display_s3_key: p.original_s3_key,
                       created_at: p.created_at,
                     });
                   }
@@ -368,11 +379,11 @@ describe('Property 10: Admin Review Queue Pagination Completeness with Photo Rea
           do {
             resetMocks();
 
-            const qsp: Record<string, string> = { limit: String(pageSize) };
+            const qsp: Record<string, string> = { status: 'pending', limit: String(pageSize) };
             if (cursor) qsp.cursor = cursor;
 
             const res = await adminHandler(
-              makeRestApiEvent('/submissions/review-queue', 'GET', {
+              makeRestApiEvent('/submissions', 'GET', {
                 queryStringParameters: qsp,
               })
             );
@@ -513,7 +524,7 @@ describe('Property 11: Admin Review Queue Response Shape', () => {
                   if (p.status === 'ready') {
                     rows.push({
                       submission_id: s.id,
-                      original_s3_key: p.original_s3_key,
+                      display_s3_key: p.original_s3_key,
                       created_at: p.created_at,
                     });
                   }
@@ -531,8 +542,8 @@ describe('Property 11: Admin Review Queue Response Shape', () => {
           resetMocks();
 
           const res = await adminHandler(
-            makeRestApiEvent('/submissions/review-queue', 'GET', {
-              queryStringParameters: { limit: '100' },
+            makeRestApiEvent('/submissions', 'GET', {
+              queryStringParameters: { status: 'pending', limit: '100' },
             })
           );
           const { statusCode, body } = parseRes(res);
@@ -650,7 +661,7 @@ describe('Property 12: Admin Review Queue Photo Ordering and Ready Filter', () =
                   if (p.status === 'ready') {
                     rows.push({
                       submission_id: s.id,
-                      original_s3_key: p.original_s3_key,
+                      display_s3_key: p.original_s3_key,
                       created_at: p.created_at,
                     });
                   }
@@ -669,8 +680,8 @@ describe('Property 12: Admin Review Queue Photo Ordering and Ready Filter', () =
           resetMocks();
 
           const res = await adminHandler(
-            makeRestApiEvent('/submissions/review-queue', 'GET', {
-              queryStringParameters: { limit: '100' },
+            makeRestApiEvent('/submissions', 'GET', {
+              queryStringParameters: { status: 'pending', limit: '100' },
             })
           );
           const { statusCode, body } = parseRes(res);
@@ -783,7 +794,7 @@ describe('Property 13: Error Response Shape Consistency', () => {
     expect(body.error.message.length).toBeGreaterThan(0);
   }
 
-  it('error responses from GET /admin/submissions/review-queue have shape { error: { code, message } } with non-empty strings', async () => {
+  it('error responses from GET /admin/submissions?status=pending have shape { error: { code, message } } with non-empty strings', async () => {
     await fc.assert(
       fc.asyncProperty(arbErrorTrigger, async ({ queryStringParameters, expectedCode }) => {
         resetMocks();
@@ -791,7 +802,9 @@ describe('Property 13: Error Response Shape Consistency', () => {
         process.env.MEDIA_BUCKET_NAME = 'test-bucket';
 
         const res = await adminHandler(
-          makeRestApiEvent('/submissions/review-queue', 'GET', { queryStringParameters })
+          makeRestApiEvent('/submissions', 'GET', {
+            queryStringParameters: { status: 'pending', ...(queryStringParameters ?? {}) },
+          })
         );
         const { statusCode, body } = parseRes(res);
 
@@ -806,7 +819,7 @@ describe('Property 13: Error Response Shape Consistency', () => {
     );
   });
 
-  it('database error responses (500) have shape { error: { code, message } } with non-empty strings on GET /admin/submissions/review-queue', async () => {
+  it('database error responses (500) have shape { error: { code, message } } with non-empty strings on GET /admin/submissions?status=pending', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.constant(null),
@@ -819,7 +832,9 @@ describe('Property 13: Error Response Shape Consistency', () => {
           });
 
           const res = await adminHandler(
-            makeRestApiEvent('/submissions/review-queue', 'GET', { queryStringParameters: null })
+            makeRestApiEvent('/submissions', 'GET', {
+              queryStringParameters: { status: 'pending' },
+            })
           );
           const { statusCode, body } = parseRes(res);
 
