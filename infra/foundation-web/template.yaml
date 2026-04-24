@@ -37,14 +37,6 @@ Parameters:
     Default: ''
     NoEcho: true
     Description: Optional Google OAuth client secret for Cognito social sign-in.
-  EnableGoogleOnUserPoolClient:
-    Type: String
-    Default: 'false'
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Description: Set to true only after the Google identity provider already exists in the user pool.
-
 Globals:
   Function:
     Architectures: [arm64]
@@ -60,9 +52,7 @@ Conditions:
   EnableGoogleIdentityProvider: !And
     - !Not [!Equals [!Ref GoogleClientId, '']]
     - !Not [!Equals [!Ref GoogleClientSecret, '']]
-  EnableGoogleOnClient: !And
-    - !Condition EnableGoogleIdentityProvider
-    - !Equals [!Ref EnableGoogleOnUserPoolClient, 'true']
+  EnableGoogleOnClient: !Condition EnableGoogleIdentityProvider
   EnableProdCognitoCustomDomain: !And
     - !Condition IsProdEnvironment
     - !Condition DeployCustomDomain
