@@ -291,8 +291,6 @@ Outputs:
       - DeploySharedApiBasePathMapping
       - !Sub "https://api.${DomainName}/admin"
       - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api"
-    Export:
-      Name: !Sub "${AWS::StackName}-ApiUrl"
 
   FrontendUrl:
     Description: Admin frontend URL
@@ -300,35 +298,13 @@ Outputs:
       - DeployFrontendCustomDomain
       - !Sub "${DomainProtocol}://admin.${DomainName}"
       - !Sub "https://${FrontendDistribution.DomainName}"
-    Export:
-      Name: !Sub "${AWS::StackName}-FrontendUrl"
 
   FrontendBucket:
     Description: S3 bucket name for admin frontend deployment
     Value: !Ref FrontendBucket
-    Export:
-      Name: !Sub "${AWS::StackName}-FrontendBucket"
 
   CloudFrontDistributionId:
     Description: CloudFront distribution ID for admin frontend cache invalidation
     Value: !Ref FrontendDistribution
-    Export:
-      Name: !Sub "${AWS::StackName}-CloudFrontDistributionId"
 
-  UserPoolId:
-    Description: Shared Cognito User Pool ID
-    Value: !ImportValue OGF-UserPoolId
-    Export:
-      Name: !Sub "${AWS::StackName}-UserPoolId"
 
-  UserPoolClientId:
-    Description: Shared Cognito User Pool Client ID
-    Value: !ImportValue OGF-UserPoolClientId
-    Export:
-      Name: !Sub "${AWS::StackName}-UserPoolClientId"
-
-  UserPoolDomain:
-    Description: Shared Cognito User Pool Domain
-    Value: !ImportValue OGF-UserPoolDomain
-    Export:
-      Name: !Sub "${AWS::StackName}-UserPoolDomain"

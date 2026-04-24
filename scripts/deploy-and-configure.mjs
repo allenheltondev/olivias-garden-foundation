@@ -139,6 +139,34 @@ function getStackOutputs(stackName, { profile, region }) {
   }
 }
 
+function getExportValue(name, { profile, region }) {
+  const args = [
+    "cloudformation", "list-exports",
+    "--query", `Exports[?Name=='${name}'].Value | [0]`,
+    "--output", "text",
+  ];
+  if (profile) args.push("--profile", profile);
+  if (region) args.push("--region", region);
+
+  const env = {};
+  if (profile) env.AWS_PROFILE = profile;
+
+  const r = run("aws", args, { env });
+  if (!r.ok) {
+    fail(`Failed to retrieve export ${name}`);
+    if (r.stderr) console.error(r.stderr);
+    return null;
+  }
+
+  const value = r.stdout.trim();
+  if (!value || value === "None") {
+    fail(`CloudFormation export ${name} was not found`);
+    return null;
+  }
+
+  return value;
+}
+
 function writeEnvFile(targetDir, content, label) {
   const envPath = resolve(targetDir, ".env");
   try {
@@ -248,6 +276,15 @@ Options:
 
   const outputs = getStackOutputs(stackName, { profile, region });
   if (!outputs) process.exit(1);
+
+  const userPoolId = getExportValue("OGF-UserPoolId", { profile, region });
+  const userPoolClientId = getExportValue("OGF-UserPoolClientId", { profile, region });
+  const userPoolDomain = getExportValue("OGF-UserPoolDomain", { profile, region });
+  if (!userPoolId || !userPoolClientId || !userPoolDomain) process.exit(1);
+
+  outputs.UserPoolId = userPoolId;
+  outputs.UserPoolClientId = userPoolClientId;
+  outputs.UserPoolDomain = userPoolDomain;
 
   if (!ciMode) {
     if (!createEnvFiles(frontendDir, outputs, region)) process.exit(1);

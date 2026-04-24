@@ -239,5 +239,3 @@ Outputs:
       - DeploySharedApiBasePathMapping
       - !Sub "https://api.${DomainName}/web"
       - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api"
-    Export:
-      Name: !Sub "${AWS::StackName}-ApiUrl"

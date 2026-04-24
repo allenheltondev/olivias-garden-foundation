@@ -413,15 +413,6 @@ Outputs:
   PhotoProcessingEventBusName:
     Description: EventBridge bus used for claimed-photo processing events
     Value: default
-  SharedUserPoolIdInUse:
-    Description: Passed-through shared User Pool ID
-    Value: !ImportValue OGF-UserPoolId
-  SharedUserPoolClientIdInUse:
-    Description: Passed-through shared User Pool Client ID
-    Value: !ImportValue OGF-UserPoolClientId
-  MediaDistributionDomainName:
-    Description: CloudFront domain for media assets (photos)
-    Value: !ImportValue OGF-AssetsPublicDomainName
   CiAuthTokenFunctionName:
     Description: Lambda function name for CI auth token generation
     Value: !Ref CiAuthTokenFunction
