@@ -472,71 +472,6 @@ jobs:
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
           echo "ci-auth-seed-users-function=$CI_AUTH_SEED_USERS_FUNCTION" >> $GITHUB_OUTPUT
 
-  mint-staging-okra-ci-admin-token:
-    name: Mint Staging Okra CI Admin Token
-    runs-on: ubuntu-latest
-    needs: [deploy-staging-okra]
-    if: |
-      always() && !cancelled()
-      && (inputs.shared_all == 'true' || inputs.okra_backend == 'true' || inputs.admin_backend == 'true')
-      && (needs.deploy-staging-okra.result == 'success' || needs.deploy-staging-okra.result == 'skipped')
-    environment:
-      name: staging
-    env:
-      AWS_REGION: us-east-1
-      OKRA_STACK_NAME: ogf-okra-staging
-    outputs:
-      admin-token: ${{ steps.mint-token.outputs.admin-token }}
-
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.3.1
-        with:
-          role-to-assume: ${{ secrets.aws_staging_role_arn }}
-          role-session-name: GitHubActions-Okra-CI-Token-PR-${{ inputs.pr_number }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Resolve okra CI auth function
-        id: okra-ci-auth-function
-        env:
-          UPSTREAM: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
-        run: |
-          if [ -n "$UPSTREAM" ] && [ "$UPSTREAM" != "None" ]; then
-            echo "function-name=$UPSTREAM" >> "$GITHUB_OUTPUT"
-          else
-            FUNCTION_NAME=$(aws cloudformation describe-stacks \
-              --stack-name "${{ env.OKRA_STACK_NAME }}" \
-              --region "${{ env.AWS_REGION }}" \
-              --query "Stacks[0].Outputs[?OutputKey=='CiAuthTokenFunctionName'].OutputValue" \
-              --output text)
-            if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
-              echo "Could not resolve CiAuthTokenFunctionName from okra stack."
-              exit 1
-            fi
-            echo "function-name=$FUNCTION_NAME" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Mint CI admin token
-        id: mint-token
-        env:
-          CI_AUTH_TOKEN_FUNCTION: ${{ steps.okra-ci-auth-function.outputs.function-name }}
-        run: |
-          aws lambda invoke \
-            --function-name "$CI_AUTH_TOKEN_FUNCTION" \
-            --payload '{}' \
-            --cli-binary-format raw-in-base64-out \
-            ci-admin-token-response.json > /dev/null
-
-          TOKEN=$(jq -r '.accessToken // empty' ci-admin-token-response.json)
-          if [ -z "$TOKEN" ]; then
-            echo "No accessToken in response:"
-            cat ci-admin-token-response.json
-            exit 1
-          fi
-
-          echo "::add-mask::$TOKEN"
-          echo "admin-token=$TOKEN" >> "$GITHUB_OUTPUT"
-
   deploy-staging-frontend:
     name: Deploy GRN Staging Frontend
     runs-on: ubuntu-latest
@@ -1001,7 +936,7 @@ jobs:
   okra-api-integration:
     name: Okra API Integration (Staging)
     runs-on: ubuntu-latest
-    needs: [deploy-staging-okra, mint-staging-okra-ci-admin-token]
+    needs: [deploy-staging-okra]
     if: inputs.shared_all == 'true' || inputs.okra_backend == 'true'
     environment:
       name: staging
@@ -1029,18 +964,44 @@ jobs:
       - name: Install okra-api dependencies
         run: npm ci --workspace services/okra-api --include-workspace-root=false --ignore-scripts
 
+      - name: Mint CI admin token
+        id: admin-token
+        env:
+          CI_AUTH_TOKEN_FUNCTION: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
+        run: |
+          if [ -z "$CI_AUTH_TOKEN_FUNCTION" ] || [ "$CI_AUTH_TOKEN_FUNCTION" = "None" ]; then
+            echo "CiAuthTokenFunctionName output missing from okra stack."
+            exit 1
+          fi
+
+          aws lambda invoke \
+            --function-name "$CI_AUTH_TOKEN_FUNCTION" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-admin-token-response.json > /dev/null
+
+          TOKEN=$(jq -r '.accessToken // empty' ci-admin-token-response.json)
+          if [ -z "$TOKEN" ]; then
+            echo "No accessToken in response:"
+            cat ci-admin-token-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "admin-token=$TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Run okra-api integration tests
         env:
           API_BASE_URL: ${{ needs.deploy-staging-okra.outputs.api-url }}
           ADMIN_API_BASE_URL: ${{ needs.deploy-staging-okra.outputs.admin-api-url }}
-          ADMIN_TOKEN: ${{ needs.mint-staging-okra-ci-admin-token.outputs.admin-token }}
+          ADMIN_TOKEN: ${{ steps.admin-token.outputs.admin-token }}
           DATABASE_URL: ${{ secrets.database_url_staging }}
         run: npm --workspace services/okra-api run test:integration
 
   admin-api-integration:
     name: Admin API Integration (Staging)
     runs-on: ubuntu-latest
-    needs: [deploy-staging-okra, deploy-staging-admin-backend, mint-staging-okra-ci-admin-token]
+    needs: [deploy-staging-okra, deploy-staging-admin-backend]
     if: |
       always() && !cancelled()
       && (inputs.shared_all == 'true' || inputs.admin_backend == 'true')
@@ -1073,6 +1034,32 @@ jobs:
       - name: Install admin-api dependencies
         run: npm ci --workspace services/admin-api --include-workspace-root=false --ignore-scripts
 
+      - name: Mint CI admin token
+        id: admin-token
+        env:
+          CI_AUTH_TOKEN_FUNCTION: ${{ needs.deploy-staging-okra.outputs.ci-auth-token-function }}
+        run: |
+          if [ -z "$CI_AUTH_TOKEN_FUNCTION" ] || [ "$CI_AUTH_TOKEN_FUNCTION" = "None" ]; then
+            echo "CiAuthTokenFunctionName output missing from okra stack."
+            exit 1
+          fi
+
+          aws lambda invoke \
+            --function-name "$CI_AUTH_TOKEN_FUNCTION" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            ci-admin-token-response.json > /dev/null
+
+          TOKEN=$(jq -r '.accessToken // empty' ci-admin-token-response.json)
+          if [ -z "$TOKEN" ]; then
+            echo "No accessToken in response:"
+            cat ci-admin-token-response.json
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "admin-token=$TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Resolve admin Lambda function names
         id: admin-functions
         env:
@@ -1100,7 +1087,7 @@ jobs:
         id: run-tests
         env:
           ADMIN_API_BASE_URL: ${{ needs.deploy-staging-admin-backend.outputs.api-url }}
-          ADMIN_TOKEN: ${{ needs.mint-staging-okra-ci-admin-token.outputs.admin-token }}
+          ADMIN_TOKEN: ${{ steps.admin-token.outputs.admin-token }}
         run: npm --workspace services/admin-api run test:integration
 
       - name: Dump admin Lambda CloudWatch logs
@@ -1145,7 +1132,6 @@ jobs:
       - staging-public-api-smoke
       - postman-public-smoke
       - postman-api-tests
-      - mint-staging-okra-ci-admin-token
       - okra-api-integration
       - admin-api-integration
     if: always()
@@ -1171,7 +1157,6 @@ jobs:
           check_result "staging-public-api-smoke" "${{ needs.staging-public-api-smoke.result }}"
           check_result "postman-public-smoke" "${{ needs.postman-public-smoke.result }}"
           check_result "postman-api-tests" "${{ needs.postman-api-tests.result }}"
-          check_result "mint-staging-okra-ci-admin-token" "${{ needs.mint-staging-okra-ci-admin-token.result }}"
           check_result "okra-api-integration" "${{ needs.okra-api-integration.result }}"
           check_result "admin-api-integration" "${{ needs.admin-api-integration.result }}"
 
