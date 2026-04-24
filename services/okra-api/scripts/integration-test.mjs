@@ -85,8 +85,16 @@ async function run() {
   const createdPhotoIds = [];
 
   /**
-   * Clean up all test data created during this run.
-   * Uses direct DB access to delete submissions, photos, and reviews by runPrefix.
+   * Clean up test data.
+   *
+   * The admin review-queue listing is paginated at 100 items; once stale
+   * CI submissions pile up past that limit the polling checks time out
+   * before the new submission ever shows up. We run against a dedicated
+   * staging environment with no human traffic, so the safe fix is to
+   * vacuum every row this test suite could have created — both the current
+   * run (by runPrefix) and any historical CI runs (by the shared
+   * `[ci-*]` contributor_name prefix or the `@okra-test.local` email
+   * domain this script uses exclusively).
    */
   async function cleanup() {
     if (!process.env.DATABASE_URL) {
@@ -97,10 +105,10 @@ async function run() {
     const db = await createDbClient();
     await db.connect();
     try {
-      // Find all submissions created by this run via contributor_name prefix
       const subRes = await db.query(
-        `SELECT id FROM submissions WHERE contributor_name LIKE $1`,
-        [`[${runPrefix}]%`]
+        `SELECT id FROM submissions
+          WHERE contributor_name LIKE '[ci-%]%'
+             OR contributor_email LIKE '%@okra-test.local'`
       );
       const subIds = subRes.rows.map((r) => r.id);
 
@@ -109,7 +117,7 @@ async function run() {
         await db.query(`DELETE FROM submission_reviews WHERE submission_id = ANY($1)`, [subIds]);
         await db.query(`DELETE FROM submission_photos WHERE submission_id = ANY($1)`, [subIds]);
         await db.query(`DELETE FROM submissions WHERE id = ANY($1)`, [subIds]);
-        console.log(`  ✓ Deleted ${subIds.length} submission(s) and associated records`);
+        console.log(`  ✓ Deleted ${subIds.length} submission(s) and associated records (current + historical CI runs)`);
       }
 
       // Clean up any orphaned photo staging rows from this run
@@ -132,30 +140,47 @@ async function run() {
       await db.end();
     }
 
-    // Seed request cleanup (DynamoDB) — best-effort, keyed by runPrefix in the name field
+    // Seed request cleanup (DynamoDB) — remove every CI-origin row we can
+    // identify by the shared `[ci-*]` name prefix or the dedicated
+    // `@okra-test.local` email domain, not just rows tagged with the
+    // current runPrefix. Paginates through the whole table.
     const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
     if (!tableName) {
       return;
     }
     try {
       const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-      const scanRes = await ddb.send(new ScanCommand({
-        TableName: tableName,
-        FilterExpression: 'begins_with(#name, :prefix)',
-        ExpressionAttributeNames: { '#name': 'name' },
-        ExpressionAttributeValues: { ':prefix': `[${runPrefix}]` }
-      }));
-      const items = scanRes.Items ?? [];
-      for (const item of items) {
-        await ddb.send(new DeleteCommand({ TableName: tableName, Key: { requestId: item.requestId } }));
-      }
-      if (items.length > 0) {
-        console.log(`  ✓ Deleted ${items.length} seed request(s) from DynamoDB`);
+      let deleted = 0;
+      let ExclusiveStartKey;
+      do {
+        const scanRes = await ddb.send(new ScanCommand({
+          TableName: tableName,
+          FilterExpression: 'begins_with(#name, :ciPrefix) OR contains(#email, :emailDomain)',
+          ExpressionAttributeNames: { '#name': 'name', '#email': 'email' },
+          ExpressionAttributeValues: {
+            ':ciPrefix': '[ci-',
+            ':emailDomain': '@okra-test.local'
+          },
+          ExclusiveStartKey
+        }));
+        for (const item of scanRes.Items ?? []) {
+          await ddb.send(new DeleteCommand({ TableName: tableName, Key: { requestId: item.requestId } }));
+          deleted += 1;
+        }
+        ExclusiveStartKey = scanRes.LastEvaluatedKey;
+      } while (ExclusiveStartKey);
+      if (deleted > 0) {
+        console.log(`  ✓ Deleted ${deleted} seed request(s) from DynamoDB (current + historical CI runs)`);
       }
     } catch (err) {
       console.error(`  ✗ Seed request cleanup failed: ${err.message}`);
     }
   }
+
+  // Pre-run cleanup so this invocation isn't blocked by accumulated CI data
+  // from prior runs (admin queue listings are capped at 100 items — stale
+  // pending_review rows starve out the new submission the test creates).
+  await cleanup();
 
   // --- Public endpoint checks (Task 3.2) ---
   console.log('\n=== Public Endpoint Checks ===');
@@ -200,6 +225,28 @@ async function run() {
     {
       const res = await badTokenAdmin.request(`/submissions/${dummyId}/statuses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) });
       reporter.assert('auth-boundary', res.status === 401, `POST /admin/submissions/:id/statuses with invalid token returns 401 (got ${res.status})`, res.json);
+    }
+
+    // Admin-only seed-request and stats routes require auth too.
+    {
+      const res = await noAuthAdmin.request('/stats');
+      reporter.assert('auth-boundary', res.status === 401, `GET /admin/stats without auth returns 401 (got ${res.status})`, res.json);
+    }
+    {
+      const res = await badTokenAdmin.request('/stats');
+      reporter.assert('auth-boundary', res.status === 401, `GET /admin/stats with invalid token returns 401 (got ${res.status})`, res.json);
+    }
+    {
+      const res = await noAuthAdmin.request('/requests/review-queue');
+      reporter.assert('auth-boundary', res.status === 401, `GET /admin/requests/review-queue without auth returns 401 (got ${res.status})`, res.json);
+    }
+    {
+      const res = await badTokenAdmin.request('/requests/review-queue');
+      reporter.assert('auth-boundary', res.status === 401, `GET /admin/requests/review-queue with invalid token returns 401 (got ${res.status})`, res.json);
+    }
+    {
+      const res = await noAuthAdmin.request(`/requests/${dummyId}/statuses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'handled' }) });
+      reporter.assert('auth-boundary', res.status === 401, `POST /admin/requests/:id/statuses without auth returns 401 (got ${res.status})`, res.json);
     }
   }
 
@@ -474,6 +521,138 @@ async function run() {
   } catch (err) {
     reporter.fail('seed-request', `Seed request scenario error: ${err.message}`);
     console.error('Seed request scenario failed:', err.message);
+  }
+
+  // --- Admin Stats Check ---
+  // Exercises GET /admin/stats contract. The underlying counts depend on the
+  // test environment's data, so we validate shape and types rather than exact
+  // numbers — userCount and pendingOkraCount may be null when Cognito or
+  // postgres are unavailable, openSeedRequestCount should always be a number.
+  console.log('\n=== Admin Stats Check ===');
+  try {
+    const res = await adminApi.request('/stats');
+    reporter.assert('admin-stats', res.status === 200, `GET /admin/stats returns 200 (got ${res.status})`, res.json);
+    const body = res.json ?? {};
+
+    reporter.assert('admin-stats', 'userCount' in body, 'GET /admin/stats has userCount key', body);
+    reporter.assert('admin-stats',
+      body.userCount === null || typeof body.userCount === 'number',
+      `userCount is number or null (got ${typeof body.userCount})`, body);
+
+    reporter.assert('admin-stats', 'openSeedRequestCount' in body, 'GET /admin/stats has openSeedRequestCount key', body);
+    reporter.assert('admin-stats',
+      typeof body.openSeedRequestCount === 'number' && body.openSeedRequestCount >= 0,
+      `openSeedRequestCount is a non-negative number (got ${body.openSeedRequestCount})`, body);
+
+    reporter.assert('admin-stats', 'pendingOkraCount' in body, 'GET /admin/stats has pendingOkraCount key', body);
+    reporter.assert('admin-stats',
+      body.pendingOkraCount === null || (typeof body.pendingOkraCount === 'number' && body.pendingOkraCount >= 0),
+      `pendingOkraCount is a non-negative number or null (got ${body.pendingOkraCount})`, body);
+  } catch (err) {
+    reporter.fail('admin-stats', `Admin stats check error: ${err.message}`);
+    console.error('Admin stats check failed:', err.message);
+  }
+
+  // --- Admin Seed Request Scenario ---
+  // Creates a tagged seed request via the public API, then drives the admin
+  // seed-request endpoints through the full lifecycle: list → mark handled →
+  // confirm disappearance → replay guard.
+  console.log('\n=== Admin Seed Request Scenario ===');
+  try {
+    const adminSeedKey = crypto.randomUUID();
+    const taggedName = `[${runPrefix}] Admin Queue Tester`;
+    const createRes = await publicApi.request('/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': adminSeedKey },
+      body: JSON.stringify({
+        name: taggedName,
+        email: `admin-queue+${runPrefix}@okra-test.local`,
+        fulfillmentMethod: 'in_person',
+        visitDetails: { approximateDate: 'next spring', notes: 'Admin queue integration run' }
+      })
+    });
+    reporter.assert('admin-seed-request', createRes.status === 201, `POST /requests returns 201 (got ${createRes.status})`, createRes.json);
+    const adminSeedRequestId = createRes.json?.requestId ?? null;
+    reporter.assert('admin-seed-request', !!adminSeedRequestId, 'POST /requests returns requestId', createRes.json);
+
+    if (adminSeedRequestId) {
+      // Poll admin review queue until the seed request appears.
+      console.log('  Polling /admin/requests/review-queue for new seed request...');
+      let matchedItem = null;
+      const queueResult = await poll({
+        fn: () => adminApi.request('/requests/review-queue'),
+        until: (res) => {
+          if (!Array.isArray(res.json?.data)) return false;
+          matchedItem = res.json.data.find((item) => item.id === adminSeedRequestId);
+          return !!matchedItem;
+        },
+        intervalMs: 2000,
+        timeoutMs: 30000,
+        label: `admin review queue for seed request ${adminSeedRequestId}`
+      });
+      reporter.pass('admin-seed-request', `Seed request ${adminSeedRequestId} appeared in admin review queue (${queueResult.attempts} attempts, ${queueResult.elapsedMs}ms)`);
+
+      // Shape checks on the listed item.
+      reporter.assert('admin-seed-request', matchedItem?.id === adminSeedRequestId, 'listed item id matches created requestId', matchedItem);
+      reporter.assert('admin-seed-request', matchedItem?.name === taggedName, `listed item name equals "${taggedName}" (got "${matchedItem?.name}")`, matchedItem);
+      reporter.assert('admin-seed-request', matchedItem?.fulfillmentMethod === 'in_person', `listed item fulfillmentMethod is in_person (got ${matchedItem?.fulfillmentMethod})`, matchedItem);
+      reporter.assert('admin-seed-request',
+        matchedItem?.requestStatus === 'open' || matchedItem?.requestStatus === undefined,
+        `listed item requestStatus is open or unset (got ${matchedItem?.requestStatus})`, matchedItem);
+      reporter.assert('admin-seed-request',
+        typeof matchedItem?.createdAt === 'string' && matchedItem.createdAt.length > 0,
+        `listed item has a non-empty createdAt string (got ${matchedItem?.createdAt})`, matchedItem);
+
+      // Invalid status rejected with 400.
+      const invalidStatusRes = await adminApi.request(`/requests/${adminSeedRequestId}/statuses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' })
+      });
+      reporter.assert('admin-seed-request', invalidStatusRes.status === 400, `POST /admin/requests/:id/statuses with status=approved returns 400 (got ${invalidStatusRes.status})`, invalidStatusRes.json);
+
+      // Happy path: mark as handled.
+      const handleRes = await adminApi.request(`/requests/${adminSeedRequestId}/statuses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'handled', review_notes: 'integration-handled' })
+      });
+      reporter.assert('admin-seed-request', handleRes.status === 200, `POST /admin/requests/:id/statuses returns 200 (got ${handleRes.status})`, handleRes.json);
+      reporter.assert('admin-seed-request', handleRes.json?.id === adminSeedRequestId, 'mark-handled response id matches requestId', handleRes.json);
+      reporter.assert('admin-seed-request', handleRes.json?.requestStatus === 'handled', `mark-handled response requestStatus=handled (got ${handleRes.json?.requestStatus})`, handleRes.json);
+      reporter.assert('admin-seed-request', typeof handleRes.json?.handledAt === 'string' && handleRes.json.handledAt.length > 0, 'mark-handled response has handledAt timestamp', handleRes.json);
+      reporter.assert('admin-seed-request', typeof handleRes.json?.handledByCognitoSub === 'string' && handleRes.json.handledByCognitoSub.length > 0, 'mark-handled response has handledByCognitoSub', handleRes.json);
+
+      // Replay should be rejected — the conditional update guards against it.
+      const replayRes = await adminApi.request(`/requests/${adminSeedRequestId}/statuses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'handled' })
+      });
+      reporter.assert('admin-seed-request', replayRes.status === 409 || replayRes.status === 404,
+        `replay POST /admin/requests/:id/statuses returns 409 or 404 (got ${replayRes.status})`, replayRes.json);
+
+      // Poll until the request disappears from the review queue.
+      console.log('  Polling /admin/requests/review-queue until handled request is gone...');
+      const goneResult = await poll({
+        fn: () => adminApi.request('/requests/review-queue'),
+        until: (res) => {
+          if (!Array.isArray(res.json?.data)) return false;
+          return !res.json.data.some((item) => item.id === adminSeedRequestId);
+        },
+        intervalMs: 2000,
+        timeoutMs: 30000,
+        label: `admin review queue clearing seed request ${adminSeedRequestId}`
+      });
+      reporter.pass('admin-seed-request', `Handled seed request ${adminSeedRequestId} no longer in review queue (${goneResult.attempts} attempts, ${goneResult.elapsedMs}ms)`);
+    }
+  } catch (err) {
+    if (err instanceof PollTimeoutError) {
+      reporter.fail('admin-seed-request', `Poll timeout: ${err.message}`, err.lastResult?.json ?? err.lastResult);
+    } else {
+      reporter.fail('admin-seed-request', `Admin seed request scenario error: ${err.message}`);
+    }
+    console.error('Admin seed request scenario failed:', err.message);
   }
 
   // --- Admin listing checks (Task 3.6) ---

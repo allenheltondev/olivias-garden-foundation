@@ -270,9 +270,11 @@ paths:
               - denied
           description: >-
             Filter submissions by status. Omit to return every submission
-            regardless of status. `pending` is an alias for `pending_review`
-            and restricts the result to submissions that also have at least
-            one ready photo (matching the moderation review queue).
+            regardless of status. `pending_review` returns every row in that
+            state. `pending` is a queue-semantics alias that maps to
+            `pending_review` AND restricts the result to submissions with at
+            least one ready photo — use it when you want only the subset the
+            moderation UI shows.
         - name: limit
           in: query
           required: false

@@ -59,8 +59,11 @@ Globals:
     Runtime: nodejs24.x
     Timeout: 10
     MemorySize: 1024
-    Architectures:
-      - arm64
+    # Architectures is set per-function below — SAM doesn't honor a
+    # per-function override when the value is also set in Globals, so the
+    # only way to have most functions on arm64 and the canvas-consuming
+    # AvatarProcessorFunction on x86_64 is to omit it here and declare it
+    # on every function explicitly.
     Environment:
       Variables:
         NODE_OPTIONS: --enable-source-maps
@@ -138,6 +141,8 @@ Resources:
     Properties:
       CodeUri: .
       Handler: src/handlers/api.handler
+      Architectures:
+        - arm64
       Policies:
         - AWSLambdaBasicExecutionRole
         - Version: '2012-10-17'
@@ -182,6 +187,10 @@ Resources:
       Handler: src/handlers/avatar-processor.handler
       Timeout: 60
       MemorySize: 1024
+      # x86_64 because the napi-rs-canvas:888 layer only ships an x86_64
+      # native binary. Rest of the stack stays arm64; see Globals comment.
+      Architectures:
+        - x86_64
       Layers:
         - arn:aws:lambda:us-east-1:205979422636:layer:napi-rs-canvas:888
       Policies:
@@ -217,6 +226,8 @@ Resources:
     Properties:
       CodeUri: .
       Handler: src/handlers/stripe-event-consumer.handler
+      Architectures:
+        - arm64
       Policies:
         - AWSLambdaBasicExecutionRole
       Events:

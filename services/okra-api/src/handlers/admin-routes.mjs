@@ -307,9 +307,12 @@ export function registerAdminRoutes(app) {
   });
 
   // ─── GET /submissions ───────────────────────────────────────────
-  // Canonical REST listing. Omit `status` to return every submission; pass
-  // `status=pending` (alias for `pending_review`) to match the review-queue
-  // filter (only entries with a ready photo).
+  // Canonical REST listing. Omit `status` to return every submission. Pass
+  // `status=pending` (alias for `pending_review`) for the moderation-queue
+  // subset — status='pending_review' AND at least one photo in 'ready'.
+  // `status=pending_review` returns every pending_review row regardless of
+  // photo status, so callers that are polling for their own just-created
+  // submission before the photo processor finishes still see it.
   app.get('/submissions', async (ctx) => {
     const params = ctx.event.queryStringParameters || {};
     const rawStatus = params.status;
@@ -328,7 +331,7 @@ export function registerAdminRoutes(app) {
     const cursor = cursorResult.value;
 
     const filterByStatus = Boolean(status);
-    const requireReadyPhoto = status === 'pending_review';
+    const requireReadyPhoto = rawStatus === 'pending';
 
     const statusClause = filterByStatus ? 's.status = $1' : 'TRUE';
     const photoClause = requireReadyPhoto
