@@ -710,7 +710,7 @@ jobs:
           ./db/migrate.sh
 
       - name: Build admin backend
-        run: sam build --template-file services/admin-api/template.yaml
+        run: sam build --template-file services/admin-api/template.yaml --build-dir services/admin-api/.aws-sam/build
 
       - name: Deploy admin backend
         env:
@@ -750,13 +750,13 @@ jobs:
           if [ -n "$STRIPE_SECRET_KEY" ]; then
             PARAM_OVERRIDES+=("StripeSecretKey=$STRIPE_SECRET_KEY")
           fi
-          # Deploy the BUILT template (esbuild output), not the source
-          # template. Pointing --template-file at the source skips the
-          # esbuild artifact and packages the entire services/admin-api dir
-          # (including node_modules) — which is how admin Lambdas ended up
-          # booting with a raw src tree instead of a bundled handler.
+          # Deploy the BUILT template (esbuild output) — --template-file
+          # pointed at the source template skips the esbuild artifact and
+          # packages the entire services/admin-api dir (including
+          # node_modules). Explicit path avoids any implicit CWD coupling
+          # between the build and deploy steps.
           sam deploy \
-            --template-file .aws-sam/build/template.yaml \
+            --template-file services/admin-api/.aws-sam/build/template.yaml \
             --stack-name "${{ env.ADMIN_STACK_NAME }}" \
             --resolve-s3 \
             --s3-prefix "${{ env.ADMIN_STACK_NAME }}" \
