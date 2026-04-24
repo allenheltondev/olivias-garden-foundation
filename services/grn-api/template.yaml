@@ -424,32 +424,6 @@ Resources:
                 - claim.created
                 - claim.updated
 
-  # CatalogSeedFunction:
-  #   Type: AWS::Serverless::Function
-  #   Metadata:
-  #     BuildMethod: esbuild
-  #     BuildProperties:
-  #       <<: *esbuild-properties
-  #       EntryPoints:
-  #         - catalog-seed.mjs
-  #   Properties:
-  #     CodeUri: functions
-  #     Handler: catalog-seed.handler
-  #     Runtime: nodejs24.x
-  #     Timeout: 120
-  #     MemorySize: 512
-  #     Policies:
-  #       - AWSLambdaBasicExecutionRole
-  #     Environment:
-  #       Variables:
-  #         DATABASE_URL: !Ref DatabaseUrl
-
-  # CatalogSeedTrigger:
-  #   Type: Custom::CatalogSeed
-  #   Properties:
-  #     ServiceToken: !GetAtt CatalogSeedFunction.Arn
-  #     SeedVersion: "1"
-
   ProStack:
     Type: AWS::Serverless::Application
     Properties:

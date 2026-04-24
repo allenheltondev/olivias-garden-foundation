@@ -53,7 +53,6 @@ Globals:
     MemorySize: 512
 
 Conditions:
-  IsProdEnvironment: !Equals [!Ref EnvironmentName, 'prod']
   DeployCustomDomain: !And
     - !Not [!Equals [!Ref DomainName, '']]
     - !Not [!Equals [!Ref DomainHostedZoneId, '']]
@@ -63,9 +62,6 @@ Conditions:
   EnableGoogleOnClient: !And
     - !Condition EnableGoogleIdentityProvider
     - !Equals [!Ref EnableGoogleOnUserPoolClient, 'true']
-  EnableProdCognitoCustomDomain: !And
-    - !Condition IsProdEnvironment
-    - !Condition DeployCustomDomain
 
 Metadata:
   esbuild-properties: &esbuild-properties
@@ -225,51 +221,11 @@ Resources:
       Description: Pro tier users with pro foundation and GRN features
       Precedence: 1
 
-  FoundationUserPoolCustomDomainCertificate:
-    Type: AWS::CertificateManager::Certificate
-    Condition: EnableProdCognitoCustomDomain
-    Properties:
-      DomainName: !Sub 'auth.${DomainName}'
-      ValidationMethod: DNS
-      DomainValidationOptions:
-        - DomainName: !Sub 'auth.${DomainName}'
-          HostedZoneId: !Ref DomainHostedZoneId
-
   FoundationUserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
       UserPoolId: !Ref FoundationUserPool
-      Domain: !If
-        - EnableProdCognitoCustomDomain
-        - !Sub 'auth.${DomainName}'
-        - !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
-      ManagedLoginVersion: 2
-      CustomDomainConfig: !If
-        - EnableProdCognitoCustomDomain
-        - CertificateArn: !Ref FoundationUserPoolCustomDomainCertificate
-        - !Ref AWS::NoValue
-
-  FoundationUserPoolCustomDomainRecordA:
-    Type: AWS::Route53::RecordSet
-    Condition: EnableProdCognitoCustomDomain
-    Properties:
-      HostedZoneId: !Ref DomainHostedZoneId
-      Name: !Sub 'auth.${DomainName}'
-      Type: A
-      AliasTarget:
-        DNSName: !GetAtt FoundationUserPoolDomain.CloudFrontDistribution
-        HostedZoneId: Z2FDTNDATAQYW2
-
-  FoundationUserPoolCustomDomainRecordAAAA:
-    Type: AWS::Route53::RecordSet
-    Condition: EnableProdCognitoCustomDomain
-    Properties:
-      HostedZoneId: !Ref DomainHostedZoneId
-      Name: !Sub 'auth.${DomainName}'
-      Type: AAAA
-      AliasTarget:
-        DNSName: !GetAtt FoundationUserPoolDomain.CloudFrontDistribution
-        HostedZoneId: Z2FDTNDATAQYW2
+      Domain: !Sub '${AWS::StackName}-auth-${AWS::AccountId}'
 
   FoundationGoogleIdentityProvider:
     Type: AWS::Cognito::UserPoolIdentityProvider
@@ -712,14 +668,6 @@ Outputs:
 
   UserPoolDomain:
     Description: Cognito Hosted UI domain for the foundation web app.
-    Value: !If
-      - EnableProdCognitoCustomDomain
-      - !Sub 'auth.${DomainName}'
-      - !Sub '${FoundationUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Value: !Sub '${FoundationUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
     Export:
       Name: OGF-UserPoolDomain
-
-  UserPoolDomainCloudFrontTarget:
-    Condition: EnableProdCognitoCustomDomain
-    Description: CloudFront distribution target for the Cognito custom domain alias.
-    Value: !GetAtt FoundationUserPoolDomain.CloudFrontDistribution
