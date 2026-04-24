@@ -957,6 +957,7 @@ jobs:
           VITE_OKRA_ADMIN_API_URL=${{ needs.deploy-okra-backend.outputs.admin-api-url }}
           VITE_AWS_REGION=${{ env.AWS_REGION }}
           VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
+          VITE_GRN_URL=${{ needs.deploy-backend.outputs.frontend-url }}
           EOF
 
       - name: Build admin frontend

@@ -12,6 +12,11 @@ vi.mock('aws-amplify/auth', () => ({
           'cognito:groups': ['admin'],
         },
       },
+      idToken: {
+        payload: {
+          name: 'Admin User',
+        },
+      },
     },
   })),
 }));
@@ -22,5 +27,6 @@ describe('loadAdminSession', () => {
     expect(session).not.toBeNull();
     expect(session?.isAdmin).toBe(true);
     expect(session?.email).toBe('admin@example.com');
+    expect(session?.displayName).toBe('Admin User');
   });
 });
