@@ -1066,11 +1066,64 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "admin-token=$TOKEN" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve admin Lambda function names
+        id: admin-functions
+        env:
+          ADMIN_STACK_NAME: ogf-admin-staging
+        run: |
+          # Find the deployed physical names of the admin API and authorizer
+          # functions so we can tail their CloudWatch logs after the test run.
+          API_FUNCTION=$(aws cloudformation describe-stack-resource \
+            --stack-name "$ADMIN_STACK_NAME" \
+            --region "${{ env.AWS_REGION }}" \
+            --logical-resource-id ApiFunction \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text 2>/dev/null || true)
+          AUTH_FUNCTION=$(aws cloudformation describe-stack-resource \
+            --stack-name "$ADMIN_STACK_NAME" \
+            --region "${{ env.AWS_REGION }}" \
+            --logical-resource-id LambdaAuthorizerFunction \
+            --query 'StackResourceDetail.PhysicalResourceId' \
+            --output text 2>/dev/null || true)
+          echo "api-function=$API_FUNCTION" >> "$GITHUB_OUTPUT"
+          echo "auth-function=$AUTH_FUNCTION" >> "$GITHUB_OUTPUT"
+          echo "Resolved: api=$API_FUNCTION auth=$AUTH_FUNCTION"
+
       - name: Run admin-api integration tests
+        id: run-tests
         env:
           ADMIN_API_BASE_URL: ${{ needs.deploy-staging-admin-backend.outputs.api-url }}
           ADMIN_TOKEN: ${{ steps.admin-token.outputs.admin-token }}
         run: npm --workspace services/admin-api run test:integration
+
+      - name: Dump admin Lambda CloudWatch logs
+        if: always() && steps.run-tests.outcome != 'skipped'
+        env:
+          API_FUNCTION: ${{ steps.admin-functions.outputs.api-function }}
+          AUTH_FUNCTION: ${{ steps.admin-functions.outputs.auth-function }}
+        run: |
+          # Best-effort: tail the last few minutes of log groups for the admin
+          # Lambdas so contract-test failures surface the real error instead of
+          # just the API Gateway "{\"message\": null}" 500.
+          dump_logs() {
+            local function_name="$1"
+            local label="$2"
+            if [ -z "$function_name" ] || [ "$function_name" = "None" ]; then
+              echo "--- $label: no function name resolved ---"
+              return
+            fi
+            local log_group="/aws/lambda/$function_name"
+            echo "--- $label ($log_group) ---"
+            aws logs tail "$log_group" \
+              --since 10m \
+              --region "${{ env.AWS_REGION }}" \
+              --format short \
+              2>&1 | tail -200 || echo "(no logs or access denied)"
+            echo
+          }
+
+          dump_logs "$AUTH_FUNCTION" "LambdaAuthorizerFunction"
+          dump_logs "$API_FUNCTION"  "ApiFunction"
 
   staging-validation-summary:
     name: Shared Staging Validation Summary
