@@ -416,6 +416,39 @@ body {
   text-decoration: none;
 }
 
+.og-site-footer__links-block--legal {
+  border-top: 1px solid rgba(255, 250, 241, 0.14);
+  padding-top: 0.7rem;
+  margin-top: 0.25rem;
+}
+
+.og-site-footer__links--legal {
+  gap: 0.2rem 1rem;
+}
+
+.og-site-footer__link--legal {
+  color: rgba(255, 250, 241, 0.58);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.og-site-footer__link--legal:hover {
+  color: rgba(255, 250, 241, 0.88);
+}
+
+.og-site-footer__link--legal.is-active {
+  color: rgba(255, 250, 241, 0.86);
+}
+
+@media (max-width: 720px) {
+  .og-site-footer__links-block--legal {
+    padding-top: 0.4rem;
+  }
+  .og-site-footer__link--legal {
+    font-size: 0.7rem;
+  }
+}
+
 .og-side-layout {
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;

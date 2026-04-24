@@ -7,7 +7,15 @@ import {
 } from '@olivias/ui';
 import type { AuthSession } from '../auth/session';
 import type { AppRoute } from './routes';
-import { adminUrl, facebookUrl, footerRoutes, goodRootsNetworkUrl, instagramUrl, navRoutes } from './routes';
+import {
+  adminUrl,
+  facebookUrl,
+  footerRoutes,
+  goodRootsNetworkUrl,
+  instagramUrl,
+  legalFooterRoutes,
+  navRoutes,
+} from './routes';
 
 export function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
   try {
@@ -158,6 +166,13 @@ export function SiteFooter({
     active: currentPage.path === route.path,
     onSelect: () => onNavigate(route.path),
   }));
+  const legalFooterLinks = legalFooterRoutes.map((route) => ({
+    id: route.path,
+    label: route.label,
+    href: route.path,
+    active: currentPage.path === route.path,
+    onSelect: () => onNavigate(route.path),
+  }));
 
   return (
     <SharedSiteFooter
@@ -166,6 +181,7 @@ export function SiteFooter({
         : 'Growing food, sharing seeds, and helping more people feel at home on the land.'}
       meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
       links={footerLinks}
+      legalLinks={legalFooterLinks}
       socialLinks={[
         {
           id: 'instagram',
@@ -273,6 +289,82 @@ export function CtaButton({
     <Button className="site-cta" variant={variant} onClick={onClick}>
       {children}
     </Button>
+  );
+}
+
+export function LegalDocument({
+  title,
+  eyebrow = 'Legal',
+  effectiveDate,
+  intro,
+  children,
+}: {
+  title: string;
+  eyebrow?: string;
+  effectiveDate: string;
+  intro?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <article className="legal-document">
+      <header className="legal-document__header">
+        <p className="legal-document__eyebrow">{eyebrow}</p>
+        <h1 className="legal-document__title">{title}</h1>
+        <p className="legal-document__effective">
+          <span className="legal-document__effective-label">Effective date</span>
+          <span className="legal-document__effective-value">{effectiveDate}</span>
+        </p>
+        {intro ? <div className="legal-document__intro">{intro}</div> : null}
+      </header>
+      <div className="legal-document__body">{children}</div>
+    </article>
+  );
+}
+
+export function LegalSection({
+  id,
+  number,
+  title,
+  children,
+}: {
+  id?: string;
+  number: number;
+  title: string;
+  children: ReactNode;
+}) {
+  const anchor = id ?? `section-${number}`;
+  return (
+    <section id={anchor} className="legal-section">
+      <h2 className="legal-section__heading">
+        <a href={`#${anchor}`} className="legal-section__anchor" aria-label={`Link to ${title}`}>
+          <span className="legal-section__number">{String(number).padStart(2, '0')}</span>
+          <span className="legal-section__title">{title}</span>
+        </a>
+      </h2>
+      <div className="legal-section__body">{children}</div>
+    </section>
+  );
+}
+
+export function LegalTableOfContents({
+  items,
+}: {
+  items: { id: string; title: string }[];
+}) {
+  return (
+    <nav className="legal-toc" aria-label="Table of contents">
+      <p className="legal-toc__label">Contents</p>
+      <ol className="legal-toc__list">
+        {items.map((item, index) => (
+          <li key={item.id} className="legal-toc__item">
+            <a href={`#${item.id}`} className="legal-toc__link">
+              <span className="legal-toc__number">{String(index + 1).padStart(2, '0')}</span>
+              <span>{item.title}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }
 
