@@ -7,18 +7,34 @@ import {
 } from '../api';
 import type { AdminSession } from '../auth/session';
 
-const VISIBLE_PHOTOS = 3;
+const DEFAULT_VISIBLE_PHOTOS = 3;
+const MOBILE_PHOTO_QUERY = '(max-width: 640px)';
 
 function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
   const [startIndex, setStartIndex] = useState(0);
+  const [visiblePhotos, setVisiblePhotos] = useState<number>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return DEFAULT_VISIBLE_PHOTOS;
+    }
+    return window.matchMedia(MOBILE_PHOTO_QUERY).matches ? 1 : DEFAULT_VISIBLE_PHOTOS;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(MOBILE_PHOTO_QUERY);
+    const update = () => setVisiblePhotos(mq.matches ? 1 : DEFAULT_VISIBLE_PHOTOS);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   if (photos.length === 0) return null;
 
   const total = photos.length;
-  const canScroll = total > VISIBLE_PHOTOS;
-  const maxStart = Math.max(0, total - VISIBLE_PHOTOS);
+  const canScroll = total > visiblePhotos;
+  const maxStart = Math.max(0, total - visiblePhotos);
   const clampedStart = Math.min(startIndex, maxStart);
-  const visible = photos.slice(clampedStart, clampedStart + VISIBLE_PHOTOS);
+  const visible = photos.slice(clampedStart, clampedStart + visiblePhotos);
   const atStart = clampedStart === 0;
   const atEnd = clampedStart >= maxStart;
 
@@ -59,7 +75,9 @@ function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
             </svg>
           </button>
           <div className="admin-photo-carousel__counter" aria-hidden="true">
-            {clampedStart + 1}–{Math.min(clampedStart + VISIBLE_PHOTOS, total)} of {total}
+            {visiblePhotos === 1
+              ? `${clampedStart + 1} of ${total}`
+              : `${clampedStart + 1}–${Math.min(clampedStart + visiblePhotos, total)} of ${total}`}
           </div>
         </>
       ) : null}
