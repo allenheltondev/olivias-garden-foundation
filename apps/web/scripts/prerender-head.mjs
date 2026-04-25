@@ -67,6 +67,12 @@ const prerenderRoutes = [
     seoImage: defaultImage,
   },
   {
+    path: '/donate',
+    title: "Support Olivia's Garden",
+    description: "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
+    seoImage: defaultImage,
+  },
+  {
     path: '/contact',
     title: 'Get in touch',
     description: "Contact Olivia's Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.",
