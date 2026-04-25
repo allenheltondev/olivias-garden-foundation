@@ -30,11 +30,16 @@ export function errorResponse(statusCode, message, correlationId) {
 }
 
 export function normalizeRoutePath(path = '/') {
-  if (path === '/api') {
+  // event.path can arrive with one of two leading prefixes depending on how
+  // the request reached API Gateway: `/api/...` for the direct execute-api
+  // URL (the REST API stage name), or `/web/...` for the shared custom
+  // domain (the BasePathMapping). Routes are registered against bare
+  // resource paths, so strip either prefix before dispatching.
+  if (path === '/api' || path === '/web') {
     return '/';
   }
 
-  if (path.startsWith('/api/')) {
+  if (path.startsWith('/api/') || path.startsWith('/web/')) {
     return path.slice(4);
   }
 

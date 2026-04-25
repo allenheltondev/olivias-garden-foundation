@@ -165,4 +165,30 @@ describe('web-api donation handler', () => {
     });
     expect(fetchMock).toHaveBeenCalledOnce();
   });
+
+  it('routes requests that arrive with the /web base-path prefix (shared custom domain)', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'cs_test_prod', client_secret: 'cs_test_prod_secret' })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await handler(createApiGatewayEvent({
+      method: 'POST',
+      path: '/web/donations/checkout-session',
+      body: {
+        mode: 'one_time',
+        amountCents: 2500,
+        returnUrl: 'https://oliviasgarden.org/donate?session_id={CHECKOUT_SESSION_ID}',
+        donorName: 'Olivia Garden Donor'
+      }
+    }));
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      clientSecret: 'cs_test_prod_secret',
+      checkoutSessionId: 'cs_test_prod'
+    });
+  });
 });
