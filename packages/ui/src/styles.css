@@ -449,6 +449,44 @@ body {
   }
 }
 
+@media (min-width: 800px) {
+  .og-site-footer__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pages legal"
+      "social social"
+      "meta meta";
+    column-gap: 3rem;
+    row-gap: 1.1rem;
+    align-items: start;
+  }
+
+  .og-site-footer__links-block--pages {
+    grid-area: pages;
+  }
+
+  .og-site-footer__links-block--legal {
+    grid-area: legal;
+    justify-self: end;
+    text-align: right;
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  .og-site-footer__links--legal {
+    justify-content: flex-end;
+  }
+
+  .og-site-footer__social-block {
+    grid-area: social;
+  }
+
+  .og-site-footer__meta {
+    grid-area: meta;
+  }
+}
+
 .og-side-layout {
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
