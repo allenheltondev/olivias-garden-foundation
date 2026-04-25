@@ -1,5 +1,19 @@
+import {
+  CognitoIdentityProviderClient,
+  DeleteUserCommand,
+  AdminDeleteUserCommand
+} from '@aws-sdk/client-cognito-identity-provider';
 import { createDbClient } from '../../scripts/db-client.mjs';
-import { resolveOptionalAuthContext } from './auth.mjs';
+import { extractBearerToken, resolveOptionalAuthContext } from './auth.mjs';
+
+let cognitoClient;
+
+function getCognitoClient() {
+  if (!cognitoClient) {
+    cognitoClient = new CognitoIdentityProviderClient();
+  }
+  return cognitoClient;
+}
 
 export const profileUpdateSchema = {
   type: 'object',
@@ -218,6 +232,124 @@ export async function updateProfile(event, payload) {
   } finally {
     await client.end();
   }
+}
+
+async function deleteCognitoUser(event, authContext) {
+  const token = extractBearerToken(event);
+  const client = getCognitoClient();
+
+  if (token) {
+    try {
+      await client.send(new DeleteUserCommand({ AccessToken: token }));
+      return;
+    } catch (error) {
+      // NotAuthorizedException is expected when the caller presented an ID token
+      // instead of an access token; fall through to admin delete in that case.
+      const code = error?.name ?? '';
+      if (code !== 'NotAuthorizedException') {
+        throw error;
+      }
+    }
+  }
+
+  const userPoolId = process.env.OGF_USER_POOL_ID ?? process.env.SHARED_USER_POOL_ID;
+  if (!userPoolId || !authContext?.userId) {
+    return;
+  }
+
+  try {
+    await client.send(new AdminDeleteUserCommand({
+      UserPoolId: userPoolId,
+      Username: authContext.userId
+    }));
+  } catch (error) {
+    // If the Cognito user is already gone we still want the DB redaction to stand.
+    const code = error?.name ?? '';
+    if (code !== 'UserNotFoundException' && code !== 'ResourceNotFoundException') {
+      throw error;
+    }
+  }
+}
+
+export async function deleteProfile(event) {
+  const authContext = await resolveOptionalAuthContext(event);
+  if (!authContext?.userId) {
+    throw new Error('Authorization token is required');
+  }
+
+  const client = await createDbClient();
+  await client.connect();
+
+  try {
+    await client.query('begin');
+    // Scrub PII from the users row and mark it soft-deleted. The actual row is
+    // kept so that historical donation/audit references remain referentially sound.
+    await client.query(
+      `
+        update users
+           set email = null,
+               display_name = null,
+               first_name = null,
+               last_name = null,
+               bio = null,
+               city = null,
+               region = null,
+               country = null,
+               timezone = null,
+               website_url = null,
+               avatar_id = null,
+               avatar_status = 'none',
+               avatar_original_s3_bucket = null,
+               avatar_original_s3_key = null,
+               avatar_s3_bucket = null,
+               avatar_s3_key = null,
+               avatar_thumbnail_s3_bucket = null,
+               avatar_thumbnail_s3_key = null,
+               avatar_mime_type = null,
+               avatar_width = null,
+               avatar_height = null,
+               avatar_byte_size = null,
+               avatar_processing_error = null,
+               avatar_updated_at = null,
+               stripe_donor_customer_id = null,
+               stripe_garden_club_subscription_id = null,
+               deleted_at = coalesce(deleted_at, now()),
+               updated_at = now(),
+               profile_updated_at = now()
+         where id = $1::uuid
+      `,
+      [authContext.userId]
+    );
+
+    // Donation history is retained for tax/record purposes, but donor identifying
+    // fields are scrubbed alongside the account deletion.
+    await client.query(
+      `
+        update donation_events
+           set donor_name = null,
+               donor_email = null,
+               dedication_name = null,
+               user_id = null
+         where user_id = $1::uuid
+      `,
+      [authContext.userId]
+    );
+
+    await client.query('commit');
+  } catch (error) {
+    try {
+      await client.query('rollback');
+    } catch {
+      // ignore rollback failure; surface the original error below
+    }
+    throw error;
+  } finally {
+    await client.end();
+  }
+
+  await deleteCognitoUser(event, authContext);
+
+  return { status: 'deleted' };
 }
 
 export async function getProfileActivity(event) {

@@ -1,0 +1,29 @@
+$kind: http-request
+name: Delete Profile - Unauthenticated
+description: |-
+  Ensure DELETE /profile rejects unauthenticated requests. This satisfies the
+  baseline contract test for the account deletion endpoint used for Facebook app
+  data-deletion compliance.
+method: DELETE
+url: '{{webBaseUrl}}/profile'
+order: 1100
+headers:
+  - key: X-Correlation-Id
+    value: postman-delete-profile-unauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("DELETE /profile returns 400 when unauthenticated", function () {
+          pm.expect(pm.response.code).to.equal(400);
+      });
+
+      pm.test("Response body surfaces the missing-auth error", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.be.a("string").and.not.empty;
+          pm.expect(body.error.toLowerCase()).to.include("authorization");
+      });
+
+      pm.test("Response includes correlation id header", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });

@@ -78,6 +78,24 @@ const prerenderRoutes = [
     description: 'A community platform that connects home growers with neighbors and organizations who need fresh food. Plan your garden, see local food gaps, and share what you have extra.',
     seoImage: defaultImage,
   },
+  {
+    path: '/privacy',
+    title: 'Privacy Policy',
+    description: "Read how Olivia's Garden Foundation collects, uses, stores, and protects information across the foundation website, donations, and account features.",
+    seoImage: defaultImage,
+  },
+  {
+    path: '/terms',
+    title: 'Terms of Service',
+    description: "Review the terms that govern use of Olivia's Garden Foundation websites, accounts, donations, community tools, and submitted content.",
+    seoImage: defaultImage,
+  },
+  {
+    path: '/data-deletion',
+    title: 'Data and account deletion',
+    description: "How to delete your Olivia's Garden Foundation account and the personal data associated with it, including data from Facebook or Google sign-in.",
+    seoImage: defaultImage,
+  },
 ];
 
 function buildPageTitle(route) {

@@ -7,6 +7,7 @@ export type AppRoute = {
   allowIndex?: boolean;
   showInNav?: boolean;
   showInFooter?: boolean;
+  showInLegalFooter?: boolean;
   prerender?: boolean;
 };
 
@@ -108,7 +109,7 @@ export const routes: AppRoute[] = [
   {
     path: '/privacy',
     label: 'Privacy Policy',
-    showInFooter: true,
+    showInLegalFooter: true,
     title: 'Privacy Policy',
     description: "Read how Olivia's Garden Foundation collects, uses, stores, and protects information across the foundation website, donations, and account features.",
     allowIndex: true,
@@ -117,9 +118,18 @@ export const routes: AppRoute[] = [
   {
     path: '/terms',
     label: 'Terms of Service',
-    showInFooter: true,
+    showInLegalFooter: true,
     title: 'Terms of Service',
     description: "Review the terms that govern use of Olivia's Garden Foundation websites, accounts, donations, community tools, and submitted content.",
+    allowIndex: true,
+    prerender: true,
+  },
+  {
+    path: '/data-deletion',
+    label: 'Your data',
+    showInLegalFooter: true,
+    title: 'Data and account deletion',
+    description: "How to delete your Olivia's Garden Foundation account and the personal data associated with it, including data from Facebook or Google sign-in.",
     allowIndex: true,
     prerender: true,
   },
@@ -127,6 +137,7 @@ export const routes: AppRoute[] = [
 
 export const navRoutes = routes.filter((route) => route.showInNav);
 export const footerRoutes = routes.filter((route) => route.showInFooter);
+export const legalFooterRoutes = routes.filter((route) => route.showInLegalFooter);
 export const prerenderRoutes = routes.filter((route) => route.prerender);
 export const internalPaths = new Set(routes.map((route) => route.path));
 

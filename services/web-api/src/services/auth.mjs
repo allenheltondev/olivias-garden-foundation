@@ -37,6 +37,10 @@ function getBearerToken(headers = {}) {
   return token;
 }
 
+export function extractBearerToken(event) {
+  return getBearerToken(event?.headers ?? {});
+}
+
 function firstNonEmptyString(...values) {
   for (const value of values) {
     if (typeof value === 'string' && value.trim()) {
