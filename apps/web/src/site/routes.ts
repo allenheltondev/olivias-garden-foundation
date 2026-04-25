@@ -89,7 +89,6 @@ export const routes: AppRoute[] = [
     title: "Support Olivia's Garden",
     description: "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
     seoImage: socialShareImage,
-    prerender: true,
   },
   {
     path: '/profile',
