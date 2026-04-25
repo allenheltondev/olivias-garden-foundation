@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { AvatarMenu, SiteFooter, SiteHeader } from '@olivias/ui';
 import { signOut } from 'aws-amplify/auth';
 import type { AdminSession } from '../auth/session';
@@ -118,6 +118,8 @@ export interface AppShellProps {
 
 export function AppShell({ session, children }: AppShellProps) {
   const [expanded, setExpanded] = useState<boolean>(() => readStoredExpanded());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     try {
@@ -126,6 +128,26 @@ export function AppShell({ session, children }: AppShellProps) {
       // ignore storage errors
     }
   }, [expanded]);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Escape key dismissal + lock background scroll while the drawer is open.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileNavOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
 
   const handleLogout = async () => {
     try {
@@ -165,11 +187,53 @@ export function AppShell({ session, children }: AppShellProps) {
           </div>
         )}
       />
-      <div className={`admin-shell-body ${expanded ? 'is-expanded' : 'is-collapsed'}`}>
+      <div
+        className={`admin-shell-body ${expanded ? 'is-expanded' : 'is-collapsed'} ${mobileNavOpen ? 'is-mobile-nav-open' : ''}`.trim()}
+      >
+        <button
+          type="button"
+          className="admin-mobile-nav-trigger"
+          aria-expanded={mobileNavOpen}
+          aria-controls="admin-vertical-nav"
+          aria-label="Open admin sections"
+          onClick={() => setMobileNavOpen(true)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z" fill="currentColor" />
+          </svg>
+          <span>Sections</span>
+        </button>
+
+        <button
+          type="button"
+          className="admin-mobile-nav-backdrop"
+          aria-label="Close admin sections"
+          tabIndex={mobileNavOpen ? 0 : -1}
+          onClick={() => setMobileNavOpen(false)}
+        />
+
         <aside
-          className={`admin-vertical-nav ${expanded ? 'is-expanded' : 'is-collapsed'}`}
+          id="admin-vertical-nav"
+          className={`admin-vertical-nav ${expanded ? 'is-expanded' : 'is-collapsed'} ${mobileNavOpen ? 'is-mobile-open' : ''}`.trim()}
           aria-label="Admin sections"
         >
+          <div className="admin-vertical-nav__mobile-header">
+            <span className="admin-vertical-nav__mobile-title">Admin sections</span>
+            <button
+              type="button"
+              className="admin-vertical-nav__mobile-close"
+              aria-label="Close admin sections"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4L13.4 12 19 6.4 17.6 5 12 10.6 6.4 5Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+          </div>
+
           <ul className="admin-vertical-nav__list" role="list">
             {navItems.map((item) => (
               <li key={item.id}>
@@ -180,6 +244,7 @@ export function AppShell({ session, children }: AppShellProps) {
                     `admin-vertical-nav__link ${isActive ? 'is-active' : ''}`.trim()
                   }
                   title={expanded ? undefined : item.label}
+                  onClick={() => setMobileNavOpen(false)}
                 >
                   <span className="admin-vertical-nav__icon" aria-hidden="true">{item.icon}</span>
                   <span className="admin-vertical-nav__label">{item.label}</span>
