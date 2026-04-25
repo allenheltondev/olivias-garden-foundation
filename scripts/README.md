@@ -6,15 +6,41 @@ This directory contains real, supported repository scripts.
 
 ### `deploy-and-configure.mjs`
 
-Builds and deploys the GRN API stack, reads CloudFormation outputs, and writes `apps/grn/.env`.
+Builds and deploys one of the SAM stacks (`grn`, `admin`, or `store`),
+reads CloudFormation outputs, and writes the matching app's `.env`.
 
 Use it from the repo root:
 
 ```bash
+# Default target is grn (backwards-compatible).
 npm run deploy:configure
 npm run deploy:configure -- --profile sandbox
 npm run deploy:configure -- --config-only --stack-name ogf-grn-staging
+
+# Admin console.
+npm run deploy:configure -- --target admin --stack-name ogf-admin
+
+# Store. Pass Stripe secrets via flag or STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET env vars.
+npm run deploy:configure -- --target store \
+  --stripe-secret-key "$STRIPE_SECRET_KEY" \
+  --stripe-webhook-secret "$STRIPE_WEBHOOK_SECRET" \
+  --domain-name oliviasgarden.org \
+  --domain-hosted-zone-id ZXXXXXXXXX
 ```
+
+Defaults per target:
+- `--target grn`   → backend `services/grn-api`,   frontend `apps/grn`,   stack `grn`
+- `--target admin` → backend `services/admin-api`, frontend `apps/admin`, stack `ogf-admin`
+- `--target store` → backend `services/store-api`, frontend `apps/store`, stack `ogf-store`
+
+When deploying the store, the script prints the Stripe webhook URL on
+success so you can register it in the Stripe dashboard for the
+`checkout.session.completed` event.
+
+The admin and store targets also pull sibling stack outputs to populate
+their `.env` (admin needs the okra/store API URLs; store reads the GRN
+frontend URL for cross-app links). Override the assumed sibling stack
+names with `--admin-okra-stack`, `--admin-store-stack`, `--admin-grn-stack`.
 
 For full deployment details, see [docs/setup/DEPLOYMENT.md](../docs/setup/DEPLOYMENT.md).
 
