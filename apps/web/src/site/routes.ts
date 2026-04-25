@@ -126,7 +126,7 @@ export const routes: AppRoute[] = [
   },
   {
     path: '/data-deletion',
-    label: 'Data Deletion',
+    label: 'Your data',
     showInLegalFooter: true,
     title: 'Data and account deletion',
     description: "How to delete your Olivia's Garden Foundation account and the personal data associated with it, including data from Facebook or Google sign-in.",

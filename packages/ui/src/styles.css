@@ -453,16 +453,26 @@ body {
   .og-site-footer__inner {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
+      "pages social"
       "pages legal"
-      "social social"
       "meta meta";
     column-gap: 3rem;
-    row-gap: 1.1rem;
+    row-gap: 0.75rem;
     align-items: start;
   }
 
   .og-site-footer__links-block--pages {
     grid-area: pages;
+    align-self: start;
+  }
+
+  .og-site-footer__social-block {
+    grid-area: social;
+    justify-self: end;
+  }
+
+  .og-site-footer__social-row {
+    justify-content: flex-end;
   }
 
   .og-site-footer__links-block--legal {
@@ -470,7 +480,7 @@ body {
     justify-self: end;
     text-align: right;
     border-top: 0;
-    padding-top: 0;
+    padding-top: 0.25rem;
     margin-top: 0;
   }
 
@@ -478,12 +488,9 @@ body {
     justify-content: flex-end;
   }
 
-  .og-site-footer__social-block {
-    grid-area: social;
-  }
-
   .og-site-footer__meta {
     grid-area: meta;
+    margin-top: 0.4rem;
   }
 }
 

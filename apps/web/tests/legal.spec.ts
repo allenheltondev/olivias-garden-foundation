@@ -31,7 +31,7 @@ test.describe('legal pages', () => {
     await expect(page.locator('.legal-document__effective')).toContainText('April 24, 2026');
     await expect(page.getByRole('heading', { name: /Delete from inside your account/ })).toBeVisible();
 
-    const footerLink = page.locator('footer').getByRole('link', { name: 'Data Deletion' });
+    const footerLink = page.locator('footer').getByRole('link', { name: 'Your data' });
     await expect(footerLink).toBeVisible();
   });
 });
