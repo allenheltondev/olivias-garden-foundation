@@ -105,23 +105,6 @@ body {
   font-weight: 700;
 }
 
-.store-signin-button {
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  background: var(--og-color-moss);
-  color: white;
-  border: none;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.store-signin-button:hover,
-.store-signin-button:focus-visible {
-  background: var(--og-color-moss-dark, #355d33);
-  outline: none;
-}
-
 /* ── Browse grid ──────────────────────────────────────────────────── */
 
 .store-product-grid {
@@ -247,44 +230,17 @@ body {
 }
 
 .store-quantity {
-  display: grid;
-  gap: 0.4rem;
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
 }
 
-.store-quantity__controls {
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid rgba(79, 56, 37, 0.18);
-  border-radius: 999px;
-  overflow: hidden;
-  width: max-content;
+.store-quantity .og-input {
+  width: 5.5rem;
 }
 
-.store-quantity__controls button {
-  width: 2.2rem;
-  border: none;
-  background: rgba(255, 252, 246, 0.9);
-  font-size: 1.05rem;
-  font-weight: 700;
-  cursor: pointer;
-  color: var(--og-color-soil);
-}
-
-.store-quantity__controls button:hover {
-  color: var(--og-color-moss);
-}
-
-.store-quantity__controls input {
-  width: 3rem;
-  border: none;
+.store-quantity .og-input__field {
   text-align: center;
-  font: inherit;
-  font-weight: 600;
-  background: transparent;
-}
-
-.store-quantity__controls input:focus {
-  outline: none;
 }
 
 /* ── Cart ─────────────────────────────────────────────────────────── */
@@ -340,31 +296,13 @@ body {
 
 .store-cart__line-controls {
   display: flex;
-  align-items: center;
+  align-items: end;
   gap: 0.85rem;
   font-size: 0.9rem;
 }
 
-.store-cart__line-controls input {
-  width: 4rem;
-  margin-left: 0.4rem;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid rgba(79, 56, 37, 0.18);
-  border-radius: 6px;
-  font: inherit;
-}
-
-.store-cart__remove {
-  border: none;
-  background: transparent;
-  color: var(--og-color-soil);
-  font: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.store-cart__remove:hover {
-  color: #b0382a;
+.store-cart__line-controls .og-input {
+  width: 5rem;
 }
 
 .store-cart__line-total {

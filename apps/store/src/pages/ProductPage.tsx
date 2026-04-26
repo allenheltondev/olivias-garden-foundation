@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, FormFeedback, Input, SectionHeading } from '@olivias/ui';
 import { getProductBySlug, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
 
@@ -101,35 +101,35 @@ export function ProductPage() {
           ) : null}
 
           <div className="store-quantity">
-            <label htmlFor="store-qty">Quantity</label>
-            <div className="store-quantity__controls">
-              <button
-                type="button"
-                aria-label="Decrease quantity"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              >
-                −
-              </button>
-              <input
-                id="store-qty"
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  if (Number.isFinite(next) && next >= 1) {
-                    setQuantity(Math.floor(next));
-                  }
-                }}
-              />
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                onClick={() => setQuantity((q) => q + 1)}
-              >
-                +
-              </button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Decrease quantity"
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            >
+              −
+            </Button>
+            <Input
+              id="store-qty"
+              type="number"
+              label="Quantity"
+              min={1}
+              value={quantity}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (Number.isFinite(next) && next >= 1) {
+                  setQuantity(Math.floor(next));
+                }
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Increase quantity"
+              onClick={() => setQuantity((q) => q + 1)}
+            >
+              +
+            </Button>
           </div>
 
           <Button onClick={onAdd}>Add to cart</Button>

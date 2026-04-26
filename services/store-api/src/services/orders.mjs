@@ -1,7 +1,9 @@
-import { query, withTransaction } from './db.mjs';
+import * as defaultDb from './db.mjs';
 import { extractAuthContext, requireAdmin, requireUser } from './auth.mjs';
 import { loadProductsForCheckout } from './products.mjs';
 import { StripeClient, verifyWebhookSignature } from './stripe.mjs';
+
+const { query, withTransaction } = defaultDb;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -177,16 +179,17 @@ function extractShippingAddress(stripeSession) {
   };
 }
 
-async function findUserIdByEmail(email) {
+async function findUserIdByEmail(email, db) {
   if (!email) return null;
-  const result = await query(
+  const result = await db.query(
     `select id from users where email = $1 and deleted_at is null limit 1`,
     [email]
   );
   return result.rows[0]?.id ?? null;
 }
 
-async function recordPaidOrder(stripeSession) {
+export async function recordPaidOrder(stripeSession, options = {}) {
+  const db = options.db ?? { query, withTransaction };
   const sessionId = stripeSession.id;
   if (!sessionId) {
     throw new Error('Stripe session is missing id');
@@ -231,12 +234,12 @@ async function recordPaidOrder(stripeSession) {
       ? stripeSession.metadata.og_user_id
       : null;
 
-  const userId = metadataUserId ?? (await findUserIdByEmail(email));
+  const userId = metadataUserId ?? (await findUserIdByEmail(email, db));
   const shippingAddress = extractShippingAddress(stripeSession);
 
   const lineItems = stripeSession.line_items?.data ?? [];
 
-  return withTransaction(async (client) => {
+  return db.withTransaction(async (client) => {
     const existing = await client.query(
       `select id from store_orders where stripe_checkout_session_id = $1 limit 1`,
       [sessionId]
@@ -343,7 +346,7 @@ export async function handleStripeWebhook(rawBody, signatureHeader, options = {}
 
   const stripe = options.stripeClient ?? StripeClient.fromEnv();
   const fullSession = await stripe.getCheckoutSession(sessionPreview.id);
-  const orderId = await recordPaidOrder(fullSession);
+  const orderId = await recordPaidOrder(fullSession, { db: options.db });
 
   return { handled: true, orderId };
 }

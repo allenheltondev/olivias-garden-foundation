@@ -1,3 +1,5 @@
+create extension if not exists citext;
+
 do $$
 begin
   create type store_order_status as enum ('pending', 'paid', 'failed', 'cancelled', 'refunded');

@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AvatarMenu, SiteFooter, SiteHeader } from '@olivias/ui';
+import { AvatarMenu, Button, SiteFooter, SiteHeader } from '@olivias/ui';
 import { signOut } from 'aws-amplify/auth';
 import { useCart } from '../cart/CartContext';
 import type { StoreSession } from '../auth/session';
@@ -99,9 +99,9 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
                 onLogout={handleLogout}
               />
             ) : (
-              <button type="button" className="store-signin-button" onClick={onSignIn}>
+              <Button size="sm" onClick={onSignIn}>
                 Sign in
-              </button>
+              </Button>
             )}
           </div>
         )}

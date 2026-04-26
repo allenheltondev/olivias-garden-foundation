@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, FormFeedback, Input, SectionHeading } from '@olivias/ui';
 import { createCheckoutSession } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
 import type { StoreSession } from '../auth/session';
@@ -66,27 +66,25 @@ export function CartPage({ session }: CartPageProps) {
                 </Link>
                 <span className="og-section-label">{line.fulfillmentType === 'shipping' ? 'Ships to you' : line.fulfillmentType}</span>
                 <div className="store-cart__line-controls">
-                  <label>
-                    Qty
-                    <input
-                      type="number"
-                      min={1}
-                      value={line.quantity}
-                      onChange={(event) => {
-                        const next = Number(event.target.value);
-                        if (Number.isFinite(next)) {
-                          cart.setQuantity(line.productId, Math.max(0, Math.floor(next)));
-                        }
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="store-cart__remove"
+                  <Input
+                    type="number"
+                    label="Qty"
+                    min={1}
+                    value={line.quantity}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      if (Number.isFinite(next)) {
+                        cart.setQuantity(line.productId, Math.max(0, Math.floor(next)));
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => cart.remove(line.productId)}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="store-cart__line-total">
