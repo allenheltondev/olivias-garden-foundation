@@ -666,7 +666,9 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
     }
     return response;
   } catch (err) {
-    if (inTxn) { try { await client.query('ROLLBACK'); } catch {} }
+    if (inTxn) {
+      try { await client.query('ROLLBACK'); } catch (rollbackErr) { void rollbackErr; }
+    }
     console.error(JSON.stringify({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),
@@ -999,7 +1001,9 @@ async function handleDenial(ctx, submissionId, { reason, review_notes, target_ed
       review_notes: row.review_notes, created_at: row.created_at
     };
   } catch (err) {
-    if (inTxn) { try { await client.query('ROLLBACK'); } catch {} }
+    if (inTxn) {
+      try { await client.query('ROLLBACK'); } catch (rollbackErr) { void rollbackErr; }
+    }
     console.error(JSON.stringify({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),
