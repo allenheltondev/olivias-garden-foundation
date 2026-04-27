@@ -42,6 +42,8 @@ jobs:
       admin_backend: ${{ steps.filter.outputs.admin_backend }}
       admin_frontend: ${{ steps.filter.outputs.admin_frontend }}
       okra_backend: ${{ steps.filter.outputs.okra_backend }}
+      store_backend: ${{ steps.filter.outputs.store_backend }}
+      store_frontend: ${{ steps.filter.outputs.store_frontend }}
 
     steps:
       - name: Checkout code
@@ -74,6 +76,11 @@ jobs:
               - 'packages/**'
             okra_backend:
               - 'services/okra-api/**'
+            store_backend:
+              - 'services/store-api/**'
+            store_frontend:
+              - 'apps/store/**'
+              - 'packages/**'
 
   backend-static:
     name: GRN Backend Static Checks
@@ -413,6 +420,136 @@ jobs:
       - name: Build check
         run: npm --workspace @olivias/admin run build
 
+  store-backend-static:
+    name: Store Backend Static Checks
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.store_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install store API dependencies
+        run: npm ci --workspace services/store-api --include-workspace-root=false --ignore-scripts
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run store API ESLint
+        run: npm --workspace services/store-api run lint
+
+      - name: Run store API type check
+        run: npm --workspace services/store-api run typecheck
+
+      - name: Build store backend
+        working-directory: services/store-api
+        run: npm run build
+
+  store-backend-tests:
+    name: Store Backend Tests
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.store_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install store API dependencies
+        run: npm ci --workspace services/store-api --include-workspace-root=false --ignore-scripts
+
+      - name: Run store API tests
+        run: npm --workspace services/store-api run test
+
+  store-frontend-lint:
+    name: Store Frontend Lint
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.store_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm --workspace @olivias/store run lint
+
+  store-frontend-typecheck:
+    name: Store Frontend Type Check
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.store_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm --workspace @olivias/store run typecheck
+
+  store-frontend-build:
+    name: Store Frontend Build Check
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.store_frontend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build check
+        run: npm --workspace @olivias/store run build
+
   backend-functions-tests:
     name: GRN Backend Functions (Node.js) Lint & Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')
@@ -537,6 +674,11 @@ jobs:
       - admin-frontend-typecheck
       - admin-frontend-tests
       - admin-frontend-build
+      - store-backend-static
+      - store-backend-tests
+      - store-frontend-lint
+      - store-frontend-typecheck
+      - store-frontend-build
       - okra-backend-lint
       - okra-backend-typecheck
       - okra-backend-tests
@@ -569,6 +711,11 @@ jobs:
           check_result "admin-frontend-typecheck" "${{ needs.admin-frontend-typecheck.result }}"
           check_result "admin-frontend-tests" "${{ needs.admin-frontend-tests.result }}"
           check_result "admin-frontend-build" "${{ needs.admin-frontend-build.result }}"
+          check_result "store-backend-static" "${{ needs.store-backend-static.result }}"
+          check_result "store-backend-tests" "${{ needs.store-backend-tests.result }}"
+          check_result "store-frontend-lint" "${{ needs.store-frontend-lint.result }}"
+          check_result "store-frontend-typecheck" "${{ needs.store-frontend-typecheck.result }}"
+          check_result "store-frontend-build" "${{ needs.store-frontend-build.result }}"
           check_result "okra-backend-lint" "${{ needs.okra-backend-lint.result }}"
           check_result "okra-backend-typecheck" "${{ needs.okra-backend-typecheck.result }}"
           check_result "okra-backend-tests" "${{ needs.okra-backend-tests.result }}"
@@ -579,7 +726,7 @@ jobs:
   staging-validation:
     name: Shared Staging Deploy And Validation
     needs: [changes, ci-summary]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true')
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true' || needs.changes.outputs.store_backend == 'true' || needs.changes.outputs.store_frontend == 'true')
     uses: ./.github/workflows/pull-request-staging-validation-reusable.yml
     with:
       shared_all: ${{ needs.changes.outputs.shared_all }}
@@ -588,13 +735,15 @@ jobs:
       admin_backend: ${{ needs.changes.outputs.admin_backend }}
       admin_frontend: ${{ needs.changes.outputs.admin_frontend }}
       okra_backend: ${{ needs.changes.outputs.okra_backend }}
+      store_backend: ${{ needs.changes.outputs.store_backend }}
+      store_frontend: ${{ needs.changes.outputs.store_frontend }}
+      stripe_event_bus_name_staging: ${{ vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}
       pr_number: ${{ github.event.pull_request.number }}
     secrets:
       aws_staging_role_arn: ${{ secrets.AWS_STAGING_ROLE_ARN }}
       database_url_staging: ${{ secrets.DATABASE_URL_STAGING }}
       postman_api_key: ${{ secrets.POSTMAN_API_KEY }}
       stripe_secret_key_staging: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
-      stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       foundation_signup_slack_webhook_url_staging: ${{ secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
       google_oauth_client_id_staging: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID_STAGING }}
       google_oauth_client_secret_staging: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET_STAGING }}

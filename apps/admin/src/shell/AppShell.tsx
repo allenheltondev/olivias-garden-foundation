@@ -75,6 +75,19 @@ const navItems: AdminNavItem[] = [
       </svg>
     ),
   },
+  {
+    id: 'store-orders',
+    path: '/store/orders',
+    label: 'Store orders',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M3 5h13l3 4v9a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm0 2v12h15v-9.3l-2.4-2.7H3Zm2 4h11v2H5v-2Zm0 4h7v2H5v-2Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
 ];
 
 const footerLinks = [

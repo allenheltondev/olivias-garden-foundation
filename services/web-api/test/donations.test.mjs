@@ -159,6 +159,38 @@ describe('donations service', () => {
     expect(checkoutParams.get('customer_email')).toBeNull();
   });
 
+  it('skips checkout.session.completed events that lack donation_mode metadata (e.g. store checkouts)', async () => {
+    const queryMock = vi.fn();
+    const client = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    };
+    createDbClientMock.mockResolvedValue(client);
+
+    await handleEventBridgeEvent({
+      id: 'evtbridge-store-1',
+      'detail-type': 'checkout.session.completed',
+      detail: {
+        id: 'evt_store_1',
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_store_1',
+            amount_total: 5000,
+            currency: 'usd',
+            metadata: { og_kind: 'store' },
+          },
+        },
+      },
+    });
+
+    expect(client.connect).toHaveBeenCalledOnce();
+    expect(client.end).toHaveBeenCalledOnce();
+    // No DB writes should happen — the donation consumer must ignore non-donation events.
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
   it('sends a Slack notification with donation details after checkout.session.completed from EventBridge', async () => {
     process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/abc';
 

@@ -100,7 +100,37 @@ async function notifySlack(context, fetchImpl, logger, { slackWebhookUrl, founda
   );
 }
 
-async function provisionShellUser(context, createClient) {
+export async function linkGuestOrders(client, { userId, email }, errorLogger = console.error) {
+  if (!email) return 0;
+  try {
+    const result = await client.query(
+      `UPDATE store_orders
+          SET user_id = $1,
+              updated_at = now()
+        WHERE user_id IS NULL
+          AND email = $2`,
+      [userId, email],
+    );
+    return result.rowCount ?? 0;
+  } catch (error) {
+    // store_orders may not exist yet in environments where store-api hasn't
+    // been deployed. Swallow that case; surface unexpected errors so we know.
+    if (error?.code === '42P01') {
+      return 0;
+    }
+    errorLogger(
+      JSON.stringify({
+        level: "ERROR",
+        message: "Failed to link guest orders to new user",
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    return 0;
+  }
+}
+
+async function provisionShellUser(context, createClient, errorLogger) {
   const client = createClient();
   await client.connect();
 
@@ -114,7 +144,14 @@ async function provisionShellUser(context, createClient) {
       [context.userId, context.email],
     );
 
-    return Boolean(result.rows[0]?.inserted);
+    const inserted = Boolean(result.rows[0]?.inserted);
+    const linkedOrders = await linkGuestOrders(
+      client,
+      { userId: context.userId, email: context.email },
+      errorLogger,
+    );
+
+    return { inserted, linkedOrders };
   } finally {
     await client.end();
   }
@@ -147,7 +184,11 @@ export function createHandler({
       return event;
     }
 
-    const inserted = await provisionShellUser(context, createClient);
+    const { inserted, linkedOrders } = await provisionShellUser(
+      context,
+      createClient,
+      errorLogger,
+    );
 
     logger(
       JSON.stringify({
@@ -158,6 +199,7 @@ export function createHandler({
         userId: context.userId,
         hasEmail: context.email !== null,
         inserted,
+        linkedOrders,
       }),
     );
 

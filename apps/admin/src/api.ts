@@ -101,6 +101,51 @@ function getOkraAdminApiBaseUrl(): string {
   return trimTrailingSlash(baseUrl);
 }
 
+function getStoreApiBaseUrl(): string {
+  const baseUrl = import.meta.env.VITE_STORE_API_URL;
+  if (!baseUrl) {
+    throw new Error('Missing VITE_STORE_API_URL for admin app.');
+  }
+  return trimTrailingSlash(baseUrl);
+}
+
+export interface StoreOrderItem {
+  id: string;
+  productId: string | null;
+  productSlug: string;
+  productName: string;
+  productKind: StoreProduct['kind'];
+  quantity: number;
+  unitAmountCents: number;
+  totalCents: number;
+}
+
+export interface StoreOrder {
+  id: string;
+  userId: string | null;
+  email: string;
+  customerName: string | null;
+  status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  fulfillmentStatus: 'unfulfilled' | 'fulfilled' | 'shipped' | 'delivered';
+  subtotalCents: number;
+  shippingCents: number;
+  taxCents: number;
+  totalCents: number;
+  currency: string;
+  shippingAddress: {
+    name?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country?: string | null;
+  } | null;
+  items: StoreOrderItem[];
+  createdAt: string;
+  paidAt: string | null;
+}
+
 async function requestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -243,4 +288,12 @@ export async function getAdminStats(accessToken: string): Promise<AdminStats> {
     `${getOkraAdminApiBaseUrl()}/stats`,
     accessToken
   );
+}
+
+export async function listStoreOrders(accessToken: string): Promise<StoreOrder[]> {
+  const response = await requestJson<{ items: StoreOrder[] }>(
+    `${getStoreApiBaseUrl()}/admin/orders`,
+    accessToken
+  );
+  return response.items;
 }

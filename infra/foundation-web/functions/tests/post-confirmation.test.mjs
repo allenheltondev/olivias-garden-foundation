@@ -7,6 +7,7 @@ import {
   buildSlackPayload,
   createHandler,
   extractSignupContext,
+  linkGuestOrders,
 } from "../post-confirmation.mjs";
 
 function buildEvent(overrides = {}) {
@@ -91,20 +92,35 @@ describe("buildSlackPayload", () => {
   });
 });
 
+function makeFakeClient({ insertedFlag = true, ordersUpdated = 0, throwOnOrders = null } = {}) {
+  const queries = [];
+  return {
+    queries,
+    client: {
+      connect: async () => {},
+      query: async (sql, params) => {
+        queries.push({ sql, params });
+        if (/INSERT INTO users/i.test(sql)) {
+          return { rows: [{ inserted: insertedFlag }] };
+        }
+        if (/UPDATE store_orders/i.test(sql)) {
+          if (throwOnOrders) throw throwOnOrders;
+          return { rowCount: ordersUpdated };
+        }
+        return { rows: [] };
+      },
+      end: async () => {},
+    },
+  };
+}
+
 describe("createHandler", () => {
   it("provisions the shell user and posts Slack for new signups", async () => {
-    const queries = [];
+    const fake = makeFakeClient({ insertedFlag: true });
     let slackCalled = false;
 
     const handler = createHandler({
-      createClient: () => ({
-        connect: async () => {},
-        query: async (sql, params) => {
-          queries.push({ sql, params });
-          return { rows: [{ inserted: true }] };
-        },
-        end: async () => {},
-      }),
+      createClient: () => fake.client,
       fetchImpl: async () => {
         slackCalled = true;
         return { ok: true };
@@ -118,20 +134,19 @@ describe("createHandler", () => {
     const result = await handler(event);
 
     assert.equal(result, event);
-    assert.equal(queries.length, 1);
-    assert.equal(queries[0].params[0], "11111111-1111-1111-1111-111111111111");
+    assert.equal(fake.queries.length, 2, "should run both upsert and order-link queries");
+    assert.match(fake.queries[0].sql, /INSERT INTO users/i);
+    assert.equal(fake.queries[0].params[0], "11111111-1111-1111-1111-111111111111");
+    assert.match(fake.queries[1].sql, /UPDATE store_orders/i);
     assert.equal(slackCalled, true);
   });
 
   it("skips Slack when the user already exists", async () => {
+    const fake = makeFakeClient({ insertedFlag: false });
     let slackCalled = false;
 
     const handler = createHandler({
-      createClient: () => ({
-        connect: async () => {},
-        query: async () => ({ rows: [{ inserted: false }] }),
-        end: async () => {},
-      }),
+      createClient: () => fake.client,
       fetchImpl: async () => {
         slackCalled = true;
         return { ok: true };
@@ -146,14 +161,11 @@ describe("createHandler", () => {
   });
 
   it("does not let Slack failures fail the Cognito flow", async () => {
+    const fake = makeFakeClient({ insertedFlag: true });
     let errorLogged = false;
 
     const handler = createHandler({
-      createClient: () => ({
-        connect: async () => {},
-        query: async () => ({ rows: [{ inserted: true }] }),
-        end: async () => {},
-      }),
+      createClient: () => fake.client,
       fetchImpl: async () => ({ ok: false, status: 500, text: async () => "boom" }),
       slackWebhookUrl: "https://hooks.slack.test/example",
       logger: () => {},
@@ -188,5 +200,64 @@ describe("createHandler", () => {
     const result = await handler(buildEvent({ triggerSource: "PreSignUp_SignUp" }));
     assert.equal(result.triggerSource, "PreSignUp_SignUp");
     assert.equal(queryCalled, false);
+  });
+});
+
+describe("linkGuestOrders", () => {
+  it("updates store_orders rows that match the new user's email", async () => {
+    let queryParams = null;
+    const client = {
+      query: async (_sql, params) => {
+        queryParams = params;
+        return { rowCount: 3 };
+      },
+    };
+
+    const linked = await linkGuestOrders(client, {
+      userId: "user-1",
+      email: "alice@example.com",
+    });
+
+    assert.equal(linked, 3);
+    assert.deepEqual(queryParams, ["user-1", "alice@example.com"]);
+  });
+
+  it("returns 0 when the user has no email", async () => {
+    let called = false;
+    const client = { query: async () => { called = true; return { rowCount: 0 }; } };
+    const linked = await linkGuestOrders(client, { userId: "user-1", email: null });
+    assert.equal(linked, 0);
+    assert.equal(called, false);
+  });
+
+  it("swallows missing-table errors silently", async () => {
+    const client = {
+      query: async () => {
+        const err = new Error("relation \"store_orders\" does not exist");
+        err.code = "42P01";
+        throw err;
+      },
+    };
+    const linked = await linkGuestOrders(client, {
+      userId: "user-1",
+      email: "alice@example.com",
+    });
+    assert.equal(linked, 0);
+  });
+
+  it("logs but does not throw on unexpected errors", async () => {
+    let errorLogged = false;
+    const client = {
+      query: async () => {
+        throw new Error("connection lost");
+      },
+    };
+    const linked = await linkGuestOrders(
+      client,
+      { userId: "user-1", email: "alice@example.com" },
+      () => { errorLogged = true; },
+    );
+    assert.equal(linked, 0);
+    assert.equal(errorLogged, true);
   });
 });
