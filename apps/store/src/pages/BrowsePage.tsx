@@ -53,7 +53,7 @@ export function BrowsePage() {
 
       <div className="store-product-grid">
         {(products ?? []).map((product) => (
-          <Card key={product.id} className="store-product-card">
+          <Card key={product.id} className="store-product-card" padding="none">
             <Link to={`/products/${product.slug}`} className="store-product-card__media">
               {product.images[0]?.thumbnail_url || product.image_url ? (
                 <img src={product.images[0]?.thumbnail_url || product.image_url || ''} alt="" loading="lazy" />

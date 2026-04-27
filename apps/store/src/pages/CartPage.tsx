@@ -31,7 +31,10 @@ export function CartPage({ session }: CartPageProps) {
       );
       window.location.assign(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to start checkout.');
+      const message = err instanceof Error ? err.message : 'Unable to start checkout.';
+      setError(message.includes('origin is not allowed')
+        ? 'Checkout is not configured for this store address yet.'
+        : message);
       setIsCheckingOut(false);
     }
   };
@@ -100,11 +103,11 @@ export function CartPage({ session }: CartPageProps) {
           </div>
           {cart.requiresShipping ? (
             <p className="store-cart__shipping-note">
-              Shipping address and any shipping costs are calculated by Stripe at checkout.
+              Shipping address and any shipping costs are calculated at checkout.
             </p>
           ) : null}
-          <Button onClick={startCheckout} loading={isCheckingOut} disabled={isCheckingOut}>
-            {isCheckingOut ? 'Redirecting to Stripe…' : 'Checkout with Stripe'}
+          <Button className="store-cart__checkout-action" onClick={startCheckout} loading={isCheckingOut} disabled={isCheckingOut}>
+            {isCheckingOut ? 'Opening checkout...' : 'Checkout'}
           </Button>
           {!session ? (
             <p className="store-cart__guest-note">

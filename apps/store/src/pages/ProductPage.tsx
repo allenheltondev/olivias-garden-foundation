@@ -81,22 +81,24 @@ export function ProductPage() {
       />
 
       <div className="store-product-detail__layout">
-        <Card className="store-product-detail__media">
+        <Card className="store-product-detail__media" padding="none">
           {primaryImage ? (
             <>
               <img src={primaryImage} alt={selectedImage?.alt_text || ''} />
               {productImages.length > 1 ? (
                 <div className="store-product-detail__thumbs" aria-label="Product images">
                   {productImages.map((image) => (
-                    <button
+                    <Button
                       key={image.id}
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       className={image.id === selectedImage?.id ? 'is-active' : ''}
                       onClick={() => setSelectedImageId(image.id)}
                       aria-label={image.alt_text ? `View ${image.alt_text}` : 'View product image'}
                     >
                       <img src={image.thumbnail_url || image.url || ''} alt="" />
-                    </button>
+                    </Button>
                   ))}
                 </div>
               ) : null}

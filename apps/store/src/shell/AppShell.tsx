@@ -80,7 +80,7 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
         brandLogoSrc={foundationLogo}
         brandLogoAlt="Olivia's Garden Foundation"
         brandEyebrow="Olivia's Garden Foundation"
-        brandTitle="merch store"
+        brandTitle="Merch Store"
         brandHref="/"
         navItems={foundationHeaderNav}
         utility={(

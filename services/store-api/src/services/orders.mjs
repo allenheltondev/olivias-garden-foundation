@@ -121,6 +121,11 @@ function assertAllowedRedirectUrl(url, fieldName, allowedOrigins) {
   }
 }
 
+function getRequestOrigin(event) {
+  const headers = event?.headers ?? {};
+  return headers.origin ?? headers.Origin ?? null;
+}
+
 function validateCheckoutPayload(payload, options = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('Request body is required');
@@ -143,15 +148,18 @@ function validateCheckoutPayload(payload, options = {}) {
     }
   }
 
-  const allowedOrigins =
-    options.allowedRedirectOrigins ?? getAllowedRedirectOrigins();
+  const allowedOrigins = [...(options.allowedRedirectOrigins ?? getAllowedRedirectOrigins())];
+  if (options.requestOrigin && !allowedOrigins.includes(options.requestOrigin)) {
+    allowedOrigins.push(options.requestOrigin);
+  }
   assertAllowedRedirectUrl(payload.success_url, 'success_url', allowedOrigins);
   assertAllowedRedirectUrl(payload.cancel_url, 'cancel_url', allowedOrigins);
 }
 
 export async function createCheckoutSession(event, payload, options = {}) {
   validateCheckoutPayload(payload, {
-    allowedRedirectOrigins: options.allowedRedirectOrigins
+    allowedRedirectOrigins: options.allowedRedirectOrigins,
+    requestOrigin: getRequestOrigin(event)
   });
   const auth = (await resolveOptionalAuthContext(event, options.authOptions)) ?? {
     userId: null,

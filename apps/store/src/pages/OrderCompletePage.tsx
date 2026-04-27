@@ -81,8 +81,8 @@ export function OrderCompletePage() {
       <section className="store-section">
         <SectionHeading
           eyebrow="Thank you"
-          title="Finishing up your order…"
-          body="Stripe is confirming the payment. This usually takes a few seconds."
+          title="Finishing up your order..."
+          body="We are confirming the payment. This usually takes a few seconds."
         />
       </section>
     );
@@ -94,7 +94,7 @@ export function OrderCompletePage() {
         <SectionHeading
           eyebrow="Thank you"
           title="Payment received"
-          body="Your order will appear here as soon as Stripe finishes processing. You can also check 'My orders' once you sign in."
+          body="Your order will appear here as soon as payment processing finishes. You can also check 'My orders' once you sign in."
         />
         <Button onClick={() => window.location.reload()}>Refresh</Button>
       </section>
