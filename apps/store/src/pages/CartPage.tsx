@@ -52,6 +52,7 @@ export function CartPage({ session }: CartPageProps) {
 
   return (
     <section className="store-section">
+      <Link className="store-back-link" to="/">Back to store</Link>
       <SectionHeading eyebrow="Cart" title="Review your cart" />
 
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
@@ -109,13 +110,13 @@ export function CartPage({ session }: CartPageProps) {
           <Button className="store-cart__checkout-action" onClick={startCheckout} loading={isCheckingOut} disabled={isCheckingOut}>
             {isCheckingOut ? 'Opening checkout...' : 'Checkout'}
           </Button>
-          {!session ? (
-            <p className="store-cart__guest-note">
-              You can checkout as a guest. Sign in if you want this purchase saved to your account.
-            </p>
-          ) : null}
         </div>
       </Card>
+      {!session ? (
+        <p className="store-cart__guest-note">
+          You can checkout as a guest. Sign in if you want this purchase saved to your account.
+        </p>
+      ) : null}
     </section>
   );
 }

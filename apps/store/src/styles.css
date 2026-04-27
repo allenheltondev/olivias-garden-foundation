@@ -57,6 +57,20 @@ body {
   font-style: italic;
 }
 
+.store-back-link {
+  justify-self: start;
+  color: var(--og-color-soil);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.store-back-link:hover,
+.store-back-link:focus-visible {
+  color: var(--og-color-moss);
+  text-decoration: underline;
+}
+
 /* ── Header utility ───────────────────────────────────────────────── */
 
 .store-utility {
@@ -398,6 +412,11 @@ body {
   margin: 0;
   color: var(--og-color-soil);
   font-size: 0.9rem;
+}
+
+.store-cart__guest-note {
+  max-width: 62ch;
+  padding: 0 0.25rem;
 }
 
 @media (max-width: 640px) {
