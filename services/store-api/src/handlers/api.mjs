@@ -5,8 +5,7 @@ import {
   jsonResponse,
   mapApiError,
   normalizeRoutePath,
-  parseJsonBody,
-  readRawBody
+  parseJsonBody
 } from '../services/http.mjs';
 import {
   getPublicProductBySlug,
@@ -15,7 +14,6 @@ import {
 import {
   createCheckoutSession,
   getOrderByStripeSession,
-  handleStripeWebhook,
   listAdminOrders,
   listMyOrders
 } from '../services/orders.mjs';
@@ -47,30 +45,6 @@ function matchProductBySlug(path) {
 function matchOrderBySession(path) {
   const match = path.match(/^\/orders\/by-session\/([^/]+)$/);
   return match?.[1] ?? null;
-}
-
-async function handleWebhook(event, correlationId) {
-  const signature =
-    event?.headers?.['stripe-signature'] ?? event?.headers?.['Stripe-Signature'];
-
-  const rawBody = readRawBody(event);
-
-  try {
-    const result = await handleStripeWebhook(rawBody, signature);
-    logger.info('Stripe webhook processed', { correlationId, result });
-    return jsonResponse(200, { received: true, ...result }, correlationId);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error('Stripe webhook failed', { correlationId, error: message });
-    if (
-      message.includes('signature') ||
-      message.includes('Signature') ||
-      message.includes('STRIPE_WEBHOOK_SECRET')
-    ) {
-      return errorResponse(400, 'Invalid Stripe webhook signature', correlationId);
-    }
-    return mapApiError(error, correlationId);
-  }
 }
 
 export async function handler(event) {
@@ -117,11 +91,6 @@ export async function handler(event) {
       const payload = parseJsonBody(normalizedEvent);
       const result = await createCheckoutSession(normalizedEvent, payload);
       return jsonResponse(200, result, correlationId);
-    }
-
-    if (method === 'POST' && path === '/webhook') {
-      logRouteHit('POST /webhook', normalizedEvent, correlationId);
-      return handleWebhook(normalizedEvent, correlationId);
     }
 
     if (method === 'GET' && path === '/orders') {

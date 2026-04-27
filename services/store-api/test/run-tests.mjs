@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import {
   createHandler,
   getApiArnPattern,
@@ -11,10 +10,10 @@ import { mapApiError, normalizeRoutePath, parseJsonBody, readRawBody } from '../
 import {
   createCheckoutSession,
   getAllowedRedirectOrigins,
-  handleStripeWebhook,
+  handleStripeEventBridgeEvent,
   recordPaidOrder
 } from '../src/services/orders.mjs';
-import { StripeClient, verifyWebhookSignature } from '../src/services/stripe.mjs';
+import { StripeClient } from '../src/services/stripe.mjs';
 
 function testAnonymousRoutes() {
   assert.equal(isAnonymousRoute('GET', '/products'), true);
@@ -22,7 +21,8 @@ function testAnonymousRoutes() {
   assert.equal(isAnonymousRoute('GET', '/products/okra-pack'), true);
   assert.equal(isAnonymousRoute('GET', '/orders/by-session/cs_test_123'), true);
   assert.equal(isAnonymousRoute('POST', '/checkout'), true);
-  assert.equal(isAnonymousRoute('POST', '/webhook'), true);
+  // /webhook used to be anonymous; events now arrive via EventBridge.
+  assert.equal(isAnonymousRoute('POST', '/webhook'), false);
   assert.equal(isAnonymousRoute('OPTIONS', '/orders'), true);
   assert.equal(isAnonymousRoute('GET', '/orders'), false);
   assert.equal(isAnonymousRoute('GET', '/admin/orders'), false);
@@ -140,7 +140,7 @@ async function testStripeCheckoutSession() {
     cancelUrl: 'https://store.example.org/cart',
     customerEmail: 'a@b.com',
     requiresShipping: true,
-    metadata: { og_user_id: 'user-1' }
+    metadata: { og_kind: 'store', og_user_id: 'user-1' }
   });
 
   assert.equal(session.id, 'cs_test_123');
@@ -153,47 +153,8 @@ async function testStripeCheckoutSession() {
   assert.match(body, /line_items%5B1%5D%5Bprice%5D=price_b/);
   assert.match(body, /shipping_address_collection/);
   assert.match(body, /customer_email=a%40b.com/);
+  assert.match(body, /metadata%5Bog_kind%5D=store/);
   assert.match(body, /metadata%5Bog_user_id%5D=user-1/);
-}
-
-function testWebhookSignature() {
-  const secret = 'whsec_test_secret';
-  const payload = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed' });
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signedPayload = `${timestamp}.${payload}`;
-  const sig = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
-  const header = `t=${timestamp},v1=${sig}`;
-
-  assert.doesNotThrow(() =>
-    verifyWebhookSignature({
-      payload,
-      signatureHeader: header,
-      secret,
-      now: () => timestamp * 1000
-    })
-  );
-
-  assert.throws(
-    () =>
-      verifyWebhookSignature({
-        payload,
-        signatureHeader: `t=${timestamp},v1=deadbeef`,
-        secret,
-        now: () => timestamp * 1000
-      }),
-    /signature verification failed/
-  );
-
-  assert.throws(
-    () =>
-      verifyWebhookSignature({
-        payload,
-        signatureHeader: header,
-        secret,
-        now: () => (timestamp + 10_000) * 1000
-      }),
-    /tolerance/
-  );
 }
 
 function makeFakeDb({ existingOrderId = null, productLookup = {} } = {}) {
@@ -264,7 +225,7 @@ const sampleStripeSession = {
   amount_total: 2900,
   amount_subtotal: 2500,
   total_details: { amount_tax: 0, amount_shipping: 400 },
-  metadata: {},
+  metadata: { og_kind: 'store' },
   shipping_details: {
     name: 'Alice Adams',
     address: {
@@ -308,8 +269,6 @@ async function testRecordPaidOrderInfersUserFromEmail() {
   assert.equal(fake.calls.inserts.items.length, 1);
 
   const orderParams = fake.calls.inserts.orders[0];
-  // Insert order: [user_id, email, customer_name, sessionId, paymentIntentId, customerId,
-  //                subtotal, shipping, tax, total, currency, shippingAddress]
   assert.equal(orderParams[0], 'user-alice', 'user_id should be inferred from email');
   assert.equal(orderParams[1], 'alice@example.com');
   assert.equal(orderParams[2], 'Alice Adams');
@@ -326,7 +285,6 @@ async function testRecordPaidOrderInfersUserFromEmail() {
   assert.equal(shippingAddress.country, 'US');
 
   const itemParams = fake.calls.inserts.items[0];
-  // [order_id, product_id, slug, name, kind, quantity, unit_amount, total, stripe_price_id]
   assert.equal(itemParams[1], 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   assert.equal(itemParams[2], 'okra-seed-pack');
   assert.equal(itemParams[3], 'Okra Seed Pack');
@@ -341,18 +299,16 @@ async function testRecordPaidOrderUsesMetadataUserId() {
   const fake = makeFakeDb({
     productLookup: {
       price_seed: { id: 'p1', slug: 's', name: 'n', kind: 'donation' },
-      // Email map intentionally NOT used; metadata wins.
       __userByEmail: { 'alice@example.com': 'should-not-be-used' }
     }
   });
 
   const session = {
     ...sampleStripeSession,
-    metadata: { og_user_id: 'user-from-metadata' }
+    metadata: { og_kind: 'store', og_user_id: 'user-from-metadata' }
   };
 
   await recordPaidOrder(session, { db: fake.db });
-  // The email->user lookup should be skipped entirely.
   assert.equal(fake.calls.query.length, 0, 'should not query users when metadata user id present');
 
   const orderParams = fake.calls.inserts.orders[0];
@@ -377,7 +333,6 @@ async function testRecordPaidOrderGuestKeepsUserNull() {
   const fake = makeFakeDb({
     productLookup: {
       price_seed: { id: 'p1', slug: 's', name: 'n', kind: 'donation' }
-      // No __userByEmail mapping — email is unknown.
     }
   });
 
@@ -393,19 +348,25 @@ async function testRecordPaidOrderRequiresEmail() {
   await assert.rejects(() => recordPaidOrder(session, { db: fake.db }), /no customer email/);
 }
 
-async function testHandleStripeWebhookHappyPath() {
-  const secret = 'whsec_integration';
-  const payload = JSON.stringify({
-    id: 'evt_1',
-    type: 'checkout.session.completed',
-    data: { object: { id: 'cs_test_abc', payment_status: 'paid' } }
-  });
-  const timestamp = Math.floor(Date.now() / 1000);
-  const sig = crypto
-    .createHmac('sha256', secret)
-    .update(`${timestamp}.${payload}`)
-    .digest('hex');
+function makeEventBridgeEvent({ id = 'cs_test_abc', type = 'checkout.session.completed', metadata = { og_kind: 'store' }, paymentStatus = 'paid' } = {}) {
+  return {
+    id: 'eb-evt-1',
+    'detail-type': type,
+    detail: {
+      id: 'evt_1',
+      type,
+      data: {
+        object: {
+          id,
+          metadata,
+          payment_status: paymentStatus
+        }
+      }
+    }
+  };
+}
 
+async function testEventBridgeHappyPath() {
   let getSessionCalledWith = null;
   const stripeClient = {
     async getCheckoutSession(id) {
@@ -419,8 +380,7 @@ async function testHandleStripeWebhookHappyPath() {
     }
   });
 
-  const result = await handleStripeWebhook(payload, `t=${timestamp},v1=${sig}`, {
-    webhookSecret: secret,
+  const result = await handleStripeEventBridgeEvent(makeEventBridgeEvent(), {
     stripeClient,
     db: fake.db
   });
@@ -430,62 +390,72 @@ async function testHandleStripeWebhookHappyPath() {
   assert.equal(fake.calls.inserts.orders.length, 1);
 }
 
-async function testHandleStripeWebhookSkipsUnpaid() {
-  const secret = 'whsec_integration';
-  const payload = JSON.stringify({
-    id: 'evt_2',
-    type: 'checkout.session.completed',
-    data: { object: { id: 'cs_test_unpaid', payment_status: 'unpaid' } }
-  });
-  const timestamp = Math.floor(Date.now() / 1000);
-  const sig = crypto
-    .createHmac('sha256', secret)
-    .update(`${timestamp}.${payload}`)
-    .digest('hex');
-
+async function testEventBridgeHandlesAsyncSucceeded() {
   const stripeClient = {
     async getCheckoutSession() {
-      throw new Error('should not be called for unpaid session');
+      return sampleStripeSession;
+    }
+  };
+  const fake = makeFakeDb({
+    productLookup: {
+      price_seed: { id: 'p1', slug: 's', name: 'n', kind: 'donation' }
+    }
+  });
+
+  const result = await handleStripeEventBridgeEvent(
+    makeEventBridgeEvent({ type: 'checkout.session.async_payment_succeeded' }),
+    { stripeClient, db: fake.db }
+  );
+
+  assert.equal(result.handled, true);
+  assert.equal(fake.calls.inserts.orders.length, 1);
+}
+
+async function testEventBridgeIgnoresDonationEvents() {
+  // Donation checkouts come through the same partner bus. They have
+  // metadata.donation_mode set and (importantly) lack og_kind=store, so the
+  // store consumer must skip them so it doesn't insert spurious order rows.
+  const stripeClient = {
+    async getCheckoutSession() {
+      throw new Error('should not be called for donation events');
+    }
+  };
+  const fake = makeFakeDb();
+
+  const result = await handleStripeEventBridgeEvent(
+    makeEventBridgeEvent({ metadata: { donation_mode: 'one_time' } }),
+    { stripeClient, db: fake.db }
+  );
+
+  assert.equal(result.handled, false);
+  assert.match(result.reason, /not a store checkout session/);
+  assert.equal(fake.calls.inserts.orders.length, 0);
+}
+
+async function testEventBridgeIgnoresUnpaidSessions() {
+  const stripeClient = {
+    async getCheckoutSession() {
+      throw new Error('should not be called for unpaid sessions');
     }
   };
 
-  const result = await handleStripeWebhook(payload, `t=${timestamp},v1=${sig}`, {
-    webhookSecret: secret,
-    stripeClient
-  });
-
-  assert.equal(result.handled, false);
-  assert.match(result.reason ?? '', /payment_status=unpaid/);
-}
-
-async function testHandleStripeWebhookSkipsUnrelatedEvent() {
-  const secret = 'whsec_integration';
-  const payload = JSON.stringify({
-    id: 'evt_3',
-    type: 'charge.refunded',
-    data: { object: { id: 'ch_test' } }
-  });
-  const timestamp = Math.floor(Date.now() / 1000);
-  const sig = crypto
-    .createHmac('sha256', secret)
-    .update(`${timestamp}.${payload}`)
-    .digest('hex');
-
-  const result = await handleStripeWebhook(payload, `t=${timestamp},v1=${sig}`, {
-    webhookSecret: secret,
-    stripeClient: { async getCheckoutSession() { throw new Error('nope'); } }
-  });
-
-  assert.equal(result.handled, false);
-  assert.equal(result.type, 'charge.refunded');
-}
-
-async function testHandleStripeWebhookRejectsBadSignature() {
-  const payload = JSON.stringify({ id: 'evt_x', type: 'checkout.session.completed' });
-  await assert.rejects(
-    () => handleStripeWebhook(payload, 't=1,v1=deadbeef', { webhookSecret: 'whsec_x' }),
-    /signature/
+  const result = await handleStripeEventBridgeEvent(
+    makeEventBridgeEvent({ paymentStatus: 'unpaid' }),
+    { stripeClient }
   );
+
+  assert.equal(result.handled, false);
+  assert.match(result.reason, /payment_status=unpaid/);
+}
+
+async function testEventBridgeIgnoresUnsupportedDetailType() {
+  const result = await handleStripeEventBridgeEvent(
+    makeEventBridgeEvent({ type: 'charge.refunded' }),
+    { stripeClient: { async getCheckoutSession() { throw new Error('nope'); } } }
+  );
+
+  assert.equal(result.handled, false);
+  assert.match(result.reason, /unsupported detail-type/);
 }
 
 function testReadRawBodyDecodesBase64() {
@@ -600,16 +570,16 @@ testAnonymousRoutes();
 await testAuthorizer();
 testAuthHelpers();
 await testStripeCheckoutSession();
-testWebhookSignature();
 await testRecordPaidOrderInfersUserFromEmail();
 await testRecordPaidOrderUsesMetadataUserId();
 await testRecordPaidOrderIsIdempotent();
 await testRecordPaidOrderGuestKeepsUserNull();
 await testRecordPaidOrderRequiresEmail();
-await testHandleStripeWebhookHappyPath();
-await testHandleStripeWebhookSkipsUnpaid();
-await testHandleStripeWebhookSkipsUnrelatedEvent();
-await testHandleStripeWebhookRejectsBadSignature();
+await testEventBridgeHappyPath();
+await testEventBridgeHandlesAsyncSucceeded();
+await testEventBridgeIgnoresDonationEvents();
+await testEventBridgeIgnoresUnpaidSessions();
+await testEventBridgeIgnoresUnsupportedDetailType();
 testReadRawBodyDecodesBase64();
 testParseJsonBodyDecodesBase64();
 testParseJsonBodyHandlesPlainString();

@@ -1,7 +1,7 @@
 import * as defaultDb from './db.mjs';
 import { extractAuthContext, requireAdmin, requireUser } from './auth.mjs';
 import { loadProductsForCheckout } from './products.mjs';
-import { StripeClient, verifyWebhookSignature } from './stripe.mjs';
+import { StripeClient } from './stripe.mjs';
 
 const { query, withTransaction } = defaultDb;
 
@@ -195,6 +195,7 @@ export async function createCheckoutSession(event, payload, options = {}) {
     customerEmail,
     requiresShipping,
     metadata: {
+      og_kind: 'store',
       og_user_id: auth.userId ?? '',
       og_product_ids: lineItems.map((line) => line.product.id).join(',')
     }
@@ -362,23 +363,34 @@ export async function recordPaidOrder(stripeSession, options = {}) {
   });
 }
 
-export async function handleStripeWebhook(rawBody, signatureHeader, options = {}) {
-  const secret = options.webhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET;
-  verifyWebhookSignature({
-    payload: rawBody,
-    signatureHeader,
-    secret
-  });
+// Events the Stripe partner integration delivers to our EventBridge bus
+// that this consumer recognises. checkout.session.completed covers
+// synchronous payment methods; checkout.session.async_payment_succeeded
+// covers ACH and other delayed methods that complete later.
+const SUPPORTED_DETAIL_TYPES = new Set([
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded'
+]);
 
-  const event = JSON.parse(rawBody);
+export async function handleStripeEventBridgeEvent(event, options = {}) {
+  const detail = event?.detail ?? event;
+  const detailType = event?.['detail-type'] ?? detail?.type ?? '';
 
-  if (event.type !== 'checkout.session.completed' && event.type !== 'checkout.session.async_payment_succeeded') {
-    return { handled: false, type: event.type };
+  if (!SUPPORTED_DETAIL_TYPES.has(detailType)) {
+    return { handled: false, reason: `unsupported detail-type=${detailType}` };
   }
 
-  const sessionPreview = event.data?.object;
+  const sessionPreview = detail?.data?.object;
   if (!sessionPreview?.id) {
-    throw new Error('Stripe webhook missing session id');
+    throw new Error('Stripe event missing data.object.id');
+  }
+
+  // Donations and store checkouts share the same Stripe account and the
+  // same partner event bus, so multiple consumers see every event. We
+  // identify the store's own sessions via metadata.og_kind and ignore the
+  // rest (donation webhooks set metadata.donation_mode instead).
+  if (sessionPreview?.metadata?.og_kind !== 'store') {
+    return { handled: false, reason: 'not a store checkout session' };
   }
 
   const paymentStatus = sessionPreview.payment_status;
@@ -386,6 +398,8 @@ export async function handleStripeWebhook(rawBody, signatureHeader, options = {}
     return { handled: false, reason: `payment_status=${paymentStatus}` };
   }
 
+  // The EventBridge payload may not include line_items / shipping_details,
+  // so always re-fetch the session with the necessary expansions.
   const stripe = options.stripeClient ?? StripeClient.fromEnv();
   const fullSession = await stripe.getCheckoutSession(sessionPreview.id);
   const orderId = await recordPaidOrder(fullSession, { db: options.db });

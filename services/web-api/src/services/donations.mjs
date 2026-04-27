@@ -76,7 +76,7 @@ function readMetadata(metadata, key) {
 }
 
 function extractMode(metadata) {
-  return readMetadata(metadata, 'donation_mode') ?? 'one_time';
+  return readMetadata(metadata, 'donation_mode');
 }
 
 function extractAnonymousDonation(metadata) {
@@ -372,6 +372,22 @@ async function findDonationIdentity(client, subscriptionId, customerId) {
 async function persistCheckoutCompletion(client, eventId, object, correlationId) {
   const metadata = object.metadata ?? null;
   const mode = extractMode(metadata);
+
+  // Donations and the store share the same Stripe partner event bus, so this
+  // consumer also sees non-donation checkouts. Donation flows always set
+  // metadata.donation_mode; absence of that marker means the event belongs to
+  // a different consumer (e.g. the store) and we must not record it as a
+  // donation.
+  if (!mode) {
+    console.info(JSON.stringify({
+      level: 'info',
+      correlationId,
+      eventId,
+      message: 'Skipping checkout.session.completed without donation_mode metadata'
+    }));
+    return;
+  }
+
   const anonymousDonation = extractAnonymousDonation(metadata);
   const amountCents = Number(object.amount_total ?? 0);
   const currency = object.currency ?? 'usd';

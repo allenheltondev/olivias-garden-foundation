@@ -1,5 +1,3 @@
-import crypto from 'node:crypto';
-
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 
 export class StripeClient {
@@ -90,55 +88,5 @@ export class StripeClient {
       throw new Error(`Stripe checkout session fetch failed (${response.status}): ${JSON.stringify(body)}`);
     }
     return body;
-  }
-}
-
-// Verify a Stripe webhook signature.
-// https://stripe.com/docs/webhooks/signatures
-export function verifyWebhookSignature({ payload, signatureHeader, secret, toleranceSeconds = 300, now = Date.now }) {
-  if (!signatureHeader) {
-    throw new Error('Missing Stripe-Signature header');
-  }
-  if (!secret) {
-    throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
-  }
-
-  const parts = String(signatureHeader)
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  let timestamp = null;
-  const signatures = [];
-  for (const part of parts) {
-    const [key, value] = part.split('=');
-    if (key === 't' && value) timestamp = Number(value);
-    if (key === 'v1' && value) signatures.push(value);
-  }
-
-  if (!timestamp || signatures.length === 0) {
-    throw new Error('Invalid Stripe-Signature header');
-  }
-
-  const nowSeconds = Math.floor(now() / 1000);
-  if (Math.abs(nowSeconds - timestamp) > toleranceSeconds) {
-    throw new Error('Stripe signature timestamp outside tolerance');
-  }
-
-  const signedPayload = `${timestamp}.${payload}`;
-  const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
-  const expectedBuf = Buffer.from(expected, 'hex');
-
-  const matches = signatures.some((sig) => {
-    try {
-      const sigBuf = Buffer.from(sig, 'hex');
-      return sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf);
-    } catch {
-      return false;
-    }
-  });
-
-  if (!matches) {
-    throw new Error('Stripe signature verification failed');
   }
 }

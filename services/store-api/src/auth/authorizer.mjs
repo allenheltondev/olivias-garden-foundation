@@ -55,7 +55,7 @@ export function normalizePath(path = '') {
 }
 
 const PUBLIC_GET_PREFIXES = ['/products', '/orders/by-session/'];
-const PUBLIC_POST_PATHS = ['/checkout', '/webhook'];
+const PUBLIC_POST_PATHS = ['/checkout'];
 
 export function isAnonymousRoute(method, path) {
   const normalized = normalizePath(path);

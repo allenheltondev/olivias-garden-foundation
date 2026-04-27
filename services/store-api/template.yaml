@@ -33,11 +33,13 @@ Parameters:
     Default: ""
     NoEcho: true
     Description: Stripe secret key (live or test). Required for checkout sessions.
-  StripeWebhookSecret:
+  StripeEventBusName:
     Type: String
     Default: ""
-    NoEcho: true
-    Description: Stripe webhook signing secret (whsec_...). Required for /webhook.
+    Description: >
+      Stripe partner integration EventBridge bus name (e.g.
+      aws.partner/stripe.com/...). When set, the store API subscribes a
+      Lambda consumer to record paid orders from the bus.
   AllowedCheckoutRedirectOrigins:
     Type: String
     Default: ""
@@ -53,12 +55,13 @@ Conditions:
   DeploySharedApiBasePathMapping: !And
     - !Not [!Equals [!Ref DomainName, ""]]
     - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
+  HasStripeEventBus: !Not [!Equals [!Ref StripeEventBusName, ""]]
 
 Globals:
   Api:
     Cors:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-      AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,Stripe-Signature'"
+      AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
       AllowOrigin: !If
         - DeployFrontendCustomDomain
         - !Sub "'${DomainProtocol}://store.${DomainName}'"
@@ -95,13 +98,11 @@ Resources:
       StageName: api
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-        AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,Stripe-Signature'"
+        AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: !If
           - DeployFrontendCustomDomain
           - !Sub "'${DomainProtocol}://store.${DomainName}'"
           - "'*'"
-      BinaryMediaTypes:
-        - "*/*"
       Auth:
         DefaultAuthorizer: LambdaAuthorizer
         AddDefaultAuthorizerToCorsPreflight: false
@@ -291,7 +292,6 @@ Resources:
             - !Sub "${DomainProtocol}://store.${DomainName}"
             - "*"
           STRIPE_SECRET_KEY: !Ref StripeSecretKey
-          STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
           ALLOWED_CHECKOUT_REDIRECT_ORIGINS: !Ref AllowedCheckoutRedirectOrigins
           NODE_OPTIONS: --enable-source-maps
       Events:
@@ -307,6 +307,39 @@ Resources:
             RestApiId: !Ref Api
             Path: /
             Method: ANY
+
+  # Subscribe to the Stripe partner integration event bus and record paid
+  # orders. The same bus is consumed by web-api for donations; each
+  # consumer filters by metadata.og_kind so the streams don't cross.
+  StripeEventConsumerFunction:
+    Type: AWS::Serverless::Function
+    Condition: HasStripeEventBus
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - src/handlers/stripe-event-consumer.mjs
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/stripe-event-consumer.handler
+      Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          NODE_OPTIONS: --enable-source-maps
+      Events:
+        StripeCheckoutEvents:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref StripeEventBusName
+            Pattern:
+              detail-type:
+                - checkout.session.completed
+                - checkout.session.async_payment_succeeded
 
 Outputs:
   ApiUrl:
@@ -330,10 +363,3 @@ Outputs:
   CloudFrontDistributionId:
     Description: CloudFront distribution ID for store frontend cache invalidation
     Value: !Ref FrontendDistribution
-
-  StripeWebhookEndpoint:
-    Description: Configure this URL in the Stripe dashboard for checkout.session.completed events
-    Value: !If
-      - DeploySharedApiBasePathMapping
-      - !Sub "https://api.${DomainName}/store/webhook"
-      - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api/webhook"
