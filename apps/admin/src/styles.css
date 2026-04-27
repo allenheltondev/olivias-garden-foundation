@@ -1038,6 +1038,89 @@ body {
   gap: 0.4rem;
 }
 
+.admin-store-variations {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border: 1px dashed rgba(79, 56, 37, 0.2);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-store-variations__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.admin-store-variations__header small {
+  display: block;
+  color: rgba(79, 56, 37, 0.62);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.admin-store-variations__empty {
+  margin: 0;
+  color: rgba(79, 56, 37, 0.62);
+  font-size: 0.9rem;
+}
+
+.admin-store-variations__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-store-variations__item {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.65rem;
+  border: 1px solid rgba(79, 56, 37, 0.12);
+  border-radius: 6px;
+  background: #faf7f2;
+}
+
+.admin-store-variations__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.admin-store-variations__row > .og-input {
+  flex: 1;
+}
+
+.admin-store-variations__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.admin-store-variations__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--og-color-moss, #6b8b5b);
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.admin-store-variations__chip button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
 .admin-checkbox {
   display: inline-flex;
   align-items: center;

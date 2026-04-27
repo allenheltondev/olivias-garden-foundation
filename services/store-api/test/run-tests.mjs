@@ -584,6 +584,64 @@ async function testCheckoutRejectsNonHttpScheme() {
   );
 }
 
+async function testRecordPaidOrderCapturesVariations() {
+  // Two cart lines for the same product but different variations should
+  // each get their own selection captured on the order item.
+  const fake = makeFakeDb({
+    productLookup: {
+      price_shirt: {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        slug: 'tee',
+        name: 'Tee',
+        kind: 'merchandise'
+      },
+      __userByEmail: { 'alice@example.com': 'user-alice' }
+    }
+  });
+
+  const session = {
+    ...sampleStripeSession,
+    metadata: {
+      og_kind: 'store',
+      og_var_0: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb|{"Color":"Red","Ink":"Black"}',
+      og_var_1: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb|{"Color":"Blue","Ink":"White"}'
+    },
+    line_items: {
+      data: [
+        { price: { id: 'price_shirt', unit_amount: 2500 }, quantity: 1, amount_total: 2500 },
+        { price: { id: 'price_shirt', unit_amount: 2500 }, quantity: 1, amount_total: 2500 }
+      ]
+    }
+  };
+
+  await recordPaidOrder(session, { db: fake.db });
+  assert.equal(fake.calls.inserts.items.length, 2);
+  const firstSelection = JSON.parse(fake.calls.inserts.items[0][9]);
+  const secondSelection = JSON.parse(fake.calls.inserts.items[1][9]);
+  assert.deepEqual(firstSelection, { Color: 'Red', Ink: 'Black' });
+  assert.deepEqual(secondSelection, { Color: 'Blue', Ink: 'White' });
+}
+
+async function testRecordPaidOrderHandlesMissingVariationMetadata() {
+  // Backwards-compat: existing sessions without og_var_* keys still record
+  // cleanly, with selected_variations stored as null.
+  const fake = makeFakeDb({
+    productLookup: {
+      price_seed: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        slug: 'okra-seed-pack',
+        name: 'Okra Seed Pack',
+        kind: 'merchandise'
+      },
+      __userByEmail: { 'alice@example.com': 'user-alice' }
+    }
+  });
+
+  await recordPaidOrder(sampleStripeSession, { db: fake.db });
+  const itemParams = fake.calls.inserts.items[0];
+  assert.equal(itemParams[9], null);
+}
+
 await testResolveOptionalAuthContextAnonymous();
 await testResolveOptionalAuthContextUser();
 await testResolveOptionalAuthContextAdmin();
@@ -615,4 +673,6 @@ await testCheckoutRejectsAttackerControlledSuccessUrl();
 await testCheckoutRejectsAttackerControlledCancelUrl();
 await testCheckoutRejectsMalformedRedirectUrl();
 await testCheckoutRejectsNonHttpScheme();
+await testRecordPaidOrderCapturesVariations();
+await testRecordPaidOrderHandlesMissingVariationMetadata();
 console.log('store api tests passed');

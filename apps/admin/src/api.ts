@@ -19,10 +19,16 @@ export interface StoreProduct {
   image_urls: string[];
   images: StoreProductImage[];
   metadata: Record<string, unknown>;
+  variations: ProductVariation[];
   stripe_product_id: string;
   stripe_price_id: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProductVariation {
+  name: string;
+  values: string[];
 }
 
 export interface StoreProductImage {
@@ -115,6 +121,7 @@ export interface UpsertStoreProductRequest {
   image_url: string | null;
   images?: Array<{ id: string; sort_order?: number; alt_text?: string | null }>;
   metadata: Record<string, unknown>;
+  variations?: ProductVariation[];
 }
 
 export interface StoreProductImageUploadIntent {
@@ -163,6 +170,7 @@ export interface StoreOrderItem {
   quantity: number;
   unitAmountCents: number;
   totalCents: number;
+  selectedVariations: Record<string, string> | null;
 }
 
 export interface StoreOrder {

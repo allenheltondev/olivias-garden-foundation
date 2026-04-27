@@ -25,6 +25,8 @@ export function ProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
+  const [variationError, setVariationError] = useState<string | null>(null);
   const cart = useCart();
   const navigate = useNavigate();
 
@@ -32,6 +34,8 @@ export function ProductPage() {
     let active = true;
     setProduct(null);
     setError(null);
+    setSelectedVariations({});
+    setVariationError(null);
 
     getProductBySlug(slug)
       .then((next) => {
@@ -63,7 +67,19 @@ export function ProductPage() {
   }
 
   const onAdd = () => {
-    cart.add(product, quantity);
+    const missing = product.variations
+      .filter((variation) => !selectedVariations[variation.name])
+      .map((variation) => variation.name);
+    if (missing.length > 0) {
+      setVariationError(`Please choose a ${missing.join(' and ')}.`);
+      return;
+    }
+    setVariationError(null);
+    cart.add(
+      product,
+      quantity,
+      product.variations.length > 0 ? { ...selectedVariations } : null
+    );
     navigate('/cart');
   };
   const productImages = product.images.filter((image) => image.url);
@@ -129,6 +145,42 @@ export function ProductPage() {
             <p className="store-product-detail__impact">
               <strong>Your impact:</strong> {product.impact_summary}
             </p>
+          ) : null}
+
+          {product.variations.length > 0 ? (
+            <div className="store-variations">
+              {product.variations.map((variation) => (
+                <div key={variation.name} className="store-variations__group">
+                  <span className="store-variations__label">{variation.name}</span>
+                  <div className="store-variations__options" role="radiogroup" aria-label={variation.name}>
+                    {variation.values.map((value) => {
+                      const isSelected = selectedVariations[variation.name] === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          className={`store-variations__option${isSelected ? ' is-selected' : ''}`}
+                          onClick={() => {
+                            setSelectedVariations((current) => ({
+                              ...current,
+                              [variation.name]: value,
+                            }));
+                            setVariationError(null);
+                          }}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {variationError ? (
+                <FormFeedback tone="error">{variationError}</FormFeedback>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="store-quantity">

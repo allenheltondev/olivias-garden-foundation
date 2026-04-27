@@ -102,6 +102,42 @@ async function testStoreHelpers() {
     /metadata must be a JSON object/
   );
 
+  // variations is optional but, if provided, must be a well-formed array
+  // of { name, values: string[] }. Empty value lists and duplicate names
+  // are rejected up-front so we never persist garbage.
+  assert.doesNotThrow(() =>
+    validatePayload({
+      ...payload,
+      variations: [
+        { name: 'Color', values: ['Red', 'Blue'] },
+        { name: 'Ink', values: ['Black'] }
+      ]
+    })
+  );
+  assert.throws(
+    () => validatePayload({ ...payload, variations: 'nope' }),
+    /variations must be an array/
+  );
+  assert.throws(
+    () => validatePayload({ ...payload, variations: [{ name: '', values: ['Red'] }] }),
+    /variation name is required/
+  );
+  assert.throws(
+    () => validatePayload({ ...payload, variations: [{ name: 'Color', values: [] }] }),
+    /at least one value/
+  );
+  assert.throws(
+    () =>
+      validatePayload({
+        ...payload,
+        variations: [
+          { name: 'Color', values: ['Red'] },
+          { name: 'color', values: ['Blue'] }
+        ]
+      }),
+    /variation names must be unique/
+  );
+
   const requests = [];
   const stripe = new StripeStoreClient('sk_test_123', async (_url, init) => {
     requests.push(init);

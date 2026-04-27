@@ -5,7 +5,7 @@ const PRODUCT_SELECT_COLUMNS = `
   kind::text as kind, fulfillment_type::text as fulfillment_type,
   is_public, is_featured, currency, unit_amount_cents,
   statement_descriptor, nonprofit_program, impact_summary,
-  image_url, metadata, stripe_product_id, stripe_price_id,
+  image_url, metadata, variations, stripe_product_id, stripe_price_id,
   created_at, updated_at
 `;
 
@@ -34,6 +34,7 @@ export function mapProduct(row) {
     image_urls: row.image_url ? [row.image_url, ...readyImageUrls] : readyImageUrls,
     images,
     metadata: row.metadata ?? {},
+    variations: Array.isArray(row.variations) ? row.variations : [],
     stripe_product_id: row.stripe_product_id,
     stripe_price_id: row.stripe_price_id,
     created_at: row.created_at?.toISOString?.() ?? row.created_at,

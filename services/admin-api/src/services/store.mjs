@@ -19,9 +19,14 @@ const PRODUCT_SELECT_COLUMNS = `
   kind::text as kind, fulfillment_type::text as fulfillment_type,
   is_public, is_featured, currency, unit_amount_cents,
   statement_descriptor, nonprofit_program, impact_summary,
-  image_url, metadata, stripe_product_id, stripe_price_id,
+  image_url, metadata, variations, stripe_product_id, stripe_price_id,
   created_at, updated_at
 `;
+
+const MAX_VARIATIONS = 5;
+const MAX_VARIATION_VALUES = 50;
+const MAX_VARIATION_NAME_LENGTH = 40;
+const MAX_VARIATION_VALUE_LENGTH = 60;
 
 function getHeader(event, name) {
   const headers = event?.headers ?? {};
@@ -167,6 +172,69 @@ export function validatePayload(payload) {
   if (!isPlainObject(payload.metadata ?? {})) {
     throw new Error('metadata must be a JSON object');
   }
+
+  if (payload.variations !== undefined && payload.variations !== null) {
+    validateVariations(payload.variations);
+  }
+}
+
+function validateVariations(variations) {
+  if (!Array.isArray(variations)) {
+    throw new Error('variations must be an array');
+  }
+  if (variations.length > MAX_VARIATIONS) {
+    throw new Error(`variations may have at most ${MAX_VARIATIONS} options`);
+  }
+  const seenNames = new Set();
+  for (const variation of variations) {
+    if (!isPlainObject(variation)) {
+      throw new Error('each variation must be an object');
+    }
+    const name = typeof variation.name === 'string' ? variation.name.trim() : '';
+    if (name.length === 0) {
+      throw new Error('variation name is required');
+    }
+    if (name.length > MAX_VARIATION_NAME_LENGTH) {
+      throw new Error(`variation name must be ${MAX_VARIATION_NAME_LENGTH} characters or fewer`);
+    }
+    const lower = name.toLowerCase();
+    if (seenNames.has(lower)) {
+      throw new Error('variation names must be unique');
+    }
+    seenNames.add(lower);
+    if (!Array.isArray(variation.values) || variation.values.length === 0) {
+      throw new Error(`variation "${name}" must have at least one value`);
+    }
+    if (variation.values.length > MAX_VARIATION_VALUES) {
+      throw new Error(`variation "${name}" may have at most ${MAX_VARIATION_VALUES} values`);
+    }
+    const seenValues = new Set();
+    for (const value of variation.values) {
+      if (typeof value !== 'string') {
+        throw new Error(`variation "${name}" values must be strings`);
+      }
+      const trimmed = value.trim();
+      if (trimmed.length === 0) {
+        throw new Error(`variation "${name}" values must not be empty`);
+      }
+      if (trimmed.length > MAX_VARIATION_VALUE_LENGTH) {
+        throw new Error(`variation "${name}" values must be ${MAX_VARIATION_VALUE_LENGTH} characters or fewer`);
+      }
+      const lowerValue = trimmed.toLowerCase();
+      if (seenValues.has(lowerValue)) {
+        throw new Error(`variation "${name}" values must be unique`);
+      }
+      seenValues.add(lowerValue);
+    }
+  }
+}
+
+function normalizeVariations(variations) {
+  if (!Array.isArray(variations)) return [];
+  return variations.map((variation) => ({
+    name: variation.name.trim(),
+    values: variation.values.map((value) => value.trim())
+  }));
 }
 
 function isSlug(value) {
@@ -206,6 +274,7 @@ function mapStoreProduct(row, images = []) {
     image_urls: row.image_url ? [row.image_url, ...readyImageUrls] : readyImageUrls,
     images,
     metadata: row.metadata ?? {},
+    variations: Array.isArray(row.variations) ? row.variations : [],
     stripe_product_id: row.stripe_product_id,
     stripe_price_id: row.stripe_price_id,
     created_at: row.created_at?.toISOString?.() ?? row.created_at,
@@ -270,12 +339,13 @@ export async function createStoreProduct(event, payload, options = {}) {
           insert into store_products (
             slug, name, short_description, description, status, kind, fulfillment_type,
             is_public, is_featured, currency, unit_amount_cents, statement_descriptor,
-            nonprofit_program, impact_summary, image_url, metadata,
+            nonprofit_program, impact_summary, image_url, metadata, variations,
             stripe_product_id, stripe_price_id
           )
           values (
             $1, $2, $3, $4, $5::store_product_status, $6::store_product_kind,
-            $7::store_fulfillment_type, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+            $7::store_fulfillment_type, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+            $17::jsonb, $18, $19
           )
           returning ${PRODUCT_SELECT_COLUMNS}
         `,
@@ -296,6 +366,7 @@ export async function createStoreProduct(event, payload, options = {}) {
           payload.impact_summary ?? null,
           payload.image_url ?? null,
           payload.metadata ?? {},
+          JSON.stringify(normalizeVariations(payload.variations)),
           stripeProductId,
           stripePriceId
         ]
@@ -389,7 +460,8 @@ export async function updateStoreProduct(event, payload, productId, options = {}
                  impact_summary = $15,
                  image_url = $16,
                  metadata = $17,
-                 stripe_price_id = $18,
+                 variations = $18::jsonb,
+                 stripe_price_id = $19,
                  updated_at = now()
            where id = $1
            returning ${PRODUCT_SELECT_COLUMNS}
@@ -412,6 +484,7 @@ export async function updateStoreProduct(event, payload, productId, options = {}
           payload.impact_summary ?? null,
           payload.image_url ?? null,
           payload.metadata ?? {},
+          JSON.stringify(normalizeVariations(payload.variations)),
           stripePriceId
         ]
       );

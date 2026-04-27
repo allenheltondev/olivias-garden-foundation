@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type KeyboardEvent, useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -14,6 +14,7 @@ import {
   listStoreProducts,
   uploadStoreProductImage,
   updateStoreProduct,
+  type ProductVariation,
   type StoreProduct,
   type StoreProductImage,
   type UpsertStoreProductRequest,
@@ -41,6 +42,7 @@ const emptyProductForm: UpsertStoreProductRequest = {
   impact_summary: '',
   image_url: '',
   metadata: {},
+  variations: [],
 };
 
 const statusOptions = [
@@ -156,6 +158,10 @@ export function StorePage({ session }: StorePageProps) {
       impact_summary: product.impact_summary,
       image_url: product.legacy_image_url,
       metadata: product.metadata,
+      variations: product.variations.map((variation) => ({
+        name: variation.name,
+        values: [...variation.values],
+      })),
     });
     setProductImages(
       product.images.map((image) => ({
@@ -213,6 +219,46 @@ export function StorePage({ session }: StorePageProps) {
     setProductImages((current) => current.filter((image) => image.id !== imageId));
   };
 
+  const variations = productForm.variations ?? [];
+
+  const updateVariations = (next: ProductVariation[]) => {
+    setProductForm((current) => ({ ...current, variations: next }));
+  };
+
+  const addVariation = () => {
+    updateVariations([...variations, { name: '', values: [] }]);
+  };
+
+  const removeVariation = (index: number) => {
+    updateVariations(variations.filter((_, i) => i !== index));
+  };
+
+  const setVariationName = (index: number, name: string) => {
+    updateVariations(variations.map((variation, i) => (i === index ? { ...variation, name } : variation)));
+  };
+
+  const addVariationValue = (index: number, value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    updateVariations(
+      variations.map((variation, i) =>
+        i === index && !variation.values.includes(trimmed)
+          ? { ...variation, values: [...variation.values, trimmed] }
+          : variation
+      )
+    );
+  };
+
+  const removeVariationValue = (index: number, valueIndex: number) => {
+    updateVariations(
+      variations.map((variation, i) =>
+        i === index
+          ? { ...variation, values: variation.values.filter((_, vi) => vi !== valueIndex) }
+          : variation
+      )
+    );
+  };
+
   const moveImage = (imageId: string, direction: -1 | 1) => {
     setProductImages((current) => {
       const index = current.findIndex((image) => image.id === imageId);
@@ -230,6 +276,13 @@ export function StorePage({ session }: StorePageProps) {
     setError(null);
 
     try {
+      const cleanedVariations = (productForm.variations ?? [])
+        .map((variation) => ({
+          name: variation.name.trim(),
+          values: variation.values.map((value) => value.trim()).filter(Boolean),
+        }))
+        .filter((variation) => variation.name && variation.values.length > 0);
+
       const payload: UpsertStoreProductRequest = {
         ...productForm,
         short_description: productForm.short_description || null,
@@ -243,6 +296,7 @@ export function StorePage({ session }: StorePageProps) {
           sort_order: index,
           alt_text: image.alt_text || null,
         })),
+        variations: cleanedVariations,
       };
 
       if (activeProductId) {
@@ -411,6 +465,14 @@ export function StorePage({ session }: StorePageProps) {
               value={productForm.image_url || ''}
               onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))}
             />
+            <VariationsEditor
+              variations={variations}
+              onAdd={addVariation}
+              onRemove={removeVariation}
+              onNameChange={setVariationName}
+              onAddValue={addVariationValue}
+              onRemoveValue={removeVariationValue}
+            />
             <div className="admin-store-images">
               <div className="admin-store-images__header">
                 <div>
@@ -499,5 +561,109 @@ export function StorePage({ session }: StorePageProps) {
         </Card>
       </div>
     </section>
+  );
+}
+
+interface VariationsEditorProps {
+  variations: ProductVariation[];
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onNameChange: (index: number, name: string) => void;
+  onAddValue: (index: number, value: string) => void;
+  onRemoveValue: (index: number, valueIndex: number) => void;
+}
+
+function VariationsEditor({
+  variations,
+  onAdd,
+  onRemove,
+  onNameChange,
+  onAddValue,
+  onRemoveValue,
+}: VariationsEditorProps) {
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+
+  const submitValue = (index: number) => {
+    const draft = drafts[index];
+    if (!draft) return;
+    onAddValue(index, draft);
+    setDrafts((current) => ({ ...current, [index]: '' }));
+  };
+
+  const handleValueKey = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      submitValue(index);
+    }
+  };
+
+  return (
+    <div className="admin-store-variations">
+      <div className="admin-store-variations__header">
+        <div>
+          <p className="og-section-label">Variations (optional)</p>
+          <h4>Customer-selectable options</h4>
+          <small>e.g. Color: Red, Blue · Ink: Black, White. Each option requires a name and at least one value.</small>
+        </div>
+        <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+          Add variation
+        </Button>
+      </div>
+      {variations.length === 0 ? (
+        <p className="admin-store-variations__empty">No variations. Customers buy a single SKU.</p>
+      ) : (
+        <ul className="admin-store-variations__list">
+          {variations.map((variation, index) => (
+            <li key={index} className="admin-store-variations__item">
+              <div className="admin-store-variations__row">
+                <Input
+                  label="Option name"
+                  placeholder="Color"
+                  value={variation.name}
+                  onChange={(event) => onNameChange(index, event.target.value)}
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={() => onRemove(index)}>
+                  Remove
+                </Button>
+              </div>
+              <div className="admin-store-variations__values">
+                {variation.values.map((value, valueIndex) => (
+                  <span key={valueIndex} className="admin-store-variations__chip">
+                    {value}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${value}`}
+                      onClick={() => onRemoveValue(index, valueIndex)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="admin-store-variations__row">
+                <Input
+                  label="Add value"
+                  placeholder="Red"
+                  value={drafts[index] ?? ''}
+                  onChange={(event) =>
+                    setDrafts((current) => ({ ...current, [index]: event.target.value }))
+                  }
+                  onKeyDown={(event) => handleValueKey(event, index)}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => submitValue(index)}
+                  disabled={!drafts[index]?.trim()}
+                >
+                  Add value
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

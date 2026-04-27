@@ -12,6 +12,8 @@ import type { StoreProduct } from '../api';
 const STORAGE_KEY = 'og-store-cart-v1';
 
 export interface CartLine {
+  // Stable id used for React keys / mutations; unique per (product, variation) combo.
+  lineId: string;
   productId: string;
   slug: string;
   name: string;
@@ -21,6 +23,20 @@ export interface CartLine {
   fulfillmentType: StoreProduct['fulfillment_type'];
   kind: StoreProduct['kind'];
   quantity: number;
+  selectedVariations: Record<string, string> | null;
+}
+
+function variationKey(selectedVariations: Record<string, string> | null | undefined): string {
+  if (!selectedVariations) return '';
+  return Object.keys(selectedVariations)
+    .sort()
+    .map((key) => `${key}=${selectedVariations[key]}`)
+    .join('|');
+}
+
+function buildLineId(productId: string, selectedVariations: Record<string, string> | null | undefined): string {
+  const key = variationKey(selectedVariations);
+  return key ? `${productId}::${key}` : productId;
 }
 
 interface StoredCart {
@@ -33,9 +49,13 @@ interface CartContextValue {
   itemCount: number;
   subtotalCents: number;
   requiresShipping: boolean;
-  add: (product: StoreProduct, quantity?: number) => void;
-  setQuantity: (productId: string, quantity: number) => void;
-  remove: (productId: string) => void;
+  add: (
+    product: StoreProduct,
+    quantity?: number,
+    selectedVariations?: Record<string, string> | null
+  ) => void;
+  setQuantity: (lineId: string, quantity: number) => void;
+  remove: (lineId: string) => void;
   clear: () => void;
 }
 
@@ -48,12 +68,18 @@ function readStoredCart(): CartLine[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as StoredCart;
     if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.lines)) return [];
-    return parsed.lines.filter(
-      (line): line is CartLine =>
-        typeof line.productId === 'string' &&
-        typeof line.quantity === 'number' &&
-        line.quantity > 0
-    );
+    return parsed.lines
+      .filter(
+        (line): line is CartLine =>
+          typeof line.productId === 'string' &&
+          typeof line.quantity === 'number' &&
+          line.quantity > 0
+      )
+      .map((line) => ({
+        ...line,
+        selectedVariations: line.selectedVariations ?? null,
+        lineId: line.lineId ?? buildLineId(line.productId, line.selectedVariations ?? null),
+      }));
   } catch {
     return [];
   }
@@ -75,47 +101,55 @@ export function CartProvider({ children }: { children: ReactNode }) {
     writeStoredCart(lines);
   }, [lines]);
 
-  const add = useCallback((product: StoreProduct, quantity = 1) => {
-    if (quantity <= 0) return;
-    setLines((current) => {
-      const existing = current.find((line) => line.productId === product.id);
-      if (existing) {
-        return current.map((line) =>
-          line.productId === product.id
-            ? { ...line, quantity: line.quantity + quantity }
-            : line
-        );
-      }
-      return [
-        ...current,
-        {
-          productId: product.id,
-          slug: product.slug,
-          name: product.name,
-          imageUrl: product.image_url,
-          unitAmountCents: product.unit_amount_cents,
-          currency: product.currency,
-          fulfillmentType: product.fulfillment_type,
-          kind: product.kind,
-          quantity,
-        },
-      ];
-    });
-  }, []);
+  const add = useCallback(
+    (
+      product: StoreProduct,
+      quantity = 1,
+      selectedVariations: Record<string, string> | null = null
+    ) => {
+      if (quantity <= 0) return;
+      const lineId = buildLineId(product.id, selectedVariations);
+      setLines((current) => {
+        const existing = current.find((line) => line.lineId === lineId);
+        if (existing) {
+          return current.map((line) =>
+            line.lineId === lineId ? { ...line, quantity: line.quantity + quantity } : line
+          );
+        }
+        return [
+          ...current,
+          {
+            lineId,
+            productId: product.id,
+            slug: product.slug,
+            name: product.name,
+            imageUrl: product.image_url,
+            unitAmountCents: product.unit_amount_cents,
+            currency: product.currency,
+            fulfillmentType: product.fulfillment_type,
+            kind: product.kind,
+            quantity,
+            selectedVariations,
+          },
+        ];
+      });
+    },
+    []
+  );
 
-  const setQuantity = useCallback((productId: string, quantity: number) => {
+  const setQuantity = useCallback((lineId: string, quantity: number) => {
     setLines((current) => {
       if (quantity <= 0) {
-        return current.filter((line) => line.productId !== productId);
+        return current.filter((line) => line.lineId !== lineId);
       }
       return current.map((line) =>
-        line.productId === productId ? { ...line, quantity } : line
+        line.lineId === lineId ? { ...line, quantity } : line
       );
     });
   }, []);
 
-  const remove = useCallback((productId: string) => {
-    setLines((current) => current.filter((line) => line.productId !== productId));
+  const remove = useCallback((lineId: string) => {
+    setLines((current) => current.filter((line) => line.lineId !== lineId));
   }, []);
 
   const clear = useCallback(() => {

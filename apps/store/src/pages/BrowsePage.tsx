@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import { listPublicProducts, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
@@ -16,6 +16,7 @@ export function BrowsePage() {
   const [products, setProducts] = useState<StoreProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cart = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -76,9 +77,13 @@ export function BrowsePage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => cart.add(product, 1)}
+                  onClick={() =>
+                    product.variations.length > 0
+                      ? navigate(`/products/${product.slug}`)
+                      : cart.add(product, 1)
+                  }
                 >
-                  Add to cart
+                  {product.variations.length > 0 ? 'Choose options' : 'Add to cart'}
                 </Button>
               </div>
             </div>

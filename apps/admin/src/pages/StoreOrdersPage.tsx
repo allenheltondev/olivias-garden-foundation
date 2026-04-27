@@ -144,6 +144,11 @@ export function StoreOrdersPage({ session }: StoreOrdersPageProps) {
                 <li key={item.id}>
                   <span>
                     {item.quantity} × {item.productName}
+                    {item.selectedVariations
+                      ? ` (${Object.entries(item.selectedVariations)
+                          .map(([name, value]) => `${name}: ${value}`)
+                          .join(', ')})`
+                      : ''}
                   </span>
                   <span>{formatMoney(item.totalCents, order.currency)}</span>
                 </li>

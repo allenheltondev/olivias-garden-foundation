@@ -28,7 +28,11 @@ export function CartPage({ session }: CartPageProps) {
     try {
       const origin = window.location.origin;
       const { url } = await createCheckoutSession(
-        cart.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+        cart.lines.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          selectedVariations: line.selectedVariations,
+        })),
         {
           accessToken: session?.accessToken,
           customerEmail: session?.email ?? undefined,
@@ -89,7 +93,7 @@ export function CartPage({ session }: CartPageProps) {
         <Card className="store-cart">
           <ul className="store-cart__lines">
             {cart.lines.map((line) => (
-              <li key={line.productId} className="store-cart__line">
+              <li key={line.lineId} className="store-cart__line">
                 <Link
                   to={`/products/${line.slug}`}
                   className="store-cart__line-media"
@@ -105,6 +109,13 @@ export function CartPage({ session }: CartPageProps) {
                   <h3 className="store-cart__line-name">
                     <Link to={`/products/${line.slug}`}>{line.name}</Link>
                   </h3>
+                  {line.selectedVariations ? (
+                    <p className="store-cart__line-variations">
+                      {Object.entries(line.selectedVariations)
+                        .map(([name, value]) => `${name}: ${value}`)
+                        .join(' · ')}
+                    </p>
+                  ) : null}
                   <p className="store-cart__line-meta">
                     {FULFILLMENT_LABEL[line.fulfillmentType] ?? line.fulfillmentType}
                   </p>
@@ -119,7 +130,7 @@ export function CartPage({ session }: CartPageProps) {
                         className="store-quantity__btn"
                         aria-label="Decrease quantity"
                         onClick={() =>
-                          cart.setQuantity(line.productId, Math.max(0, line.quantity - 1))
+                          cart.setQuantity(line.lineId, Math.max(0, line.quantity - 1))
                         }
                       >
                         −
@@ -134,7 +145,7 @@ export function CartPage({ session }: CartPageProps) {
                         onChange={(event) => {
                           const next = Number(event.target.value);
                           if (Number.isFinite(next)) {
-                            cart.setQuantity(line.productId, Math.max(0, Math.floor(next)));
+                            cart.setQuantity(line.lineId, Math.max(0, Math.floor(next)));
                           }
                         }}
                       />
@@ -143,7 +154,7 @@ export function CartPage({ session }: CartPageProps) {
                         className="store-quantity__btn"
                         aria-label="Increase quantity"
                         onClick={() =>
-                          cart.setQuantity(line.productId, line.quantity + 1)
+                          cart.setQuantity(line.lineId, line.quantity + 1)
                         }
                       >
                         +
@@ -152,7 +163,7 @@ export function CartPage({ session }: CartPageProps) {
                     <button
                       type="button"
                       className="store-cart__line-remove"
-                      onClick={() => cart.remove(line.productId)}
+                      onClick={() => cart.remove(line.lineId)}
                     >
                       Remove
                     </button>
