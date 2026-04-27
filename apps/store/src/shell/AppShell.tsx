@@ -41,7 +41,7 @@ function CartIndicator() {
           fill="currentColor"
         />
       </svg>
-      <span>Cart</span>
+      <span className="store-cart-indicator__label">Cart</span>
       {itemCount > 0 ? <span className="store-cart-indicator__badge">{itemCount}</span> : null}
     </Link>
   );
@@ -80,7 +80,7 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
         brandLogoSrc={foundationLogo}
         brandLogoAlt="Olivia's Garden Foundation"
         brandEyebrow="Olivia's Garden Foundation"
-        brandTitle="merch store"
+        brandTitle="Merch Store"
         brandHref="/"
         navItems={foundationHeaderNav}
         utility={(

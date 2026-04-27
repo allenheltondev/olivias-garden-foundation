@@ -15,9 +15,28 @@ export interface StoreProduct {
   nonprofit_program: string | null;
   impact_summary: string | null;
   image_url: string | null;
+  legacy_image_url: string | null;
+  image_urls: string[];
+  images: StoreProductImage[];
   metadata: Record<string, unknown>;
   stripe_product_id: string;
   stripe_price_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreProductImage {
+  id: string;
+  product_id: string | null;
+  status: 'uploaded' | 'processing' | 'ready' | 'failed';
+  url: string | null;
+  thumbnail_url: string | null;
+  width: number | null;
+  height: number | null;
+  byte_size: number | null;
+  sort_order: number;
+  alt_text: string | null;
+  processing_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,7 +113,17 @@ export interface UpsertStoreProductRequest {
   nonprofit_program: string | null;
   impact_summary: string | null;
   image_url: string | null;
+  images?: Array<{ id: string; sort_order?: number; alt_text?: string | null }>;
   metadata: Record<string, unknown>;
+}
+
+export interface StoreProductImageUploadIntent {
+  imageId: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  s3Key: string;
+  expiresInSeconds: number;
 }
 
 function trimTrailingSlash(value: string): string {
@@ -220,6 +249,51 @@ export async function updateStoreProduct(
       method: 'PUT',
       body: JSON.stringify(payload),
     }
+  );
+}
+
+export async function archiveStoreProduct(accessToken: string, productId: string): Promise<StoreProduct> {
+  return requestJson<StoreProduct>(
+    `${getAdminApiBaseUrl()}/admin/store/products/${productId}`,
+    accessToken,
+    { method: 'DELETE' }
+  );
+}
+
+export async function createStoreProductImageUploadIntent(
+  accessToken: string,
+  contentType: string,
+  contentLength: number
+): Promise<StoreProductImageUploadIntent> {
+  return requestJson<StoreProductImageUploadIntent>(
+    `${getAdminApiBaseUrl()}/admin/store/product-images`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify({ contentType, contentLength }),
+    }
+  );
+}
+
+export async function uploadStoreProductImage(
+  accessToken: string,
+  file: File
+): Promise<{ imageId: string; status: 'processing' }> {
+  const intent = await createStoreProductImageUploadIntent(accessToken, file.type, file.size);
+  const upload = await fetch(intent.uploadUrl, {
+    method: intent.method,
+    headers: intent.headers,
+    body: file,
+  });
+
+  if (!upload.ok) {
+    throw new Error('Unable to upload product image.');
+  }
+
+  return requestJson<{ imageId: string; status: 'processing' }>(
+    `${getAdminApiBaseUrl()}/admin/store/product-images/${intent.imageId}/complete`,
+    accessToken,
+    { method: 'POST', body: JSON.stringify({}) }
   );
 }
 

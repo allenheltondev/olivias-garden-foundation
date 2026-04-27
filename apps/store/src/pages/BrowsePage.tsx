@@ -53,10 +53,10 @@ export function BrowsePage() {
 
       <div className="store-product-grid">
         {(products ?? []).map((product) => (
-          <Card key={product.id} className="store-product-card">
+          <Card key={product.id} className="store-product-card" padding="none">
             <Link to={`/products/${product.slug}`} className="store-product-card__media">
-              {product.image_url ? (
-                <img src={product.image_url} alt="" loading="lazy" />
+              {product.images[0]?.thumbnail_url || product.image_url ? (
+                <img src={product.images[0]?.thumbnail_url || product.image_url || ''} alt="" loading="lazy" />
               ) : (
                 <div className="store-product-card__placeholder" aria-hidden="true" />
               )}
@@ -70,7 +70,9 @@ export function BrowsePage() {
                 <p className="store-product-card__excerpt">{product.short_description}</p>
               ) : null}
               <div className="store-product-card__footer">
-                <strong>{formatMoney(product.unit_amount_cents, product.currency)}</strong>
+                <span className="store-product-card__price">
+                  {formatMoney(product.unit_amount_cents, product.currency)}
+                </span>
                 <Button
                   size="sm"
                   variant="secondary"

@@ -1,0 +1,29 @@
+$kind: http-request
+name: Create Store Product Image Upload Intent - Invalid Content Type
+description: |-
+  Verify product image upload intents reject unsupported content types.
+method: POST
+url: '{{baseUrl}}/admin/store/product-images'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  mode: raw
+  raw: |-
+    {
+      "contentType": "text/plain",
+      "contentLength": 1024
+    }
+order: 3010
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Error explains allowed content types", function () {
+          const response = pm.response.json();
+          pm.expect(response.error).to.contain("contentType must be one of");
+      });
