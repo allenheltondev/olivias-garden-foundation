@@ -562,6 +562,118 @@ body {
   flex-wrap: wrap;
 }
 
+.admin-submission-card__edit-note {
+  border-left: 3px solid var(--og-color-moss);
+  padding: 0.55rem 0.75rem;
+  background: rgba(86, 118, 66, 0.08);
+  color: var(--og-color-soil);
+}
+
+.admin-submission-card__edit-note strong {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--og-color-moss);
+}
+
+.admin-submission-card__edit-note p {
+  margin: 0;
+  color: rgba(79, 56, 37, 0.72);
+  font-size: 0.9rem;
+}
+
+.admin-submission-card__diff {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(79, 56, 37, 0.14);
+  border-radius: var(--og-radius-md);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.admin-submission-card__diff > strong {
+  color: var(--og-color-soil);
+}
+
+.admin-submission-card__diff p,
+.admin-submission-card__diff dl {
+  margin: 0;
+}
+
+.admin-submission-card__diff dl {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-submission-card__diff dl > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-submission-card__diff dt {
+  color: var(--og-color-moss);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-submission-card__diff dd {
+  margin: 0;
+  color: var(--og-color-soil);
+  line-height: 1.45;
+}
+
+.admin-submission-card__diff dd span {
+  display: inline-block;
+  min-width: 3.5rem;
+  margin-right: 0.4rem;
+  color: rgba(79, 56, 37, 0.62);
+  font-weight: 700;
+}
+
+.admin-submission-card__photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-submission-card__photo-actions span {
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  background: rgba(86, 118, 66, 0.1);
+  color: var(--og-color-moss);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-submission-card__deny-note {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-submission-card__deny-note span {
+  color: rgba(79, 56, 37, 0.72);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-submission-card__deny-note textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(79, 56, 37, 0.22);
+  border-radius: var(--og-radius-md);
+  padding: 0.65rem 0.75rem;
+  color: var(--og-color-soil);
+  font: inherit;
+  line-height: 1.4;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.admin-submission-card__deny-note textarea:focus {
+  border-color: var(--og-color-moss);
+  outline: 2px solid rgba(86, 118, 66, 0.16);
+}
+
 .admin-submission-card__story,
 .admin-submission-card__location {
   margin: 0;
@@ -603,6 +715,44 @@ body {
   object-fit: cover;
   border-radius: var(--og-radius-md, 0.75rem);
   background: rgba(38, 23, 15, 0.04);
+}
+
+.admin-photo-carousel__item {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--og-radius-md, 0.75rem);
+}
+
+.admin-photo-carousel__item--remove .admin-photo-carousel__thumb {
+  opacity: 0.42;
+  filter: grayscale(1);
+}
+
+.admin-photo-carousel__item--add {
+  outline: 2px solid rgba(86, 118, 66, 0.45);
+  outline-offset: -2px;
+}
+
+.admin-photo-carousel__badge {
+  position: absolute;
+  left: 0.55rem;
+  top: 0.55rem;
+  max-width: calc(100% - 1.1rem);
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  background: rgba(38, 23, 15, 0.82);
+  color: var(--og-color-paper);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.admin-photo-carousel__item--add .admin-photo-carousel__badge {
+  background: rgba(64, 104, 47, 0.9);
+}
+
+.admin-photo-carousel__item--remove .admin-photo-carousel__badge {
+  background: rgba(127, 29, 29, 0.9);
 }
 
 .admin-photo-carousel__nav {

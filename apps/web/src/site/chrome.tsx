@@ -118,6 +118,9 @@ export function SiteHeader({
               initials={initials}
               label={avatarLabel}
               avatarUrl={avatarUrl}
+              personalLinks={[
+                { id: 'okra-submissions', label: 'My okra submissions', href: '/okra/submissions' },
+              ]}
               appLinks={[
                 { id: 'grn', label: 'Good Roots Network', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
                 ...(authSession.user.isAdmin

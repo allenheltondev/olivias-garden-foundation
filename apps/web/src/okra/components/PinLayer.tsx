@@ -12,6 +12,8 @@ export interface PinData {
   story_text: string | null;
   country: string | null;
   photo_urls: string[];
+  edited?: boolean;
+  edited_at?: string | null;
 }
 
 export interface PinLayerProps {

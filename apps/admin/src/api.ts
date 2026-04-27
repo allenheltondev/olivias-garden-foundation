@@ -29,9 +29,25 @@ export interface OkraSubmission {
   story_text: string | null;
   raw_location_text: string | null;
   privacy_mode: string;
+  display_lat: number | null;
+  display_lng: number | null;
   status: string;
   created_at: string;
   photos: string[];
+  photo_details?: {
+    id: string;
+    url: string;
+    review_status: string;
+    edit_action: 'add' | 'remove' | null;
+  }[];
+  review_kind?: 'submission' | 'edit';
+  edit_id?: string | null;
+  current_contributor_name?: string | null;
+  current_story_text?: string | null;
+  current_raw_location_text?: string | null;
+  current_privacy_mode?: string | null;
+  current_display_lat?: number | null;
+  current_display_lng?: number | null;
 }
 
 export interface SeedRequestQueueItem {
@@ -223,12 +239,14 @@ export async function listOkraReviewQueue(accessToken: string): Promise<OkraRevi
   };
 }
 
+export type OkraDenialReason = 'spam' | 'invalid_location' | 'inappropriate' | 'other';
+
 export async function reviewOkraSubmission(
   accessToken: string,
   submissionId: string,
   payload:
-    | { status: 'approved'; review_notes?: string }
-    | { status: 'denied'; reason: 'spam' | 'invalid_location' | 'inappropriate' | 'other'; review_notes?: string }
+    | { status: 'approved'; review_notes?: string; target_edit_id?: string }
+    | { status: 'denied'; reason: OkraDenialReason; review_notes?: string; target_edit_id?: string }
 ): Promise<void> {
   await requestJson(
     `${getOkraAdminApiBaseUrl()}/submissions/${submissionId}/statuses`,

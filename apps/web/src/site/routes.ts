@@ -98,6 +98,13 @@ export const routes: AppRoute[] = [
     allowIndex: false,
   },
   {
+    path: '/okra/submissions',
+    label: 'My okra submissions',
+    title: 'Your okra submissions',
+    description: 'Review and edit okra submissions tied to your account.',
+    allowIndex: false,
+  },
+  {
     path: '/contact',
     label: 'Contact',
     showInFooter: true,

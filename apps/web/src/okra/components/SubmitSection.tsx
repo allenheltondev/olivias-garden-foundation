@@ -4,6 +4,8 @@ export interface SubmitSectionProps {
   missingFields: string[];
   submitError: string | null;
   onSubmit: () => void;
+  submitLabel?: string;
+  submittingLabel?: string;
 }
 
 const styles = {
@@ -70,6 +72,8 @@ export function SubmitSection({
   missingFields,
   submitError,
   onSubmit,
+  submitLabel = 'Submit your garden',
+  submittingLabel = 'Submitting...',
 }: SubmitSectionProps) {
   const isDisabled = !canSubmit || isSubmitting;
   const feedbackId = 'submit-feedback';
@@ -100,7 +104,7 @@ export function SubmitSection({
         style={isDisabled ? styles.buttonDisabled : styles.buttonEnabled}
         aria-describedby={feedbackId}
       >
-        {isSubmitting ? 'Submitting…' : 'Submit your garden'}
+        {isSubmitting ? submittingLabel : submitLabel}
       </button>
     </div>
   );

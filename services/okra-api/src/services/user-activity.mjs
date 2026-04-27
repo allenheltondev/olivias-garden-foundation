@@ -20,7 +20,11 @@ async function listUserSubmissions(client, cognitoSub) {
   const result = await client.query(
     `
       select s.id::text as id, s.status, s.story_text, s.raw_location_text,
-             s.privacy_mode, s.country, s.created_at
+             s.privacy_mode, s.country, s.created_at, s.edited_at, s.edit_count,
+             exists (
+               select 1 from submission_edits se
+                where se.submission_id = s.id and se.status = 'pending_review'
+             ) as has_pending_edit
         from submissions s
        where s.contributor_cognito_sub = $1
        order by s.created_at desc
@@ -38,6 +42,16 @@ async function listUserSubmissions(client, cognitoSub) {
           from submission_photos
          where submission_id = any($1::uuid[])
            and status = 'ready'
+           and removed_at is null
+           and review_status = 'approved'
+           and not exists (
+             select 1
+               from submission_edit_photos sep
+               join submission_edits se on se.id = sep.edit_id
+              where sep.photo_id = submission_photos.id
+                and sep.action = 'add'
+                and se.status <> 'approved'
+           )
          order by submission_id, created_at asc
       `,
       [ids]
@@ -59,6 +73,9 @@ async function listUserSubmissions(client, cognitoSub) {
     privacyMode: row.privacy_mode,
     country: row.country,
     createdAt: row.created_at,
+    editedAt: row.edited_at,
+    editCount: row.edit_count ?? 0,
+    hasPendingEdit: row.has_pending_edit,
     photoUrls: photoMap[row.id] ?? []
   }));
 }

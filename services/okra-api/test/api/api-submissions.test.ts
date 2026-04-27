@@ -9,11 +9,13 @@ const mockClient = {
 const {
   mockEnqueuePhotoProcessing,
   mockResolveOptionalContributor,
-  mockPublishSubmissionCreatedEvent
+  mockPublishSubmissionCreatedEvent,
+  mockPublishSubmissionEditSubmittedEvent
 } = vi.hoisted(() => ({
   mockEnqueuePhotoProcessing: vi.fn(),
   mockResolveOptionalContributor: vi.fn(),
-  mockPublishSubmissionCreatedEvent: vi.fn()
+  mockPublishSubmissionCreatedEvent: vi.fn(),
+  mockPublishSubmissionEditSubmittedEvent: vi.fn()
 }));
 
 vi.mock('../../scripts/db-client.mjs', () => ({
@@ -25,7 +27,8 @@ vi.mock('../../src/services/photo-processing-queue.mjs', () => ({
 }));
 
 vi.mock('../../src/services/submission-notifications.mjs', () => ({
-  publishSubmissionCreatedEvent: mockPublishSubmissionCreatedEvent
+  publishSubmissionCreatedEvent: mockPublishSubmissionCreatedEvent,
+  publishSubmissionEditSubmittedEvent: mockPublishSubmissionEditSubmittedEvent
 }));
 
 vi.mock('../../src/services/auth.mjs', async () => {
@@ -249,5 +252,118 @@ describe('submit endpoint error handling', () => {
     expect(logLine).toContain('"correlationId":"req-submit"');
 
     consoleSpy.mockRestore();
+  });
+});
+
+describe('edit endpoint', () => {
+  it('submits an approved contributor edit for review and queues new photos', async () => {
+    mockResolveOptionalContributor.mockResolvedValue({
+      ok: true,
+      contributor: {
+        sub: 'user-123',
+        email: 'okra@goodroots.test',
+        name: 'Okra Grower'
+      }
+    });
+
+    mockClient.query.mockImplementation((text) => {
+      const sql = String(text);
+      if (text === 'begin' || text === 'commit' || text === 'rollback') {
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      if (sql.includes('from submissions') && sql.includes('for update')) {
+        return Promise.resolve({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440010', status: 'approved' }], rowCount: 1 });
+      }
+      if (sql.includes('select id') && sql.includes('client_edit_key')) {
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      if (sql.includes('from submission_photos') && sql.includes('removed_at is null')) {
+        return Promise.resolve({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440011' }], rowCount: 1 });
+      }
+      if (sql.includes('update submission_photos') && sql.includes('submission_id is null')) {
+        return Promise.resolve({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440012' }], rowCount: 1 });
+      }
+      if (sql.includes('update submission_edits') && sql.includes('Superseded')) {
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      if (sql.includes('insert into submission_edits')) {
+        return Promise.resolve({
+          rows: [{
+            id: '550e8400-e29b-41d4-a716-446655440099',
+            status: 'pending_review',
+            created_at: '2026-04-27T12:00:00.000Z'
+          }],
+          rowCount: 1
+        });
+      }
+      if (sql.includes('insert into submission_edit_photos')) {
+        return Promise.resolve({ rows: [], rowCount: 1 });
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    });
+
+    const res = await handler(
+      makeRestApiEvent(
+        '/me/submissions/550e8400-e29b-41d4-a716-446655440010',
+        'PATCH',
+        JSON.stringify({
+          contributorName: 'Edited Grower',
+          storyText: 'Edited story',
+          rawLocationText: 'McKinney, TX',
+          displayLat: 33.1972,
+          displayLng: -96.6398,
+          privacyMode: 'city',
+          photoIds: ['550e8400-e29b-41d4-a716-446655440012'],
+          removePhotoIds: [],
+          editClientKey: 'client-key-1'
+        }),
+        { authorization: 'Bearer test-token' }
+      )
+    );
+
+    expect(res.statusCode).toBe(202);
+    const body = JSON.parse(String(res.body));
+    expect(body.editId).toBe('550e8400-e29b-41d4-a716-446655440099');
+    expect(mockEnqueuePhotoProcessing).toHaveBeenCalledWith(['550e8400-e29b-41d4-a716-446655440012']);
+    expect(mockPublishSubmissionEditSubmittedEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        submissionId: '550e8400-e29b-41d4-a716-446655440010',
+        editId: '550e8400-e29b-41d4-a716-446655440099'
+      }),
+      'req-submit'
+    );
+  });
+
+  it('returns 404 when the contributor does not own the submission', async () => {
+    mockResolveOptionalContributor.mockResolvedValue({
+      ok: true,
+      contributor: { sub: 'user-123', email: 'okra@goodroots.test', name: 'Okra Grower' }
+    });
+
+    mockClient.query.mockImplementation((text) => {
+      if (text === 'begin' || text === 'rollback') {
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      if (String(text).includes('from submissions') && String(text).includes('for update')) {
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    });
+
+    const res = await handler(
+      makeRestApiEvent(
+        '/me/submissions/550e8400-e29b-41d4-a716-446655440010',
+        'PATCH',
+        JSON.stringify({
+          rawLocationText: 'McKinney, TX',
+          displayLat: 33.1972,
+          displayLng: -96.6398,
+          photoIds: []
+        }),
+        { authorization: 'Bearer test-token' }
+      )
+    );
+
+    expect(res.statusCode).toBe(404);
   });
 });

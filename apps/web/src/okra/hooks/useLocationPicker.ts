@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 export interface LocationData {
   rawLocationText: string;
@@ -30,10 +30,14 @@ function isValidLng(lng: number): boolean {
   return Number.isFinite(lng) && lng >= -180 && lng <= 180;
 }
 
-export function useLocationPicker(): UseLocationPickerReturn {
-  const [location, setLocation] = useState<LocationData>(INITIAL_LOCATION);
+export function useLocationPicker(initialLocation: LocationData = INITIAL_LOCATION): UseLocationPickerReturn {
+  const [location, setLocation] = useState<LocationData>(initialLocation);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+
+  useEffect(() => {
+    setLocation(initialLocation);
+  }, [initialLocation]);
 
   const setRawText = useCallback((text: string) => {
     setLocation((prev) => ({ ...prev, rawLocationText: text }));
@@ -84,10 +88,10 @@ export function useLocationPicker(): UseLocationPickerReturn {
   }, []);
 
   const reset = useCallback(() => {
-    setLocation(INITIAL_LOCATION);
+    setLocation(initialLocation);
     setGeocodeError(null);
     setIsGeocoding(false);
-  }, []);
+  }, [initialLocation]);
 
   return {
     location,
