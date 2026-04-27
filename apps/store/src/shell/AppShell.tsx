@@ -50,7 +50,6 @@ function CartIndicator() {
 const footerLinks = [
   { id: 'home', label: 'Foundation home', href: `${foundationHomeUrl}/` },
   { id: 'okra', label: 'Okra Project', href: `${foundationHomeUrl}/okra` },
-  { id: 'grn', label: 'Good Roots Network', href: grnUrl },
 ];
 
 const foundationHeaderNav = [
@@ -79,9 +78,9 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
     <div className="og-app-shell store-app-shell">
       <SiteHeader
         brandLogoSrc={foundationLogo}
-        brandLogoAlt=""
+        brandLogoAlt="Olivia's Garden Foundation"
         brandEyebrow="Olivia's Garden Foundation"
-        brandTitle="Store"
+        brandTitle="merch store"
         brandHref="/"
         navItems={foundationHeaderNav}
         utility={(
