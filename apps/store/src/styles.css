@@ -192,14 +192,29 @@ body {
 .store-product-detail__media {
   padding: 0;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
+  display: grid;
+  gap: 0.5rem;
 }
 
-.store-product-detail__media img {
+.store-product-detail__media > img {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   display: block;
+}
+
+.store-product-detail__thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 0.5rem;
+  padding: 0 0.5rem 0.5rem;
+}
+
+.store-product-detail__thumbs img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  object-fit: cover;
 }
 
 .store-product-detail__buy {

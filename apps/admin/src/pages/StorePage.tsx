@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -9,10 +9,13 @@ import {
   Textarea,
 } from '@olivias/ui';
 import {
+  archiveStoreProduct,
   createStoreProduct,
   listStoreProducts,
+  uploadStoreProductImage,
   updateStoreProduct,
   type StoreProduct,
+  type StoreProductImage,
   type UpsertStoreProductRequest,
 } from '../api';
 import type { AdminSession } from '../auth/session';
@@ -61,11 +64,24 @@ const fulfillmentOptions = [
   { value: 'pickup', label: 'Pickup' },
 ];
 
+const MAX_PRODUCT_IMAGES = 8;
+const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
+
+type ProductImageFormItem = Pick<
+  StoreProductImage,
+  'id' | 'status' | 'url' | 'thumbnail_url' | 'sort_order' | 'alt_text' | 'processing_error'
+> & {
+  localPreviewUrl?: string;
+};
+
 export function StorePage({ session }: StorePageProps) {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [productForm, setProductForm] = useState<UpsertStoreProductRequest>(emptyProductForm);
+  const [productImages, setProductImages] = useState<ProductImageFormItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,9 +101,40 @@ export function StorePage({ session }: StorePageProps) {
     };
   }, [session.accessToken]);
 
+  useEffect(() => {
+    if (!activeProductId || !productImages.some((image) => image.status === 'processing')) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      listStoreProducts(session.accessToken)
+        .then((next) => {
+          setProducts(next);
+          const activeProduct = next.find((product) => product.id === activeProductId);
+          if (activeProduct) {
+            setProductImages(
+              activeProduct.images.map((image) => ({
+                id: image.id,
+                status: image.status,
+                url: image.url,
+                thumbnail_url: image.thumbnail_url,
+                sort_order: image.sort_order,
+                alt_text: image.alt_text,
+                processing_error: image.processing_error,
+              }))
+            );
+          }
+        })
+        .catch((err: Error) => setError(err.message || 'Unable to refresh product images.'));
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [activeProductId, productImages, session.accessToken]);
+
   const startCreate = () => {
     setActiveProductId(null);
     setProductForm(emptyProductForm);
+    setProductImages([]);
   };
 
   const startEdit = (product: StoreProduct) => {
@@ -107,8 +154,73 @@ export function StorePage({ session }: StorePageProps) {
       statement_descriptor: product.statement_descriptor,
       nonprofit_program: product.nonprofit_program,
       impact_summary: product.impact_summary,
-      image_url: product.image_url,
+      image_url: product.legacy_image_url,
       metadata: product.metadata,
+    });
+    setProductImages(
+      product.images.map((image) => ({
+        id: image.id,
+        status: image.status,
+        url: image.url,
+        thumbnail_url: image.thumbnail_url,
+        sort_order: image.sort_order,
+        alt_text: image.alt_text,
+        processing_error: image.processing_error,
+      }))
+    );
+  };
+
+  const uploadImages = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length === 0) return;
+
+    setIsUploadingImages(true);
+    setError(null);
+
+    try {
+      if (productImages.length + files.length > MAX_PRODUCT_IMAGES) {
+        throw new Error(`Products can have up to ${MAX_PRODUCT_IMAGES} uploaded images.`);
+      }
+      for (const file of files) {
+        if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+          throw new Error('Product images must be 5 MB or smaller.');
+        }
+        const localPreviewUrl = URL.createObjectURL(file);
+        const uploaded = await uploadStoreProductImage(session.accessToken, file);
+        setProductImages((current) => [
+          ...current,
+          {
+            id: uploaded.imageId,
+            status: uploaded.status,
+            url: null,
+            thumbnail_url: null,
+            sort_order: current.length,
+            alt_text: '',
+            processing_error: null,
+            localPreviewUrl,
+          },
+        ]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to upload product image.');
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const removeImage = (imageId: string) => {
+    setProductImages((current) => current.filter((image) => image.id !== imageId));
+  };
+
+  const moveImage = (imageId: string, direction: -1 | 1) => {
+    setProductImages((current) => {
+      const index = current.findIndex((image) => image.id === imageId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next.map((image, sort_order) => ({ ...image, sort_order }));
     });
   };
 
@@ -126,6 +238,11 @@ export function StorePage({ session }: StorePageProps) {
         nonprofit_program: productForm.nonprofit_program || null,
         impact_summary: productForm.impact_summary || null,
         image_url: productForm.image_url || null,
+        images: productImages.map((image, index) => ({
+          id: image.id,
+          sort_order: index,
+          alt_text: image.alt_text || null,
+        })),
       };
 
       if (activeProductId) {
@@ -141,6 +258,22 @@ export function StorePage({ session }: StorePageProps) {
       setError(err instanceof Error ? err.message : 'Unable to save store product.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const archiveProduct = async () => {
+    if (!activeProductId) return;
+    setIsArchiving(true);
+    setError(null);
+    try {
+      await archiveStoreProduct(session.accessToken, activeProductId);
+      const next = await listStoreProducts(session.accessToken);
+      setProducts(next);
+      startCreate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to archive store product.');
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -274,12 +407,91 @@ export function StorePage({ session }: StorePageProps) {
             />
             <Input
               type="url"
-              label="Image URL"
+              label="Fallback image URL"
               value={productForm.image_url || ''}
               onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))}
             />
+            <div className="admin-store-images">
+              <div className="admin-store-images__header">
+                <div>
+                  <p className="og-section-label">Product images</p>
+                  <h4>Uploaded images</h4>
+                </div>
+                <label className="admin-store-images__upload">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={uploadImages}
+                    disabled={isUploadingImages || isSaving}
+                  />
+                  {isUploadingImages ? 'Uploading...' : 'Upload images'}
+                </label>
+              </div>
+              {productImages.length === 0 ? (
+                <p className="admin-store-images__empty">No uploaded images yet.</p>
+              ) : (
+                <div className="admin-store-images__grid">
+                  {productImages.map((image) => (
+                    <div className="admin-store-images__item" key={image.id}>
+                      {image.thumbnail_url || image.url || image.localPreviewUrl ? (
+                        <img
+                          src={image.thumbnail_url || image.url || image.localPreviewUrl}
+                          alt={image.alt_text || ''}
+                        />
+                      ) : (
+                        <div className="admin-store-images__placeholder" />
+                      )}
+                      <div className="admin-store-images__meta">
+                        <small>{image.status}</small>
+                        {image.processing_error ? <small>{image.processing_error}</small> : null}
+                      </div>
+                      <Input
+                        label="Alt text"
+                        value={image.alt_text || ''}
+                        onChange={(event) =>
+                          setProductImages((current) =>
+                            current.map((item) =>
+                              item.id === image.id ? { ...item, alt_text: event.target.value } : item
+                            )
+                          )
+                        }
+                      />
+                      <div className="admin-store-images__actions">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => moveImage(image.id, -1)}
+                          disabled={productImages[0]?.id === image.id}
+                        >
+                          Up
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => moveImage(image.id, 1)}
+                          disabled={productImages[productImages.length - 1]?.id === image.id}
+                        >
+                          Down
+                        </Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => removeImage(image.id)}>
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="admin-store-form__actions">
-              <Button type="submit" loading={isSaving} disabled={isSaving}>
+              {activeProductId ? (
+                <Button type="button" variant="secondary" loading={isArchiving} disabled={isSaving || isArchiving} onClick={archiveProduct}>
+                  Archive product
+                </Button>
+              ) : null}
+              <Button type="submit" loading={isSaving} disabled={isSaving || isUploadingImages}>
                 {isSaving ? 'Saving…' : activeProductId ? 'Update product' : 'Create product'}
               </Button>
             </div>

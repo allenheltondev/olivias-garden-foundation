@@ -3,6 +3,11 @@ import { createHandler, getApiArnPattern, isPublicRoute, verifyAdminToken } from
 import { extractAuthContext, requireAdmin } from '../src/services/auth.mjs';
 import { mapApiError, normalizeRoutePath } from '../src/services/http.mjs';
 import { StripeStoreClient, validatePayload } from '../src/services/store.mjs';
+import {
+  completeStoreProductImageUpload,
+  createStoreProductImageUploadIntent,
+  normalizeProductImageInputs
+} from '../src/services/store-images.mjs';
 
 async function testAuthorizer() {
   assert.equal(
@@ -87,6 +92,7 @@ async function testStoreHelpers() {
     nonprofit_program: 'Seed outreach',
     impact_summary: 'Funds seed distribution',
     image_url: null,
+    images: [],
     metadata: { campaign: 'okra' }
   };
 
@@ -113,9 +119,80 @@ async function testStoreHelpers() {
 
   assert.equal(productId, 'prod_123');
   assert.equal(priceId, 'price_123');
+
+  await stripe.updateProductImages(productId, [
+    'https://assets.example.test/store-products/1/display.webp',
+    'https://assets.example.test/store-products/2/display.webp'
+  ]);
+
+  const imageBody = requests[2].body;
+  assert.equal(imageBody.get('images[0]'), 'https://assets.example.test/store-products/1/display.webp');
+  assert.equal(imageBody.get('images[1]'), 'https://assets.example.test/store-products/2/display.webp');
+}
+
+async function testStoreImageHelpers() {
+  process.env.MEDIA_BUCKET_NAME = 'assets-test-bucket';
+  const event = {
+    headers: {},
+    requestContext: {
+      authorizer: {
+        userId: 'admin-user-1',
+        isAdmin: 'true'
+      }
+    }
+  };
+
+  assert.deepEqual(
+    normalizeProductImageInputs([{ id: '00000000-0000-4000-8000-000000000001', alt_text: 'Okra seeds' }]),
+    [{ id: '00000000-0000-4000-8000-000000000001', sort_order: 0, alt_text: 'Okra seeds' }]
+  );
+
+  const queries = [];
+  const intent = await createStoreProductImageUploadIntent(
+    event,
+    { contentType: 'image/jpeg', contentLength: 1234 },
+    {
+      db: {
+        async query(sql, params) {
+          queries.push({ sql, params });
+          return { rows: [], rowCount: 1 };
+        }
+      },
+      async signUploadUrl(command, expiresIn) {
+        assert.equal(command.input.ContentType, 'image/jpeg');
+        assert.equal(command.input.ContentLength, 1234);
+        assert.equal(expiresIn, 900);
+        return 'https://upload.example.test/product-image';
+      }
+    }
+  );
+
+  assert.equal(intent.method, 'PUT');
+  assert.equal(intent.uploadUrl, 'https://upload.example.test/product-image');
+  assert.equal(queries.length, 1);
+
+  let enqueuedImageId = null;
+  const complete = await completeStoreProductImageUpload(
+    event,
+    '00000000-0000-4000-8000-000000000001',
+    {
+      db: {
+        async query() {
+          return { rows: [{ id: '00000000-0000-4000-8000-000000000001' }], rowCount: 1 };
+        }
+      },
+      async enqueue(imageId) {
+        enqueuedImageId = imageId;
+      }
+    }
+  );
+
+  assert.equal(complete.status, 'processing');
+  assert.equal(enqueuedImageId, '00000000-0000-4000-8000-000000000001');
 }
 
 await testAuthorizer();
 testAuthAndHttpHelpers();
 await testStoreHelpers();
+await testStoreImageHelpers();
 console.log('admin api tests passed');

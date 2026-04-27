@@ -41,6 +41,9 @@ const STORE_PRODUCT_FIELDS = [
   'nonprofit_program',
   'impact_summary',
   'image_url',
+  'legacy_image_url',
+  'image_urls',
+  'images',
   'metadata',
   'stripe_product_id',
   'stripe_price_id',
@@ -319,6 +322,7 @@ async function run() {
         nonprofit_program: null,
         impact_summary: null,
         image_url: null,
+        images: [],
         metadata: { integrationRun: runPrefix }
       };
 

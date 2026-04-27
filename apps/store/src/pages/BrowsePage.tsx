@@ -55,8 +55,8 @@ export function BrowsePage() {
         {(products ?? []).map((product) => (
           <Card key={product.id} className="store-product-card">
             <Link to={`/products/${product.slug}`} className="store-product-card__media">
-              {product.image_url ? (
-                <img src={product.image_url} alt="" loading="lazy" />
+              {product.images[0]?.thumbnail_url || product.image_url ? (
+                <img src={product.images[0]?.thumbnail_url || product.image_url || ''} alt="" loading="lazy" />
               ) : (
                 <div className="store-product-card__placeholder" aria-hidden="true" />
               )}

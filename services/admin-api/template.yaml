@@ -52,7 +52,6 @@ Globals:
         - !Sub "'${DomainProtocol}://admin.${DomainName}'"
         - "'*'"
   Function:
-    Architectures: [arm64]
     Tracing: Disabled
     Timeout: 10
     MemorySize: 1024
@@ -248,6 +247,7 @@ Resources:
       CodeUri: .
       Handler: src/auth/authorizer.handler
       Runtime: nodejs24.x
+      Architectures: [arm64]
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
@@ -267,8 +267,21 @@ Resources:
       CodeUri: .
       Handler: src/handlers/api.handler
       Runtime: nodejs24.x
+      Architectures: [arm64]
       Policies:
         - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/store-products/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
@@ -277,6 +290,9 @@ Resources:
             - !Sub "${DomainProtocol}://admin.${DomainName}"
             - "*"
           STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          MEDIA_BUCKET_NAME: !ImportValue OGF-AssetsBucketName
+          MEDIA_CDN_DOMAIN: !ImportValue OGF-AssetsPublicDomainName
+          STORE_IMAGE_PROCESSING_EVENT_BUS_NAME: default
           NODE_OPTIONS: --enable-source-maps
       Events:
         ApiProxy:
@@ -291,6 +307,90 @@ Resources:
             RestApiId: !Ref Api
             Path: /
             Method: ANY
+
+  StoreImageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - src/handlers/store-image-processor.mjs
+        External:
+          - '@aws-sdk/*'
+          - '@napi-rs/canvas'
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/store-image-processor.handler
+      Runtime: nodejs24.x
+      Timeout: 60
+      MemorySize: 1024
+      Architectures: [x86_64]
+      Layers:
+        - arn:aws:lambda:us-east-1:205979422636:layer:napi-rs-canvas:888
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          MEDIA_CDN_DOMAIN: !ImportValue OGF-AssetsPublicDomainName
+          NODE_OPTIONS: --enable-source-maps
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/store-products/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+      Events:
+        StoreProductImageClaimedEvent:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - ogf.admin-api.store-images
+              detail-type:
+                - store_product_image.claimed
+
+  StoreImageCleanupFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - src/handlers/store-image-cleanup.mjs
+        External:
+          - '@aws-sdk/*'
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/store-image-cleanup.handler
+      Runtime: nodejs24.x
+      Timeout: 60
+      MemorySize: 512
+      Architectures: [arm64]
+      Environment:
+        Variables:
+          DATABASE_URL: !Ref DatabaseUrl
+          NODE_OPTIONS: --enable-source-maps
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:DeleteObject
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/store-products/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+      Events:
+        DailyStoreImageCleanup:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
 
 Outputs:
   ApiUrl:

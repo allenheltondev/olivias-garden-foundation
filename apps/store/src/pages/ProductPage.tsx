@@ -66,6 +66,8 @@ export function ProductPage() {
     cart.add(product, quantity);
     navigate('/cart');
   };
+  const productImages = product.images.filter((image) => image.url);
+  const primaryImage = productImages[0]?.url ?? product.image_url;
 
   return (
     <section className="store-section store-product-detail">
@@ -77,8 +79,17 @@ export function ProductPage() {
 
       <div className="store-product-detail__layout">
         <Card className="store-product-detail__media">
-          {product.image_url ? (
-            <img src={product.image_url} alt="" />
+          {primaryImage ? (
+            <>
+              <img src={primaryImage} alt={productImages[0]?.alt_text || ''} />
+              {productImages.length > 1 ? (
+                <div className="store-product-detail__thumbs" aria-label="Product images">
+                  {productImages.slice(1).map((image) => (
+                    <img key={image.id} src={image.thumbnail_url || image.url || ''} alt={image.alt_text || ''} />
+                  ))}
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="store-product-card__placeholder" aria-hidden="true" />
           )}
