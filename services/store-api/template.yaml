@@ -103,46 +103,11 @@ Resources:
           - DeployFrontendCustomDomain
           - !Sub "'${DomainProtocol}://store.${DomainName}'"
           - "'*'"
-      Auth:
-        DefaultAuthorizer: LambdaAuthorizer
-        AddDefaultAuthorizerToCorsPreflight: false
-        Authorizers:
-          LambdaAuthorizer:
-            FunctionPayloadType: REQUEST
-            FunctionArn: !GetAtt LambdaAuthorizerFunction.Arn
-            # $context.path is set on every request, so this identity source
-            # is always satisfied and the authorizer is always invoked —
-            # including for anonymous public routes (GET /products,
-            # POST /checkout, GET /orders/by-session/:id) where the caller
-            # has no Authorization header. ReauthorizeEvery: 0 disables
-            # caching so an anonymous Allow on /products can't get reused
-            # for an authenticated request to /orders.
-            Identity:
-              Context:
-                - path
-              ReauthorizeEvery: 0
-      # Attach CORS headers to gateway-generated error responses too, so that
-      # auth/policy denials still produce a usable error in the browser
-      # rather than an opaque CORS failure.
-      GatewayResponses:
-        DEFAULT_4XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: !If
-                - DeployFrontendCustomDomain
-                - !Sub "'${DomainProtocol}://store.${DomainName}'"
-                - "'*'"
-              Access-Control-Allow-Headers: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
-        DEFAULT_5XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: !If
-                - DeployFrontendCustomDomain
-                - !Sub "'${DomainProtocol}://store.${DomainName}'"
-                - "'*'"
-              Access-Control-Allow-Headers: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      # The store mixes anonymous (browse, checkout, lookup-by-session) and
+      # authenticated (My orders, admin) routes, so following the web-api
+      # pattern: no API-level authorizer. Each handler resolves the bearer
+      # token in-process via resolveOptionalAuthContext / requireUserContext
+      # / requireAdminContext from src/services/auth.mjs.
       MethodSettings:
         - MetricsEnabled: true
           ResourcePath: "/*"
@@ -281,25 +246,6 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
         EvaluateTargetHealth: false
 
-  LambdaAuthorizerFunction:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        <<: *esbuild-properties
-        EntryPoints:
-          - src/auth/authorizer.mjs
-    Properties:
-      CodeUri: .
-      Handler: src/auth/authorizer.handler
-      Runtime: nodejs24.x
-      Policies:
-        - AWSLambdaBasicExecutionRole
-      Environment:
-        Variables:
-          USER_POOL_ID: !ImportValue OGF-UserPoolId
-          USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
-
   ApiFunction:
     Type: AWS::Serverless::Function
     Metadata:
@@ -323,6 +269,8 @@ Resources:
             - "*"
           STRIPE_SECRET_KEY: !Ref StripeSecretKey
           ALLOWED_CHECKOUT_REDIRECT_ORIGINS: !Ref AllowedCheckoutRedirectOrigins
+          OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
+          OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
           NODE_OPTIONS: --enable-source-maps
       Events:
         ApiProxy:

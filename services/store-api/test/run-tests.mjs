@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
 import {
-  createHandler,
-  getApiArnPattern,
-  isAnonymousRoute,
-  normalizePath
-} from '../src/auth/authorizer.mjs';
-import { extractAuthContext, requireAdmin, requireUser } from '../src/services/auth.mjs';
+  requireAdminContext,
+  requireUserContext,
+  resolveOptionalAuthContext
+} from '../src/services/auth.mjs';
 import { mapApiError, normalizeRoutePath, parseJsonBody, readRawBody } from '../src/services/http.mjs';
 import {
   createCheckoutSession,
@@ -15,102 +13,86 @@ import {
 } from '../src/services/orders.mjs';
 import { StripeClient } from '../src/services/stripe.mjs';
 
-function testAnonymousRoutes() {
-  assert.equal(isAnonymousRoute('GET', '/products'), true);
-  assert.equal(isAnonymousRoute('GET', '/api/products'), true);
-  assert.equal(isAnonymousRoute('GET', '/products/okra-pack'), true);
-  assert.equal(isAnonymousRoute('GET', '/orders/by-session/cs_test_123'), true);
-  assert.equal(isAnonymousRoute('POST', '/checkout'), true);
-  // /webhook used to be anonymous; events now arrive via EventBridge.
-  assert.equal(isAnonymousRoute('POST', '/webhook'), false);
-  assert.equal(isAnonymousRoute('OPTIONS', '/orders'), true);
-  assert.equal(isAnonymousRoute('GET', '/orders'), false);
-  assert.equal(isAnonymousRoute('GET', '/admin/orders'), false);
+const verifyJwtAsUser = async () => ({
+  sub: 'user-123',
+  email: 'alice@example.com',
+  'cognito:groups': ['user']
+});
+const verifyJwtAsAdmin = async () => ({
+  sub: 'admin-1',
+  email: 'admin@example.com',
+  'cognito:groups': ['Admin']
+});
+const verifyJwtRejects = async () => {
+  throw new Error('jwt verification failed');
+};
 
-  assert.equal(normalizePath('/api/products'), '/products');
-  assert.equal(normalizePath('/api'), '/');
+async function testResolveOptionalAuthContextAnonymous() {
+  const ctx = await resolveOptionalAuthContext({});
+  assert.equal(ctx, null, 'no headers => null context');
 }
 
-async function testAuthorizer() {
-  assert.equal(
-    getApiArnPattern('arn:aws:execute-api:us-east-1:123:apiId/api/GET/products'),
-    'arn:aws:execute-api:us-east-1:123:apiId/api/*/*'
+async function testResolveOptionalAuthContextUser() {
+  const ctx = await resolveOptionalAuthContext(
+    { headers: { Authorization: 'Bearer signed.jwt' } },
+    { verifyJwt: verifyJwtAsUser }
   );
-
-  // Anonymous request to a public route should be allowed.
-  const anonHandler = createHandler({
-    userPoolId: 'us-east-1_pool',
-    userPoolClientId: 'client-id',
-    verifyJwt: async () => {
-      throw new Error('should not be called');
-    }
-  });
-  const anonResponse = await anonHandler({
-    httpMethod: 'GET',
-    path: '/products',
-    methodArn: 'arn:aws:execute-api:us-east-1:123:apiId/api/GET/products',
-    headers: {}
-  });
-  assert.equal(anonResponse.policyDocument.Statement[0].Effect, 'Allow');
-  assert.equal(anonResponse.context.userId, 'anonymous');
-
-  // Anonymous request to a protected route should be denied.
-  const denied = await anonHandler({
-    httpMethod: 'GET',
-    path: '/orders',
-    methodArn: 'arn:aws:execute-api:us-east-1:123:apiId/api/GET/orders',
-    headers: {}
-  });
-  assert.equal(denied.policyDocument.Statement[0].Effect, 'Deny');
-
-  // Valid token to a protected route should attach userId/isAdmin.
-  const userHandler = createHandler({
-    userPoolId: 'us-east-1_pool',
-    userPoolClientId: 'client-id',
-    verifyJwt: async () => ({ sub: 'user-123', 'cognito:groups': ['user'], email: 'a@b.com' })
-  });
-  const userResponse = await userHandler({
-    httpMethod: 'GET',
-    path: '/orders',
-    methodArn: 'arn:aws:execute-api:us-east-1:123:apiId/api/GET/orders',
-    headers: { Authorization: 'Bearer signed.jwt.token' }
-  });
-  assert.equal(userResponse.policyDocument.Statement[0].Effect, 'Allow');
-  assert.equal(userResponse.context.userId, 'user-123');
-  assert.equal(userResponse.context.isAdmin, 'false');
-
-  const adminHandler = createHandler({
-    userPoolId: 'us-east-1_pool',
-    userPoolClientId: 'client-id',
-    verifyJwt: async () => ({ sub: 'admin-1', 'cognito:groups': ['Admin'] })
-  });
-  const adminResponse = await adminHandler({
-    httpMethod: 'GET',
-    path: '/admin/orders',
-    methodArn: 'arn:aws:execute-api:us-east-1:123:apiId/api/GET/admin/orders',
-    headers: { Authorization: 'Bearer signed.jwt.token' }
-  });
-  assert.equal(adminResponse.context.isAdmin, 'true');
+  assert.equal(ctx.userId, 'user-123');
+  assert.equal(ctx.email, 'alice@example.com');
+  assert.equal(ctx.isAdmin, false);
 }
 
-function testAuthHelpers() {
-  const ctx = extractAuthContext({
-    requestContext: {
-      authorizer: { userId: 'user-1', isAdmin: 'false', email: 'a@b.com' }
-    }
-  });
-  assert.equal(ctx.userId, 'user-1');
-  assert.equal(ctx.isAdmin, false);
-  assert.equal(ctx.email, 'a@b.com');
-  assert.doesNotThrow(() => requireUser(ctx));
-  assert.throws(() => requireAdmin(ctx), /Forbidden/);
+async function testResolveOptionalAuthContextAdmin() {
+  const ctx = await resolveOptionalAuthContext(
+    { headers: { Authorization: 'Bearer signed.jwt' } },
+    { verifyJwt: verifyJwtAsAdmin }
+  );
+  assert.equal(ctx.isAdmin, true);
+}
 
-  const anonCtx = extractAuthContext({
-    requestContext: { authorizer: { userId: 'anonymous' } }
-  });
-  assert.equal(anonCtx.userId, null);
-  assert.throws(() => requireUser(anonCtx), /Authentication required/);
+async function testResolveOptionalAuthContextRejectsInvalid() {
+  await assert.rejects(
+    () =>
+      resolveOptionalAuthContext(
+        { headers: { Authorization: 'Bearer bad.jwt' } },
+        { verifyJwt: verifyJwtRejects }
+      ),
+    /Invalid access token/
+  );
+}
 
+async function testResolveOptionalAuthContextRejectsMalformedHeader() {
+  await assert.rejects(
+    () => resolveOptionalAuthContext({ headers: { Authorization: 'NotBearer xxx' } }),
+    /authorization header format/
+  );
+}
+
+async function testRequireUserContextRejectsAnonymous() {
+  await assert.rejects(() => requireUserContext({}), /Authentication required/);
+}
+
+async function testRequireAdminContextRejectsNonAdmin() {
+  await assert.rejects(
+    () =>
+      requireAdminContext(
+        { headers: { Authorization: 'Bearer x' } },
+        { verifyJwt: verifyJwtAsUser }
+      ),
+    /Forbidden/
+  );
+}
+
+async function testRequireAdminContextAcceptsAdmin() {
+  const ctx = await requireAdminContext(
+    { headers: { Authorization: 'Bearer x' } },
+    { verifyJwt: verifyJwtAsAdmin }
+  );
+  assert.equal(ctx.isAdmin, true);
+  assert.equal(ctx.userId, 'admin-1');
+}
+
+function testHttpHelpers() {
   assert.equal(normalizeRoutePath('/api/products'), '/products');
   assert.equal(mapApiError(new Error('Product not found'), 'cid').statusCode, 404);
   assert.equal(mapApiError(new Error('Cart is empty'), 'cid').statusCode, 400);
@@ -515,7 +497,7 @@ const validCheckoutPayload = {
 };
 
 async function testCheckoutRejectsAttackerControlledSuccessUrl() {
-  const event = { requestContext: { authorizer: {} } };
+  const event = {};
   await assert.rejects(
     () =>
       createCheckoutSession(
@@ -528,7 +510,7 @@ async function testCheckoutRejectsAttackerControlledSuccessUrl() {
 }
 
 async function testCheckoutRejectsAttackerControlledCancelUrl() {
-  const event = { requestContext: { authorizer: {} } };
+  const event = {};
   await assert.rejects(
     () =>
       createCheckoutSession(
@@ -541,7 +523,7 @@ async function testCheckoutRejectsAttackerControlledCancelUrl() {
 }
 
 async function testCheckoutRejectsMalformedRedirectUrl() {
-  const event = { requestContext: { authorizer: {} } };
+  const event = {};
   await assert.rejects(
     () =>
       createCheckoutSession(
@@ -554,7 +536,7 @@ async function testCheckoutRejectsMalformedRedirectUrl() {
 }
 
 async function testCheckoutRejectsNonHttpScheme() {
-  const event = { requestContext: { authorizer: {} } };
+  const event = {};
   await assert.rejects(
     () =>
       createCheckoutSession(
@@ -566,9 +548,15 @@ async function testCheckoutRejectsNonHttpScheme() {
   );
 }
 
-testAnonymousRoutes();
-await testAuthorizer();
-testAuthHelpers();
+await testResolveOptionalAuthContextAnonymous();
+await testResolveOptionalAuthContextUser();
+await testResolveOptionalAuthContextAdmin();
+await testResolveOptionalAuthContextRejectsInvalid();
+await testResolveOptionalAuthContextRejectsMalformedHeader();
+await testRequireUserContextRejectsAnonymous();
+await testRequireAdminContextRejectsNonAdmin();
+await testRequireAdminContextAcceptsAdmin();
+testHttpHelpers();
 await testStripeCheckoutSession();
 await testRecordPaidOrderInfersUserFromEmail();
 await testRecordPaidOrderUsesMetadataUserId();

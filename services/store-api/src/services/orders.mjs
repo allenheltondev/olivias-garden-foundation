@@ -1,5 +1,9 @@
 import * as defaultDb from './db.mjs';
-import { extractAuthContext, requireAdmin, requireUser } from './auth.mjs';
+import {
+  requireAdminContext,
+  requireUserContext,
+  resolveOptionalAuthContext
+} from './auth.mjs';
 import { loadProductsForCheckout } from './products.mjs';
 import { StripeClient } from './stripe.mjs';
 
@@ -149,7 +153,11 @@ export async function createCheckoutSession(event, payload, options = {}) {
   validateCheckoutPayload(payload, {
     allowedRedirectOrigins: options.allowedRedirectOrigins
   });
-  const auth = extractAuthContext(event);
+  const auth = (await resolveOptionalAuthContext(event, options.authOptions)) ?? {
+    userId: null,
+    email: null,
+    isAdmin: false
+  };
 
   const productIds = payload.items.map((item) => item.productId);
   const products = await loadProductsForCheckout(productIds);
@@ -425,9 +433,8 @@ export async function getOrderByStripeSession(sessionId) {
   return order;
 }
 
-export async function listMyOrders(event) {
-  const auth = extractAuthContext(event);
-  requireUser(auth);
+export async function listMyOrders(event, options = {}) {
+  const auth = await requireUserContext(event, options.authOptions);
 
   const result = await query(
     `select ${ORDER_SELECT_COLUMNS}
@@ -440,9 +447,8 @@ export async function listMyOrders(event) {
   return { items: await loadOrdersWithItems(result.rows) };
 }
 
-export async function listAdminOrders(event) {
-  const auth = extractAuthContext(event);
-  requireAdmin(auth);
+export async function listAdminOrders(event, options = {}) {
+  await requireAdminContext(event, options.authOptions);
 
   const result = await query(
     `select ${ORDER_SELECT_COLUMNS}
