@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockResolveOptionalContributor,
   mockCreateSeedRequest,
-  mockNotifySeedRequestSlack,
+  mockPublishSeedRequestCreatedEvent,
   mockEnforceRateLimit,
   mockMakeIdempotent,
   mockRegisterLambdaContext
 } = vi.hoisted(() => ({
   mockResolveOptionalContributor: vi.fn(),
   mockCreateSeedRequest: vi.fn(),
-  mockNotifySeedRequestSlack: vi.fn(),
+  mockPublishSeedRequestCreatedEvent: vi.fn(),
   mockEnforceRateLimit: vi.fn(),
   mockMakeIdempotent: vi.fn((fn: (...args: unknown[]) => unknown) => fn),
   mockRegisterLambdaContext: vi.fn()
@@ -31,7 +31,7 @@ vi.mock('../../src/services/seed-requests.mjs', async () => {
   return {
     ...actual,
     createSeedRequest: mockCreateSeedRequest,
-    notifySeedRequestSlack: mockNotifySeedRequestSlack,
+    publishSeedRequestCreatedEvent: mockPublishSeedRequestCreatedEvent,
     enforceSeedRequestRateLimit: mockEnforceRateLimit
   };
 });
@@ -114,7 +114,7 @@ beforeEach(() => {
     requestId: 'req-uuid-1',
     createdAt: '2026-04-21T12:00:00.000Z'
   });
-  mockNotifySeedRequestSlack.mockResolvedValue(undefined);
+  mockPublishSeedRequestCreatedEvent.mockResolvedValue(undefined);
   mockEnforceRateLimit.mockResolvedValue(undefined);
 });
 
@@ -211,7 +211,7 @@ describe('POST /requests', () => {
     expect(body.requestId).toBe('req-uuid-1');
     expect(mockEnforceRateLimit).toHaveBeenCalledWith('203.0.113.5');
     expect(mockCreateSeedRequest).toHaveBeenCalledOnce();
-    expect(mockNotifySeedRequestSlack).toHaveBeenCalledOnce();
+    expect(mockPublishSeedRequestCreatedEvent).toHaveBeenCalledOnce();
   });
 
   it('registers Lambda context before invoking the idempotent request wrapper', async () => {

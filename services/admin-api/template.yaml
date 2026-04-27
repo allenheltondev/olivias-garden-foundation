@@ -269,9 +269,18 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !ImportValue OGF-ActivityEventsTableArn
+                - !ImportValue OGF-ActivityEventsTableIndexArn
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
+          ACTIVITY_EVENTS_TABLE_NAME: !ImportValue OGF-ActivityEventsTableName
           ORIGIN: !If
             - DeployFrontendCustomDomain
             - !Sub "${DomainProtocol}://admin.${DomainName}"

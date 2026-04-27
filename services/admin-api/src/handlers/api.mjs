@@ -14,6 +14,8 @@ import {
   listPublicProducts,
   updateStoreProduct
 } from '../services/store.mjs';
+import { listActivity } from '../services/activity.mjs';
+import { getRevenueSummary } from '../services/finance.mjs';
 
 const app = new Router();
 const logger = new Logger({ serviceName: 'admin-api', logLevel: 'DEBUG' });
@@ -76,6 +78,52 @@ app.post('/admin/store/products', async ({ event }) => {
     return jsonResponse(201, result, correlationId);
   } catch (error) {
     logger.error('POST /admin/store/products failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/admin/activity', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('GET /admin/activity', event);
+
+  try {
+    const params = event?.queryStringParameters ?? {};
+    const result = await listActivity({
+      cursor: params?.cursor,
+      limit: params?.limit,
+      detailType: params?.detailType
+    });
+    return jsonResponse(200, result, correlationId);
+  } catch (error) {
+    logger.error('GET /admin/activity failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/admin/finance/revenue', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('GET /admin/finance/revenue', event);
+
+  try {
+    const params = event?.queryStringParameters ?? {};
+    const result = await getRevenueSummary({
+      from: params?.from,
+      to: params?.to,
+      granularity: params?.granularity
+    });
+    return jsonResponse(200, result, correlationId);
+  } catch (error) {
+    logger.error('GET /admin/finance/revenue failed', {
       correlationId,
       error: error instanceof Error ? error.message : String(error),
       errorName: error instanceof Error ? error.name : 'UnknownError',

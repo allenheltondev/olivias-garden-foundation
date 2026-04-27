@@ -1,3 +1,7 @@
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
+
+const eventBridge = new EventBridgeClient({});
+
 export const contactInquirySchema = {
   type: 'object',
   required: ['kind', 'contactName', 'email'],
@@ -21,81 +25,47 @@ function sanitize(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function orgTypeLabel(type) {
-  const map = {
-    'food-pantry': 'Food pantry',
-    shelter: 'Shelter',
-    school: 'School or youth program',
-    'mutual-aid': 'Mutual aid / community fridge',
-    faith: 'Faith community',
-    other: 'Other'
-  };
-  return map[type] ?? (type ? type : 'Unspecified');
-}
-
-function buildOrgInquirySlackText(payload) {
-  const orgName = sanitize(payload.orgName) || '(no organization name)';
-  const lines = [
-    ':seedling: New Good Roots org inquiry',
-    `Organization: ${orgName} (${orgTypeLabel(payload.orgType)})`,
-    `Contact: ${sanitize(payload.contactName)} <${sanitize(payload.email)}>`
-  ];
-
-  const phone = sanitize(payload.phone);
-  if (phone) lines.push(`Phone: ${phone}`);
-
-  const location = [sanitize(payload.city), sanitize(payload.state)].filter(Boolean).join(', ');
-  if (location) lines.push(`Location: ${location}`);
-
-  const message = sanitize(payload.message);
-  if (message) lines.push('', message);
-
-  return lines.join('\n');
-}
-
-async function postToSlack(webhookUrl, text, correlationId) {
-  if (!webhookUrl?.trim()) {
-    console.info(JSON.stringify({
-      level: 'info',
-      correlationId,
-      message: 'Contact Slack webhook not configured; skipping notification'
-    }));
-    return;
-  }
-
+async function publishOrgInquiryEvent(payload, correlationId, eventBridgeClient) {
   try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
+    const result = await eventBridgeClient.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'ogf.contact',
+          DetailType: 'org-inquiry.received',
+          Detail: JSON.stringify({
+            orgName: sanitize(payload.orgName) || null,
+            orgType: sanitize(payload.orgType) || null,
+            contactName: sanitize(payload.contactName),
+            email: sanitize(payload.email),
+            phone: sanitize(payload.phone) || null,
+            city: sanitize(payload.city) || null,
+            state: sanitize(payload.state) || null,
+            message: sanitize(payload.message) || null,
+            correlationId
+          })
+        }
+      ]
+    }));
 
-    if (!response.ok) {
+    if ((result?.FailedEntryCount ?? 0) > 0) {
       console.error(JSON.stringify({
         level: 'error',
         correlationId,
-        status: response.status,
-        message: 'Contact Slack webhook returned non-success'
+        message: 'Contact EventBridge publish reported failed entries',
+        failedEntryCount: result.FailedEntryCount
       }));
-      return;
     }
-
-    console.info(JSON.stringify({
-      level: 'info',
-      correlationId,
-      message: 'Delivered contact Slack notification'
-    }));
   } catch (error) {
     console.error(JSON.stringify({
       level: 'error',
       correlationId,
-      message: 'Contact Slack webhook request failed',
+      message: 'Contact EventBridge publish failed',
       error: error instanceof Error ? error.message : String(error)
     }));
   }
 }
 
-export async function submitContactInquiry(payload, correlationId, { fetchWebhookUrl = () => process.env.CONTACT_SLACK_WEBHOOK_URL } = {}) {
+export async function submitContactInquiry(payload, correlationId, { eventBridgeClient = eventBridge } = {}) {
   if (payload?.kind !== 'organization_inquiry') {
     throw new Error('Unsupported contact kind');
   }
@@ -108,5 +78,5 @@ export async function submitContactInquiry(payload, correlationId, { fetchWebhoo
     throw new Error('contactName is required');
   }
 
-  await postToSlack(fetchWebhookUrl(), buildOrgInquirySlackText(payload), correlationId);
+  await publishOrgInquiryEvent(payload, correlationId, eventBridgeClient);
 }
