@@ -10,7 +10,26 @@ import type { AdminSession } from '../auth/session';
 const DEFAULT_VISIBLE_PHOTOS = 3;
 const MOBILE_PHOTO_QUERY = '(max-width: 640px)';
 
-function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
+type ReviewPhoto = {
+  id: string;
+  url: string;
+  review_status: string;
+  edit_action: 'add' | 'remove' | null;
+};
+
+function reviewPhotosFor(submission: OkraSubmission): ReviewPhoto[] {
+  if ((submission.photo_details ?? []).length > 0) {
+    return submission.photo_details ?? [];
+  }
+  return submission.photos.map((url, index) => ({
+    id: `${submission.id}-${index}`,
+    url,
+    review_status: 'approved',
+    edit_action: null,
+  }));
+}
+
+function PhotoCarousel({ photos, alt }: { photos: ReviewPhoto[]; alt: string }) {
   const [startIndex, setStartIndex] = useState(0);
   const [visiblePhotos, setVisiblePhotos] = useState<number>(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -41,13 +60,22 @@ function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
   return (
     <div className="admin-photo-carousel">
       <div className="admin-photo-carousel__viewport" role="group" aria-label={alt}>
-        {visible.map((src, i) => (
-          <img
-            key={`${clampedStart + i}-${src}`}
-            className="admin-photo-carousel__thumb"
-            src={src}
-            alt={`${alt} — photo ${clampedStart + i + 1} of ${total}`}
-          />
+        {visible.map((photo, i) => (
+          <div
+            key={`${clampedStart + i}-${photo.id}`}
+            className={`admin-photo-carousel__item ${photo.edit_action ? `admin-photo-carousel__item--${photo.edit_action}` : ''}`.trim()}
+          >
+            <img
+              className="admin-photo-carousel__thumb"
+              src={photo.url}
+              alt={`${alt} photo ${clampedStart + i + 1} of ${total}`}
+            />
+            {photo.edit_action ? (
+              <span className="admin-photo-carousel__badge">
+                {photo.edit_action === 'add' ? 'Added' : 'Remove requested'}
+              </span>
+            ) : null}
+          </div>
         ))}
       </div>
       {canScroll ? (
@@ -85,6 +113,45 @@ function PhotoCarousel({ photos, alt }: { photos: string[]; alt: string }) {
   );
 }
 
+function ReviewDiff({ submission }: { submission: OkraSubmission }) {
+  if (submission.review_kind !== 'edit') return null;
+
+  const rows = [
+    ['Name', submission.current_contributor_name || 'Anonymous contributor', submission.contributor_name || 'Anonymous contributor'],
+    ['Story', submission.current_story_text || 'No story provided.', submission.story_text || 'No story provided.'],
+    ['Location', submission.current_raw_location_text || 'No location text provided.', submission.raw_location_text || 'No location text provided.'],
+    ['Privacy', submission.current_privacy_mode || 'Unknown', submission.privacy_mode || 'Unknown'],
+    [
+      'Coordinates',
+      submission.current_display_lat != null && submission.current_display_lng != null
+        ? `${submission.current_display_lat.toFixed(4)}, ${submission.current_display_lng.toFixed(4)}`
+        : 'Unknown',
+      submission.display_lat != null && submission.display_lng != null
+        ? `${submission.display_lat.toFixed(4)}, ${submission.display_lng.toFixed(4)}`
+        : 'Unknown',
+    ],
+  ].filter(([, before, after]) => before !== after);
+
+  return (
+    <div className="admin-submission-card__diff" aria-label="Edited fields">
+      <strong>Proposed changes</strong>
+      {rows.length === 0 ? (
+        <p>No text or location fields changed.</p>
+      ) : (
+        <dl>
+          {rows.map(([label, before, after]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd><span>Before</span>{before}</dd>
+              <dd><span>After</span>{after}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
 export interface OkraQueuePageProps {
   session: AdminSession;
 }
@@ -95,6 +162,7 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [denyNotes, setDenyNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -138,13 +206,19 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
       if (action === 'approved') {
         await reviewOkraSubmission(session.accessToken, submission.id, { status: 'approved' });
       } else {
+        const fallbackNote = submission.review_kind === 'edit'
+          ? 'Edit denied in admin dashboard.'
+          : 'Reviewed in admin dashboard.';
         await reviewOkraSubmission(session.accessToken, submission.id, {
           status: 'denied',
           reason: 'other',
-          review_notes: 'Reviewed in admin dashboard.',
+          review_notes: denyNotes[submission.id]?.trim() || fallbackNote,
         });
       }
       setQueue((current) => current.filter((item) => item.id !== submission.id));
+      setDenyNotes((current) => Object.fromEntries(
+        Object.entries(current).filter(([id]) => id !== submission.id),
+      ));
       setTotal((current) => Math.max(0, current - 1));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to update submission status.');
@@ -159,7 +233,7 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
         <SectionHeading
           eyebrow="Okra queue"
           title={`Pending submissions (${total})`}
-          body="Approve or deny community submissions before they appear on the public map."
+          body="Approve new submissions and edits. Approved submissions stay live while proposed edits wait here."
         />
         <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
           Refresh
@@ -185,6 +259,16 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
                 </div>
                 <span>{new Date(submission.created_at).toLocaleString()}</span>
               </div>
+              {submission.review_kind === 'edit' ? (
+                <div className="admin-submission-card__edit-note">
+                  <strong>Edited submission</strong>
+                  <p>
+                    Current: {submission.current_contributor_name || 'Anonymous contributor'}
+                    {' '}in {submission.current_raw_location_text || 'unknown location'}
+                  </p>
+                </div>
+              ) : null}
+              <ReviewDiff submission={submission} />
               <p className="admin-submission-card__story">
                 {submission.story_text || 'No story provided.'}
               </p>
@@ -193,9 +277,33 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
               </p>
               {submission.photos && submission.photos.length > 0 ? (
                 <PhotoCarousel
-                  photos={submission.photos}
+                  photos={reviewPhotosFor(submission)}
                   alt={`Okra submission from ${submission.contributor_name || 'anonymous contributor'}`}
                 />
+              ) : null}
+              {submission.review_kind === 'edit' && submission.photo_details?.some((photo) => photo.edit_action) ? (
+                <div className="admin-submission-card__photo-actions">
+                  {submission.photo_details.filter((photo) => photo.edit_action).map((photo) => (
+                    <span key={`${photo.id}-${photo.edit_action}`}>
+                      {photo.edit_action === 'add' ? 'Added photo' : 'Removed photo'}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {submission.review_kind === 'edit' ? (
+                <label className="admin-submission-card__deny-note">
+                  <span>Deny note</span>
+                  <textarea
+                    value={denyNotes[submission.id] ?? ''}
+                    onChange={(event) => setDenyNotes((current) => ({
+                      ...current,
+                      [submission.id]: event.target.value,
+                    }))}
+                    placeholder="Optional context for this edit review"
+                    rows={2}
+                    disabled={busyId !== null}
+                  />
+                </label>
               ) : null}
               <div className="admin-submission-card__actions">
                 <Button
@@ -203,14 +311,14 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
                   loading={busyId === submission.id}
                   disabled={busyId !== null}
                 >
-                  Approve
+                  {submission.review_kind === 'edit' ? 'Approve edit' : 'Approve'}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => void handleReview(submission, 'denied')}
                   disabled={busyId !== null}
                 >
-                  Deny
+                  {submission.review_kind === 'edit' ? 'Deny edit' : 'Deny'}
                 </Button>
               </div>
             </Card>

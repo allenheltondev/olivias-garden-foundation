@@ -172,14 +172,14 @@
 
 ---
 
-## Issue 14 - Edit link flow (no-login update path)
+## Issue 14 - Signed-in edit flow
 
-**Title:** `[Updates] Add secure email edit-link flow for one-off contributors`
+**Title:** `[Updates] Add signed-in contributor edit flow`
 
 **Description:**
-- Create + hash + expire edit tokens.
-- Optional endpoint to request edit link by email.
-- Allow adding photos/notes to existing submission via token.
+- Allow signed-in contributors to edit submissions tied to their Cognito account.
+- Require edited approved submissions to return through admin review before public content changes.
+- Keep anonymous contributors on a manual support path for changes.
 
 **Depends on:** #2, #5, #6
 

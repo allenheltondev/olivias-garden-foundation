@@ -44,6 +44,11 @@ const ProfilePage = lazy(async () => {
   return { default: module.ProfilePage };
 });
 
+const OkraSubmissionsPage = lazy(async () => {
+  const module = await import('./site/pages/OkraSubmissionsPage');
+  return { default: module.OkraSubmissionsPage };
+});
+
 function App() {
   const { pathname, navigate } = usePathname();
   const authConfig = getCognitoConfig();
@@ -346,6 +351,18 @@ function App() {
                   onNavigate={navigate}
                   onAvatarUrlChange={setProfileAvatarUrl}
                   onAccountDeleted={handleAccountDeleted}
+                />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/okra/submissions"
+            element={
+              <Suspense fallback={routeFallback}>
+                <OkraSubmissionsPage
+                  authSession={authSession}
+                  authReady={authReady}
+                  onNavigate={navigate}
                 />
               </Suspense>
             }

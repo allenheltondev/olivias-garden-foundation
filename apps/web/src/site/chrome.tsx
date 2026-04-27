@@ -119,6 +119,7 @@ export function SiteHeader({
               label={avatarLabel}
               avatarUrl={avatarUrl}
               appLinks={[
+                { id: 'okra-submissions', label: 'My okra submissions', href: '/okra/submissions' },
                 { id: 'grn', label: 'Good Roots Network', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
                 ...(authSession.user.isAdmin
                   ? [{ id: 'admin', label: 'Admin', href: buildCrossAppUrl(adminUrl, authSession) }]

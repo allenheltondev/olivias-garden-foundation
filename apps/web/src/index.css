@@ -2137,6 +2137,91 @@ html {
   border: 1px solid rgba(76, 52, 38, 0.12);
 }
 
+.okra-submissions-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.okra-submissions-empty {
+  display: grid;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.okra-submissions-empty h3 {
+  margin: 0;
+  color: var(--site-ink);
+  font-family: var(--site-display);
+  font-size: 1.2rem;
+}
+
+.okra-submissions-empty .page-text {
+  margin: 0;
+}
+
+.okra-submission-card__status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.6rem;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.okra-submission-card__status,
+.okra-submission-card__edited,
+.okra-submission-card__photo-count {
+  border-radius: 999px;
+  padding: 0.28rem 0.58rem;
+  background: #eef3df;
+  color: #314226;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.okra-submission-card__status--pending {
+  background: rgba(210, 157, 47, 0.18);
+  color: var(--site-branch);
+}
+
+.okra-submission-card__status--live {
+  background: rgba(63, 125, 58, 0.14);
+  color: #275f2c;
+}
+
+.okra-submission-card__status--denied {
+  background: rgba(185, 28, 28, 0.1);
+  color: #8f1d1d;
+}
+
+.okra-submission-card__edited {
+  background: rgba(76, 52, 38, 0.08);
+  color: rgba(76, 52, 38, 0.75);
+}
+
+.okra-submission-card__status-row p {
+  flex-basis: 100%;
+  margin: 0.05rem 0 0;
+  color: var(--site-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.okra-submission-card__photos {
+  align-items: center;
+}
+
+.okra-submission-card__photo-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.6rem;
+  background: rgba(76, 52, 38, 0.08);
+  color: var(--site-ink);
+}
+
 @media (min-width: 760px) {
   .profile-form__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
