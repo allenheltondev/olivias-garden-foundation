@@ -184,6 +184,18 @@
   color: var(--color-neutral-700, #44403c);
 }
 
+.pin-popup-edited {
+  width: fit-content;
+  margin: -0.3rem 0 0.2rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  background: #eef3df;
+  color: #314226;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .pin-popup-story--truncated {
   display: -webkit-box;
   -webkit-line-clamp: 3;

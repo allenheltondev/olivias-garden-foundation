@@ -1,0 +1,32 @@
+$kind: http-request
+name: Edit My Submission - Unauthenticated
+description: Ensure contributor submission edits require authentication before changing review state.
+method: PATCH
+url: '{{okraBaseUrl}}/me/submissions/550e8400-e29b-41d4-a716-446655440000'
+order: 1010
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: X-Correlation-Id
+    value: postman-okra-edit-submission-unauth
+body:
+  mode: raw
+  raw: |-
+    {
+      "rawLocationText": "McKinney, Texas",
+      "displayLat": 33.1972,
+      "displayLng": -96.6398,
+      "photoIds": []
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("PATCH /me/submissions/:id rejects unauthenticated requests", function () {
+          pm.expect(pm.response.code).to.be.oneOf([400, 401]);
+      });
+
+      pm.test("Response includes an error", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.exist;
+      });

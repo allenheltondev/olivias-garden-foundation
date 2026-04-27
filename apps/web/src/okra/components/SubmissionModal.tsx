@@ -1,8 +1,8 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import type { AuthSession } from '../../auth/session';
 import { usePhotoUploader } from '../hooks/usePhotoUploader';
 import { useLocationPicker } from '../hooks/useLocationPicker';
-import { useSubmissionForm } from '../hooks/useSubmissionForm';
+import { useSubmissionForm, type PrivacyMode } from '../hooks/useSubmissionForm';
 import { PhotoUploader } from './PhotoUploader';
 import { ContributorFields } from './ContributorFields';
 import { LocationInput } from './LocationInput';
@@ -17,6 +17,18 @@ export interface SubmissionModalProps {
   authSession?: AuthSession | null;
   onLogin?: () => void;
   onSignup?: () => void;
+  mode?: 'create' | 'edit';
+  editSubmission?: {
+    id: string;
+    contributorName: string | null;
+    storyText: string | null;
+    rawLocationText: string;
+    privacyMode: PrivacyMode;
+    displayLat: number;
+    displayLng: number;
+    photos: { id: string; url: string }[];
+  } | null;
+  onSubmitted?: () => void;
 }
 
 const FOCUSABLE_SELECTOR =
@@ -29,19 +41,44 @@ export function SubmissionModal({
   authSession = null,
   onLogin,
   onSignup,
+  mode = 'create',
+  editSubmission = null,
+  onSubmitted,
 }: SubmissionModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
 
+  const initialLocation = useMemo(() => ({
+    rawLocationText: editSubmission?.rawLocationText ?? '',
+    displayLat: editSubmission?.displayLat ?? null,
+    displayLng: editSubmission?.displayLng ?? null,
+  }), [editSubmission?.displayLat, editSubmission?.displayLng, editSubmission?.rawLocationText]);
+  const editClientKey = useMemo(() => {
+    if (mode !== 'edit' || !editSubmission) return undefined;
+    if (typeof window !== 'undefined' && typeof window.crypto?.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return `edit-${editSubmission.id}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }, [editSubmission?.id, mode]);
   const photoUploader = usePhotoUploader(authSession?.accessToken);
-  const locationPicker = useLocationPicker();
+  const locationPicker = useLocationPicker(initialLocation);
+  const keptExistingPhotos = (editSubmission?.photos ?? []).filter((photo) => !removedPhotoIds.includes(photo.id));
   const form = useSubmissionForm(
     photoUploader.uploadedPhotoIds,
     photoUploader.photos.some((photo) => photo.state === 'uploading'),
     locationPicker.location,
     photoUploader.photos.some((photo) => photo.state === 'failed'),
     authSession?.accessToken,
-    authSession?.user.name ?? authSession?.user.email ?? undefined,
+    editSubmission?.contributorName ?? authSession?.user.name ?? authSession?.user.email ?? undefined,
+    {
+      mode,
+      submissionId: editSubmission?.id,
+      initialStoryText: editSubmission?.storyText ?? '',
+      initialPrivacyMode: editSubmission?.privacyMode ?? 'city',
+      existingPhotoCount: keptExistingPhotos.length,
+      editClientKey,
+    },
   );
 
   const photosRef = useRef(photoUploader.photos);
@@ -57,6 +94,7 @@ export function SubmissionModal({
     if (formRef.current.hasUnsavedProgress(photosRef.current, locationRef.current)) {
       setShowConfirm(true);
     } else {
+      setRemovedPhotoIds([]);
       onClose();
     }
   }, [onClose]);
@@ -66,6 +104,7 @@ export function SubmissionModal({
     photoUploader.reset();
     locationPicker.reset();
     form.reset();
+    setRemovedPhotoIds([]);
     onClose();
   }, [photoUploader, locationPicker, form, onClose]);
 
@@ -124,6 +163,8 @@ export function SubmissionModal({
       photoUploader.reset();
       locationPicker.reset();
       form.reset();
+      setRemovedPhotoIds([]);
+      onSubmitted?.();
       onClose();
     }, 2000);
 
@@ -131,8 +172,8 @@ export function SubmissionModal({
   }, [form.submitSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = useCallback(() => {
-    form.submit(photoUploader.uploadedPhotoIds, locationPicker.location);
-  }, [form, photoUploader.uploadedPhotoIds, locationPicker.location]);
+    form.submit(photoUploader.uploadedPhotoIds, locationPicker.location, removedPhotoIds);
+  }, [form, photoUploader.uploadedPhotoIds, locationPicker.location, removedPhotoIds]);
 
   if (!open) return null;
 
@@ -142,12 +183,12 @@ export function SubmissionModal({
         ref={dialogRef}
         className="submission-modal__dialog"
         role="dialog"
-        aria-label="Add my okra patch"
+        aria-label={mode === 'edit' ? 'Edit my okra patch' : 'Add my okra patch'}
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="submission-modal__header">
-          <h2 className="submission-modal__title">Add my okra patch</h2>
+          <h2 className="submission-modal__title">{mode === 'edit' ? 'Edit my okra patch' : 'Add my okra patch'}</h2>
           <button
             className="submission-modal__close-btn"
             type="button"
@@ -162,7 +203,11 @@ export function SubmissionModal({
           {form.submitSuccess ? (
             <div className="submission-modal__success" role="status">
               <span className="submission-modal__success-icon">OK</span>
-              <p>Your garden has been submitted and is pending review. Thank you.</p>
+              <p>
+                {mode === 'edit'
+                  ? 'Your edits have been submitted and are pending review. Your approved pin stays visible.'
+                  : 'Your garden has been submitted and is pending review. Thank you.'}
+              </p>
             </div>
           ) : (
             <>
@@ -187,6 +232,44 @@ export function SubmissionModal({
 
               <section className="submission-modal__section">
                 <h3 className="submission-modal__section-heading">Photos</h3>
+                {mode === 'edit' && editSubmission && editSubmission.photos.length > 0 ? (
+                  <div className="submission-modal__current-photos">
+                    <div className="submission-modal__inline-heading">
+                      <span>Current photos</span>
+                      <small>{removedPhotoIds.length} marked for removal</small>
+                    </div>
+                    <div className="submission-modal__existing-photos" aria-label="Current photos">
+                      {editSubmission.photos.map((photo) => {
+                        const removed = removedPhotoIds.includes(photo.id);
+                        return (
+                          <div
+                            key={photo.id}
+                            className={`submission-modal__existing-photo ${removed ? 'submission-modal__existing-photo--removed' : ''}`.trim()}
+                          >
+                            <img src={photo.url} alt="" />
+                            {removed ? <span className="submission-modal__photo-state">Marked for removal</span> : null}
+                            <button
+                              type="button"
+                              onClick={() => setRemovedPhotoIds((current) => (
+                                current.includes(photo.id)
+                                  ? current.filter((id) => id !== photo.id)
+                                  : [...current, photo.id]
+                              ))}
+                              disabled={form.isSubmitting}
+                            >
+                              {removed ? 'Keep photo' : 'Remove'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+                {mode === 'edit' ? (
+                  <p className="submission-modal__helper-text">
+                    Add new photos below. They will appear after approval.
+                  </p>
+                ) : null}
                 <PhotoUploader
                   photos={photoUploader.photos}
                   onAddFiles={photoUploader.addFiles}
@@ -241,6 +324,8 @@ export function SubmissionModal({
                   missingFields={form.missingFields}
                   submitError={form.submitError}
                   onSubmit={handleSubmit}
+                  submitLabel={mode === 'edit' ? 'Submit edits for review' : 'Submit your garden'}
+                  submittingLabel={mode === 'edit' ? 'Submitting edits...' : 'Submitting...'}
                 />
               </section>
             </>

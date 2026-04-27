@@ -203,6 +203,80 @@ paths:
         '422':
           description: Validation error
 
+  /me/submissions:
+    get:
+      operationId: listMyOkraSubmissions
+      summary: List okra submissions owned by the authenticated contributor
+      tags:
+        - submissions
+      responses:
+        '200':
+          description: Contributor submissions
+        '401':
+          description: Authentication required
+
+  /me/submissions/{id}:
+    patch:
+      operationId: editMyOkraSubmission
+      summary: Submit edits to an owned okra submission for review
+      tags:
+        - submissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rawLocationText
+                - displayLat
+                - displayLng
+                - photoIds
+              properties:
+                contributorName:
+                  type: string
+                storyText:
+                  type: string
+                rawLocationText:
+                  type: string
+                privacyMode:
+                  type: string
+                  enum: [exact, nearby, neighborhood, city]
+                displayLat:
+                  type: number
+                displayLng:
+                  type: number
+                photoIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                removePhotoIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                editClientKey:
+                  type: string
+                  description: Client-generated key used to make edit submission retries idempotent.
+                  maxLength: 120
+      responses:
+        '202':
+          description: Edit accepted for review
+        '401':
+          description: Authentication required
+        '404':
+          description: Submission not found
+        '422':
+          description: Validation error
+
   /okra:
     get:
       operationId: getOkra

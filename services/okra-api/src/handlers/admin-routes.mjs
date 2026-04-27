@@ -284,7 +284,16 @@ export function registerAdminRoutes(app) {
           ${photoClause}
       `;
       const countResult = await client.query(countQuery, baseParams);
-      const total = countResult.rows[0]?.total ?? 0;
+      let total = countResult.rows[0]?.total ?? 0;
+
+      if (status === 'pending_review') {
+        const editCountResult = await client.query(
+          `SELECT COUNT(*)::int AS total
+             FROM submission_edits
+            WHERE status = 'pending_review'`
+        );
+        total += editCountResult.rows[0]?.total ?? 0;
+      }
 
       let queryText;
       let queryParams;
@@ -331,18 +340,54 @@ export function registerAdminRoutes(app) {
         nextCursor = encodeCursor(lastRow);
       }
 
-      if (rows.length === 0) {
+      let allRows = rows;
+      if (status === 'pending_review') {
+        const offset = cursor ? 0 : rows.length;
+        const editLimit = Math.max(0, limit + 1 - offset);
+        if (editLimit > 0) {
+          const editResult = await client.query(
+            `
+              SELECT se.id AS edit_id, se.submission_id AS id,
+                     se.contributor_name, s.contributor_email, se.story_text,
+                     se.raw_location_text, se.privacy_mode, se.display_lat, se.display_lng,
+                     se.status, se.created_at, s.contributor_name AS current_contributor_name,
+                     s.story_text AS current_story_text, s.raw_location_text AS current_raw_location_text,
+                     s.privacy_mode AS current_privacy_mode, s.display_lat AS current_display_lat,
+                     s.display_lng AS current_display_lng, s.created_at AS original_created_at,
+                     se.created_at::text AS created_at_raw
+                FROM submission_edits se
+                JOIN submissions s ON s.id = se.submission_id
+               WHERE se.status = 'pending_review'
+               ORDER BY se.created_at ASC, se.id ASC
+               LIMIT $1
+            `,
+            [editLimit]
+          );
+          allRows = [...rows, ...editResult.rows];
+          if (!nextCursor && allRows.length > limit) {
+            allRows.pop();
+          }
+        }
+      }
+
+      if (allRows.length === 0) {
         return { data: [], cursor: null, total };
       }
 
-      const submissionIds = rows.map((r) => r.id);
+      const submissionIds = [...new Set(allRows.map((r) => r.id))];
       const photosResult = await client.query(
-        `SELECT submission_id,
-                COALESCE(normalized_s3_key, original_s3_key) AS display_s3_key
-         FROM submission_photos
-         WHERE submission_id = ANY($1)
-         ORDER BY submission_id, created_at ASC`,
-        [submissionIds]
+        `SELECT sp.submission_id, sp.id,
+                COALESCE(sp.normalized_s3_key, sp.original_s3_key) AS display_s3_key,
+                sp.review_status,
+                sep.action AS edit_action
+         FROM submission_photos sp
+         LEFT JOIN submission_edit_photos sep
+           ON sep.photo_id = sp.id
+          AND sep.edit_id = ANY($2::uuid[])
+         WHERE sp.submission_id = ANY($1)
+           AND sp.removed_at IS NULL
+         ORDER BY sp.submission_id, sp.created_at ASC`,
+        [submissionIds, allRows.map((row) => row.edit_id).filter(Boolean)]
       );
 
       const photosBySubmission = {};
@@ -350,22 +395,42 @@ export function registerAdminRoutes(app) {
         if (!photosBySubmission[photo.submission_id]) {
           photosBySubmission[photo.submission_id] = [];
         }
-        photosBySubmission[photo.submission_id].push(photo.display_s3_key);
+        photosBySubmission[photo.submission_id].push({
+          key: photo.display_s3_key,
+          id: photo.id,
+          review_status: photo.review_status,
+          edit_action: photo.edit_action
+        });
       }
 
       const bucket = process.env.MEDIA_BUCKET_NAME;
       const data = await Promise.all(
-        rows.map(async (row) => {
+        allRows.map(async (row) => {
           const keys = photosBySubmission[row.id] || [];
-          const photos = await Promise.all(keys.map((key) => presignPhotoUrl(bucket, key)));
+          const signedPhotos = await Promise.all(keys.map(async (photo) => ({
+            id: photo.id,
+            url: await presignPhotoUrl(bucket, photo.key),
+            review_status: photo.review_status,
+            edit_action: photo.edit_action
+          })));
           return {
             id: row.id, contributor_name: row.contributor_name,
             contributor_email: row.contributor_email,
             story_text: row.story_text, raw_location_text: row.raw_location_text,
             privacy_mode: row.privacy_mode, display_lat: row.display_lat,
             display_lng: row.display_lng, status: row.status,
-            created_at: row.created_at, photo_count: photos.length,
-            has_photos: photos.length > 0, photos
+            created_at: row.created_at, photo_count: signedPhotos.length,
+            has_photos: signedPhotos.length > 0, photos: signedPhotos.map((photo) => photo.url),
+            photo_details: signedPhotos,
+            review_kind: row.edit_id ? 'edit' : 'submission',
+            edit_id: row.edit_id ?? null,
+            current_contributor_name: row.current_contributor_name ?? null,
+            current_story_text: row.current_story_text ?? null,
+            current_raw_location_text: row.current_raw_location_text ?? null,
+            current_privacy_mode: row.current_privacy_mode ?? null,
+            current_display_lat: row.current_display_lat ?? null,
+            current_display_lng: row.current_display_lng ?? null,
+            original_created_at: row.original_created_at ?? null
           };
         })
       );
@@ -393,18 +458,22 @@ export function registerAdminRoutes(app) {
     }
 
     const body = JSON.parse(ctx.event.body || '{}');
-    const { status, review_notes, display_lat, display_lng, reason } = body;
+    const { status, review_notes, display_lat, display_lng, reason, target_edit_id } = body;
 
     // Validate status field
     if (!status || !VALID_ACTIONS.includes(status)) {
       return errorResponse(400, 'INVALID_ACTION', 'status must be one of: approved, denied');
     }
 
-    if (status === 'approved') {
-      return handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng });
+    if (target_edit_id !== undefined && target_edit_id !== null && !isUuid(target_edit_id)) {
+      return errorResponse(400, 'INVALID_ID', 'target_edit_id must be a valid UUID');
     }
 
-    return handleDenial(ctx, submissionId, { reason, review_notes });
+    if (status === 'approved') {
+      return handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng, target_edit_id });
+    }
+
+    return handleDenial(ctx, submissionId, { reason, review_notes, target_edit_id });
   });
 
   // ─── GET /stats ────────────────────────────────────────────────
@@ -424,7 +493,7 @@ export function registerAdminRoutes(app) {
   });
 }
 
-async function handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng }) {
+async function handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng, target_edit_id }) {
   const hasLat = display_lat !== undefined && display_lat !== null;
   const hasLng = display_lng !== undefined && display_lng !== null;
   if (hasLat !== hasLng) {
@@ -439,32 +508,91 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
 
   const client = await createDbClient();
   await client.connect();
+  let inTxn = false;
   try {
-    // Verify submission exists and is pending before anything else
-    const existsResult = await client.query(
-      'SELECT id, status FROM submissions WHERE id = $1', [submissionId]
+    await client.query('BEGIN');
+    inTxn = true;
+
+    // Lock the submission row so contributor PATCH cannot race with admin review.
+    const lockResult = await client.query(
+      'SELECT id, status FROM submissions WHERE id = $1 FOR UPDATE',
+      [submissionId]
     );
-    if (existsResult.rows.length === 0) {
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(404, 'NOT_FOUND', 'Submission not found');
     }
-    if (existsResult.rows[0].status !== 'pending_review') {
-      return errorResponse(409, 'INVALID_STATE', `Submission is already ${existsResult.rows[0].status}`);
+    const currentStatus = lockResult.rows[0].status;
+
+    const pendingEditResult = await client.query(
+      `
+        select *
+          from submission_edits
+         where submission_id = $1
+           and status = 'pending_review'
+         order by created_at desc
+         limit 1
+      `,
+      [submissionId]
+    );
+    const pendingEdit = pendingEditResult.rows[0] ?? null;
+
+    if (target_edit_id) {
+      if (!pendingEdit || pendingEdit.id !== target_edit_id) {
+        await client.query('ROLLBACK'); inTxn = false;
+        return errorResponse(404, 'EDIT_NOT_FOUND', 'No pending edit with that id on this submission');
+      }
+    } else if (pendingEdit) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return {
+        statusCode: 409,
+        body: {
+          error: { code: 'PENDING_EDIT', message: 'Submission has a pending edit; specify target_edit_id to act on it.' },
+          edit_id: pendingEdit.id
+        }
+      };
+    }
+
+    if (pendingEdit) {
+      const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
+      if (!adminUserId) {
+        await client.query('ROLLBACK'); inTxn = false;
+        return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
+      }
+      const editResult = await approvePendingEdit(client, submissionId, pendingEdit, adminUserId, {
+        review_notes,
+        display_lat,
+        display_lng,
+        hasLat,
+        hasLng
+      });
+      inTxn = false; // approvePendingEdit handles the COMMIT/ROLLBACK
+      return editResult;
+    }
+
+    if (currentStatus !== 'pending_review') {
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(409, 'INVALID_STATE', `Submission is already ${currentStatus}`);
     }
 
     const photoCountResult = await client.query(
-      'SELECT COUNT(*)::int AS count FROM submission_photos WHERE submission_id = $1',
+      `SELECT COUNT(*)::int AS count
+         FROM submission_photos
+        WHERE submission_id = $1
+          AND removed_at IS NULL
+          AND review_status = 'approved'`,
       [submissionId]
     );
     if (photoCountResult.rows[0].count === 0) {
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(400, 'MISSING_PHOTOS', 'At least one photo is required for approval');
     }
 
     const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
     }
-
-    await client.query('BEGIN');
 
     let updateText;
     let updateParams;
@@ -485,7 +613,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
     const updateResult = await client.query(updateText, updateParams);
     if (updateResult.rowCount === 0) {
       // Race condition: status changed between our check and the update
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(409, 'INVALID_STATE', 'Submission status changed during processing');
     }
 
@@ -523,7 +651,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
       [country, submissionId]
     );
 
-    await client.query('COMMIT');
+    await client.query('COMMIT'); inTxn = false;
 
     const response = {
       id: row.id, contributor_name: row.contributor_name,
@@ -538,7 +666,9 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
     }
     return response;
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (inTxn) {
+      try { await client.query('ROLLBACK'); } catch (rollbackErr) { void rollbackErr; }
+    }
     console.error(JSON.stringify({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),
@@ -551,7 +681,156 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
   }
 }
 
-async function handleDenial(ctx, submissionId, { reason, review_notes }) {
+// Caller is responsible for opening the transaction. This helper commits on
+// success and rolls back on its own validation failures (returning errorResponse).
+async function approvePendingEdit(client, submissionId, edit, adminUserId, { review_notes, display_lat, display_lng, hasLat, hasLng }) {
+  try {
+    const removeResult = await client.query(
+      `
+        select photo_id
+          from submission_edit_photos
+         where edit_id = $1 and action = 'remove'
+      `,
+      [edit.id]
+    );
+    const removePhotoIds = removeResult.rows.map((row) => row.photo_id);
+    const addResult = await client.query(
+      `
+        select photo_id
+          from submission_edit_photos
+         where edit_id = $1 and action = 'add'
+      `,
+      [edit.id]
+    );
+    const addPhotoIds = addResult.rows.map((row) => row.photo_id);
+
+    const photoCountResult = await client.query(
+      `
+        select count(*)::int as count
+          from submission_photos
+         where submission_id = $1
+           and removed_at is null
+           and not (id = any($2::uuid[]))
+           and (review_status = 'approved' or id = any($3::uuid[]))
+      `,
+      [submissionId, removePhotoIds, addPhotoIds]
+    );
+    if (photoCountResult.rows[0].count === 0) {
+      await client.query('ROLLBACK');
+      return errorResponse(400, 'MISSING_PHOTOS', 'At least one photo is required for approval');
+    }
+
+    if (removePhotoIds.length > 0) {
+      await client.query(
+        `
+          update submission_photos
+             set removed_at = now()
+           where submission_id = $1
+             and id = any($2::uuid[])
+        `,
+        [submissionId, removePhotoIds]
+      );
+    }
+    if (addPhotoIds.length > 0) {
+      await client.query(
+        `
+          update submission_photos
+             set review_status = 'approved'
+           where submission_id = $1
+             and id = any($2::uuid[])
+        `,
+        [submissionId, addPhotoIds]
+      );
+    }
+
+    const nextLat = hasLat && hasLng ? display_lat : edit.display_lat;
+    const nextLng = hasLat && hasLng ? display_lng : edit.display_lng;
+    const country = resolveCountry(nextLat, nextLng);
+    const updateResult = await client.query(
+      `
+        update submissions
+           set contributor_name = $2,
+               story_text = $3,
+               raw_location_text = $4,
+               privacy_mode = $5,
+               display_lat = $6,
+               display_lng = $7,
+               reviewed_by = $8,
+               reviewed_at = now(),
+               review_notes = $9,
+               country = $10,
+               edit_count = edit_count + 1,
+               edited_at = now()
+         where id = $1
+         returning *
+      `,
+      [
+        submissionId,
+        edit.contributor_name,
+        edit.story_text,
+        edit.raw_location_text,
+        edit.privacy_mode,
+        nextLat,
+        nextLng,
+        adminUserId,
+        review_notes || null,
+        country
+      ]
+    );
+
+    const row = updateResult.rows[0];
+    await client.query(
+      `
+        update submission_edits
+           set status = 'approved',
+               reviewed_by = $2,
+               reviewed_at = now(),
+               review_notes = $3
+         where id = $1 and status = 'pending_review'
+      `,
+      [edit.id, adminUserId, review_notes || null]
+    );
+    await client.query(
+      `INSERT INTO submission_reviews (submission_id, action, reviewed_by, reviewed_at, notes)
+       VALUES ($1, 'approved', $2, now(), $3)`,
+      [submissionId, adminUserId, review_notes || null]
+    );
+    await client.query('COMMIT');
+
+    try {
+      await eventBridge.send(new PutEventsCommand({
+        Entries: [{
+          Source: 'okra.api',
+          DetailType: 'submission.edit_approved',
+          Detail: JSON.stringify({ submissionId, editId: edit.id })
+        }]
+      }));
+    } catch (ebErr) {
+      console.error(JSON.stringify({
+        level: 'warn',
+        message: 'Failed to publish submission edit approval event',
+        submissionId,
+        editId: edit.id,
+        error: ebErr instanceof Error ? ebErr.message : String(ebErr)
+      }));
+    }
+
+    return {
+      id: row.id, contributor_name: row.contributor_name,
+      story_text: row.story_text, raw_location_text: row.raw_location_text,
+      privacy_mode: row.privacy_mode, display_lat: row.display_lat,
+      display_lng: row.display_lng, status: row.status,
+      reviewed_by: row.reviewed_by, reviewed_at: row.reviewed_at,
+      review_notes: row.review_notes, created_at: row.created_at,
+      review_kind: 'edit', edit_id: edit.id
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  }
+}
+
+async function handleDenial(ctx, submissionId, { reason, review_notes, target_edit_id }) {
   if (!reason || !VALID_DENIAL_REASONS.includes(reason)) {
     return errorResponse(400, 'INVALID_REASON', `Invalid reason. Must be one of: ${VALID_DENIAL_REASONS.join(', ')}`);
   }
@@ -561,6 +840,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
 
   const client = await createDbClient();
   await client.connect();
+  let inTxn = false;
   try {
     const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
@@ -568,6 +848,111 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
     }
 
     await client.query('BEGIN');
+    inTxn = true;
+
+    const lockResult = await client.query(
+      'SELECT id, status FROM submissions WHERE id = $1 FOR UPDATE',
+      [submissionId]
+    );
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(404, 'NOT_FOUND', 'Submission not found');
+    }
+
+    const pendingEditResult = await client.query(
+      `
+        select id
+          from submission_edits
+         where submission_id = $1
+           and status = 'pending_review'
+         order by created_at desc
+         limit 1
+      `,
+      [submissionId]
+    );
+    const pendingEdit = pendingEditResult.rows[0] ?? null;
+
+    if (target_edit_id) {
+      if (!pendingEdit || pendingEdit.id !== target_edit_id) {
+        await client.query('ROLLBACK'); inTxn = false;
+        return errorResponse(404, 'EDIT_NOT_FOUND', 'No pending edit with that id on this submission');
+      }
+    } else if (pendingEdit) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return {
+        statusCode: 409,
+        body: {
+          error: { code: 'PENDING_EDIT', message: 'Submission has a pending edit; specify target_edit_id to act on it.' },
+          edit_id: pendingEdit.id
+        }
+      };
+    }
+
+    if (pendingEdit) {
+      const editId = pendingEdit.id;
+      const updateEditResult = await client.query(
+        `
+          update submission_edits
+             set status = 'denied',
+                 reviewed_by = $2,
+                 reviewed_at = now(),
+                 review_notes = $3,
+                 denial_reason = $4
+           where id = $1 and status = 'pending_review'
+           returning *
+        `,
+        [editId, adminUserId, review_notes || null, reason]
+      );
+      if (updateEditResult.rowCount === 0) {
+        await client.query('ROLLBACK'); inTxn = false;
+        return errorResponse(409, 'INVALID_STATE', 'Submission edit is already reviewed');
+      }
+      await client.query(
+        `INSERT INTO submission_reviews (submission_id, action, reason, reviewed_by, reviewed_at, notes)
+         VALUES ($1, 'denied', $2, $3, now(), $4)`,
+        [submissionId, reason, adminUserId, review_notes || null]
+      );
+      await client.query(
+        `
+          update submission_photos sp
+             set review_status = 'denied',
+                 removed_at = now()
+            from submission_edit_photos sep
+           where sep.photo_id = sp.id
+             and sep.edit_id = $1
+             and sep.action = 'add'
+             and sp.removed_at is null
+        `,
+        [editId]
+      );
+      await client.query('COMMIT'); inTxn = false;
+      try {
+        await eventBridge.send(new PutEventsCommand({
+          Entries: [{
+            Source: 'okra.api',
+            DetailType: 'submission.edit_denied',
+            Detail: JSON.stringify({ submissionId, editId })
+          }]
+        }));
+      } catch (ebErr) {
+        console.error(JSON.stringify({
+          level: 'warn',
+          message: 'Failed to publish submission edit denial event',
+          submissionId,
+          editId,
+          error: ebErr instanceof Error ? ebErr.message : String(ebErr)
+        }));
+      }
+      return {
+        id: submissionId,
+        status: 'approved',
+        review_kind: 'edit',
+        edit_id: editId,
+        reviewed_by: adminUserId,
+        reviewed_at: updateEditResult.rows[0].reviewed_at,
+        review_notes: review_notes || null
+      };
+    }
 
     const updateResult = await client.query(
       `UPDATE submissions
@@ -577,14 +962,9 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
     );
 
     if (updateResult.rowCount === 0) {
-      const existsResult = await client.query(
-        'SELECT id, status FROM submissions WHERE id = $1', [submissionId]
-      );
-      await client.query('ROLLBACK');
-      if (existsResult.rows.length === 0) {
-        return errorResponse(404, 'NOT_FOUND', 'Submission not found');
-      }
-      return errorResponse(409, 'INVALID_STATE', `Submission is already ${existsResult.rows[0].status}`);
+      const currentStatus = lockResult.rows[0].status;
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(409, 'INVALID_STATE', `Submission is already ${currentStatus}`);
     }
 
     const row = updateResult.rows[0];
@@ -593,7 +973,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
        VALUES ($1, 'denied', $2, $3, now(), $4)`,
       [submissionId, reason, adminUserId, review_notes || null]
     );
-    await client.query('COMMIT');
+    await client.query('COMMIT'); inTxn = false;
 
     try {
       await eventBridge.send(new PutEventsCommand({
@@ -621,7 +1001,9 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
       review_notes: row.review_notes, created_at: row.created_at
     };
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (inTxn) {
+      try { await client.query('ROLLBACK'); } catch (rollbackErr) { void rollbackErr; }
+    }
     console.error(JSON.stringify({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),

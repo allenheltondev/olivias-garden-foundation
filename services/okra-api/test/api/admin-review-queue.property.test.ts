@@ -614,6 +614,9 @@ describe('Property 5: Transactional Review Integrity', () => {
             };
           } else {
             queryResponses = {
+              'SELECT id, status FROM submissions': shouldSucceed
+                ? { rows: [{ id: submissionId, status: 'pending_review' }] }
+                : { rows: [{ id: submissionId, status: 'denied' }] },
               'admin_users': { rows: [ADMIN_USER_ROW] },
               'BEGIN': { rows: [] },
               'UPDATE submissions': shouldSucceed
@@ -621,9 +624,6 @@ describe('Property 5: Transactional Review Integrity', () => {
                 : { rows: [], rowCount: 0 },
               'INSERT INTO submission_reviews': { rows: [] },
               'COMMIT': { rows: [] },
-              'SELECT id, status FROM submissions': shouldSucceed
-                ? { rows: [] }
-                : { rows: [{ id: submissionId, status: 'denied' }] },
               'ROLLBACK': { rows: [] },
             };
           }
@@ -850,6 +850,7 @@ describe('Property 7: Review Notes Round-Trip', () => {
             };
           } else {
             queryResponses = {
+              'SELECT id, status FROM submissions': { rows: [{ id: submissionId, status: 'pending_review' }] },
               'admin_users': { rows: [ADMIN_USER_ROW] },
               'BEGIN': { rows: [] },
               'UPDATE submissions': { rows: [updatedRow], rowCount: 1 },
@@ -1206,6 +1207,7 @@ describe('Property 9: Denial Reason Validation', () => {
           };
 
           queryResponses = {
+            'SELECT id, status FROM submissions': { rows: [{ id: '550e8400-e29b-41d4-a716-446655440003', status: 'pending_review' }] },
             'admin_users': { rows: [ADMIN_USER_ROW] },
             'BEGIN': { rows: [] },
             'UPDATE submissions': { rows: [deniedRow], rowCount: 1 },

@@ -11,6 +11,8 @@ export interface AvatarMenuProps {
   initials: string;
   label: string;
   avatarUrl?: string | null;
+  /** Personal links rendered right under the Profile entry, with no section header. */
+  personalLinks?: AvatarMenuAppLink[];
   appLinks?: AvatarMenuAppLink[];
   onProfile?: () => void;
   onLogout?: () => void;
@@ -24,6 +26,7 @@ export function AvatarMenu({
   initials,
   label,
   avatarUrl,
+  personalLinks = [],
   appLinks = [],
   onProfile,
   onLogout,
@@ -88,6 +91,23 @@ export function AvatarMenu({
             >
               {profileLabel}
             </button>
+          ) : null}
+          {personalLinks.map((link) => (
+            <a
+              key={link.id}
+              className="og-auth-menu__item og-auth-menu__item--link"
+              role="menuitem"
+              href={link.href}
+              onClick={() => {
+                setOpen(false);
+                link.onSelect?.();
+              }}
+            >
+              {link.label}
+            </a>
+          ))}
+          {personalLinks.length > 0 && (appLinks.length > 0 || extraItems || onLogout) ? (
+            <div className="og-auth-menu__divider" role="separator" />
           ) : null}
           {appLinks.length > 0 ? (
             <>

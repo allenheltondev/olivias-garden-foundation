@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { validate } from '@aws-lambda-powertools/validation';
 import { SchemaValidationError } from '@aws-lambda-powertools/validation/errors';
-import { insertPendingSubmissionWithPhotos, submissionSchema } from '../../src/services/submissions.mjs';
+import {
+  insertPendingSubmissionWithPhotos,
+  submissionSchema,
+  submitContributorSubmissionEdit
+} from '../../src/services/submissions.mjs';
 
 describe('submission payload validation', () => {
   it('accepts valid payload', () => {
@@ -31,6 +35,89 @@ describe('submission payload validation', () => {
         schema: submissionSchema
       })
     ).toThrow(SchemaValidationError);
+  });
+});
+
+describe('submitContributorSubmissionEdit', () => {
+  const editPayload = {
+    contributorName: 'Edited Grower',
+    storyText: 'Edited story',
+    rawLocationText: 'McKinney, TX',
+    privacyMode: 'city',
+    displayLat: 33.1972,
+    displayLng: -96.6398,
+    photoIds: ['550e8400-e29b-41d4-a716-446655440012'],
+    removePhotoIds: ['550e8400-e29b-41d4-a716-446655440011'],
+    editClientKey: 'edit-key-1'
+  };
+
+  it('creates a pending edit for approved submissions and marks new photos pending review', async () => {
+    const client = {
+      query: vi.fn((text) => {
+        const sql = String(text);
+        if (text === 'begin' || text === 'commit' || text === 'rollback') {
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        }
+        if (sql.includes('from submissions') && sql.includes('for update')) {
+          return Promise.resolve({ rows: [{ id: 'sub-1', status: 'approved' }], rowCount: 1 });
+        }
+        if (sql.includes('client_edit_key') && sql.includes('select id')) {
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        }
+        if (sql.includes('from submission_photos') && sql.includes('review_status')) {
+          return Promise.resolve({ rows: [{ id: '550e8400-e29b-41d4-a716-446655440011' }], rowCount: 1 });
+        }
+        if (sql.includes('update submission_photos') && sql.includes('submission_id is null')) {
+          expect(sql).toContain("review_status = case when $3::boolean then 'pending_edit'");
+          return Promise.resolve({ rows: [{ id: editPayload.photoIds[0] }], rowCount: 1 });
+        }
+        if (sql.includes('update submission_edits') && sql.includes('Superseded')) {
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        }
+        if (sql.includes('insert into submission_edits')) {
+          return Promise.resolve({
+            rows: [{ id: 'edit-1', status: 'pending_review', created_at: '2026-04-27T12:00:00.000Z' }],
+            rowCount: 1
+          });
+        }
+        if (sql.includes('insert into submission_edit_photos')) {
+          return Promise.resolve({ rows: [], rowCount: 1 });
+        }
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      })
+    };
+
+    const result = await submitContributorSubmissionEdit(client, 'sub-1', 'user-1', editPayload);
+
+    expect(result.editId).toBe('edit-1');
+    expect(result.status).toBe('pending_review');
+    expect(result.queuedPhotoIds).toEqual(editPayload.photoIds);
+  });
+
+  it('returns an existing edit for idempotent replays before claiming photos', async () => {
+    const client = {
+      query: vi.fn((text) => {
+        const sql = String(text);
+        if (text === 'begin' || text === 'commit' || text === 'rollback') {
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        }
+        if (sql.includes('from submissions') && sql.includes('for update')) {
+          return Promise.resolve({ rows: [{ id: 'sub-1', status: 'approved' }], rowCount: 1 });
+        }
+        if (sql.includes('client_edit_key') && sql.includes('select id')) {
+          return Promise.resolve({
+            rows: [{ id: 'edit-1', status: 'pending_review', created_at: '2026-04-27T12:00:00.000Z' }],
+            rowCount: 1
+          });
+        }
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      })
+    };
+
+    const result = await submitContributorSubmissionEdit(client, 'sub-1', 'user-1', editPayload);
+
+    expect(result.idempotentReplay).toBe(true);
+    expect(client.query.mock.calls.some(([text]) => String(text).includes('submission_id is null'))).toBe(false);
   });
 });
 

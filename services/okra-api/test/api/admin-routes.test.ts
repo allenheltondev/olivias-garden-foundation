@@ -596,6 +596,7 @@ describe('POST /admin/submissions/:id/statuses — denial', () => {
   function setupDenyMocks(overrides: Record<string, any> = {}) {
     const deniedRow = makeDeniedRow(overrides);
     queryResponses = {
+      'SELECT id, status FROM submissions': { rows: [{ id: '550e8400-e29b-41d4-a716-446655440001', status: 'pending_review' }] },
       'admin_users': { rows: [ADMIN_USER_ROW] },
       'BEGIN': { rows: [] },
       'UPDATE submissions': { rows: [deniedRow], rowCount: 1 },
@@ -722,6 +723,7 @@ describe('POST /admin/submissions/:id/statuses — denial EventBridge publish', 
   function setupDenyMocks(overrides: Record<string, any> = {}) {
     const deniedRow = makeDeniedRow(overrides);
     queryResponses = {
+      'SELECT id, status FROM submissions': { rows: [{ id: '550e8400-e29b-41d4-a716-446655440001', status: 'pending_review' }] },
       'admin_users': { rows: [ADMIN_USER_ROW] },
       'BEGIN': { rows: [] },
       'UPDATE submissions': { rows: [deniedRow], rowCount: 1 },

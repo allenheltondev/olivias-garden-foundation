@@ -1,0 +1,21 @@
+$kind: http-request
+name: List My Submissions - Unauthenticated
+description: Ensure contributor submission listing requires authentication.
+method: GET
+url: '{{okraBaseUrl}}/me/submissions'
+order: 1000
+headers:
+  - key: X-Correlation-Id
+    value: postman-okra-my-submissions-unauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("GET /me/submissions rejects unauthenticated requests", function () {
+          pm.expect(pm.response.code).to.be.oneOf([400, 401]);
+      });
+
+      pm.test("Response includes an error", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.exist;
+      });
