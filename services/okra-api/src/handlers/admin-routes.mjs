@@ -380,7 +380,7 @@ export function registerAdminRoutes(app) {
                 COALESCE(sp.normalized_s3_key, sp.original_s3_key) AS display_s3_key,
                 sp.review_status,
                 sep.action AS edit_action
-         FROM submission_photos
+         FROM submission_photos sp
          LEFT JOIN submission_edit_photos sep
            ON sep.photo_id = sp.id
           AND sep.edit_id = ANY($2::uuid[])
