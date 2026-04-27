@@ -110,12 +110,17 @@ Resources:
           LambdaAuthorizer:
             FunctionPayloadType: REQUEST
             FunctionArn: !GetAtt LambdaAuthorizerFunction.Arn
-            # Intentionally no Identity sources: anonymous public routes
-            # (GET /products, POST /checkout, GET /orders/by-session/:id)
-            # reach the API without an Authorization header. With identity
-            # sources configured, API Gateway 401s those requests directly
-            # without invoking the authorizer, and that 401 carries no CORS
-            # headers — which surfaces to the browser as a CORS error.
+            # $context.path is set on every request, so this identity source
+            # is always satisfied and the authorizer is always invoked —
+            # including for anonymous public routes (GET /products,
+            # POST /checkout, GET /orders/by-session/:id) where the caller
+            # has no Authorization header. ReauthorizeEvery: 0 disables
+            # caching so an anonymous Allow on /products can't get reused
+            # for an authenticated request to /orders.
+            Identity:
+              Context:
+                - path
+              ReauthorizeEvery: 0
       # Attach CORS headers to gateway-generated error responses too, so that
       # auth/policy denials still produce a usable error in the browser
       # rather than an opaque CORS failure.
