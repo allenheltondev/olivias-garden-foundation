@@ -181,12 +181,18 @@ export function OkraSubmissionsPage({
                     </div>
                   ) : null}
                   <div className="admin-submission-card__actions">
-                    <Button type="button" onClick={() => {
-                      setNotice(null);
-                      setEditing(submission);
-                    }}>
-                      {submission.hasPendingEdit ? 'Edit pending changes' : 'Edit submission'}
-                    </Button>
+                    {submission.hasPendingEdit ? (
+                      <p className="page-text okra-submission-card__pending-note">
+                        An edit is awaiting review. You can submit another edit once it&rsquo;s approved or denied.
+                      </p>
+                    ) : (
+                      <Button type="button" onClick={() => {
+                        setNotice(null);
+                        setEditing(submission);
+                      }}>
+                        Edit submission
+                      </Button>
+                    )}
                   </div>
                 </Card>
               );

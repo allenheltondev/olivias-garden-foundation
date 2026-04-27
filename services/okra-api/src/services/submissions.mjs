@@ -349,11 +349,13 @@ export async function submitContributorSubmissionEdit(client, submissionId, cogn
         await client.query(
           `
             update submission_photos sp
-               set review_status = 'denied'
+               set review_status = 'denied',
+                   removed_at = now()
               from submission_edit_photos sep
              where sep.photo_id = sp.id
                and sep.action = 'add'
                and sep.edit_id = any($1::uuid[])
+               and sp.removed_at is null
           `,
           [supersededEditIds]
         );

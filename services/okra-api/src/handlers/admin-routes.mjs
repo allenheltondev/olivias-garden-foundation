@@ -458,18 +458,22 @@ export function registerAdminRoutes(app) {
     }
 
     const body = JSON.parse(ctx.event.body || '{}');
-    const { status, review_notes, display_lat, display_lng, reason } = body;
+    const { status, review_notes, display_lat, display_lng, reason, target_edit_id } = body;
 
     // Validate status field
     if (!status || !VALID_ACTIONS.includes(status)) {
       return errorResponse(400, 'INVALID_ACTION', 'status must be one of: approved, denied');
     }
 
-    if (status === 'approved') {
-      return handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng });
+    if (target_edit_id !== undefined && target_edit_id !== null && !isUuid(target_edit_id)) {
+      return errorResponse(400, 'INVALID_ID', 'target_edit_id must be a valid UUID');
     }
 
-    return handleDenial(ctx, submissionId, { reason, review_notes });
+    if (status === 'approved') {
+      return handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng, target_edit_id });
+    }
+
+    return handleDenial(ctx, submissionId, { reason, review_notes, target_edit_id });
   });
 
   // ─── GET /stats ────────────────────────────────────────────────
@@ -489,7 +493,7 @@ export function registerAdminRoutes(app) {
   });
 }
 
-async function handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng }) {
+async function handleApproval(ctx, submissionId, { review_notes, display_lat, display_lng, target_edit_id }) {
   const hasLat = display_lat !== undefined && display_lat !== null;
   const hasLng = display_lng !== undefined && display_lng !== null;
   if (hasLat !== hasLng) {
@@ -504,7 +508,22 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
 
   const client = await createDbClient();
   await client.connect();
+  let inTxn = false;
   try {
+    await client.query('BEGIN');
+    inTxn = true;
+
+    // Lock the submission row so contributor PATCH cannot race with admin review.
+    const lockResult = await client.query(
+      'SELECT id, status FROM submissions WHERE id = $1 FOR UPDATE',
+      [submissionId]
+    );
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(404, 'NOT_FOUND', 'Submission not found');
+    }
+    const currentStatus = lockResult.rows[0].status;
+
     const pendingEditResult = await client.query(
       `
         select *
@@ -516,30 +535,44 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
       `,
       [submissionId]
     );
-    if (pendingEditResult.rowCount > 0) {
+    const pendingEdit = pendingEditResult.rows[0] ?? null;
+
+    if (target_edit_id) {
+      if (!pendingEdit || pendingEdit.id !== target_edit_id) {
+        await client.query('ROLLBACK'); inTxn = false;
+        return errorResponse(404, 'EDIT_NOT_FOUND', 'No pending edit with that id on this submission');
+      }
+    } else if (pendingEdit) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return {
+        statusCode: 409,
+        body: {
+          error: { code: 'PENDING_EDIT', message: 'Submission has a pending edit; specify target_edit_id to act on it.' },
+          edit_id: pendingEdit.id
+        }
+      };
+    }
+
+    if (pendingEdit) {
       const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
       if (!adminUserId) {
+        await client.query('ROLLBACK'); inTxn = false;
         return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
       }
-
-      return approvePendingEdit(client, submissionId, pendingEditResult.rows[0], adminUserId, {
+      const editResult = await approvePendingEdit(client, submissionId, pendingEdit, adminUserId, {
         review_notes,
         display_lat,
         display_lng,
         hasLat,
         hasLng
       });
+      inTxn = false; // approvePendingEdit handles the COMMIT/ROLLBACK
+      return editResult;
     }
 
-    // Verify submission exists and is pending before anything else
-    const existsResult = await client.query(
-      'SELECT id, status FROM submissions WHERE id = $1', [submissionId]
-    );
-    if (existsResult.rows.length === 0) {
-      return errorResponse(404, 'NOT_FOUND', 'Submission not found');
-    }
-    if (existsResult.rows[0].status !== 'pending_review') {
-      return errorResponse(409, 'INVALID_STATE', `Submission is already ${existsResult.rows[0].status}`);
+    if (currentStatus !== 'pending_review') {
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(409, 'INVALID_STATE', `Submission is already ${currentStatus}`);
     }
 
     const photoCountResult = await client.query(
@@ -551,15 +584,15 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
       [submissionId]
     );
     if (photoCountResult.rows[0].count === 0) {
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(400, 'MISSING_PHOTOS', 'At least one photo is required for approval');
     }
 
     const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
     }
-
-    await client.query('BEGIN');
 
     let updateText;
     let updateParams;
@@ -580,7 +613,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
     const updateResult = await client.query(updateText, updateParams);
     if (updateResult.rowCount === 0) {
       // Race condition: status changed between our check and the update
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK'); inTxn = false;
       return errorResponse(409, 'INVALID_STATE', 'Submission status changed during processing');
     }
 
@@ -618,7 +651,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
       [country, submissionId]
     );
 
-    await client.query('COMMIT');
+    await client.query('COMMIT'); inTxn = false;
 
     const response = {
       id: row.id, contributor_name: row.contributor_name,
@@ -633,7 +666,7 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
     }
     return response;
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (inTxn) { try { await client.query('ROLLBACK'); } catch {} }
     console.error(JSON.stringify({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),
@@ -646,8 +679,9 @@ async function handleApproval(ctx, submissionId, { review_notes, display_lat, di
   }
 }
 
+// Caller is responsible for opening the transaction. This helper commits on
+// success and rolls back on its own validation failures (returning errorResponse).
 async function approvePendingEdit(client, submissionId, edit, adminUserId, { review_notes, display_lat, display_lng, hasLat, hasLng }) {
-  await client.query('BEGIN');
   try {
     const removeResult = await client.query(
       `
@@ -794,7 +828,7 @@ async function approvePendingEdit(client, submissionId, edit, adminUserId, { rev
   }
 }
 
-async function handleDenial(ctx, submissionId, { reason, review_notes }) {
+async function handleDenial(ctx, submissionId, { reason, review_notes, target_edit_id }) {
   if (!reason || !VALID_DENIAL_REASONS.includes(reason)) {
     return errorResponse(400, 'INVALID_REASON', `Invalid reason. Must be one of: ${VALID_DENIAL_REASONS.join(', ')}`);
   }
@@ -804,10 +838,23 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
 
   const client = await createDbClient();
   await client.connect();
+  let inTxn = false;
   try {
     const adminUserId = await resolveAdminUserId(client, ctx.event.requestContext?.authorizer);
     if (!adminUserId) {
       return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
+    }
+
+    await client.query('BEGIN');
+    inTxn = true;
+
+    const lockResult = await client.query(
+      'SELECT id, status FROM submissions WHERE id = $1 FOR UPDATE',
+      [submissionId]
+    );
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(404, 'NOT_FOUND', 'Submission not found');
     }
 
     const pendingEditResult = await client.query(
@@ -821,9 +868,26 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
       `,
       [submissionId]
     );
-    if (pendingEditResult.rowCount > 0) {
-      const editId = pendingEditResult.rows[0].id;
-      await client.query('BEGIN');
+    const pendingEdit = pendingEditResult.rows[0] ?? null;
+
+    if (target_edit_id) {
+      if (!pendingEdit || pendingEdit.id !== target_edit_id) {
+        await client.query('ROLLBACK'); inTxn = false;
+        return errorResponse(404, 'EDIT_NOT_FOUND', 'No pending edit with that id on this submission');
+      }
+    } else if (pendingEdit) {
+      await client.query('ROLLBACK'); inTxn = false;
+      return {
+        statusCode: 409,
+        body: {
+          error: { code: 'PENDING_EDIT', message: 'Submission has a pending edit; specify target_edit_id to act on it.' },
+          edit_id: pendingEdit.id
+        }
+      };
+    }
+
+    if (pendingEdit) {
+      const editId = pendingEdit.id;
       const updateEditResult = await client.query(
         `
           update submission_edits
@@ -838,7 +902,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
         [editId, adminUserId, review_notes || null, reason]
       );
       if (updateEditResult.rowCount === 0) {
-        await client.query('ROLLBACK');
+        await client.query('ROLLBACK'); inTxn = false;
         return errorResponse(409, 'INVALID_STATE', 'Submission edit is already reviewed');
       }
       await client.query(
@@ -849,15 +913,17 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
       await client.query(
         `
           update submission_photos sp
-             set review_status = 'denied'
+             set review_status = 'denied',
+                 removed_at = now()
             from submission_edit_photos sep
            where sep.photo_id = sp.id
              and sep.edit_id = $1
              and sep.action = 'add'
+             and sp.removed_at is null
         `,
         [editId]
       );
-      await client.query('COMMIT');
+      await client.query('COMMIT'); inTxn = false;
       try {
         await eventBridge.send(new PutEventsCommand({
           Entries: [{
@@ -886,8 +952,6 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
       };
     }
 
-    await client.query('BEGIN');
-
     const updateResult = await client.query(
       `UPDATE submissions
        SET status = 'denied', reviewed_by = $2, reviewed_at = now(), review_notes = $3
@@ -896,14 +960,9 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
     );
 
     if (updateResult.rowCount === 0) {
-      const existsResult = await client.query(
-        'SELECT id, status FROM submissions WHERE id = $1', [submissionId]
-      );
-      await client.query('ROLLBACK');
-      if (existsResult.rows.length === 0) {
-        return errorResponse(404, 'NOT_FOUND', 'Submission not found');
-      }
-      return errorResponse(409, 'INVALID_STATE', `Submission is already ${existsResult.rows[0].status}`);
+      const currentStatus = lockResult.rows[0].status;
+      await client.query('ROLLBACK'); inTxn = false;
+      return errorResponse(409, 'INVALID_STATE', `Submission is already ${currentStatus}`);
     }
 
     const row = updateResult.rows[0];
@@ -912,7 +971,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
        VALUES ($1, 'denied', $2, $3, now(), $4)`,
       [submissionId, reason, adminUserId, review_notes || null]
     );
-    await client.query('COMMIT');
+    await client.query('COMMIT'); inTxn = false;
 
     try {
       await eventBridge.send(new PutEventsCommand({
@@ -940,7 +999,7 @@ async function handleDenial(ctx, submissionId, { reason, review_notes }) {
       review_notes: row.review_notes, created_at: row.created_at
     };
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (inTxn) { try { await client.query('ROLLBACK'); } catch {} }
     console.error(JSON.stringify({
       level: 'error',
       message: err instanceof Error ? err.message : String(err),

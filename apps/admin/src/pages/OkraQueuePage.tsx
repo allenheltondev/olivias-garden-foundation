@@ -3,9 +3,17 @@ import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import {
   listOkraReviewQueue,
   reviewOkraSubmission,
+  type OkraDenialReason,
   type OkraSubmission,
 } from '../api';
 import type { AdminSession } from '../auth/session';
+
+const DENIAL_REASON_OPTIONS: Array<{ value: OkraDenialReason; label: string }> = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'invalid_location', label: 'Invalid location' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'other', label: 'Other (notes required)' },
+];
 
 const DEFAULT_VISIBLE_PHOTOS = 3;
 const MOBILE_PHOTO_QUERY = '(max-width: 640px)';
@@ -163,6 +171,7 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [denyNotes, setDenyNotes] = useState<Record<string, string>>({});
+  const [denyReasons, setDenyReasons] = useState<Record<string, OkraDenialReason>>({});
 
   useEffect(() => {
     let active = true;
@@ -200,31 +209,52 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
   };
 
   const handleReview = async (submission: OkraSubmission, action: 'approved' | 'denied') => {
+    const targetEditId = submission.review_kind === 'edit' ? submission.edit_id ?? undefined : undefined;
+    if (action === 'denied') {
+      const reason = denyReasons[submission.id] ?? 'spam';
+      const trimmedNote = denyNotes[submission.id]?.trim() ?? '';
+      if (reason === 'other' && trimmedNote.length === 0) {
+        setError('Add a deny note when the reason is "Other".');
+        return;
+      }
+      setBusyId(submission.id);
+      setError(null);
+      try {
+        await reviewOkraSubmission(session.accessToken, submission.id, {
+          status: 'denied',
+          reason,
+          ...(trimmedNote.length > 0 ? { review_notes: trimmedNote } : {}),
+          ...(targetEditId ? { target_edit_id: targetEditId } : {}),
+        });
+        clearReviewState(submission.id);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to update submission status.');
+      } finally {
+        setBusyId(null);
+      }
+      return;
+    }
+
     setBusyId(submission.id);
     setError(null);
     try {
-      if (action === 'approved') {
-        await reviewOkraSubmission(session.accessToken, submission.id, { status: 'approved' });
-      } else {
-        const fallbackNote = submission.review_kind === 'edit'
-          ? 'Edit denied in admin dashboard.'
-          : 'Reviewed in admin dashboard.';
-        await reviewOkraSubmission(session.accessToken, submission.id, {
-          status: 'denied',
-          reason: 'other',
-          review_notes: denyNotes[submission.id]?.trim() || fallbackNote,
-        });
-      }
-      setQueue((current) => current.filter((item) => item.id !== submission.id));
-      setDenyNotes((current) => Object.fromEntries(
-        Object.entries(current).filter(([id]) => id !== submission.id),
-      ));
-      setTotal((current) => Math.max(0, current - 1));
+      await reviewOkraSubmission(session.accessToken, submission.id, {
+        status: 'approved',
+        ...(targetEditId ? { target_edit_id: targetEditId } : {}),
+      });
+      clearReviewState(submission.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to update submission status.');
     } finally {
       setBusyId(null);
     }
+  };
+
+  const clearReviewState = (submissionId: string) => {
+    setQueue((current) => current.filter((item) => item.id !== submissionId));
+    setDenyNotes((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== submissionId)));
+    setDenyReasons((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== submissionId)));
+    setTotal((current) => Math.max(0, current - 1));
   };
 
   return (
@@ -290,21 +320,36 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
                   ))}
                 </div>
               ) : null}
-              {submission.review_kind === 'edit' ? (
+              <div className="admin-submission-card__deny-fields">
+                <label className="admin-submission-card__deny-reason">
+                  <span>Deny reason</span>
+                  <select
+                    value={denyReasons[submission.id] ?? 'spam'}
+                    onChange={(event) => setDenyReasons((current) => ({
+                      ...current,
+                      [submission.id]: event.target.value as OkraDenialReason,
+                    }))}
+                    disabled={busyId !== null}
+                  >
+                    {DENIAL_REASON_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
                 <label className="admin-submission-card__deny-note">
-                  <span>Deny note</span>
+                  <span>Deny note{(denyReasons[submission.id] ?? 'spam') === 'other' ? ' (required)' : ''}</span>
                   <textarea
                     value={denyNotes[submission.id] ?? ''}
                     onChange={(event) => setDenyNotes((current) => ({
                       ...current,
                       [submission.id]: event.target.value,
                     }))}
-                    placeholder="Optional context for this edit review"
+                    placeholder={submission.review_kind === 'edit' ? 'Optional context for this edit review' : 'Optional context shared with the contributor'}
                     rows={2}
                     disabled={busyId !== null}
                   />
                 </label>
-              ) : null}
+              </div>
               <div className="admin-submission-card__actions">
                 <Button
                   onClick={() => void handleReview(submission, 'approved')}

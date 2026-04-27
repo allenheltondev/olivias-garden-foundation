@@ -194,12 +194,14 @@ export async function listOkraReviewQueue(accessToken: string): Promise<OkraRevi
   };
 }
 
+export type OkraDenialReason = 'spam' | 'invalid_location' | 'inappropriate' | 'other';
+
 export async function reviewOkraSubmission(
   accessToken: string,
   submissionId: string,
   payload:
-    | { status: 'approved'; review_notes?: string }
-    | { status: 'denied'; reason: 'spam' | 'invalid_location' | 'inappropriate' | 'other'; review_notes?: string }
+    | { status: 'approved'; review_notes?: string; target_edit_id?: string }
+    | { status: 'denied'; reason: OkraDenialReason; review_notes?: string; target_edit_id?: string }
 ): Promise<void> {
   await requestJson(
     `${getOkraAdminApiBaseUrl()}/submissions/${submissionId}/statuses`,
