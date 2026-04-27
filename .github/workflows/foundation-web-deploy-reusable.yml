@@ -388,6 +388,12 @@ jobs:
         working-directory: services/okra-api
         run: npm ci --workspaces=false --ignore-scripts
 
+      - name: Run okra database migrations
+        working-directory: services/okra-api
+        env:
+          DATABASE_URL: ${{ secrets.database_url }}
+        run: npm run db:migrate
+
       - name: Generate okra CI auth credentials
         id: okra-ci-auth
         run: |

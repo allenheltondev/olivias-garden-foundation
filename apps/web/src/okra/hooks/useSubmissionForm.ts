@@ -122,24 +122,29 @@ export function useSubmissionForm(
       setIsSubmitting(true);
 
       try {
-        const payload = {
+        const isEdit = options.mode === 'edit' && Boolean(options.submissionId);
+        const payload: Record<string, unknown> = {
           photoIds,
-          removePhotoIds,
           rawLocationText: loc.rawLocationText,
           displayLat: loc.displayLat,
           displayLng: loc.displayLng,
           contributorName: contributorName || undefined,
           storyText: storyText || undefined,
           privacyMode,
-          editClientKey: options.editClientKey,
         };
+        if (isEdit) {
+          payload.removePhotoIds = removePhotoIds;
+          if (options.editClientKey) {
+            payload.editClientKey = options.editClientKey;
+          }
+        }
 
         const res = await fetch(
-          options.mode === 'edit' && options.submissionId
+          isEdit
             ? okraApiUrl(`/me/submissions/${options.submissionId}`)
             : okraApiUrl('/submissions'),
           {
-            method: options.mode === 'edit' ? 'PATCH' : 'POST',
+            method: isEdit ? 'PATCH' : 'POST',
             headers: createOkraHeaders({ contentType: 'application/json', accessToken }),
             body: JSON.stringify(payload),
           },
