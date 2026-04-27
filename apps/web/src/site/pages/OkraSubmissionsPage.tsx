@@ -4,7 +4,7 @@ import type { AuthSession } from '../../auth/session';
 import { createOkraHeaders, okraApiUrl } from '../../okra/api';
 import { SubmissionModal } from '../../okra/components/SubmissionModal';
 import type { PrivacyMode } from '../../okra/hooks/useSubmissionForm';
-import { PageHero, Section } from '../chrome';
+import { PageHero } from '../chrome';
 
 type OkraSubmissionPhoto = {
   id: string;
@@ -51,31 +51,15 @@ function formatDate(value: string | null) {
 
 function getSubmissionStatus(submission: OkraSubmission) {
   if (submission.hasPendingEdit) {
-    return {
-      label: 'Edit pending',
-      tone: 'pending',
-      detail: 'Your live pin stays unchanged while the edit is reviewed.',
-    };
+    return { label: 'Edit pending', tone: 'pending' };
   }
   if (submission.status === 'approved') {
-    return {
-      label: 'Live on map',
-      tone: 'live',
-      detail: submission.editCount > 0 ? 'Approved and marked edited.' : 'Approved and visible.',
-    };
+    return { label: 'Live on map', tone: 'live' };
   }
   if (submission.status === 'denied') {
-    return {
-      label: 'Needs follow-up',
-      tone: 'denied',
-      detail: 'Message us if you want help revising this submission.',
-    };
+    return { label: 'Needs follow-up', tone: 'denied' };
   }
-  return {
-    label: 'Pending review',
-    tone: 'pending',
-    detail: 'We will review it before it appears on the map.',
-  };
+  return { label: 'Pending review', tone: 'pending' };
 }
 
 export function OkraSubmissionsPage({
@@ -128,21 +112,19 @@ export function OkraSubmissionsPage({
   return (
     <>
       <PageHero
-        eyebrow="The Okra Project"
         title="Your okra submissions"
-        body="Review the okra patches tied to your account and submit edits for approval."
+        body="Approved patches stay live while edits are reviewed."
         className="profile-hero"
       />
 
-      <Section title="Submissions" intro="Approved submissions stay visible while edits are reviewed.">
+      <section className="page-section">
         {notice ? <FormFeedback tone="success">{notice}</FormFeedback> : null}
         {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
         {loading ? (
-          <p className="page-text">Loading your okra submissions...</p>
+          <p className="page-text">Loading...</p>
         ) : submissions.length === 0 ? (
           <Card className="okra-submissions-empty">
-            <h3>No okra submissions yet</h3>
-            <p className="page-text">Add your patch from the Okra Project map while signed in, then it will show up here for future edits.</p>
+            <p className="page-text">You haven&rsquo;t added a patch yet.</p>
             <Button type="button" onClick={() => onNavigate('/okra')}>
               Go to the okra map
             </Button>
@@ -165,7 +147,6 @@ export function OkraSubmissionsPage({
                       {status.label}
                     </span>
                     {submission.editCount > 0 ? <span className="okra-submission-card__edited">edited</span> : null}
-                    <p>{status.detail}</p>
                   </div>
                   <p className="admin-submission-card__story">
                     {submission.storyText || 'No story provided.'}
@@ -199,7 +180,7 @@ export function OkraSubmissionsPage({
             })}
           </div>
         )}
-      </Section>
+      </section>
 
       <SubmissionModal
         open={editing !== null}
