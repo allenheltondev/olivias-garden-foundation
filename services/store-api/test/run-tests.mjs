@@ -7,8 +7,13 @@ import {
   normalizePath
 } from '../src/auth/authorizer.mjs';
 import { extractAuthContext, requireAdmin, requireUser } from '../src/services/auth.mjs';
-import { mapApiError, normalizeRoutePath } from '../src/services/http.mjs';
-import { handleStripeWebhook, recordPaidOrder } from '../src/services/orders.mjs';
+import { mapApiError, normalizeRoutePath, parseJsonBody, readRawBody } from '../src/services/http.mjs';
+import {
+  createCheckoutSession,
+  getAllowedRedirectOrigins,
+  handleStripeWebhook,
+  recordPaidOrder
+} from '../src/services/orders.mjs';
 import { StripeClient, verifyWebhookSignature } from '../src/services/stripe.mjs';
 
 function testAnonymousRoutes() {
@@ -483,6 +488,114 @@ async function testHandleStripeWebhookRejectsBadSignature() {
   );
 }
 
+function testReadRawBodyDecodesBase64() {
+  const payload = JSON.stringify({ items: [{ productId: 'x', quantity: 1 }] });
+  const event = {
+    body: Buffer.from(payload, 'utf8').toString('base64'),
+    isBase64Encoded: true
+  };
+  assert.equal(readRawBody(event), payload);
+}
+
+function testParseJsonBodyDecodesBase64() {
+  const payload = JSON.stringify({ items: ['hello'] });
+  const event = {
+    body: Buffer.from(payload, 'utf8').toString('base64'),
+    isBase64Encoded: true
+  };
+  const parsed = parseJsonBody(event);
+  assert.deepEqual(parsed, { items: ['hello'] });
+}
+
+function testParseJsonBodyHandlesPlainString() {
+  const event = { body: '{"hello":"world"}' };
+  assert.deepEqual(parseJsonBody(event), { hello: 'world' });
+}
+
+function testGetAllowedRedirectOriginsFromEnvList() {
+  const origins = getAllowedRedirectOrigins({
+    ALLOWED_CHECKOUT_REDIRECT_ORIGINS: 'https://store.example.org , https://admin.example.org'
+  });
+  assert.deepEqual(origins, ['https://store.example.org', 'https://admin.example.org']);
+}
+
+function testGetAllowedRedirectOriginsFromOrigin() {
+  const origins = getAllowedRedirectOrigins({ ORIGIN: 'https://store.example.org/' });
+  assert.deepEqual(origins, [
+    'https://store.example.org',
+    'http://localhost:5177',
+    'http://localhost:4177'
+  ]);
+}
+
+function testGetAllowedRedirectOriginsIgnoresWildcardOrigin() {
+  const origins = getAllowedRedirectOrigins({ ORIGIN: '*' });
+  assert.deepEqual(origins, ['http://localhost:5177', 'http://localhost:4177']);
+}
+
+const validCheckoutPayload = {
+  items: [
+    {
+      productId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      quantity: 1
+    }
+  ],
+  success_url: 'https://store.example.org/order-complete?session_id={CHECKOUT_SESSION_ID}',
+  cancel_url: 'https://store.example.org/cart'
+};
+
+async function testCheckoutRejectsAttackerControlledSuccessUrl() {
+  const event = { requestContext: { authorizer: {} } };
+  await assert.rejects(
+    () =>
+      createCheckoutSession(
+        event,
+        { ...validCheckoutPayload, success_url: 'https://evil.example/steal?session_id={CHECKOUT_SESSION_ID}' },
+        { allowedRedirectOrigins: ['https://store.example.org'] }
+      ),
+    /success_url origin is not allowed/
+  );
+}
+
+async function testCheckoutRejectsAttackerControlledCancelUrl() {
+  const event = { requestContext: { authorizer: {} } };
+  await assert.rejects(
+    () =>
+      createCheckoutSession(
+        event,
+        { ...validCheckoutPayload, cancel_url: 'https://evil.example/cart' },
+        { allowedRedirectOrigins: ['https://store.example.org'] }
+      ),
+    /cancel_url origin is not allowed/
+  );
+}
+
+async function testCheckoutRejectsMalformedRedirectUrl() {
+  const event = { requestContext: { authorizer: {} } };
+  await assert.rejects(
+    () =>
+      createCheckoutSession(
+        event,
+        { ...validCheckoutPayload, success_url: 'not-a-real-url' },
+        { allowedRedirectOrigins: ['https://store.example.org'] }
+      ),
+    /success_url is not a valid URL|success_url origin is not allowed/
+  );
+}
+
+async function testCheckoutRejectsNonHttpScheme() {
+  const event = { requestContext: { authorizer: {} } };
+  await assert.rejects(
+    () =>
+      createCheckoutSession(
+        event,
+        { ...validCheckoutPayload, success_url: 'javascript:alert(1)' },
+        { allowedRedirectOrigins: ['https://store.example.org'] }
+      ),
+    /success_url/
+  );
+}
+
 testAnonymousRoutes();
 await testAuthorizer();
 testAuthHelpers();
@@ -497,4 +610,14 @@ await testHandleStripeWebhookHappyPath();
 await testHandleStripeWebhookSkipsUnpaid();
 await testHandleStripeWebhookSkipsUnrelatedEvent();
 await testHandleStripeWebhookRejectsBadSignature();
+testReadRawBodyDecodesBase64();
+testParseJsonBodyDecodesBase64();
+testParseJsonBodyHandlesPlainString();
+testGetAllowedRedirectOriginsFromEnvList();
+testGetAllowedRedirectOriginsFromOrigin();
+testGetAllowedRedirectOriginsIgnoresWildcardOrigin();
+await testCheckoutRejectsAttackerControlledSuccessUrl();
+await testCheckoutRejectsAttackerControlledCancelUrl();
+await testCheckoutRejectsMalformedRedirectUrl();
+await testCheckoutRejectsNonHttpScheme();
 console.log('store api tests passed');

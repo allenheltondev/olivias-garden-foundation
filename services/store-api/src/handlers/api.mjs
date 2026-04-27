@@ -5,7 +5,8 @@ import {
   jsonResponse,
   mapApiError,
   normalizeRoutePath,
-  parseJsonBody
+  parseJsonBody,
+  readRawBody
 } from '../services/http.mjs';
 import {
   getPublicProductBySlug,
@@ -52,10 +53,7 @@ async function handleWebhook(event, correlationId) {
   const signature =
     event?.headers?.['stripe-signature'] ?? event?.headers?.['Stripe-Signature'];
 
-  let rawBody = event?.body ?? '';
-  if (event?.isBase64Encoded) {
-    rawBody = Buffer.from(rawBody, 'base64').toString('utf8');
-  }
+  const rawBody = readRawBody(event);
 
   try {
     const result = await handleStripeWebhook(rawBody, signature);

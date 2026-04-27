@@ -42,15 +42,36 @@ export function normalizeRoutePath(path = '/') {
   return path;
 }
 
-export function parseJsonBody(event) {
+export function readRawBody(event) {
   const body = event?.body;
 
   if (body === undefined || body === null || body === '') {
+    return '';
+  }
+
+  if (typeof body !== 'string') {
+    return body;
+  }
+
+  // BinaryMediaTypes "*/*" on the API Gateway means API Gateway delivers
+  // request bodies base64-encoded, including JSON bodies for /checkout.
+  // Decode here so downstream code sees the original UTF-8 string.
+  if (event.isBase64Encoded) {
+    return Buffer.from(body, 'base64').toString('utf8');
+  }
+
+  return body;
+}
+
+export function parseJsonBody(event) {
+  const raw = readRawBody(event);
+
+  if (raw === '' || raw === null || raw === undefined) {
     throw new Error('Request body is required');
   }
 
   try {
-    return typeof body === 'string' ? JSON.parse(body) : body;
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
   } catch (error) {
     throw new Error(`Invalid JSON body: ${error instanceof Error ? error.message : String(error)}`);
   }

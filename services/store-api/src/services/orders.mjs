@@ -75,7 +75,49 @@ async function loadOrdersWithItems(rows) {
   return rows.map((row) => mapOrder(row, itemsByOrder.get(row.id) ?? []));
 }
 
-function validateCheckoutPayload(payload) {
+// Origins permitted for Stripe Checkout success_url / cancel_url. Anyone can
+// hit /checkout (anonymous endpoint), so without this allowlist an attacker
+// could create a session that redirects through their own host and harvest
+// the CHECKOUT_SESSION_ID (which is then a bearer token to /orders/by-session
+// containing customer email + shipping address + line items).
+export function getAllowedRedirectOrigins(env = process.env) {
+  const explicit = env.ALLOWED_CHECKOUT_REDIRECT_ORIGINS;
+  if (explicit) {
+    return explicit
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const origins = [];
+  if (env.ORIGIN && env.ORIGIN !== '*') {
+    origins.push(env.ORIGIN.replace(/\/+$/, ''));
+  }
+  // Dev fallbacks so localhost still works without explicit configuration.
+  origins.push('http://localhost:5177', 'http://localhost:4177');
+  return origins;
+}
+
+function assertAllowedRedirectUrl(url, fieldName, allowedOrigins) {
+  if (typeof url !== 'string' || url.trim().length === 0) {
+    throw new Error(`Validation: ${fieldName} is required`);
+  }
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Validation: ${fieldName} is not a valid URL`);
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(`Validation: ${fieldName} must use http or https`);
+  }
+  const origin = parsed.origin;
+  if (!allowedOrigins.includes(origin)) {
+    throw new Error(`Validation: ${fieldName} origin is not allowed`);
+  }
+}
+
+function validateCheckoutPayload(payload, options = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('Request body is required');
   }
@@ -97,16 +139,16 @@ function validateCheckoutPayload(payload) {
     }
   }
 
-  if (typeof payload.success_url !== 'string' || !/^https?:\/\//.test(payload.success_url)) {
-    throw new Error('Validation: success_url is required');
-  }
-  if (typeof payload.cancel_url !== 'string' || !/^https?:\/\//.test(payload.cancel_url)) {
-    throw new Error('Validation: cancel_url is required');
-  }
+  const allowedOrigins =
+    options.allowedRedirectOrigins ?? getAllowedRedirectOrigins();
+  assertAllowedRedirectUrl(payload.success_url, 'success_url', allowedOrigins);
+  assertAllowedRedirectUrl(payload.cancel_url, 'cancel_url', allowedOrigins);
 }
 
 export async function createCheckoutSession(event, payload, options = {}) {
-  validateCheckoutPayload(payload);
+  validateCheckoutPayload(payload, {
+    allowedRedirectOrigins: options.allowedRedirectOrigins
+  });
   const auth = extractAuthContext(event);
 
   const productIds = payload.items.map((item) => item.productId);

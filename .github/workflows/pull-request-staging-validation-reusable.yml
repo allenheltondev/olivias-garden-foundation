@@ -65,6 +65,9 @@ jobs:
       AWS_REGION: us-east-1
       FOUNDATION_STACK_NAME: ogf-web-staging
 
+    outputs:
+      web-frontend-url: ${{ steps.get-outputs.outputs.web-frontend-url }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -136,6 +139,16 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset \
             --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Get foundation stack outputs
+        id: get-outputs
+        run: |
+          WEB_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "web-frontend-url=$WEB_FRONTEND_URL" >> $GITHUB_OUTPUT
 
       - name: Diagnose failed foundation deploy
         if: ${{ failure() }}
@@ -779,26 +792,54 @@ jobs:
   comment-staging-deployment:
     name: Comment Shared Staging Deployment
     runs-on: ubuntu-latest
-    needs: [deploy-staging-backend, deploy-staging-frontend, deploy-staging-admin-backend, deploy-staging-admin-frontend]
+    needs: [deploy-staging-foundation, deploy-staging-backend, deploy-staging-frontend, deploy-staging-admin-backend, deploy-staging-admin-frontend]
     if: always() && needs.deploy-staging-backend.result == 'success'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      STORE_STACK_NAME: ogf-store-staging
 
     steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Staging-Comment-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get store frontend URL (best-effort)
+        id: store-url
+        run: |
+          STORE_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.STORE_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "url=$STORE_URL" >> $GITHUB_OUTPUT
+
       - name: Comment on PR
         uses: actions/github-script@v7
+        env:
+          FOUNDATION_URL: ${{ needs.deploy-staging-foundation.outputs.web-frontend-url }}
+          GRN_URL: ${{ needs.deploy-staging-backend.outputs.frontend-url }}
+          STORE_URL: ${{ steps.store-url.outputs.url }}
         with:
           script: |
+            const fallback = "_(not yet deployed)_";
+            const foundation = (process.env.FOUNDATION_URL || "").trim() || fallback;
+            const grn = (process.env.GRN_URL || "").trim() || fallback;
+            const store = (process.env.STORE_URL || "").trim() || fallback;
+
             const output = `#### Shared Staging Deployment Complete
 
             **Environment:** \`staging\`
-            **GRN Stack:** \`ogf-grn-staging\`
-            **Admin Stack:** \`ogf-admin-staging\`
 
-            **Frontend URL (apps/grn):** ${{ needs.deploy-staging-backend.outputs.frontend-url }}
-            **API URL (services/grn-api):** ${{ needs.deploy-staging-backend.outputs.api-url }}
-            **Admin URL (apps/admin):** ${{ needs.deploy-staging-admin-backend.outputs.frontend-url }}
-            **Admin API URL (services/admin-api):** ${{ needs.deploy-staging-admin-backend.outputs.api-url }}
+            - **Foundation web (apps/web):** ${foundation}
+            - **Good Roots Network (apps/grn):** ${grn}
+            - **Store (apps/store):** ${store}
 
-            This PR updated the shared staging environment for GRN, Admin, Foundation, and supporting services.`;
+            This PR updated the shared staging environment for the foundation, GRN, store, and supporting services.`;
 
             github.rest.issues.createComment({
               issue_number: Number('${{ inputs.pr_number }}'),

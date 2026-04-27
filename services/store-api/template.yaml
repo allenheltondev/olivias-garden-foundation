@@ -38,6 +38,13 @@ Parameters:
     Default: ""
     NoEcho: true
     Description: Stripe webhook signing secret (whsec_...). Required for /webhook.
+  AllowedCheckoutRedirectOrigins:
+    Type: String
+    Default: ""
+    Description: >
+      Optional comma-separated list of origins allowed for Stripe Checkout
+      success_url and cancel_url. Defaults to the store frontend origin plus
+      localhost dev fallbacks if left blank.
 
 Conditions:
   DeployFrontendCustomDomain: !And
@@ -285,6 +292,7 @@ Resources:
             - "*"
           STRIPE_SECRET_KEY: !Ref StripeSecretKey
           STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+          ALLOWED_CHECKOUT_REDIRECT_ORIGINS: !Ref AllowedCheckoutRedirectOrigins
           NODE_OPTIONS: --enable-source-maps
       Events:
         ApiProxy:
