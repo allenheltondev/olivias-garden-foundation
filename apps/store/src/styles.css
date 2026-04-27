@@ -204,10 +204,25 @@ body {
 }
 
 .store-product-detail__thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  display: flex;
   gap: 0.5rem;
   padding: 0 0.5rem 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.store-product-detail__thumbs button {
+  flex: 0 0 72px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.store-product-detail__thumbs button.is-active {
+  border-color: var(--og-color-moss);
 }
 
 .store-product-detail__thumbs img {
@@ -215,6 +230,7 @@ body {
   aspect-ratio: 1 / 1;
   border-radius: 6px;
   object-fit: cover;
+  display: block;
 }
 
 .store-product-detail__buy {

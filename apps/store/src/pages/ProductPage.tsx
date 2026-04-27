@@ -24,6 +24,7 @@ export function ProductPage() {
   const [product, setProduct] = useState<StoreProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const cart = useCart();
   const navigate = useNavigate();
 
@@ -36,6 +37,7 @@ export function ProductPage() {
       .then((next) => {
         if (!active) return;
         setProduct(next);
+        setSelectedImageId(next.images[0]?.id ?? null);
       })
       .catch((err: Error) => {
         if (!active) return;
@@ -67,7 +69,8 @@ export function ProductPage() {
     navigate('/cart');
   };
   const productImages = product.images.filter((image) => image.url);
-  const primaryImage = productImages[0]?.url ?? product.image_url;
+  const selectedImage = productImages.find((image) => image.id === selectedImageId) ?? productImages[0] ?? null;
+  const primaryImage = selectedImage?.url ?? product.image_url;
 
   return (
     <section className="store-section store-product-detail">
@@ -81,11 +84,19 @@ export function ProductPage() {
         <Card className="store-product-detail__media">
           {primaryImage ? (
             <>
-              <img src={primaryImage} alt={productImages[0]?.alt_text || ''} />
+              <img src={primaryImage} alt={selectedImage?.alt_text || ''} />
               {productImages.length > 1 ? (
                 <div className="store-product-detail__thumbs" aria-label="Product images">
-                  {productImages.slice(1).map((image) => (
-                    <img key={image.id} src={image.thumbnail_url || image.url || ''} alt={image.alt_text || ''} />
+                  {productImages.map((image) => (
+                    <button
+                      key={image.id}
+                      type="button"
+                      className={image.id === selectedImage?.id ? 'is-active' : ''}
+                      onClick={() => setSelectedImageId(image.id)}
+                      aria-label={image.alt_text ? `View ${image.alt_text}` : 'View product image'}
+                    >
+                      <img src={image.thumbnail_url || image.url || ''} alt="" />
+                    </button>
                   ))}
                 </div>
               ) : null}
