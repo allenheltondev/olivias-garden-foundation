@@ -70,7 +70,9 @@ export function BrowsePage() {
                 <p className="store-product-card__excerpt">{product.short_description}</p>
               ) : null}
               <div className="store-product-card__footer">
-                <strong>{formatMoney(product.unit_amount_cents, product.currency)}</strong>
+                <span className="store-product-card__price">
+                  {formatMoney(product.unit_amount_cents, product.currency)}
+                </span>
                 <Button
                   size="sm"
                   variant="secondary"

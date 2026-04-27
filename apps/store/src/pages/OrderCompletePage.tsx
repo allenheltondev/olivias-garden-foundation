@@ -70,7 +70,7 @@ export function OrderCompletePage() {
       <section className="store-section">
         <FormFeedback tone="error">{error}</FormFeedback>
         <p>
-          <Link to="/">Back to store</Link>
+          <Link className="store-back-link" to="/">Back to store</Link>
         </p>
       </section>
     );
@@ -81,7 +81,7 @@ export function OrderCompletePage() {
       <section className="store-section">
         <SectionHeading
           eyebrow="Thank you"
-          title="Finishing up your order..."
+          title="Finishing up your order…"
           body="We are confirming the payment. This usually takes a few seconds."
         />
       </section>
@@ -102,14 +102,27 @@ export function OrderCompletePage() {
   }
 
   return (
-    <section className="store-section">
-      <SectionHeading
-        eyebrow="Thank you"
-        title="Your order is confirmed"
-        body={`A receipt has been sent to ${order.email}.`}
-      />
+    <section className="store-section store-order-success">
+      <div className="store-order-success__hero">
+        <div className="store-order-success__check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="M5 12.5l4.2 4.2L19 7.5"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+        <SectionHeading
+          eyebrow="Thank you"
+          title="Your order is confirmed"
+          body={`A receipt has been sent to ${order.email}.`}
+        />
+      </div>
 
-      <Card>
+      <Card className="store-order-summary">
         <div className="store-order-summary__header">
           <p className="og-section-label">Order #{order.id.slice(0, 8)}</p>
           <strong>{formatMoney(order.totalCents, order.currency)}</strong>
@@ -149,7 +162,7 @@ export function OrderCompletePage() {
       </Card>
 
       <p>
-        <Link to="/">← Continue shopping</Link>
+        <Link className="store-back-link" to="/">Continue shopping</Link>
       </p>
     </section>
   );

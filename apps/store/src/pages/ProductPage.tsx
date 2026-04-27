@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, FormFeedback, Input, SectionHeading } from '@olivias/ui';
+import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import { getProductBySlug, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
 
@@ -16,7 +16,7 @@ const FULFILLMENT_LABEL: Record<StoreProduct['fulfillment_type'], string> = {
   none: 'No fulfillment required',
   digital: 'Digital delivery',
   shipping: 'Ships to your address',
-  pickup: 'Pickup',
+  pickup: 'Pickup at the garden',
 };
 
 export function ProductPage() {
@@ -52,10 +52,8 @@ export function ProductPage() {
   if (error) {
     return (
       <section className="store-section">
+        <Link className="store-back-link" to="/">Back to store</Link>
         <FormFeedback tone="error">{error}</FormFeedback>
-        <p>
-          <Link to="/">Back to all products</Link>
-        </p>
       </section>
     );
   }
@@ -74,6 +72,8 @@ export function ProductPage() {
 
   return (
     <section className="store-section store-product-detail">
+      <Link className="store-back-link" to="/">Back to store</Link>
+
       <SectionHeading
         eyebrow={KIND_LABEL[product.kind]}
         title={product.name}
@@ -84,21 +84,26 @@ export function ProductPage() {
         <Card className="store-product-detail__media" padding="none">
           {primaryImage ? (
             <>
-              <img src={primaryImage} alt={selectedImage?.alt_text || ''} />
+              <img
+                className="store-product-detail__main-image"
+                src={primaryImage}
+                alt={selectedImage?.alt_text || product.name}
+              />
               {productImages.length > 1 ? (
                 <div className="store-product-detail__thumbs" aria-label="Product images">
                   {productImages.map((image) => (
-                    <Button
+                    <button
                       key={image.id}
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={image.id === selectedImage?.id ? 'is-active' : ''}
+                      className={`store-product-detail__thumb${
+                        image.id === selectedImage?.id ? ' is-active' : ''
+                      }`}
                       onClick={() => setSelectedImageId(image.id)}
                       aria-label={image.alt_text ? `View ${image.alt_text}` : 'View product image'}
+                      aria-pressed={image.id === selectedImage?.id}
                     >
                       <img src={image.thumbnail_url || image.url || ''} alt="" />
-                    </Button>
+                    </button>
                   ))}
                 </div>
               ) : null}
@@ -111,7 +116,9 @@ export function ProductPage() {
         <Card className="store-product-detail__buy">
           <div className="store-product-detail__price">
             <strong>{formatMoney(product.unit_amount_cents, product.currency)}</strong>
-            <span className="og-section-label">{FULFILLMENT_LABEL[product.fulfillment_type]}</span>
+            <p className="store-product-detail__fulfillment">
+              {FULFILLMENT_LABEL[product.fulfillment_type]}
+            </p>
           </div>
 
           {product.description ? (
@@ -125,44 +132,48 @@ export function ProductPage() {
           ) : null}
 
           <div className="store-quantity">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Decrease quantity"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-            >
-              −
-            </Button>
-            <Input
-              id="store-qty"
-              type="number"
-              label="Quantity"
-              min={1}
-              value={quantity}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next) && next >= 1) {
-                  setQuantity(Math.floor(next));
-                }
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Increase quantity"
-              onClick={() => setQuantity((q) => q + 1)}
-            >
-              +
-            </Button>
+            <span className="store-quantity__label">Quantity</span>
+            <div className="store-quantity__group" role="group" aria-label="Quantity">
+              <button
+                type="button"
+                className="store-quantity__btn"
+                aria-label="Decrease quantity"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
+              >
+                −
+              </button>
+              <input
+                id="store-qty"
+                className="store-quantity__input"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                aria-label="Quantity"
+                value={quantity}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  if (Number.isFinite(next) && next >= 1) {
+                    setQuantity(Math.floor(next));
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="store-quantity__btn"
+                aria-label="Increase quantity"
+                onClick={() => setQuantity((q) => q + 1)}
+              >
+                +
+              </button>
+            </div>
           </div>
 
-          <Button onClick={onAdd}>Add to cart</Button>
+          <Button className="store-product-detail__add" onClick={onAdd}>
+            Add to cart
+          </Button>
         </Card>
       </div>
-
-      <p className="store-product-detail__back">
-        <Link to="/">← Back to all products</Link>
-      </p>
     </section>
   );
 }

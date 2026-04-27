@@ -41,7 +41,7 @@ function CartIndicator() {
           fill="currentColor"
         />
       </svg>
-      <span>Cart</span>
+      <span className="store-cart-indicator__label">Cart</span>
       {itemCount > 0 ? <span className="store-cart-indicator__badge">{itemCount}</span> : null}
     </Link>
   );
