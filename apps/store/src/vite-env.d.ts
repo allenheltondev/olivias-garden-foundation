@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_STORE_API_URL: string;
   readonly VITE_FOUNDATION_URL?: string;
   readonly VITE_GRN_URL?: string;
+  readonly VITE_ADMIN_URL?: string;
 }
 
 interface ImportMeta {

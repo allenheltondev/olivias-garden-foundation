@@ -87,6 +87,9 @@ export function StorePage({ session }: StorePageProps) {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [productForm, setProductForm] = useState<UpsertStoreProductRequest>(emptyProductForm);
+  // Tracked separately from unit_amount_cents so admins can type "1.5"
+  // without the input snapping to "1.50" mid-keystroke.
+  const [priceInput, setPriceInput] = useState('0.00');
   const [productImages, setProductImages] = useState<ProductImageFormItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -149,6 +152,7 @@ export function StorePage({ session }: StorePageProps) {
   const startCreate = () => {
     setActiveProductId(null);
     setProductForm(emptyProductForm);
+    setPriceInput('0.00');
     setProductImages([]);
   };
 
@@ -176,6 +180,7 @@ export function StorePage({ session }: StorePageProps) {
         values: [...variation.values],
       })),
     });
+    setPriceInput((product.unit_amount_cents / 100).toFixed(2));
     setProductImages(
       product.images.map((image) => ({
         id: image.id,
@@ -457,9 +462,20 @@ export function StorePage({ session }: StorePageProps) {
               />
               <Input
                 type="number"
-                label="Price (cents)"
-                value={productForm.unit_amount_cents}
-                onChange={(event) => setProductForm((current) => ({ ...current, unit_amount_cents: Number(event.target.value) || 0 }))}
+                label="Price (USD)"
+                step="0.01"
+                min="0"
+                value={priceInput}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  setPriceInput(raw);
+                  const dollars = Number(raw);
+                  setProductForm((current) => ({
+                    ...current,
+                    unit_amount_cents:
+                      Number.isFinite(dollars) && dollars >= 0 ? Math.round(dollars * 100) : 0,
+                  }));
+                }}
               />
             </div>
             <div className="admin-store-grid">
@@ -480,22 +496,6 @@ export function StorePage({ session }: StorePageProps) {
                 Featured
               </label>
             </div>
-            <Input
-              label="Nonprofit program"
-              value={productForm.nonprofit_program || ''}
-              onChange={(event) => setProductForm((current) => ({ ...current, nonprofit_program: event.target.value }))}
-            />
-            <Textarea
-              label="Impact summary"
-              value={productForm.impact_summary || ''}
-              onChange={(event) => setProductForm((current) => ({ ...current, impact_summary: event.target.value }))}
-            />
-            <Input
-              type="url"
-              label="Fallback image URL"
-              value={productForm.image_url || ''}
-              onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))}
-            />
             <VariationsEditor
               variations={variations}
               onAdd={addVariation}
