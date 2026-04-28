@@ -1,0 +1,176 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Activity event log + Slack fan-out for Olivia's Garden Foundation.
+  Consumes domain events from the default EventBridge bus, persists them
+  to DynamoDB (30-day TTL) for the admin Activity feed, and forwards a
+  rendered Slack notification.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+      - pr
+  SlackWebhookUrl:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: General-purpose Slack webhook the consumer forwards rendered notifications to.
+  ContactSlackWebhookUrl:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: Optional Slack webhook for Good Roots org inquiries. Falls back to SlackWebhookUrl when empty.
+  ActivityTtlDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    Description: How many days to retain activity events in DynamoDB before TTL expiry.
+  AdminFrontendUrl:
+    Type: String
+    Default: ''
+    Description: Optional admin app URL used to build deep links inside Slack messages.
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Architectures: [arm64]
+    Timeout: 10
+    MemorySize: 512
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+
+Metadata:
+  esbuild-properties: &esbuild-properties
+    Format: esm
+    Minify: true
+    OutExtension:
+      - .js=.mjs
+    Target: es2022
+    Sourcemap: false
+    EntryPoints:
+      - index.mjs
+    Banner:
+      - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+
+Resources:
+  ConsumerDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-consumer-dlq'
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  ActivityEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: detailType
+          AttributeType: S
+        - AttributeName: occurredAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: detailType-occurredAt-index
+          KeySchema:
+            - AttributeName: detailType
+              KeyType: HASH
+            - AttributeName: occurredAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  ConsumerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        <<: *esbuild-properties
+        EntryPoints:
+          - src/handlers/consumer.mjs
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/consumer.handler
+      EventInvokeConfig:
+        MaximumRetryAttempts: 2
+        DestinationConfig:
+          OnFailure:
+            Type: SQS
+            Destination: !GetAtt ConsumerDeadLetterQueue.Arn
+      Environment:
+        Variables:
+          ACTIVITY_EVENTS_TABLE_NAME: !Ref ActivityEventsTable
+          ACTIVITY_TTL_DAYS: !Ref ActivityTtlDays
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          CONTACT_SLACK_WEBHOOK_URL: !Ref ContactSlackWebhookUrl
+          ADMIN_FRONTEND_URL: !Ref AdminFrontendUrl
+          FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt ActivityEventsTable.Arn
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ConsumerDeadLetterQueue.Arn
+      Events:
+        ActivityEvents:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - okra.submissions
+                - okra.seed-requests
+                - ogf.donations
+                - ogf.signups
+                - ogf.contact
+              detail-type:
+                - submission.created
+                - seed-request.created
+                - donation.completed
+                - user.signed-up
+                - org-inquiry.received
+
+Outputs:
+  ConsumerDeadLetterQueueUrl:
+    Description: SQS queue URL receiving consumer Lambda failures after retries.
+    Value: !Ref ConsumerDeadLetterQueue
+  ConsumerDeadLetterQueueArn:
+    Description: SQS queue ARN receiving consumer Lambda failures after retries.
+    Value: !GetAtt ConsumerDeadLetterQueue.Arn
+  ActivityEventsTableName:
+    Description: DynamoDB table name for the admin Activity feed.
+    Value: !Ref ActivityEventsTable
+    Export:
+      Name: OGF-ActivityEventsTableName
+  ActivityEventsTableArn:
+    Description: DynamoDB table ARN for the admin Activity feed.
+    Value: !GetAtt ActivityEventsTable.Arn
+    Export:
+      Name: OGF-ActivityEventsTableArn
+  ActivityEventsTableIndexArn:
+    Description: detailType-occurredAt GSI ARN (used for IAM grants).
+    Value: !Sub '${ActivityEventsTable.Arn}/index/detailType-occurredAt-index'
+    Export:
+      Name: OGF-ActivityEventsTableIndexArn

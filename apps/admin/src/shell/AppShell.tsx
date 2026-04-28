@@ -37,6 +37,36 @@ const navItems: AdminNavItem[] = [
     ),
   },
   {
+    id: 'activity',
+    path: '/activity',
+    label: 'Activity',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M3 13h3l2-7 4 14 2-7 2 4h5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'finance',
+    path: '/finance',
+    label: 'Finance',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M5 21V10h3v11H5Zm5 0V4h3v17h-3Zm5 0v-7h3v7h-3Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
+  {
     id: 'seed-requests',
     path: '/seed-requests',
     label: 'Seed requests',

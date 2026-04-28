@@ -1,0 +1,26 @@
+{
+  "name": "@olivias/notifications",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "sam build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "node -e \"console.log('backend typecheck: no TypeScript files yet')\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.902.0",
+    "@aws-sdk/lib-dynamodb": "^3.902.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.20.1",
+    "globals": "^15.14.0",
+    "vitest": "^3.0.5"
+  }
+}

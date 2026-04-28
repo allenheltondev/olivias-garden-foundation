@@ -403,3 +403,71 @@ export async function listStoreOrders(accessToken: string): Promise<StoreOrder[]
   );
   return response.items;
 }
+
+export type ActivityEventType =
+  | 'submission.created'
+  | 'seed-request.created'
+  | 'donation.completed'
+  | 'user.signed-up'
+  | 'org-inquiry.received';
+
+export interface ActivityEvent {
+  eventId: string;
+  source: string;
+  detailType: ActivityEventType | string;
+  occurredAt: string;
+  summary: string | null;
+  data: Record<string, unknown>;
+}
+
+export interface ActivityFeedResponse {
+  items: ActivityEvent[];
+  nextCursor: string | null;
+}
+
+export async function listActivity(
+  accessToken: string,
+  options: { cursor?: string; limit?: number; detailType?: string } = {}
+): Promise<ActivityFeedResponse> {
+  const params = new URLSearchParams();
+  if (options.cursor) params.set('cursor', options.cursor);
+  if (options.limit !== undefined) params.set('limit', String(options.limit));
+  if (options.detailType) params.set('detailType', options.detailType);
+  const search = params.toString();
+  const url = `${getAdminApiBaseUrl()}/admin/activity${search ? `?${search}` : ''}`;
+  return requestJson<ActivityFeedResponse>(url, accessToken);
+}
+
+export interface FinanceBucket {
+  periodStart: string;
+  totalCents: number;
+  donationOneTimeCents: number;
+  donationRecurringCents: number;
+  merchandiseCents: number;
+}
+
+export interface FinanceTotals {
+  totalCents: number;
+  donationOneTimeCents: number;
+  donationRecurringCents: number;
+  merchandiseCents: number;
+}
+
+export interface FinanceRevenueResponse {
+  range: { from: string; to: string; granularity: 'day' | 'week' | 'month' };
+  totals: FinanceTotals;
+  buckets: FinanceBucket[];
+}
+
+export async function getFinanceRevenue(
+  accessToken: string,
+  options: { from?: string; to?: string; granularity?: 'day' | 'week' | 'month' } = {}
+): Promise<FinanceRevenueResponse> {
+  const params = new URLSearchParams();
+  if (options.from) params.set('from', options.from);
+  if (options.to) params.set('to', options.to);
+  if (options.granularity) params.set('granularity', options.granularity);
+  const search = params.toString();
+  const url = `${getAdminApiBaseUrl()}/admin/finance/revenue${search ? `?${search}` : ''}`;
+  return requestJson<FinanceRevenueResponse>(url, accessToken);
+}

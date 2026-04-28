@@ -42,6 +42,7 @@ jobs:
       admin_backend: ${{ steps.filter.outputs.admin_backend }}
       admin_frontend: ${{ steps.filter.outputs.admin_frontend }}
       okra_backend: ${{ steps.filter.outputs.okra_backend }}
+      notifications_backend: ${{ steps.filter.outputs.notifications_backend }}
       store_backend: ${{ steps.filter.outputs.store_backend }}
       store_frontend: ${{ steps.filter.outputs.store_frontend }}
 
@@ -76,6 +77,8 @@ jobs:
               - 'packages/**'
             okra_backend:
               - 'services/okra-api/**'
+            notifications_backend:
+              - 'services/notifications/**'
             store_backend:
               - 'services/store-api/**'
             store_frontend:
@@ -655,6 +658,46 @@ jobs:
       - name: Build check
         run: npm run build
 
+  notifications-backend-static:
+    name: Notifications Backend Static Checks
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.notifications_backend == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/notifications
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/notifications/package-lock.json
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build check
+        run: npm run build
+
   ci-summary:
     name: Platform CI Summary
     runs-on: ubuntu-latest
@@ -683,6 +726,7 @@ jobs:
       - okra-backend-typecheck
       - okra-backend-tests
       - okra-backend-build
+      - notifications-backend-static
     if: always() && github.event.action != 'closed'
 
     steps:
@@ -720,13 +764,14 @@ jobs:
           check_result "okra-backend-typecheck" "${{ needs.okra-backend-typecheck.result }}"
           check_result "okra-backend-tests" "${{ needs.okra-backend-tests.result }}"
           check_result "okra-backend-build" "${{ needs.okra-backend-build.result }}"
+          check_result "notifications-backend-static" "${{ needs.notifications-backend-static.result }}"
 
           echo "All applicable platform CI checks passed"
 
   staging-validation:
     name: Shared Staging Deploy And Validation
     needs: [changes, ci-summary]
-    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true' || needs.changes.outputs.store_backend == 'true' || needs.changes.outputs.store_frontend == 'true')
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true' || needs.changes.outputs.notifications_backend == 'true' || needs.changes.outputs.store_backend == 'true' || needs.changes.outputs.store_frontend == 'true')
     uses: ./.github/workflows/pull-request-staging-validation-reusable.yml
     with:
       shared_all: ${{ needs.changes.outputs.shared_all }}
@@ -735,6 +780,7 @@ jobs:
       admin_backend: ${{ needs.changes.outputs.admin_backend }}
       admin_frontend: ${{ needs.changes.outputs.admin_frontend }}
       okra_backend: ${{ needs.changes.outputs.okra_backend }}
+      notifications_backend: ${{ needs.changes.outputs.notifications_backend }}
       store_backend: ${{ needs.changes.outputs.store_backend }}
       store_frontend: ${{ needs.changes.outputs.store_frontend }}
       stripe_event_bus_name_staging: ${{ vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}

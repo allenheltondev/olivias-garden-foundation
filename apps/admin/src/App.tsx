@@ -4,6 +4,8 @@ import { Button, Card } from '@olivias/ui';
 import { loadAdminSession, type AdminSession } from './auth/session';
 import { AppShell } from './shell/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
+import { ActivityPage } from './pages/ActivityPage';
+import { FinancePage } from './pages/FinancePage';
 import { SeedRequestsPage } from './pages/SeedRequestsPage';
 import { OkraQueuePage } from './pages/OkraQueuePage';
 import { StorePage } from './pages/StorePage';
@@ -73,6 +75,8 @@ export default function App() {
     <AppShell session={session}>
       <Routes>
         <Route path="/" element={<DashboardPage session={session} />} />
+        <Route path="/activity" element={<ActivityPage session={session} />} />
+        <Route path="/finance" element={<FinancePage session={session} />} />
         <Route path="/seed-requests" element={<SeedRequestsPage session={session} />} />
         <Route path="/okra-queue" element={<OkraQueuePage session={session} />} />
         <Route path="/store" element={<StorePage session={session} />} />

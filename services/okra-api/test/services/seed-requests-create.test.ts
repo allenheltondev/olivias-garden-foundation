@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockSend } = vi.hoisted(() => ({
-  mockSend: vi.fn()
+const { mockSend, mockEventBridgeSend } = vi.hoisted(() => ({
+  mockSend: vi.fn(),
+  mockEventBridgeSend: vi.fn()
 }));
 
 vi.mock('@aws-sdk/client-dynamodb', () => ({
@@ -30,14 +31,25 @@ vi.mock('@aws-sdk/lib-dynamodb', () => {
   };
 });
 
-import { createSeedRequest, notifySeedRequestSlack } from '../../src/services/seed-requests.mjs';
+vi.mock('@aws-sdk/client-eventbridge', async () => {
+  const { PutEventsCommand } = await vi.importActual<typeof import('@aws-sdk/client-eventbridge')>(
+    '@aws-sdk/client-eventbridge'
+  );
+  return {
+    EventBridgeClient: class {
+      send = mockEventBridgeSend;
+    },
+    PutEventsCommand
+  };
+});
+
+import { createSeedRequest, publishSeedRequestCreatedEvent } from '../../src/services/seed-requests.mjs';
 
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.SEED_REQUESTS_TABLE_NAME = 'test-seed-requests';
-  process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/okra';
   mockSend.mockResolvedValue({});
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+  mockEventBridgeSend.mockResolvedValue({ FailedEntryCount: 0, Entries: [] });
 });
 
 describe('createSeedRequest', () => {
@@ -82,10 +94,12 @@ describe('createSeedRequest', () => {
   });
 });
 
-describe('notifySeedRequestSlack', () => {
-  it('does not include contributor identifiers in the Slack message body', async () => {
-    await notifySeedRequestSlack(
+describe('publishSeedRequestCreatedEvent', () => {
+  it('emits an EventBridge event without contributor identifiers', async () => {
+    await publishSeedRequestCreatedEvent(
       {
+        requestId: 'req-1',
+        createdAt: '2026-04-27T12:00:00.000Z',
         name: 'Olivia Helton',
         email: 'olivia@example.com',
         fulfillmentMethod: 'mail',
@@ -101,11 +115,14 @@ describe('notifySeedRequestSlack', () => {
       'corr-seed'
     );
 
-    expect(fetch).toHaveBeenCalledOnce();
-    const [, options] = fetch.mock.calls[0];
-    const payload = JSON.parse(options.body);
-    expect(payload.text).toContain('*:clipboard: New okra seed request*');
-    expect(payload.text).not.toContain('Signed-in user');
-    expect(payload.text).not.toContain('cog-123');
+    expect(mockEventBridgeSend).toHaveBeenCalledOnce();
+    const command = mockEventBridgeSend.mock.calls[0][0];
+    const entry = command.input.Entries[0];
+    expect(entry.Source).toBe('okra.seed-requests');
+    expect(entry.DetailType).toBe('seed-request.created');
+    const detail = JSON.parse(entry.Detail);
+    expect(detail.name).toBe('Olivia Helton');
+    expect(detail).not.toHaveProperty('contributorCognitoSub');
+    expect(JSON.stringify(detail)).not.toContain('cog-123');
   });
 });

@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
+
+const eventBridge = new EventBridgeClient({});
 
 export const SUPPORTED_COUNTRIES = ['US', 'CA'];
 
@@ -179,55 +182,43 @@ export async function createSeedRequest(payload, contributor) {
   return item;
 }
 
-function slackText(request) {
-  const lines = ['*:clipboard: New okra seed request*'];
-  lines.push(`Name: ${request.name}`);
-  lines.push(`Email: ${request.email}`);
-  if (request.fulfillmentMethod === 'mail') {
-    const a = request.shippingAddress ?? {};
-    const addressLine = [a.line1, a.line2].filter(Boolean).join(', ');
-    lines.push('Fulfillment: Mail');
-    lines.push(`Address: ${addressLine}, ${a.city}, ${a.region} ${a.postalCode}, ${a.country}`);
-  } else {
-    lines.push('Fulfillment: In-person exchange');
-    if (request.visitDetails?.approximateDate) {
-      lines.push(`Visiting: ${request.visitDetails.approximateDate}`);
-    }
-    if (request.visitDetails?.notes) {
-      lines.push(`Notes: ${request.visitDetails.notes}`);
-    }
-  }
-  if (request.message) {
-    lines.push(`Message: ${request.message}`);
-  }
-  return lines.join('\n');
-}
-
-export async function notifySeedRequestSlack(request, correlationId) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl?.trim()) {
-    return;
-  }
-
+export async function publishSeedRequestCreatedEvent(request, correlationId) {
   try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: slackText(request) })
-    });
-    if (!response.ok) {
+    const result = await eventBridge.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'okra.seed-requests',
+          DetailType: 'seed-request.created',
+          Detail: JSON.stringify({
+            requestId: request.requestId,
+            createdAt: request.createdAt,
+            name: request.name,
+            email: request.email,
+            fulfillmentMethod: request.fulfillmentMethod,
+            shippingAddress: request.shippingAddress ?? null,
+            visitDetails: request.visitDetails ?? null,
+            message: request.message ?? null,
+            correlationId
+          })
+        }
+      ]
+    }));
+
+    if ((result?.FailedEntryCount ?? 0) > 0) {
       console.error(JSON.stringify({
         level: 'error',
         correlationId,
-        status: response.status,
-        message: 'Seed request Slack webhook returned non-success'
+        requestId: request?.requestId ?? null,
+        message: 'Seed request EventBridge publish reported failed entries',
+        failedEntryCount: result.FailedEntryCount
       }));
     }
   } catch (error) {
     console.error(JSON.stringify({
       level: 'error',
       correlationId,
-      message: 'Seed request Slack webhook request failed',
+      requestId: request?.requestId ?? null,
+      message: 'Failed to publish seed request created event',
       error: error instanceof Error ? error.message : String(error)
     }));
   }

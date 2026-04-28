@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { handler } from '../src/handlers/api.mjs';
+
+const eventBridgeSendMock = vi.fn();
+
+vi.mock('@aws-sdk/client-eventbridge', async () => {
+  const actual = await vi.importActual('@aws-sdk/client-eventbridge');
+  return {
+    ...actual,
+    EventBridgeClient: class {
+      send = eventBridgeSendMock;
+    }
+  };
+});
+
+const { handler } = await import('../src/handlers/api.mjs');
 
 function createEvent(body) {
   return {
@@ -24,22 +37,16 @@ function createEvent(body) {
 }
 
 describe('POST /contact', () => {
-  let fetchMock;
-
   beforeEach(() => {
-    fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal('fetch', fetchMock);
+    eventBridgeSendMock.mockReset();
+    eventBridgeSendMock.mockResolvedValue({ FailedEntryCount: 0, Entries: [] });
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    delete process.env.CONTACT_SLACK_WEBHOOK_URL;
   });
 
-  it('accepts a valid organization inquiry and posts to Slack', async () => {
-    process.env.CONTACT_SLACK_WEBHOOK_URL = 'https://slack.example.com/hook';
-
+  it('accepts a valid organization inquiry and publishes a contact event', async () => {
     const response = await handler(createEvent({
       kind: 'organization_inquiry',
       orgName: 'Harvest House',
@@ -52,26 +59,16 @@ describe('POST /contact', () => {
     }));
 
     expect(response.statusCode).toBe(204);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://slack.example.com/hook');
-    const payload = JSON.parse(init.body);
-    expect(payload.text).toContain('Harvest House');
-    expect(payload.text).toContain('Food pantry');
-    expect(payload.text).toContain('Jordan Rivers');
-    expect(payload.text).toContain('jordan@harvesthouse.org');
-    expect(payload.text).toContain('McKinney, TX');
-  });
-
-  it('succeeds without Slack when webhook is not configured', async () => {
-    const response = await handler(createEvent({
-      kind: 'organization_inquiry',
-      contactName: 'Jordan Rivers',
-      email: 'jordan@harvesthouse.org'
-    }));
-
-    expect(response.statusCode).toBe(204);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    const command = eventBridgeSendMock.mock.calls[0][0];
+    const entry = command.input.Entries[0];
+    expect(entry.Source).toBe('ogf.contact');
+    expect(entry.DetailType).toBe('org-inquiry.received');
+    const detail = JSON.parse(entry.Detail);
+    expect(detail.orgName).toBe('Harvest House');
+    expect(detail.contactName).toBe('Jordan Rivers');
+    expect(detail.email).toBe('jordan@harvesthouse.org');
+    expect(detail.city).toBe('McKinney');
   });
 
   it('returns 422 when required fields are missing', async () => {
@@ -81,7 +78,7 @@ describe('POST /contact', () => {
     }));
 
     expect(response.statusCode).toBe(422);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(eventBridgeSendMock).not.toHaveBeenCalled();
   });
 
   it('returns 400 for an invalid email', async () => {
@@ -92,6 +89,6 @@ describe('POST /contact', () => {
     }));
 
     expect(response.statusCode).toBe(400);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(eventBridgeSendMock).not.toHaveBeenCalled();
   });
 });

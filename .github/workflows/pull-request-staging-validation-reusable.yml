@@ -21,6 +21,10 @@ on:
       okra_backend:
         required: true
         type: string
+      notifications_backend:
+        required: false
+        type: string
+        default: 'false'
       store_backend:
         required: true
         type: string
@@ -63,6 +67,7 @@ jobs:
   deploy-staging-foundation:
     name: Deploy Foundation Staging Stack
     runs-on: ubuntu-latest
+    needs: [deploy-staging-notifications]
     concurrency:
       group: foundation-stack-ogf-web-staging
       cancel-in-progress: false
@@ -206,7 +211,7 @@ jobs:
   deploy-staging-okra:
     name: Deploy Okra Staging Backend
     runs-on: ubuntu-latest
-    needs: [deploy-staging-foundation]
+    needs: [deploy-staging-foundation, deploy-staging-notifications]
     if: inputs.shared_all == 'true' || inputs.okra_backend == 'true'
     environment:
       name: staging
@@ -317,6 +322,88 @@ jobs:
           echo "api-url=$OKRA_API_URL" >> $GITHUB_OUTPUT
           echo "admin-api-url=$OKRA_ADMIN_API_URL" >> $GITHUB_OUTPUT
           echo "ci-auth-token-function=$OKRA_CI_AUTH_TOKEN_FUNCTION" >> $GITHUB_OUTPUT
+
+  deploy-staging-notifications:
+    name: Deploy Notifications Staging Stack
+    runs-on: ubuntu-latest
+    # Always runs when this reusable workflow fires so producer stacks
+    # (foundation, okra) can hard-depend on notifications without risk of
+    # the consumer being absent for the brief window before its first deploy.
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      NOTIFICATIONS_STACK_NAME: ogf-notifications-staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-Notifications-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/notifications/package-lock.json
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Install notifications dependencies
+        working-directory: services/notifications
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Build notifications stack
+        working-directory: services/notifications
+        run: sam build --template-file template.yaml --build-dir .aws-sam/build
+
+      - name: Deploy notifications stack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.foundation_signup_slack_webhook_url_staging }}
+          CONTACT_SLACK_WEBHOOK_URL: ${{ secrets.foundation_signup_slack_webhook_url_staging }}
+          DOMAIN_NAME: ${{ vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+        run: |
+          PARAM_OVERRIDES=("EnvironmentName=staging")
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("SlackWebhookUrl=$SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$CONTACT_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("ContactSlackWebhookUrl=$CONTACT_SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$DOMAIN_NAME" ]; then
+            PARAM_OVERRIDES+=("AdminFrontendUrl=https://admin.$DOMAIN_NAME")
+          fi
+          sam deploy \
+            --template-file services/notifications/.aws-sam/build/template.yaml \
+            --stack-name "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Diagnose failed notifications deploy
+        if: ${{ failure() }}
+        run: |
+          aws cloudformation describe-stack-events \
+            --stack-name "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackEvents[:50].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true
 
   deploy-staging-backend:
     name: Deploy GRN Staging Backend
@@ -576,7 +663,7 @@ jobs:
   deploy-staging-admin-backend:
     name: Deploy Admin Staging Backend
     runs-on: ubuntu-latest
-    needs: [deploy-staging-foundation]
+    needs: [deploy-staging-foundation, deploy-staging-notifications]
     if: inputs.shared_all == 'true' || inputs.admin_backend == 'true' || inputs.admin_frontend == 'true'
     environment:
       name: staging
@@ -1004,7 +1091,7 @@ jobs:
   comment-staging-deployment:
     name: Comment Shared Staging Deployment
     runs-on: ubuntu-latest
-    needs: [deploy-staging-foundation, deploy-staging-backend, deploy-staging-frontend, deploy-staging-admin-backend, deploy-staging-admin-frontend, deploy-staging-store-backend, deploy-staging-store-frontend]
+    needs: [deploy-staging-foundation, deploy-staging-backend, deploy-staging-frontend, deploy-staging-admin-backend, deploy-staging-admin-frontend, deploy-staging-notifications, deploy-staging-store-backend, deploy-staging-store-frontend]
     if: always() && needs.deploy-staging-backend.result == 'success'
 
     steps:
@@ -1356,6 +1443,7 @@ jobs:
     needs:
       - deploy-staging-foundation
       - deploy-staging-okra
+      - deploy-staging-notifications
       - deploy-staging-backend
       - deploy-staging-frontend
       - deploy-staging-admin-backend
@@ -1381,6 +1469,7 @@ jobs:
 
           check_result "deploy-staging-foundation" "${{ needs.deploy-staging-foundation.result }}"
           check_result "deploy-staging-okra" "${{ needs.deploy-staging-okra.result }}"
+          check_result "deploy-staging-notifications" "${{ needs.deploy-staging-notifications.result }}"
           check_result "deploy-staging-backend" "${{ needs.deploy-staging-backend.result }}"
           check_result "deploy-staging-frontend" "${{ needs.deploy-staging-frontend.result }}"
           check_result "deploy-staging-admin-backend" "${{ needs.deploy-staging-admin-backend.result }}"

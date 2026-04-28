@@ -36,6 +36,7 @@ env:
   STORE_STACK_NAME: ogf-store-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FOUNDATION_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'ogf-okra-prod' || 'ogf-okra-staging' }}
+  NOTIFICATIONS_STACK_NAME: ogf-notifications-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -255,6 +256,7 @@ jobs:
   deploy-foundation:
     name: Deploy Foundation Stack
     runs-on: ubuntu-latest
+    needs: [deploy-notifications]
     concurrency:
       group: foundation-stack-${{ github.event.inputs.environment == 'prod' && 'ogf-web-prod' || github.event.inputs.environment == 'staging' && 'ogf-web-staging' || github.ref == 'refs/heads/main' && 'ogf-web-prod' || 'ogf-web-staging' }}
       cancel-in-progress: false
@@ -405,6 +407,122 @@ jobs:
 
       - name: Build check
         run: npm run build
+
+  notifications-lint-and-test:
+    name: Notifications Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/notifications
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/notifications/package-lock.json
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build check
+        run: npm run build
+
+  deploy-notifications:
+    name: Deploy Notifications Stack
+    runs-on: ubuntu-latest
+    needs: [notifications-lint-and-test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ env.ENVIRONMENT == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Notifications-Deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/notifications/package-lock.json
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Install notifications dependencies
+        working-directory: services/notifications
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Build notifications stack
+        working-directory: services/notifications
+        run: sam build --template-file template.yaml --build-dir .aws-sam/build
+
+      - name: Deploy notifications stack
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+          CONTACT_SLACK_WEBHOOK_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+          DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+        run: |
+          PARAM_OVERRIDES=("EnvironmentName=${{ env.ENVIRONMENT }}")
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("SlackWebhookUrl=$SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$CONTACT_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("ContactSlackWebhookUrl=$CONTACT_SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$DOMAIN_NAME" ]; then
+            PARAM_OVERRIDES+=("AdminFrontendUrl=https://admin.$DOMAIN_NAME")
+          fi
+          # Deploy the BUILT template (esbuild output). Using the source
+          # template causes SAM to package the entire CodeUri including
+          # node_modules and skip the bundle.
+          sam deploy \
+            --template-file services/notifications/.aws-sam/build/template.yaml \
+            --stack-name "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Diagnose failed notifications deploy
+        if: ${{ failure() }}
+        run: |
+          echo "Notifications deploy failed. Dumping CloudFormation diagnostics for ${{ env.NOTIFICATIONS_STACK_NAME }}."
+          aws cloudformation describe-stack-events \
+            --stack-name "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackEvents[:50].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true
 
   deploy-backend:
     name: Deploy GRN Backend
@@ -609,7 +727,7 @@ jobs:
   deploy-okra-backend:
     name: Deploy Okra Backend
     runs-on: ubuntu-latest
-    needs: [okra-lint-and-test, deploy-foundation]
+    needs: [okra-lint-and-test, deploy-foundation, deploy-notifications]
     outputs:
       api-url: ${{ steps.get-outputs.outputs.api-url }}
       admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
@@ -712,7 +830,7 @@ jobs:
   deploy-admin-backend:
     name: Deploy Admin Backend
     runs-on: ubuntu-latest
-    needs: [admin-lint-and-test, deploy-foundation]
+    needs: [admin-lint-and-test, deploy-foundation, deploy-notifications]
     outputs:
       user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
       user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
@@ -1254,7 +1372,7 @@ jobs:
   deployment-summary:
     name: Platform Deployment Summary
     runs-on: ubuntu-latest
-    needs: [deploy-backend, deploy-admin-backend, deploy-okra-backend, deploy-store-backend, deploy-frontend, deploy-admin-frontend, deploy-store-frontend]
+    needs: [deploy-backend, deploy-admin-backend, deploy-okra-backend, deploy-store-backend, deploy-notifications, deploy-frontend, deploy-admin-frontend, deploy-store-frontend]
     if: always()
 
     steps:
@@ -1268,6 +1386,7 @@ jobs:
           echo "Admin Stack Name: ${{ env.ADMIN_STACK_NAME }}"
           echo "Foundation Stack Name: ${{ env.FOUNDATION_STACK_NAME }}"
           echo "Okra Stack Name: ${{ env.OKRA_STACK_NAME }}"
+          echo "Notifications Stack Name: ${{ env.NOTIFICATIONS_STACK_NAME }}"
           echo "Region: ${{ env.AWS_REGION }}"
           echo ""
           echo "Frontend URL (apps/grn): ${{ needs.deploy-backend.outputs.frontend-url }}"
@@ -1278,7 +1397,7 @@ jobs:
           echo "User Pool ID: ${{ needs.deploy-backend.outputs.user-pool-id }}"
           echo "=========================================="
 
-          if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-admin-backend.result }}" != "success" ] || [ "${{ needs.deploy-okra-backend.result }}" != "success" ] || [ "${{ needs.deploy-store-backend.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ] || [ "${{ needs.deploy-admin-frontend.result }}" != "success" ] || [ "${{ needs.deploy-store-frontend.result }}" != "success" ]; then
+          if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-admin-backend.result }}" != "success" ] || [ "${{ needs.deploy-okra-backend.result }}" != "success" ] || [ "${{ needs.deploy-store-backend.result }}" != "success" ] || [ "${{ needs.deploy-notifications.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ] || [ "${{ needs.deploy-admin-frontend.result }}" != "success" ] || [ "${{ needs.deploy-store-frontend.result }}" != "success" ]; then
             echo "Deployment failed"
             exit 1
           fi

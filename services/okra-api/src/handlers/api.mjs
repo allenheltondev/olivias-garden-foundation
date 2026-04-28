@@ -27,7 +27,7 @@ import {
 import {
   createSeedRequest,
   enforceSeedRequestRateLimit,
-  notifySeedRequestSlack,
+  publishSeedRequestCreatedEvent,
   seedRequestSchema,
   validateSeedRequest
 } from '../services/seed-requests.mjs';
@@ -56,7 +56,7 @@ const processSeedRequestIdempotent = makeIdempotent(
     const sourceIp = event?.requestContext?.identity?.sourceIp ?? 'unknown';
     await enforceSeedRequestRateLimit(sourceIp);
     const created = await createSeedRequest(payload, contributor);
-    await notifySeedRequestSlack(created, correlationId);
+    await publishSeedRequestCreatedEvent(created, correlationId);
     return {
       requestId: created.requestId,
       createdAt: created.createdAt

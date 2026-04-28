@@ -1298,3 +1298,173 @@ body {
   justify-content: space-between;
   gap: 1rem;
 }
+
+/* Activity feed */
+.admin-activity__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.admin-activity__filter {
+  appearance: none;
+  background: rgba(79, 56, 37, 0.06);
+  border: 1px solid rgba(79, 56, 37, 0.15);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.9rem;
+  color: var(--og-color-soil);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-activity__filter:hover {
+  background: rgba(79, 56, 37, 0.1);
+}
+
+.admin-activity__filter.is-active {
+  background: var(--og-color-soil);
+  color: #fff;
+  border-color: var(--og-color-soil);
+}
+
+.admin-activity__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-activity__card {
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.admin-activity__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-activity__chip {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(79, 56, 37, 0.1);
+  color: var(--og-color-soil);
+}
+
+.admin-activity__chip--donation { background: rgba(244, 162, 97, 0.2); color: #b25b18; }
+.admin-activity__chip--signup   { background: rgba(42, 157, 143, 0.18); color: #1d6f66; }
+.admin-activity__chip--okra     { background: rgba(231, 111, 81, 0.18); color: #a23d23; }
+.admin-activity__chip--seed     { background: rgba(118, 169, 89, 0.2); color: #4f6f33; }
+.admin-activity__chip--inquiry  { background: rgba(38, 70, 83, 0.16); color: #1d3641; }
+
+.admin-activity__time {
+  font-size: 0.82rem;
+  color: var(--og-color-soil);
+  opacity: 0.8;
+}
+
+.admin-activity__summary {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.admin-activity__details-toggle {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--og-color-soil);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  align-self: flex-start;
+}
+
+.admin-activity__details {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.7rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.admin-activity__pagination {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* Finance */
+.admin-finance__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.admin-finance__control-group {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.admin-finance__chip {
+  appearance: none;
+  background: rgba(79, 56, 37, 0.06);
+  border: 1px solid rgba(79, 56, 37, 0.15);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.88rem;
+  color: var(--og-color-soil);
+  cursor: pointer;
+}
+
+.admin-finance__chip.is-active {
+  background: var(--og-color-soil);
+  color: #fff;
+  border-color: var(--og-color-soil);
+}
+
+.admin-finance__totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-finance__tile {
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.admin-finance__tile-label {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--og-color-soil);
+  opacity: 0.85;
+}
+
+.admin-finance__tile-value {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.admin-finance__chart-card {
+  padding: 1rem;
+}

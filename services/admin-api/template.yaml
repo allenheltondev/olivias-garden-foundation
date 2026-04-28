@@ -274,6 +274,12 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
+                - dynamodb:Query
+              Resource:
+                - !ImportValue OGF-ActivityEventsTableArn
+                - !ImportValue OGF-ActivityEventsTableIndexArn
+            - Effect: Allow
+              Action:
                 - s3:PutObject
               Resource: !Sub
                 - '${SharedAssetsBucketArn}/store-products/*'
@@ -285,6 +291,7 @@ Resources:
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
+          ACTIVITY_EVENTS_TABLE_NAME: !ImportValue OGF-ActivityEventsTableName
           ORIGIN: !If
             - DeployFrontendCustomDomain
             - !Sub "${DomainProtocol}://admin.${DomainName}"
