@@ -25,6 +25,8 @@ export function ProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
+  const [variationError, setVariationError] = useState<string | null>(null);
   const cart = useCart();
   const navigate = useNavigate();
 
@@ -32,6 +34,8 @@ export function ProductPage() {
     let active = true;
     setProduct(null);
     setError(null);
+    setSelectedVariations({});
+    setVariationError(null);
 
     getProductBySlug(slug)
       .then((next) => {
@@ -63,11 +67,35 @@ export function ProductPage() {
   }
 
   const onAdd = () => {
-    cart.add(product, quantity);
+    const missing = product.variations
+      .filter((variation) => !selectedVariations[variation.name])
+      .map((variation) => variation.name);
+    if (missing.length > 0) {
+      setVariationError(`Please choose a ${missing.join(' and ')}.`);
+      return;
+    }
+    setVariationError(null);
+    cart.add(
+      product,
+      quantity,
+      product.variations.length > 0 ? { ...selectedVariations } : null
+    );
     navigate('/cart');
   };
-  const productImages = product.images.filter((image) => image.url);
-  const selectedImage = productImages.find((image) => image.id === selectedImageId) ?? productImages[0] ?? null;
+  // An image stays visible as long as none of its variation tags conflict
+  // with what the shopper has chosen so far. Untagged values act as
+  // wildcards, so an image tagged Color: Red shows before any color is
+  // picked and disappears once the shopper picks Blue.
+  const visibleImages = product.images.filter((image) => {
+    if (!image.url) return false;
+    const tags = image.variation_match ?? {};
+    return Object.entries(tags).every(([name, value]) => {
+      const chosen = selectedVariations[name];
+      return chosen === undefined || chosen === value;
+    });
+  });
+  const selectedImage =
+    visibleImages.find((image) => image.id === selectedImageId) ?? visibleImages[0] ?? null;
   const primaryImage = selectedImage?.url ?? product.image_url;
 
   return (
@@ -89,9 +117,9 @@ export function ProductPage() {
                 src={primaryImage}
                 alt={selectedImage?.alt_text || product.name}
               />
-              {productImages.length > 1 ? (
+              {visibleImages.length > 1 ? (
                 <div className="store-product-detail__thumbs" aria-label="Product images">
-                  {productImages.map((image) => (
+                  {visibleImages.map((image) => (
                     <button
                       key={image.id}
                       type="button"
@@ -129,6 +157,42 @@ export function ProductPage() {
             <p className="store-product-detail__impact">
               <strong>Your impact:</strong> {product.impact_summary}
             </p>
+          ) : null}
+
+          {product.variations.length > 0 ? (
+            <div className="store-variations">
+              {product.variations.map((variation) => (
+                <div key={variation.name} className="store-variations__group">
+                  <span className="store-variations__label">{variation.name}</span>
+                  <div className="store-variations__options" role="radiogroup" aria-label={variation.name}>
+                    {variation.values.map((value) => {
+                      const isSelected = selectedVariations[variation.name] === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          className={`store-variations__option${isSelected ? ' is-selected' : ''}`}
+                          onClick={() => {
+                            setSelectedVariations((current) => ({
+                              ...current,
+                              [variation.name]: value,
+                            }));
+                            setVariationError(null);
+                          }}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {variationError ? (
+                <FormFeedback tone="error">{variationError}</FormFeedback>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="store-quantity">

@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type KeyboardEvent, useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -14,6 +14,7 @@ import {
   listStoreProducts,
   uploadStoreProductImage,
   updateStoreProduct,
+  type ProductVariation,
   type StoreProduct,
   type StoreProductImage,
   type UpsertStoreProductRequest,
@@ -41,6 +42,7 @@ const emptyProductForm: UpsertStoreProductRequest = {
   impact_summary: '',
   image_url: '',
   metadata: {},
+  variations: [],
 };
 
 const statusOptions = [
@@ -69,7 +71,14 @@ const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
 
 type ProductImageFormItem = Pick<
   StoreProductImage,
-  'id' | 'status' | 'url' | 'thumbnail_url' | 'sort_order' | 'alt_text' | 'processing_error'
+  | 'id'
+  | 'status'
+  | 'url'
+  | 'thumbnail_url'
+  | 'sort_order'
+  | 'alt_text'
+  | 'variation_match'
+  | 'processing_error'
 > & {
   localPreviewUrl?: string;
 };
@@ -78,6 +87,9 @@ export function StorePage({ session }: StorePageProps) {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [productForm, setProductForm] = useState<UpsertStoreProductRequest>(emptyProductForm);
+  // Tracked separately from unit_amount_cents so admins can type "1.5"
+  // without the input snapping to "1.50" mid-keystroke.
+  const [priceInput, setPriceInput] = useState('0.00');
   const [productImages, setProductImages] = useState<ProductImageFormItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -112,16 +124,22 @@ export function StorePage({ session }: StorePageProps) {
           setProducts(next);
           const activeProduct = next.find((product) => product.id === activeProductId);
           if (activeProduct) {
-            setProductImages(
-              activeProduct.images.map((image) => ({
-                id: image.id,
-                status: image.status,
-                url: image.url,
-                thumbnail_url: image.thumbnail_url,
-                sort_order: image.sort_order,
-                alt_text: image.alt_text,
-                processing_error: image.processing_error,
-              }))
+            setProductImages((current) =>
+              activeProduct.images.map((image) => {
+                // Preserve unsaved variation_match edits while polling for
+                // processing status updates from the server.
+                const local = current.find((item) => item.id === image.id);
+                return {
+                  id: image.id,
+                  status: image.status,
+                  url: image.url,
+                  thumbnail_url: image.thumbnail_url,
+                  sort_order: image.sort_order,
+                  alt_text: image.alt_text,
+                  variation_match: local?.variation_match ?? image.variation_match ?? {},
+                  processing_error: image.processing_error,
+                };
+              })
             );
           }
         })
@@ -134,6 +152,7 @@ export function StorePage({ session }: StorePageProps) {
   const startCreate = () => {
     setActiveProductId(null);
     setProductForm(emptyProductForm);
+    setPriceInput('0.00');
     setProductImages([]);
   };
 
@@ -156,7 +175,12 @@ export function StorePage({ session }: StorePageProps) {
       impact_summary: product.impact_summary,
       image_url: product.legacy_image_url,
       metadata: product.metadata,
+      variations: product.variations.map((variation) => ({
+        name: variation.name,
+        values: [...variation.values],
+      })),
     });
+    setPriceInput((product.unit_amount_cents / 100).toFixed(2));
     setProductImages(
       product.images.map((image) => ({
         id: image.id,
@@ -165,6 +189,7 @@ export function StorePage({ session }: StorePageProps) {
         thumbnail_url: image.thumbnail_url,
         sort_order: image.sort_order,
         alt_text: image.alt_text,
+        variation_match: image.variation_match ?? {},
         processing_error: image.processing_error,
       }))
     );
@@ -197,6 +222,7 @@ export function StorePage({ session }: StorePageProps) {
             thumbnail_url: null,
             sort_order: current.length,
             alt_text: '',
+            variation_match: {},
             processing_error: null,
             localPreviewUrl,
           },
@@ -211,6 +237,46 @@ export function StorePage({ session }: StorePageProps) {
 
   const removeImage = (imageId: string) => {
     setProductImages((current) => current.filter((image) => image.id !== imageId));
+  };
+
+  const variations = productForm.variations ?? [];
+
+  const updateVariations = (next: ProductVariation[]) => {
+    setProductForm((current) => ({ ...current, variations: next }));
+  };
+
+  const addVariation = () => {
+    updateVariations([...variations, { name: '', values: [] }]);
+  };
+
+  const removeVariation = (index: number) => {
+    updateVariations(variations.filter((_, i) => i !== index));
+  };
+
+  const setVariationName = (index: number, name: string) => {
+    updateVariations(variations.map((variation, i) => (i === index ? { ...variation, name } : variation)));
+  };
+
+  const addVariationValue = (index: number, value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    updateVariations(
+      variations.map((variation, i) =>
+        i === index && !variation.values.includes(trimmed)
+          ? { ...variation, values: [...variation.values, trimmed] }
+          : variation
+      )
+    );
+  };
+
+  const removeVariationValue = (index: number, valueIndex: number) => {
+    updateVariations(
+      variations.map((variation, i) =>
+        i === index
+          ? { ...variation, values: variation.values.filter((_, vi) => vi !== valueIndex) }
+          : variation
+      )
+    );
   };
 
   const moveImage = (imageId: string, direction: -1 | 1) => {
@@ -230,6 +296,28 @@ export function StorePage({ session }: StorePageProps) {
     setError(null);
 
     try {
+      const cleanedVariations = (productForm.variations ?? [])
+        .map((variation) => ({
+          name: variation.name.trim(),
+          values: variation.values.map((value) => value.trim()).filter(Boolean),
+        }))
+        .filter((variation) => variation.name && variation.values.length > 0);
+
+      // Drop any image variation_match entries that no longer line up with
+      // the cleaned variation list (e.g. admin removed a value).
+      const allowedValues = new Map(
+        cleanedVariations.map((variation) => [variation.name, new Set(variation.values)])
+      );
+      const cleanImageVariationMatch = (match: Record<string, string>): Record<string, string> => {
+        const result: Record<string, string> = {};
+        for (const [name, value] of Object.entries(match)) {
+          if (allowedValues.get(name)?.has(value)) {
+            result[name] = value;
+          }
+        }
+        return result;
+      };
+
       const payload: UpsertStoreProductRequest = {
         ...productForm,
         short_description: productForm.short_description || null,
@@ -242,7 +330,9 @@ export function StorePage({ session }: StorePageProps) {
           id: image.id,
           sort_order: index,
           alt_text: image.alt_text || null,
+          variation_match: cleanImageVariationMatch(image.variation_match ?? {}),
         })),
+        variations: cleanedVariations,
       };
 
       if (activeProductId) {
@@ -372,9 +462,20 @@ export function StorePage({ session }: StorePageProps) {
               />
               <Input
                 type="number"
-                label="Price (cents)"
-                value={productForm.unit_amount_cents}
-                onChange={(event) => setProductForm((current) => ({ ...current, unit_amount_cents: Number(event.target.value) || 0 }))}
+                label="Price (USD)"
+                step="0.01"
+                min="0"
+                value={priceInput}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  setPriceInput(raw);
+                  const dollars = Number(raw);
+                  setProductForm((current) => ({
+                    ...current,
+                    unit_amount_cents:
+                      Number.isFinite(dollars) && dollars >= 0 ? Math.round(dollars * 100) : 0,
+                  }));
+                }}
               />
             </div>
             <div className="admin-store-grid">
@@ -395,21 +496,13 @@ export function StorePage({ session }: StorePageProps) {
                 Featured
               </label>
             </div>
-            <Input
-              label="Nonprofit program"
-              value={productForm.nonprofit_program || ''}
-              onChange={(event) => setProductForm((current) => ({ ...current, nonprofit_program: event.target.value }))}
-            />
-            <Textarea
-              label="Impact summary"
-              value={productForm.impact_summary || ''}
-              onChange={(event) => setProductForm((current) => ({ ...current, impact_summary: event.target.value }))}
-            />
-            <Input
-              type="url"
-              label="Fallback image URL"
-              value={productForm.image_url || ''}
-              onChange={(event) => setProductForm((current) => ({ ...current, image_url: event.target.value }))}
+            <VariationsEditor
+              variations={variations}
+              onAdd={addVariation}
+              onRemove={removeVariation}
+              onNameChange={setVariationName}
+              onAddValue={addVariationValue}
+              onRemoveValue={removeVariationValue}
             />
             <div className="admin-store-images">
               <div className="admin-store-images__header">
@@ -457,6 +550,35 @@ export function StorePage({ session }: StorePageProps) {
                           )
                         }
                       />
+                      {variations.length > 0 ? (
+                        <div className="admin-store-images__variation-match">
+                          <p className="og-section-label">Show for</p>
+                          {variations.map((variation) =>
+                            variation.name && variation.values.length > 0 ? (
+                              <Select
+                                key={variation.name}
+                                label={variation.name}
+                                value={image.variation_match[variation.name] ?? ''}
+                                onChange={(value) =>
+                                  setProductImages((current) =>
+                                    current.map((item) => {
+                                      if (item.id !== image.id) return item;
+                                      const next = { ...item.variation_match };
+                                      if (value) next[variation.name] = value;
+                                      else delete next[variation.name];
+                                      return { ...item, variation_match: next };
+                                    })
+                                  )
+                                }
+                                options={[
+                                  { value: '', label: 'Any' },
+                                  ...variation.values.map((value) => ({ value, label: value })),
+                                ]}
+                              />
+                            ) : null
+                          )}
+                        </div>
+                      ) : null}
                       <div className="admin-store-images__actions">
                         <Button
                           type="button"
@@ -499,5 +621,109 @@ export function StorePage({ session }: StorePageProps) {
         </Card>
       </div>
     </section>
+  );
+}
+
+interface VariationsEditorProps {
+  variations: ProductVariation[];
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onNameChange: (index: number, name: string) => void;
+  onAddValue: (index: number, value: string) => void;
+  onRemoveValue: (index: number, valueIndex: number) => void;
+}
+
+function VariationsEditor({
+  variations,
+  onAdd,
+  onRemove,
+  onNameChange,
+  onAddValue,
+  onRemoveValue,
+}: VariationsEditorProps) {
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+
+  const submitValue = (index: number) => {
+    const draft = drafts[index];
+    if (!draft) return;
+    onAddValue(index, draft);
+    setDrafts((current) => ({ ...current, [index]: '' }));
+  };
+
+  const handleValueKey = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      submitValue(index);
+    }
+  };
+
+  return (
+    <div className="admin-store-variations">
+      <div className="admin-store-variations__header">
+        <div>
+          <p className="og-section-label">Variations (optional)</p>
+          <h4>Customer-selectable options</h4>
+          <small>e.g. Color: Red, Blue · Ink: Black, White. Each option requires a name and at least one value.</small>
+        </div>
+        <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+          Add variation
+        </Button>
+      </div>
+      {variations.length === 0 ? (
+        <p className="admin-store-variations__empty">No variations. Customers buy a single SKU.</p>
+      ) : (
+        <ul className="admin-store-variations__list">
+          {variations.map((variation, index) => (
+            <li key={index} className="admin-store-variations__item">
+              <div className="admin-store-variations__row">
+                <Input
+                  label="Option name"
+                  placeholder="Color"
+                  value={variation.name}
+                  onChange={(event) => onNameChange(index, event.target.value)}
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={() => onRemove(index)}>
+                  Remove
+                </Button>
+              </div>
+              <div className="admin-store-variations__values">
+                {variation.values.map((value, valueIndex) => (
+                  <span key={valueIndex} className="admin-store-variations__chip">
+                    {value}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${value}`}
+                      onClick={() => onRemoveValue(index, valueIndex)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="admin-store-variations__row">
+                <Input
+                  label="Add value"
+                  placeholder="Red"
+                  value={drafts[index] ?? ''}
+                  onChange={(event) =>
+                    setDrafts((current) => ({ ...current, [index]: event.target.value }))
+                  }
+                  onKeyDown={(event) => handleValueKey(event, index)}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => submitValue(index)}
+                  disabled={!drafts[index]?.trim()}
+                >
+                  Add value
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

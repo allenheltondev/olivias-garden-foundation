@@ -5,7 +5,7 @@ const PRODUCT_SELECT_COLUMNS = `
   kind::text as kind, fulfillment_type::text as fulfillment_type,
   is_public, is_featured, currency, unit_amount_cents,
   statement_descriptor, nonprofit_program, impact_summary,
-  image_url, metadata, stripe_product_id, stripe_price_id,
+  image_url, metadata, variations, stripe_product_id, stripe_price_id,
   created_at, updated_at
 `;
 
@@ -34,6 +34,7 @@ export function mapProduct(row) {
     image_urls: row.image_url ? [row.image_url, ...readyImageUrls] : readyImageUrls,
     images,
     metadata: row.metadata ?? {},
+    variations: Array.isArray(row.variations) ? row.variations : [],
     stripe_product_id: row.stripe_product_id,
     stripe_price_id: row.stripe_price_id,
     created_at: row.created_at?.toISOString?.() ?? row.created_at,
@@ -60,6 +61,7 @@ function mapImageRow(row) {
     byte_size: row.byte_size === null || row.byte_size === undefined ? null : Number(row.byte_size),
     sort_order: row.sort_order,
     alt_text: row.alt_text,
+    variation_match: row.variation_match ?? {},
     processing_error: null,
     created_at: row.created_at?.toISOString?.() ?? row.created_at,
     updated_at: row.updated_at?.toISOString?.() ?? row.updated_at
@@ -72,7 +74,7 @@ async function listProductImages(productIds) {
     `
       select id::text as id, product_id::text as product_id, status,
              normalized_s3_key, thumbnail_s3_key, width, height, byte_size,
-             sort_order, alt_text, created_at, updated_at
+             sort_order, alt_text, variation_match, created_at, updated_at
         from store_product_images
        where product_id = any($1::uuid[])
          and status = 'ready'

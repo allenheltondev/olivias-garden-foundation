@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
-import { createCheckoutSession } from '../api';
-import { formatMoney, useCart } from '../cart/CartContext';
+import { createCheckoutSession, listPublicProducts } from '../api';
+import { formatMoney, isCartLineValidForProduct, useCart } from '../cart/CartContext';
 import type { StoreSession } from '../auth/session';
 
 const FULFILLMENT_LABEL: Record<string, string> = {
@@ -20,6 +20,45 @@ export function CartPage({ session }: CartPageProps) {
   const cart = useCart();
   const [error, setError] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [pruneNotice, setPruneNotice] = useState<string | null>(null);
+
+  // Stored cart lines can go stale when an admin renames a variation,
+  // removes a value, or unpublishes a product. Reconcile against the
+  // current public catalog the first time the cart is opened with items
+  // present, then leave the cart alone for the rest of the session.
+  const hasReconciledRef = useRef(false);
+  useEffect(() => {
+    if (hasReconciledRef.current) return;
+    if (cart.lines.length === 0) return;
+    hasReconciledRef.current = true;
+    let cancelled = false;
+    listPublicProducts()
+      .then((products) => {
+        if (cancelled) return;
+        const productById = new Map(products.map((product) => [product.id, product]));
+        const removedNames: string[] = [];
+        for (const line of cart.lines) {
+          const product = productById.get(line.productId);
+          if (!product || !isCartLineValidForProduct(line, product)) {
+            removedNames.push(line.name);
+            cart.remove(line.lineId);
+          }
+        }
+        if (removedNames.length > 0) {
+          const list = removedNames.join(', ');
+          setPruneNotice(
+            `We removed ${list} from your cart because the available options changed. Please reselect.`
+          );
+        }
+      })
+      .catch(() => {
+        // Network failures shouldn't block the cart UI; checkout will
+        // surface a clearer error if the items really are unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cart]);
 
   const startCheckout = async () => {
     if (cart.lines.length === 0) return;
@@ -28,7 +67,11 @@ export function CartPage({ session }: CartPageProps) {
     try {
       const origin = window.location.origin;
       const { url } = await createCheckoutSession(
-        cart.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+        cart.lines.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          selectedVariations: line.selectedVariations,
+        })),
         {
           accessToken: session?.accessToken,
           customerEmail: session?.email ?? undefined,
@@ -50,6 +93,7 @@ export function CartPage({ session }: CartPageProps) {
     return (
       <section className="store-section">
         <Link className="store-back-link" to="/">Back to store</Link>
+        {pruneNotice ? <FormFeedback tone="info">{pruneNotice}</FormFeedback> : null}
         <Card className="store-cart-empty">
           <div className="store-cart-empty__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none">
@@ -83,13 +127,14 @@ export function CartPage({ session }: CartPageProps) {
         body={`${itemCount} ${itemCount === 1 ? 'item' : 'items'} ready for checkout.`}
       />
 
+      {pruneNotice ? <FormFeedback tone="info">{pruneNotice}</FormFeedback> : null}
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
 
       <div className="store-cart-layout">
         <Card className="store-cart">
           <ul className="store-cart__lines">
             {cart.lines.map((line) => (
-              <li key={line.productId} className="store-cart__line">
+              <li key={line.lineId} className="store-cart__line">
                 <Link
                   to={`/products/${line.slug}`}
                   className="store-cart__line-media"
@@ -105,6 +150,13 @@ export function CartPage({ session }: CartPageProps) {
                   <h3 className="store-cart__line-name">
                     <Link to={`/products/${line.slug}`}>{line.name}</Link>
                   </h3>
+                  {line.selectedVariations ? (
+                    <p className="store-cart__line-variations">
+                      {Object.entries(line.selectedVariations)
+                        .map(([name, value]) => `${name}: ${value}`)
+                        .join(' · ')}
+                    </p>
+                  ) : null}
                   <p className="store-cart__line-meta">
                     {FULFILLMENT_LABEL[line.fulfillmentType] ?? line.fulfillmentType}
                   </p>
@@ -119,7 +171,7 @@ export function CartPage({ session }: CartPageProps) {
                         className="store-quantity__btn"
                         aria-label="Decrease quantity"
                         onClick={() =>
-                          cart.setQuantity(line.productId, Math.max(0, line.quantity - 1))
+                          cart.setQuantity(line.lineId, Math.max(0, line.quantity - 1))
                         }
                       >
                         −
@@ -134,7 +186,7 @@ export function CartPage({ session }: CartPageProps) {
                         onChange={(event) => {
                           const next = Number(event.target.value);
                           if (Number.isFinite(next)) {
-                            cart.setQuantity(line.productId, Math.max(0, Math.floor(next)));
+                            cart.setQuantity(line.lineId, Math.max(0, Math.floor(next)));
                           }
                         }}
                       />
@@ -143,7 +195,7 @@ export function CartPage({ session }: CartPageProps) {
                         className="store-quantity__btn"
                         aria-label="Increase quantity"
                         onClick={() =>
-                          cart.setQuantity(line.productId, line.quantity + 1)
+                          cart.setQuantity(line.lineId, line.quantity + 1)
                         }
                       >
                         +
@@ -152,7 +204,7 @@ export function CartPage({ session }: CartPageProps) {
                     <button
                       type="button"
                       className="store-cart__line-remove"
-                      onClick={() => cart.remove(line.productId)}
+                      onClick={() => cart.remove(line.lineId)}
                     >
                       Remove
                     </button>

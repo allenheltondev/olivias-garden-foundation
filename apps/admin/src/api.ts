@@ -19,10 +19,16 @@ export interface StoreProduct {
   image_urls: string[];
   images: StoreProductImage[];
   metadata: Record<string, unknown>;
+  variations: ProductVariation[];
   stripe_product_id: string;
   stripe_price_id: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProductVariation {
+  name: string;
+  values: string[];
 }
 
 export interface StoreProductImage {
@@ -36,6 +42,7 @@ export interface StoreProductImage {
   byte_size: number | null;
   sort_order: number;
   alt_text: string | null;
+  variation_match: Record<string, string>;
   processing_error: string | null;
   created_at: string;
   updated_at: string;
@@ -113,8 +120,14 @@ export interface UpsertStoreProductRequest {
   nonprofit_program: string | null;
   impact_summary: string | null;
   image_url: string | null;
-  images?: Array<{ id: string; sort_order?: number; alt_text?: string | null }>;
+  images?: Array<{
+    id: string;
+    sort_order?: number;
+    alt_text?: string | null;
+    variation_match?: Record<string, string>;
+  }>;
   metadata: Record<string, unknown>;
+  variations?: ProductVariation[];
 }
 
 export interface StoreProductImageUploadIntent {
@@ -163,6 +176,7 @@ export interface StoreOrderItem {
   quantity: number;
   unitAmountCents: number;
   totalCents: number;
+  selectedVariations: Record<string, string> | null;
 }
 
 export interface StoreOrder {
