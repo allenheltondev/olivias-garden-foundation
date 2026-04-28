@@ -329,6 +329,14 @@ jobs:
     # Always runs when this reusable workflow fires so producer stacks
     # (foundation, okra) can hard-depend on notifications without risk of
     # the consumer being absent for the brief window before its first deploy.
+    #
+    # The concurrency group serializes against the foundation-web preview
+    # workflow, which also deploys this same stack. Without the lock the two
+    # workflows race on `ogf-notifications-staging` and CloudFormation rejects
+    # the second deploy with "stack ... is in UPDATE_IN_PROGRESS state".
+    concurrency:
+      group: notifications-stack-ogf-notifications-staging
+      cancel-in-progress: false
     environment:
       name: staging
     env:
