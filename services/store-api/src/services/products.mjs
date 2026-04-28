@@ -61,6 +61,7 @@ function mapImageRow(row) {
     byte_size: row.byte_size === null || row.byte_size === undefined ? null : Number(row.byte_size),
     sort_order: row.sort_order,
     alt_text: row.alt_text,
+    variation_match: row.variation_match ?? {},
     processing_error: null,
     created_at: row.created_at?.toISOString?.() ?? row.created_at,
     updated_at: row.updated_at?.toISOString?.() ?? row.updated_at
@@ -73,7 +74,7 @@ async function listProductImages(productIds) {
     `
       select id::text as id, product_id::text as product_id, status,
              normalized_s3_key, thumbnail_s3_key, width, height, byte_size,
-             sort_order, alt_text, created_at, updated_at
+             sort_order, alt_text, variation_match, created_at, updated_at
         from store_product_images
        where product_id = any($1::uuid[])
          and status = 'ready'

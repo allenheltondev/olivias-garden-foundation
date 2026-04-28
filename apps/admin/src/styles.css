@@ -1038,6 +1038,18 @@ body {
   gap: 0.4rem;
 }
 
+.admin-store-images__variation-match {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(79, 56, 37, 0.04);
+}
+
+.admin-store-images__variation-match .og-section-label {
+  margin: 0;
+}
+
 .admin-store-variations {
   display: grid;
   gap: 0.85rem;

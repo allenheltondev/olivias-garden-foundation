@@ -82,8 +82,20 @@ export function ProductPage() {
     );
     navigate('/cart');
   };
-  const productImages = product.images.filter((image) => image.url);
-  const selectedImage = productImages.find((image) => image.id === selectedImageId) ?? productImages[0] ?? null;
+  // An image stays visible as long as none of its variation tags conflict
+  // with what the shopper has chosen so far. Untagged values act as
+  // wildcards, so an image tagged Color: Red shows before any color is
+  // picked and disappears once the shopper picks Blue.
+  const visibleImages = product.images.filter((image) => {
+    if (!image.url) return false;
+    const tags = image.variation_match ?? {};
+    return Object.entries(tags).every(([name, value]) => {
+      const chosen = selectedVariations[name];
+      return chosen === undefined || chosen === value;
+    });
+  });
+  const selectedImage =
+    visibleImages.find((image) => image.id === selectedImageId) ?? visibleImages[0] ?? null;
   const primaryImage = selectedImage?.url ?? product.image_url;
 
   return (
@@ -105,9 +117,9 @@ export function ProductPage() {
                 src={primaryImage}
                 alt={selectedImage?.alt_text || product.name}
               />
-              {productImages.length > 1 ? (
+              {visibleImages.length > 1 ? (
                 <div className="store-product-detail__thumbs" aria-label="Product images">
-                  {productImages.map((image) => (
+                  {visibleImages.map((image) => (
                     <button
                       key={image.id}
                       type="button"

@@ -42,6 +42,7 @@ export interface StoreProductImage {
   byte_size: number | null;
   sort_order: number;
   alt_text: string | null;
+  variation_match: Record<string, string>;
   processing_error: string | null;
   created_at: string;
   updated_at: string;

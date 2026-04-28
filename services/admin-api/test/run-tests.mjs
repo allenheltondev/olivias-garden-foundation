@@ -4,6 +4,7 @@ import { extractAuthContext, requireAdmin } from '../src/services/auth.mjs';
 import { mapApiError, normalizeRoutePath } from '../src/services/http.mjs';
 import { StripeStoreClient, validatePayload } from '../src/services/store.mjs';
 import {
+  assertImageVariationMatchesAreValid,
   completeStoreProductImageUpload,
   createStoreProductImageUploadIntent,
   normalizeProductImageInputs
@@ -180,7 +181,65 @@ async function testStoreImageHelpers() {
 
   assert.deepEqual(
     normalizeProductImageInputs([{ id: '00000000-0000-4000-8000-000000000001', alt_text: 'Okra seeds' }]),
-    [{ id: '00000000-0000-4000-8000-000000000001', sort_order: 0, alt_text: 'Okra seeds' }]
+    [
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        sort_order: 0,
+        alt_text: 'Okra seeds',
+        variation_match: {}
+      }
+    ]
+  );
+
+  // variation_match passes through when valid and is rejected up-front when
+  // it isn't an object of strings.
+  assert.deepEqual(
+    normalizeProductImageInputs([
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        variation_match: { Color: 'Red' }
+      }
+    ]),
+    [
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        sort_order: 0,
+        alt_text: null,
+        variation_match: { Color: 'Red' }
+      }
+    ]
+  );
+  assert.throws(
+    () =>
+      normalizeProductImageInputs([
+        { id: '00000000-0000-4000-8000-000000000003', variation_match: { Color: 123 } }
+      ]),
+    /variation_match values must be 1–100 character strings/
+  );
+
+  // Cross-validation against a product's variations rejects tags that
+  // reference an option or value that doesn't exist.
+  const tagged = normalizeProductImageInputs([
+    { id: '00000000-0000-4000-8000-000000000004', variation_match: { Color: 'Red' } }
+  ]);
+  assert.doesNotThrow(() =>
+    assertImageVariationMatchesAreValid(tagged, [
+      { name: 'Color', values: ['Red', 'Blue'] }
+    ])
+  );
+  assert.throws(
+    () =>
+      assertImageVariationMatchesAreValid(tagged, [
+        { name: 'Color', values: ['Blue'] }
+      ]),
+    /not a value of "Color"/
+  );
+  assert.throws(
+    () =>
+      assertImageVariationMatchesAreValid(tagged, [
+        { name: 'Ink', values: ['Black'] }
+      ]),
+    /variation "Color" that is not defined/
   );
 
   const queries = [];

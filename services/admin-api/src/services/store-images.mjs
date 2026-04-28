@@ -73,9 +73,50 @@ export function normalizeProductImageInputs(images) {
     return {
       id: image.id,
       sort_order: Number.isInteger(image.sort_order) ? image.sort_order : index,
-      alt_text: image.alt_text ?? null
+      alt_text: image.alt_text ?? null,
+      variation_match: normalizeVariationMatch(image.variation_match)
     };
   });
+}
+
+function normalizeVariationMatch(value) {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('image variation_match must be an object');
+  }
+  const normalized = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (typeof key !== 'string' || key.length === 0 || key.length > 60) {
+      throw new Error('image variation_match keys must be 1–60 character strings');
+    }
+    if (typeof raw !== 'string' || raw.length === 0 || raw.length > 100) {
+      throw new Error('image variation_match values must be 1–100 character strings');
+    }
+    normalized[key] = raw;
+  }
+  return normalized;
+}
+
+// Cross-checks each image's variation_match against the product's defined
+// variations so we never persist tags pointing at options that don't exist.
+// Called from create/update after both the variations and image inputs have
+// been validated in isolation.
+export function assertImageVariationMatchesAreValid(imageInputs, variations = []) {
+  const allowed = new Map(
+    (variations ?? []).map((variation) => [variation.name, new Set(variation.values)])
+  );
+  for (const image of imageInputs) {
+    const match = image.variation_match ?? {};
+    for (const [name, value] of Object.entries(match)) {
+      const values = allowed.get(name);
+      if (!values) {
+        throw new Error(`image references variation "${name}" that is not defined on the product`);
+      }
+      if (!values.has(value)) {
+        throw new Error(`image references "${value}" which is not a value of "${name}"`);
+      }
+    }
+  }
 }
 
 function mapImageRow(row) {
@@ -92,6 +133,7 @@ function mapImageRow(row) {
     byte_size: row.byte_size === null || row.byte_size === undefined ? null : Number(row.byte_size),
     sort_order: row.sort_order,
     alt_text: row.alt_text,
+    variation_match: row.variation_match ?? {},
     processing_error: row.processing_error,
     created_at: row.created_at?.toISOString?.() ?? row.created_at,
     updated_at: row.updated_at?.toISOString?.() ?? row.updated_at
@@ -194,6 +236,7 @@ export async function associateProductImages(productId, imageInputs, db = { quer
            set product_id = $2::uuid,
                sort_order = $3,
                alt_text = $4,
+               variation_match = $5::jsonb,
                deleted_at = null,
                expires_at = null,
                updated_at = now()
@@ -201,7 +244,13 @@ export async function associateProductImages(productId, imageInputs, db = { quer
            and (product_id is null or product_id = $2::uuid)
          returning id
       `,
-      [image.id, productId, image.sort_order, image.alt_text]
+      [
+        image.id,
+        productId,
+        image.sort_order,
+        image.alt_text,
+        JSON.stringify(image.variation_match ?? {})
+      ]
     );
 
     if (result.rowCount === 0) {
@@ -260,7 +309,8 @@ export async function listProductImages(productIds) {
     `
       select id::text as id, product_id::text as product_id, status,
              normalized_s3_key, thumbnail_s3_key, width, height, byte_size,
-             sort_order, alt_text, processing_error, created_at, updated_at
+             sort_order, alt_text, variation_match, processing_error,
+             created_at, updated_at
         from store_product_images
        where product_id = any($1::uuid[])
        order by product_id, sort_order asc, created_at asc

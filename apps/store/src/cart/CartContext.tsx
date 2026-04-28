@@ -39,6 +39,24 @@ function buildLineId(productId: string, selectedVariations: Record<string, strin
   return key ? `${productId}::${key}` : productId;
 }
 
+// Returns true when a stored cart line still satisfies the product's
+// current variation definitions. Used to prune carts that were stashed
+// in localStorage before the admin renamed/removed a variation.
+export function isCartLineValidForProduct(line: CartLine, product: StoreProduct): boolean {
+  if (product.variations.length === 0) {
+    return !line.selectedVariations || Object.keys(line.selectedVariations).length === 0;
+  }
+  if (!line.selectedVariations) return false;
+  for (const variation of product.variations) {
+    const chosen = line.selectedVariations[variation.name];
+    if (typeof chosen !== 'string') return false;
+    if (!variation.values.includes(chosen)) return false;
+  }
+  // Reject lines with extra keys that no longer correspond to a variation.
+  const validNames = new Set(product.variations.map((v) => v.name));
+  return Object.keys(line.selectedVariations).every((key) => validNames.has(key));
+}
+
 interface StoredCart {
   version: 1;
   lines: CartLine[];

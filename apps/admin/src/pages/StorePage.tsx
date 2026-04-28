@@ -71,7 +71,14 @@ const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
 
 type ProductImageFormItem = Pick<
   StoreProductImage,
-  'id' | 'status' | 'url' | 'thumbnail_url' | 'sort_order' | 'alt_text' | 'processing_error'
+  | 'id'
+  | 'status'
+  | 'url'
+  | 'thumbnail_url'
+  | 'sort_order'
+  | 'alt_text'
+  | 'variation_match'
+  | 'processing_error'
 > & {
   localPreviewUrl?: string;
 };
@@ -114,16 +121,22 @@ export function StorePage({ session }: StorePageProps) {
           setProducts(next);
           const activeProduct = next.find((product) => product.id === activeProductId);
           if (activeProduct) {
-            setProductImages(
-              activeProduct.images.map((image) => ({
-                id: image.id,
-                status: image.status,
-                url: image.url,
-                thumbnail_url: image.thumbnail_url,
-                sort_order: image.sort_order,
-                alt_text: image.alt_text,
-                processing_error: image.processing_error,
-              }))
+            setProductImages((current) =>
+              activeProduct.images.map((image) => {
+                // Preserve unsaved variation_match edits while polling for
+                // processing status updates from the server.
+                const local = current.find((item) => item.id === image.id);
+                return {
+                  id: image.id,
+                  status: image.status,
+                  url: image.url,
+                  thumbnail_url: image.thumbnail_url,
+                  sort_order: image.sort_order,
+                  alt_text: image.alt_text,
+                  variation_match: local?.variation_match ?? image.variation_match ?? {},
+                  processing_error: image.processing_error,
+                };
+              })
             );
           }
         })
@@ -171,6 +184,7 @@ export function StorePage({ session }: StorePageProps) {
         thumbnail_url: image.thumbnail_url,
         sort_order: image.sort_order,
         alt_text: image.alt_text,
+        variation_match: image.variation_match ?? {},
         processing_error: image.processing_error,
       }))
     );
@@ -203,6 +217,7 @@ export function StorePage({ session }: StorePageProps) {
             thumbnail_url: null,
             sort_order: current.length,
             alt_text: '',
+            variation_match: {},
             processing_error: null,
             localPreviewUrl,
           },
@@ -283,6 +298,21 @@ export function StorePage({ session }: StorePageProps) {
         }))
         .filter((variation) => variation.name && variation.values.length > 0);
 
+      // Drop any image variation_match entries that no longer line up with
+      // the cleaned variation list (e.g. admin removed a value).
+      const allowedValues = new Map(
+        cleanedVariations.map((variation) => [variation.name, new Set(variation.values)])
+      );
+      const cleanImageVariationMatch = (match: Record<string, string>): Record<string, string> => {
+        const result: Record<string, string> = {};
+        for (const [name, value] of Object.entries(match)) {
+          if (allowedValues.get(name)?.has(value)) {
+            result[name] = value;
+          }
+        }
+        return result;
+      };
+
       const payload: UpsertStoreProductRequest = {
         ...productForm,
         short_description: productForm.short_description || null,
@@ -295,6 +325,7 @@ export function StorePage({ session }: StorePageProps) {
           id: image.id,
           sort_order: index,
           alt_text: image.alt_text || null,
+          variation_match: cleanImageVariationMatch(image.variation_match ?? {}),
         })),
         variations: cleanedVariations,
       };
@@ -519,6 +550,35 @@ export function StorePage({ session }: StorePageProps) {
                           )
                         }
                       />
+                      {variations.length > 0 ? (
+                        <div className="admin-store-images__variation-match">
+                          <p className="og-section-label">Show for</p>
+                          {variations.map((variation) =>
+                            variation.name && variation.values.length > 0 ? (
+                              <Select
+                                key={variation.name}
+                                label={variation.name}
+                                value={image.variation_match[variation.name] ?? ''}
+                                onChange={(value) =>
+                                  setProductImages((current) =>
+                                    current.map((item) => {
+                                      if (item.id !== image.id) return item;
+                                      const next = { ...item.variation_match };
+                                      if (value) next[variation.name] = value;
+                                      else delete next[variation.name];
+                                      return { ...item, variation_match: next };
+                                    })
+                                  )
+                                }
+                                options={[
+                                  { value: '', label: 'Any' },
+                                  ...variation.values.map((value) => ({ value, label: value })),
+                                ]}
+                              />
+                            ) : null
+                          )}
+                        </div>
+                      ) : null}
                       <div className="admin-store-images__actions">
                         <Button
                           type="button"

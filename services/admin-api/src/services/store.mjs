@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { extractAuthContext, requireAdmin } from './auth.mjs';
 import { query, withTransaction } from './db.mjs';
 import {
+  assertImageVariationMatchesAreValid,
   associateProductImages,
   getReadyProductImageUrls,
   listProductImages,
@@ -321,6 +322,7 @@ export async function createStoreProduct(event, payload, options = {}) {
   requireAdmin(auth);
   validatePayload(payload);
   const imageInputs = normalizeProductImageInputs(payload.images);
+  assertImageVariationMatchesAreValid(imageInputs, payload.variations ?? []);
   const idempotentWrite = await beginIdempotentWrite('create', event, payload, auth);
   if (idempotentWrite?.replay) return idempotentWrite.product;
 
@@ -409,6 +411,7 @@ export async function updateStoreProduct(event, payload, productId, options = {}
 
   validatePayload(payload);
   const imageInputs = normalizeProductImageInputs(payload.images);
+  assertImageVariationMatchesAreValid(imageInputs, payload.variations ?? []);
   const idempotentWrite = await beginIdempotentWrite('update', event, { productId, ...payload }, auth);
   if (idempotentWrite?.replay) return idempotentWrite.product;
 
