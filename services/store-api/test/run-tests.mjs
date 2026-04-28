@@ -11,6 +11,7 @@ import {
   handleStripeEventBridgeEvent,
   recordPaidOrder
 } from '../src/services/orders.mjs';
+import { mapProduct } from '../src/services/products.mjs';
 import { StripeClient } from '../src/services/stripe.mjs';
 
 const verifyJwtAsUser = async () => ({
@@ -98,6 +99,41 @@ function testHttpHelpers() {
   assert.equal(mapApiError(new Error('Cart is empty'), 'cid').statusCode, 400);
   assert.equal(mapApiError(new Error('Authentication required'), 'cid').statusCode, 401);
   assert.equal(mapApiError(new Error('STRIPE_SECRET_KEY is not configured'), 'cid').statusCode, 503);
+}
+
+function testProductMapperExposesMultiImageContract() {
+  const product = mapProduct({
+    id: 'product-1',
+    slug: 'seed-pack',
+    name: 'Seed Pack',
+    short_description: null,
+    description: null,
+    status: 'active',
+    kind: 'merchandise',
+    fulfillment_type: 'shipping',
+    is_public: true,
+    is_featured: false,
+    currency: 'usd',
+    unit_amount_cents: 1200,
+    statement_descriptor: null,
+    nonprofit_program: null,
+    impact_summary: null,
+    image_url: null,
+    images: [{
+      id: 'image-1',
+      url: 'https://assets.example.test/store-products/seed/display.webp',
+      thumbnail_url: 'https://assets.example.test/store-products/seed/thumbnail.webp'
+    }],
+    metadata: {},
+    stripe_product_id: 'prod_1',
+    stripe_price_id: 'price_1',
+    created_at: '2026-04-27T00:00:00.000Z',
+    updated_at: '2026-04-27T00:00:00.000Z'
+  });
+
+  assert.equal(product.image_url, 'https://assets.example.test/store-products/seed/display.webp');
+  assert.deepEqual(product.image_urls, ['https://assets.example.test/store-products/seed/display.webp']);
+  assert.equal(product.images.length, 1);
 }
 
 async function testStripeCheckoutSession() {
@@ -548,6 +584,64 @@ async function testCheckoutRejectsNonHttpScheme() {
   );
 }
 
+async function testRecordPaidOrderCapturesVariations() {
+  // Two cart lines for the same product but different variations should
+  // each get their own selection captured on the order item.
+  const fake = makeFakeDb({
+    productLookup: {
+      price_shirt: {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        slug: 'tee',
+        name: 'Tee',
+        kind: 'merchandise'
+      },
+      __userByEmail: { 'alice@example.com': 'user-alice' }
+    }
+  });
+
+  const session = {
+    ...sampleStripeSession,
+    metadata: {
+      og_kind: 'store',
+      og_var_0: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb|{"Color":"Red","Ink":"Black"}',
+      og_var_1: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb|{"Color":"Blue","Ink":"White"}'
+    },
+    line_items: {
+      data: [
+        { price: { id: 'price_shirt', unit_amount: 2500 }, quantity: 1, amount_total: 2500 },
+        { price: { id: 'price_shirt', unit_amount: 2500 }, quantity: 1, amount_total: 2500 }
+      ]
+    }
+  };
+
+  await recordPaidOrder(session, { db: fake.db });
+  assert.equal(fake.calls.inserts.items.length, 2);
+  const firstSelection = JSON.parse(fake.calls.inserts.items[0][9]);
+  const secondSelection = JSON.parse(fake.calls.inserts.items[1][9]);
+  assert.deepEqual(firstSelection, { Color: 'Red', Ink: 'Black' });
+  assert.deepEqual(secondSelection, { Color: 'Blue', Ink: 'White' });
+}
+
+async function testRecordPaidOrderHandlesMissingVariationMetadata() {
+  // Backwards-compat: existing sessions without og_var_* keys still record
+  // cleanly, with selected_variations stored as null.
+  const fake = makeFakeDb({
+    productLookup: {
+      price_seed: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        slug: 'okra-seed-pack',
+        name: 'Okra Seed Pack',
+        kind: 'merchandise'
+      },
+      __userByEmail: { 'alice@example.com': 'user-alice' }
+    }
+  });
+
+  await recordPaidOrder(sampleStripeSession, { db: fake.db });
+  const itemParams = fake.calls.inserts.items[0];
+  assert.equal(itemParams[9], null);
+}
+
 await testResolveOptionalAuthContextAnonymous();
 await testResolveOptionalAuthContextUser();
 await testResolveOptionalAuthContextAdmin();
@@ -557,6 +651,7 @@ await testRequireUserContextRejectsAnonymous();
 await testRequireAdminContextRejectsNonAdmin();
 await testRequireAdminContextAcceptsAdmin();
 testHttpHelpers();
+testProductMapperExposesMultiImageContract();
 await testStripeCheckoutSession();
 await testRecordPaidOrderInfersUserFromEmail();
 await testRecordPaidOrderUsesMetadataUserId();
@@ -578,4 +673,6 @@ await testCheckoutRejectsAttackerControlledSuccessUrl();
 await testCheckoutRejectsAttackerControlledCancelUrl();
 await testCheckoutRejectsMalformedRedirectUrl();
 await testCheckoutRejectsNonHttpScheme();
+await testRecordPaidOrderCapturesVariations();
+await testRecordPaidOrderHandlesMissingVariationMetadata();
 console.log('store api tests passed');

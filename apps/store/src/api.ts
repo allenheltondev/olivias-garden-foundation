@@ -15,9 +15,35 @@ export interface StoreProduct {
   nonprofit_program: string | null;
   impact_summary: string | null;
   image_url: string | null;
+  legacy_image_url: string | null;
+  image_urls: string[];
+  images: StoreProductImage[];
   metadata: Record<string, unknown>;
+  variations: ProductVariation[];
   stripe_product_id: string;
   stripe_price_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductVariation {
+  name: string;
+  values: string[];
+}
+
+export interface StoreProductImage {
+  id: string;
+  product_id: string | null;
+  status: 'uploaded' | 'processing' | 'ready' | 'failed';
+  url: string | null;
+  thumbnail_url: string | null;
+  width: number | null;
+  height: number | null;
+  byte_size: number | null;
+  sort_order: number;
+  alt_text: string | null;
+  variation_match: Record<string, string>;
+  processing_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,6 +51,7 @@ export interface StoreProduct {
 export interface CheckoutLineItemInput {
   productId: string;
   quantity: number;
+  selectedVariations?: Record<string, string> | null;
 }
 
 export interface CheckoutSessionResponse {
@@ -41,6 +68,7 @@ export interface StoreOrderItem {
   quantity: number;
   unitAmountCents: number;
   totalCents: number;
+  selectedVariations: Record<string, string> | null;
 }
 
 export interface StoreOrder {

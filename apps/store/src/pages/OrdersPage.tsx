@@ -17,6 +17,12 @@ const STATUS_LABEL: Record<StoreOrder['status'], string> = {
   refunded: 'Refunded',
 };
 
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
 export function OrdersPage({ session }: OrdersPageProps) {
   const [orders, setOrders] = useState<StoreOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +45,11 @@ export function OrdersPage({ session }: OrdersPageProps) {
 
   return (
     <section className="store-section">
-      <SectionHeading eyebrow="Account" title="My orders" />
+      <SectionHeading
+        eyebrow="Account"
+        title="My orders"
+        body="A history of everything you've contributed to or purchased from the garden."
+      />
 
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
 
@@ -56,18 +66,28 @@ export function OrdersPage({ session }: OrdersPageProps) {
           <Card key={order.id} className="store-order-list__item">
             <div className="store-order-list__header">
               <div>
-                <p className="og-section-label">
-                  {STATUS_LABEL[order.status]} · {new Date(order.createdAt).toLocaleDateString()}
+                <span className={`store-order-status store-order-status--${order.status}`}>
+                  {STATUS_LABEL[order.status]}
+                </span>
+                <p className="store-order-list__id">Order #{order.id.slice(0, 8)}</p>
+                <p className="store-order-list__date">
+                  Placed {dateFormatter.format(new Date(order.createdAt))}
                 </p>
-                <strong>Order #{order.id.slice(0, 8)}</strong>
               </div>
-              <strong>{formatMoney(order.totalCents, order.currency)}</strong>
+              <span className="store-order-list__total">
+                {formatMoney(order.totalCents, order.currency)}
+              </span>
             </div>
             <ul className="store-order-list__lines">
               {order.items.map((item) => (
                 <li key={item.id}>
                   <span>
                     {item.quantity} × {item.productName}
+                    {item.selectedVariations
+                      ? ` (${Object.entries(item.selectedVariations)
+                          .map(([name, value]) => `${name}: ${value}`)
+                          .join(', ')})`
+                      : ''}
                   </span>
                   <span>{formatMoney(item.totalCents, order.currency)}</span>
                 </li>

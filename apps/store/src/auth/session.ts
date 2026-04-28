@@ -4,6 +4,7 @@ export interface StoreSession {
   accessToken: string;
   email: string | null;
   displayName: string | null;
+  isAdmin: boolean;
 }
 
 async function readSessionTokens() {
@@ -41,10 +42,14 @@ export async function loadStoreSession(): Promise<StoreSession | null> {
           ? (accessPayload.name as string)
           : null;
 
+    const groups = accessPayload['cognito:groups'];
+    const isAdmin = Array.isArray(groups) && groups.includes('Admin');
+
     return {
       accessToken: tokens.accessToken,
       email,
       displayName,
+      isAdmin,
     };
   } catch {
     return null;

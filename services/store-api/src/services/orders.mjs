@@ -22,8 +22,78 @@ const ORDER_SELECT_COLUMNS = `
 
 const ORDER_ITEM_SELECT_COLUMNS = `
   i.id, i.order_id, i.product_id, i.product_slug, i.product_name, i.product_kind,
-  i.quantity, i.unit_amount_cents, i.total_cents, i.stripe_price_id
+  i.quantity, i.unit_amount_cents, i.total_cents, i.stripe_price_id,
+  i.selected_variations
 `;
+
+function resolveSelectedVariations(product, selected) {
+  const definedVariations = Array.isArray(product.variations) ? product.variations : [];
+  const hasSelection = selected && typeof selected === 'object' && Object.keys(selected).length > 0;
+
+  if (definedVariations.length === 0) {
+    if (hasSelection) {
+      throw new Error(`Product ${product.name} does not accept variations.`);
+    }
+    return null;
+  }
+
+  if (!hasSelection) {
+    throw new Error(`Please choose ${definedVariations.map((v) => v.name).join(' and ')} for ${product.name}.`);
+  }
+
+  const resolved = {};
+  for (const variation of definedVariations) {
+    const chosen = selected[variation.name];
+    if (typeof chosen !== 'string' || chosen.trim().length === 0) {
+      throw new Error(`Please choose a ${variation.name} for ${product.name}.`);
+    }
+    const match = variation.values.find(
+      (value) => value.toLowerCase() === chosen.trim().toLowerCase()
+    );
+    if (!match) {
+      throw new Error(`"${chosen}" is not a valid ${variation.name} for ${product.name}.`);
+    }
+    resolved[variation.name] = match;
+  }
+  return resolved;
+}
+
+// Stripe Checkout doesn't support per-line metadata when referencing an
+// existing Price, so we encode the cart's variation selections into session
+// metadata. Keys are namespaced as og_var_<index> with values "<productId>|<json>"
+// to keep within Stripe's 500-char-per-value / 50-key limits while preserving
+// per-line ordering. recordPaidOrder() reads these back when persisting items.
+function buildVariationMetadata(lineItems) {
+  const metadata = {};
+  lineItems.forEach((line, index) => {
+    if (!line.selectedVariations) return;
+    metadata[`og_var_${index}`] = `${line.product.id}|${JSON.stringify(line.selectedVariations)}`;
+  });
+  return metadata;
+}
+
+function parseVariationMetadata(sessionMetadata) {
+  // Returns a list aligned to the cart's original order: [{ productId, variations }].
+  // Falls back to empty when no variation keys are present.
+  if (!sessionMetadata) return [];
+  const entries = [];
+  for (const [key, value] of Object.entries(sessionMetadata)) {
+    const match = /^og_var_(\d+)$/.exec(key);
+    if (!match || typeof value !== 'string') continue;
+    const sep = value.indexOf('|');
+    if (sep < 0) continue;
+    const productId = value.slice(0, sep);
+    try {
+      const variations = JSON.parse(value.slice(sep + 1));
+      if (variations && typeof variations === 'object' && !Array.isArray(variations)) {
+        entries.push({ index: Number(match[1]), productId, variations });
+      }
+    } catch {
+      // Bad metadata — skip rather than failing the order recording.
+    }
+  }
+  return entries.sort((a, b) => a.index - b.index);
+}
 
 function mapOrder(orderRow, items) {
   return {
@@ -52,7 +122,8 @@ function mapOrder(orderRow, items) {
       quantity: item.quantity,
       unitAmountCents: item.unit_amount_cents,
       totalCents: item.total_cents,
-      stripePriceId: item.stripe_price_id
+      stripePriceId: item.stripe_price_id,
+      selectedVariations: item.selected_variations ?? null
     })),
     createdAt: orderRow.created_at?.toISOString?.() ?? orderRow.created_at,
     updatedAt: orderRow.updated_at?.toISOString?.() ?? orderRow.updated_at,
@@ -121,6 +192,11 @@ function assertAllowedRedirectUrl(url, fieldName, allowedOrigins) {
   }
 }
 
+function getRequestOrigin(event) {
+  const headers = event?.headers ?? {};
+  return headers.origin ?? headers.Origin ?? null;
+}
+
 function validateCheckoutPayload(payload, options = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('Request body is required');
@@ -141,17 +217,36 @@ function validateCheckoutPayload(payload, options = {}) {
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 999) {
       throw new Error('Quantity must be an integer between 1 and 999');
     }
+    if (item.selectedVariations !== undefined && item.selectedVariations !== null) {
+      if (
+        typeof item.selectedVariations !== 'object'
+        || Array.isArray(item.selectedVariations)
+      ) {
+        throw new Error('Validation: selectedVariations must be an object');
+      }
+      for (const [key, value] of Object.entries(item.selectedVariations)) {
+        if (typeof key !== 'string' || key.length === 0 || key.length > 60) {
+          throw new Error('Validation: variation name is invalid');
+        }
+        if (typeof value !== 'string' || value.length === 0 || value.length > 100) {
+          throw new Error('Validation: variation value is invalid');
+        }
+      }
+    }
   }
 
-  const allowedOrigins =
-    options.allowedRedirectOrigins ?? getAllowedRedirectOrigins();
+  const allowedOrigins = [...(options.allowedRedirectOrigins ?? getAllowedRedirectOrigins())];
+  if (options.requestOrigin && !allowedOrigins.includes(options.requestOrigin)) {
+    allowedOrigins.push(options.requestOrigin);
+  }
   assertAllowedRedirectUrl(payload.success_url, 'success_url', allowedOrigins);
   assertAllowedRedirectUrl(payload.cancel_url, 'cancel_url', allowedOrigins);
 }
 
 export async function createCheckoutSession(event, payload, options = {}) {
   validateCheckoutPayload(payload, {
-    allowedRedirectOrigins: options.allowedRedirectOrigins
+    allowedRedirectOrigins: options.allowedRedirectOrigins,
+    requestOrigin: getRequestOrigin(event)
   });
   const auth = (await resolveOptionalAuthContext(event, options.authOptions)) ?? {
     userId: null,
@@ -174,7 +269,8 @@ export async function createCheckoutSession(event, payload, options = {}) {
     if (product.status !== 'active' || !product.is_public) {
       throw new Error(`Product ${product.name} is no longer available.`);
     }
-    return { product, quantity: item.quantity };
+    const selectedVariations = resolveSelectedVariations(product, item.selectedVariations);
+    return { product, quantity: item.quantity, selectedVariations };
   });
 
   const currencies = new Set(lineItems.map((line) => line.product.currency.toLowerCase()));
@@ -193,6 +289,8 @@ export async function createCheckoutSession(event, payload, options = {}) {
       ? payload.customer_email.trim()
       : auth.email ?? undefined;
 
+  const variationMetadata = buildVariationMetadata(lineItems);
+
   const session = await stripe.createCheckoutSession({
     items: lineItems.map((line) => ({
       priceId: line.product.stripe_price_id,
@@ -205,7 +303,8 @@ export async function createCheckoutSession(event, payload, options = {}) {
     metadata: {
       og_kind: 'store',
       og_user_id: auth.userId ?? '',
-      og_product_ids: lineItems.map((line) => line.product.id).join(',')
+      og_product_ids: lineItems.map((line) => line.product.id).join(','),
+      ...variationMetadata
     }
   });
 
@@ -289,6 +388,10 @@ export async function recordPaidOrder(stripeSession, options = {}) {
   const shippingAddress = extractShippingAddress(stripeSession);
 
   const lineItems = stripeSession.line_items?.data ?? [];
+  const variationEntries = parseVariationMetadata(stripeSession.metadata);
+  // Track which entries we've consumed so two cart lines for the same product
+  // (different variations) each get their own selection rather than colliding.
+  const consumedVariationIndexes = new Set();
 
   return db.withTransaction(async (client) => {
     const existing = await client.query(
@@ -347,12 +450,25 @@ export async function recordPaidOrder(stripeSession, options = {}) {
       const unitAmountCents = line.price?.unit_amount ?? Math.round((line.amount_total ?? 0) / quantity);
       const totalLineCents = line.amount_total ?? unitAmountCents * quantity;
 
+      let selectedVariations = null;
+      if (product?.id) {
+        const matchIndex = variationEntries.findIndex(
+          (entry) => entry.productId === product.id && !consumedVariationIndexes.has(entry.index)
+        );
+        if (matchIndex >= 0) {
+          const entry = variationEntries[matchIndex];
+          consumedVariationIndexes.add(entry.index);
+          selectedVariations = entry.variations;
+        }
+      }
+
       await client.query(
         `insert into store_order_items (
            order_id, product_id, product_slug, product_name, product_kind,
-           quantity, unit_amount_cents, total_cents, stripe_price_id
+           quantity, unit_amount_cents, total_cents, stripe_price_id,
+           selected_variations
          )
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)`,
         [
           orderId,
           product?.id ?? null,
@@ -362,7 +478,8 @@ export async function recordPaidOrder(stripeSession, options = {}) {
           quantity,
           unitAmountCents,
           totalLineCents,
-          stripePriceId
+          stripePriceId,
+          selectedVariations ? JSON.stringify(selectedVariations) : null
         ]
       );
     }

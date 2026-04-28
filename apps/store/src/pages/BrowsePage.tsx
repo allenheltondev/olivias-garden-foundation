@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import { listPublicProducts, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
@@ -16,6 +16,7 @@ export function BrowsePage() {
   const [products, setProducts] = useState<StoreProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cart = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -53,10 +54,10 @@ export function BrowsePage() {
 
       <div className="store-product-grid">
         {(products ?? []).map((product) => (
-          <Card key={product.id} className="store-product-card">
+          <Card key={product.id} className="store-product-card" padding="none">
             <Link to={`/products/${product.slug}`} className="store-product-card__media">
-              {product.image_url ? (
-                <img src={product.image_url} alt="" loading="lazy" />
+              {product.images[0]?.thumbnail_url || product.image_url ? (
+                <img src={product.images[0]?.thumbnail_url || product.image_url || ''} alt="" loading="lazy" />
               ) : (
                 <div className="store-product-card__placeholder" aria-hidden="true" />
               )}
@@ -70,13 +71,19 @@ export function BrowsePage() {
                 <p className="store-product-card__excerpt">{product.short_description}</p>
               ) : null}
               <div className="store-product-card__footer">
-                <strong>{formatMoney(product.unit_amount_cents, product.currency)}</strong>
+                <span className="store-product-card__price">
+                  {formatMoney(product.unit_amount_cents, product.currency)}
+                </span>
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => cart.add(product, 1)}
+                  onClick={() =>
+                    product.variations.length > 0
+                      ? navigate(`/products/${product.slug}`)
+                      : cart.add(product, 1)
+                  }
                 >
-                  Add to cart
+                  {product.variations.length > 0 ? 'Choose options' : 'Add to cart'}
                 </Button>
               </div>
             </div>

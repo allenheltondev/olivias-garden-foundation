@@ -14,6 +14,9 @@ const foundationHomeUrl = import.meta.env.VITE_FOUNDATION_URL
 const grnUrl = (import.meta.env.VITE_GRN_URL as string | undefined)?.replace(/\/+$/, '')
   ?? 'https://grn.oliviasgarden.org';
 
+const adminUrl = (import.meta.env.VITE_ADMIN_URL as string | undefined)?.replace(/\/+$/, '')
+  ?? 'https://admin.oliviasgarden.org';
+
 const instagramUrl = 'https://instagram.com/oliviasgardentx';
 const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
 
@@ -41,7 +44,7 @@ function CartIndicator() {
           fill="currentColor"
         />
       </svg>
-      <span>Cart</span>
+      <span className="store-cart-indicator__label">Cart</span>
       {itemCount > 0 ? <span className="store-cart-indicator__badge">{itemCount}</span> : null}
     </Link>
   );
@@ -74,15 +77,44 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
     window.location.assign(`${foundationHomeUrl}/login`);
   };
 
+  // Mobile-only nav items so signed-in shoppers can reach orders, the
+  // admin app, and sign-out from the hamburger drawer. The desktop
+  // utility area shows the AvatarMenu instead, which hides these on
+  // wider screens via the SiteHeader's `mobileOnly` rule.
+  const navItems = [
+    ...foundationHeaderNav,
+    ...(session
+      ? [
+          { id: 'mobile-orders', label: 'My orders', href: '/orders', mobileOnly: true },
+          ...(session.isAdmin
+            ? [{ id: 'mobile-admin', label: 'Admin', href: adminUrl, mobileOnly: true }]
+            : []),
+          {
+            id: 'mobile-logout',
+            label: 'Sign out',
+            mobileOnly: true,
+            onSelect: handleLogout,
+          },
+        ]
+      : [
+          {
+            id: 'mobile-signin',
+            label: 'Sign in',
+            mobileOnly: true,
+            onSelect: onSignIn,
+          },
+        ]),
+  ];
+
   return (
     <div className="og-app-shell store-app-shell">
       <SiteHeader
         brandLogoSrc={foundationLogo}
         brandLogoAlt="Olivia's Garden Foundation"
         brandEyebrow="Olivia's Garden Foundation"
-        brandTitle="merch store"
+        brandTitle="Merch Store"
         brandHref="/"
-        navItems={foundationHeaderNav}
+        navItems={navItems}
         utility={(
           <div className="og-auth-utility store-utility">
             <CartIndicator />
@@ -94,6 +126,9 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
                   { id: 'orders', label: 'My orders', href: '/orders' },
                   { id: 'foundation', label: 'Foundation home', href: foundationHomeUrl },
                   { id: 'grn', label: 'Good Roots Network', href: grnUrl },
+                  ...(session.isAdmin
+                    ? [{ id: 'admin', label: 'Admin', href: adminUrl }]
+                    : []),
                 ]}
                 onLogout={handleLogout}
               />

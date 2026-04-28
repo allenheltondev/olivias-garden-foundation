@@ -1025,7 +1025,7 @@ jobs:
   deploy-staging-store-frontend:
     name: Deploy Store Staging Frontend
     runs-on: ubuntu-latest
-    needs: [deploy-staging-store-backend, deploy-staging-foundation]
+    needs: [deploy-staging-store-backend, deploy-staging-foundation, deploy-staging-admin-backend]
     if: inputs.shared_all == 'true' || inputs.store_backend == 'true' || inputs.store_frontend == 'true'
     env:
       AWS_REGION: us-east-1
@@ -1059,6 +1059,7 @@ jobs:
           VITE_STORE_API_URL=${{ needs.deploy-staging-store-backend.outputs.api-url }}
           VITE_FOUNDATION_URL=${{ needs.deploy-staging-foundation.outputs.web-frontend-url }}
           VITE_GRN_URL=${{ needs.deploy-staging-backend.outputs.frontend-url }}
+          VITE_ADMIN_URL=${{ needs.deploy-staging-admin-backend.outputs.frontend-url }}
           EOF
 
       - name: Build store frontend

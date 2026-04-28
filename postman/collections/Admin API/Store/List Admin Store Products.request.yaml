@@ -19,3 +19,11 @@ scripts:
           pm.expect(response).to.have.property("items");
           pm.expect(Array.isArray(response.items)).to.eql(true);
       });
+
+      pm.test("Products expose multi-image fields when present", function () {
+          if (response.items.length === 0) return;
+          pm.expect(response.items[0]).to.have.property("images");
+          pm.expect(response.items[0]).to.have.property("image_urls");
+          pm.expect(response.items[0].images).to.be.an("array");
+          pm.expect(response.items[0].image_urls).to.be.an("array");
+      });

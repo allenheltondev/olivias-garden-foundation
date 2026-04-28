@@ -12,7 +12,7 @@ function loadConfig(): AmplifyConfig {
   const region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
 
   if (!userPoolId || !userPoolClientId) {
-    throw new Error('Missing Cognito configuration for store app.');
+    throw new Error('Missing sign-in configuration for store app.');
   }
 
   return {
