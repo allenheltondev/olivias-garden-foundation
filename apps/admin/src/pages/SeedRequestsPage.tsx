@@ -78,7 +78,6 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
     try {
       await markSeedRequestHandled(session.accessToken, request.id, {
         status: 'handled',
-        review_notes: 'Handled in admin dashboard.',
       });
       // Refetch the current page so the list stays correctly paginated
       // and total reflects the server's post-update view.
@@ -105,7 +104,13 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
           title={`Open requests (${total})`}
           body="Mark a request as done once the seeds are on their way or picked up."
         />
-        <Button variant="outline" size="sm" onClick={() => void load(page)} disabled={loading}>
+        <Button
+          className="admin-refresh-action"
+          variant="outline"
+          size="sm"
+          onClick={() => void load(page)}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>

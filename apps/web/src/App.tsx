@@ -370,12 +370,13 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
-          <Route path="/data-deletion" element={<DataDeletionPage onNavigate={navigate} />} />
+          <Route path="/data" element={<DataDeletionPage onNavigate={navigate} />} />
           <Route
             path="/good-roots"
             element={<GoodRootsPage authSession={authSession} onNavigate={navigate} />}
           />
           <Route path="/seeds" element={<Navigate to="/okra" replace />} />
+          <Route path="/data-deletion" element={<Navigate to="/data" replace />} />
           <Route path="*" element={<HomePage onNavigate={navigate} />} />
         </Routes>
       </main>

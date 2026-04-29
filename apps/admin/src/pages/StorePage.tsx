@@ -37,9 +37,6 @@ const emptyProductForm: UpsertStoreProductRequest = {
   is_featured: false,
   currency: 'usd',
   unit_amount_cents: 0,
-  statement_descriptor: '',
-  nonprofit_program: '',
-  impact_summary: '',
   image_url: '',
   metadata: {},
   variations: [],
@@ -170,9 +167,6 @@ export function StorePage({ session }: StorePageProps) {
       is_featured: product.is_featured,
       currency: product.currency,
       unit_amount_cents: product.unit_amount_cents,
-      statement_descriptor: product.statement_descriptor,
-      nonprofit_program: product.nonprofit_program,
-      impact_summary: product.impact_summary,
       image_url: product.legacy_image_url,
       metadata: product.metadata,
       variations: product.variations.map((variation) => ({
@@ -322,9 +316,6 @@ export function StorePage({ session }: StorePageProps) {
         ...productForm,
         short_description: productForm.short_description || null,
         description: productForm.description || null,
-        statement_descriptor: productForm.statement_descriptor || null,
-        nonprofit_program: productForm.nonprofit_program || null,
-        impact_summary: productForm.impact_summary || null,
         image_url: productForm.image_url || null,
         images: productImages.map((image, index) => ({
           id: image.id,
@@ -371,7 +362,7 @@ export function StorePage({ session }: StorePageProps) {
     <section className="admin-section">
       <SectionHeading
         eyebrow="Store catalog"
-        title="Products backed by Stripe"
+        title="Products"
         body="Create and edit donation, merchandise, ticket, and sponsorship products."
       />
 

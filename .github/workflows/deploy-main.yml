@@ -1086,7 +1086,7 @@ jobs:
   deploy-admin-frontend:
     name: Deploy Admin Frontend
     runs-on: ubuntu-latest
-    needs: [deploy-admin-backend, deploy-okra-backend]
+    needs: [deploy-admin-backend, deploy-okra-backend, deploy-store-backend]
 
     steps:
       - name: Checkout code
@@ -1126,6 +1126,7 @@ jobs:
           VITE_USER_POOL_DOMAIN=${{ needs.deploy-admin-backend.outputs.user-pool-domain }}
           VITE_ADMIN_API_URL=${{ needs.deploy-admin-backend.outputs.api-url }}
           VITE_OKRA_ADMIN_API_URL=${{ needs.deploy-okra-backend.outputs.admin-api-url }}
+          VITE_STORE_API_URL=${{ needs.deploy-store-backend.outputs.api-url }}
           VITE_AWS_REGION=${{ env.AWS_REGION }}
           VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
           VITE_GRN_URL=${{ needs.deploy-backend.outputs.frontend-url }}

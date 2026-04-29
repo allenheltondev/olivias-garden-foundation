@@ -23,7 +23,7 @@ test.describe('legal pages', () => {
   });
 
   test('data deletion page loads with deletion instructions and footer link', async ({ page }) => {
-    await gotoAndWait(page, '/data-deletion');
+    await gotoAndWait(page, '/data');
 
     await expect(
       page.getByRole('heading', { name: 'Data and account deletion', level: 1 }),

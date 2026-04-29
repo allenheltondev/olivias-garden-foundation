@@ -14,7 +14,6 @@ export interface SiteFooterSocialLink {
 }
 
 export interface SiteFooterProps {
-  tagline: string;
   meta: string;
   links?: SiteFooterLink[];
   legalLinks?: SiteFooterLink[];

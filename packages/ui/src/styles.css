@@ -222,12 +222,6 @@ body {
     letter-spacing: 0.1em;
   }
 
-  .og-site-footer__tagline {
-    max-width: none;
-    font-size: 0.82rem;
-    line-height: 1.3;
-  }
-
   .og-site-footer__meta,
   .og-site-footer__social {
     font-size: 0.72rem;
@@ -293,8 +287,8 @@ body {
   width: min(1180px, calc(100% - 3rem));
   margin: 0 auto;
   display: grid;
-  gap: 0.9rem;
-  padding: 1.15rem 0 1.35rem;
+  gap: 0.65rem;
+  padding: 0.8rem 0 0.9rem;
 }
 
 .og-site-footer__links-block,
@@ -451,20 +445,21 @@ body {
 
 @media (min-width: 800px) {
   .og-site-footer__inner {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(max-content, auto);
     grid-template-areas:
       "pages social"
-      "pages legal"
-      "meta meta";
-    column-gap: 5rem;
-    row-gap: 0.75rem;
+      ".     legal"
+      "meta  meta";
+    column-gap: 3rem;
+    row-gap: 0.5rem;
     align-items: start;
   }
 
   .og-site-footer__links-block--pages {
     grid-area: pages;
     align-self: start;
-    max-width: min(34rem, 60%);
+    min-width: 0;
+    max-width: max-content;
   }
 
   .og-site-footer__social-block {
@@ -481,7 +476,7 @@ body {
     justify-self: end;
     text-align: right;
     border-top: 0;
-    padding-top: 0.25rem;
+    padding-top: 0;
     margin-top: 0;
   }
 
@@ -491,7 +486,7 @@ body {
 
   .og-site-footer__meta {
     grid-area: meta;
-    margin-top: 0.4rem;
+    margin-top: 0.25rem;
   }
 }
 
@@ -883,13 +878,13 @@ body {
   border: 1px solid rgba(79, 56, 37, 0.08);
   border-radius: var(--og-radius-lg);
   box-shadow: var(--og-shadow-card);
-  padding: 1.5rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
 }
 
 .og-card--padding-none { padding: 0; }
-.og-card--padding-4 { padding: 1rem; }
-.og-card--padding-6 { padding: 1.5rem; }
-.og-card--padding-8 { padding: 2rem; }
+.og-card--padding-4 { padding: clamp(0.75rem, 3vw, 1rem); }
+.og-card--padding-6 { padding: clamp(1rem, 4vw, 1.5rem); }
+.og-card--padding-8 { padding: clamp(1.25rem, 5vw, 2rem); }
 
 .og-card--elevation-sm { box-shadow: var(--shadow-sm); }
 .og-card--elevation-base { box-shadow: var(--shadow-base); }

@@ -843,6 +843,16 @@ jobs:
             --output text 2>/dev/null || echo "")
           echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
 
+      - name: Get store API URL
+        id: get-store-api-url
+        run: |
+          STORE_API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "ogf-store-staging" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text 2>/dev/null || echo "")
+          echo "url=$STORE_API_URL" >> $GITHUB_OUTPUT
+
       - name: Create admin environment file
         working-directory: apps/admin
         run: |
@@ -852,6 +862,7 @@ jobs:
           VITE_USER_POOL_DOMAIN=${{ needs.deploy-staging-admin-backend.outputs.user-pool-domain }}
           VITE_ADMIN_API_URL=${{ needs.deploy-staging-admin-backend.outputs.api-url }}
           VITE_OKRA_ADMIN_API_URL=${{ needs.deploy-staging-okra.outputs.admin-api-url }}
+          VITE_STORE_API_URL=${{ steps.get-store-api-url.outputs.url }}
           VITE_AWS_REGION=${{ env.AWS_REGION }}
           VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
           VITE_GRN_URL=${{ needs.deploy-staging-backend.outputs.frontend-url }}

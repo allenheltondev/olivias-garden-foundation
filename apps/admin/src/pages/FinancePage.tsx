@@ -76,12 +76,27 @@ function bucketsToChartRows(buckets: FinanceBucket[], granularity: Granularity):
   }));
 }
 
+const SMALL_SCREEN_QUERY = '(max-width: 640px)';
+
 export function FinancePage({ session }: FinancePageProps) {
   const [rangeId, setRangeId] = useState<string>('6mo');
   const [granularityOverride, setGranularityOverride] = useState<Granularity | null>(null);
   const [data, setData] = useState<FinanceRevenueResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(SMALL_SCREEN_QUERY).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(SMALL_SCREEN_QUERY);
+    const update = () => setIsSmallScreen(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const activeRange = useMemo(
     () => RANGE_OPTIONS.find((r) => r.id === rangeId) ?? RANGE_OPTIONS[2],
@@ -185,11 +200,29 @@ export function FinancePage({ session }: FinancePageProps) {
         ) : chartRows.length === 0 ? (
           <p>No revenue in this range yet.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={chartRows} margin={{ top: 16, right: 16, bottom: 8, left: 16 }}>
+          <ResponsiveContainer width="100%" height={isSmallScreen ? 260 : 320}>
+            <BarChart
+              data={chartRows}
+              margin={{
+                top: 16,
+                right: isSmallScreen ? 4 : 16,
+                bottom: isSmallScreen ? 32 : 8,
+                left: isSmallScreen ? 0 : 16,
+              }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
-              <XAxis dataKey="label" />
-              <YAxis tickFormatter={(value: number) => `$${value.toFixed(0)}`} />
+              <XAxis
+                dataKey="label"
+                interval="preserveStartEnd"
+                minTickGap={isSmallScreen ? 24 : 8}
+                angle={isSmallScreen ? -30 : 0}
+                textAnchor={isSmallScreen ? 'end' : 'middle'}
+                height={isSmallScreen ? 56 : 30}
+              />
+              <YAxis
+                tickFormatter={(value: number) => `$${value.toFixed(0)}`}
+                width={isSmallScreen ? 44 : 60}
+              />
               <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
               <Legend />
               <Bar dataKey="donationOneTime" name="One-time donations" stackId="rev" fill="#f4a261" />
