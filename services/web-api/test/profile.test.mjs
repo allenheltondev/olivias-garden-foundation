@@ -124,7 +124,9 @@ describe('web-api profile handler', () => {
       resolveOptionalAuthContextMock.mockResolvedValue({
         userId: USER_ID,
         email: 'olivia@example.com',
-        name: 'Olivia'
+        name: 'Olivia Garden',
+        firstName: 'Olivia',
+        lastName: 'Garden'
       });
 
       const row = baseProfileRow();
@@ -150,7 +152,13 @@ describe('web-api profile handler', () => {
 
       expect(client.query).toHaveBeenCalledTimes(2);
       expect(client.query.mock.calls[0][0]).toContain('insert into users');
-      expect(client.query.mock.calls[0][1]).toEqual([USER_ID, 'olivia@example.com', 'Olivia']);
+      expect(client.query.mock.calls[0][1]).toEqual([
+        USER_ID,
+        'olivia@example.com',
+        'Olivia',
+        'Garden',
+        'Olivia Garden'
+      ]);
       expect(client.end).toHaveBeenCalledOnce();
     });
 

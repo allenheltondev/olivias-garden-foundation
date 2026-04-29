@@ -54,6 +54,10 @@ on:
         required: false
       google_oauth_client_secret:
         required: false
+      facebook_app_id:
+        required: false
+      facebook_app_secret:
+        required: false
       signup_slack_webhook_url:
         required: false
       web_stripe_secret_key:
@@ -241,6 +245,8 @@ jobs:
           DATABASE_URL: ${{ secrets.database_url }}
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.google_oauth_client_id }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.google_oauth_client_secret }}
+          FACEBOOK_APP_ID: ${{ secrets.facebook_app_id }}
+          FACEBOOK_APP_SECRET: ${{ secrets.facebook_app_secret }}
           SIGNUP_SLACK_WEBHOOK_URL: ${{ secrets.signup_slack_webhook_url }}
         run: |
           PARAM_OVERRIDES=(
@@ -254,6 +260,12 @@ jobs:
             PARAM_OVERRIDES+=(
               "GoogleClientId=$GOOGLE_OAUTH_CLIENT_ID"
               "GoogleClientSecret=$GOOGLE_OAUTH_CLIENT_SECRET"
+            )
+          fi
+          if [ -n "$FACEBOOK_APP_ID" ] && [ -n "$FACEBOOK_APP_SECRET" ]; then
+            PARAM_OVERRIDES+=(
+              "FacebookAppId=$FACEBOOK_APP_ID"
+              "FacebookAppSecret=$FACEBOOK_APP_SECRET"
             )
           fi
           if [ -n "$SIGNUP_SLACK_WEBHOOK_URL" ]; then

@@ -274,7 +274,7 @@ function toEditable(
   const lastName = profile?.lastName ?? (neverSaved ? sessionLast : '');
 
   const displayName = neverSaved
-    ? `${firstName}${lastName}`
+    ? [firstName, lastName].filter(Boolean).join(' ')
     : profile?.displayName ?? '';
 
   return {

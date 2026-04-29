@@ -53,6 +53,10 @@ on:
         required: false
       google_oauth_client_secret_staging:
         required: false
+      facebook_app_id_staging:
+        required: false
+      facebook_app_secret_staging:
+        required: false
 
 permissions:
   id-token: write
@@ -127,6 +131,8 @@ jobs:
           DATABASE_URL: ${{ secrets.database_url_staging }}
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.google_oauth_client_id_staging }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.google_oauth_client_secret_staging }}
+          FACEBOOK_APP_ID: ${{ secrets.facebook_app_id_staging }}
+          FACEBOOK_APP_SECRET: ${{ secrets.facebook_app_secret_staging }}
           SIGNUP_SLACK_WEBHOOK_URL: ${{ secrets.foundation_signup_slack_webhook_url_staging }}
         run: |
           PARAM_OVERRIDES=("EnvironmentName=staging" "DatabaseUrl=$DATABASE_URL")
@@ -137,6 +143,12 @@ jobs:
             PARAM_OVERRIDES+=(
               "GoogleClientId=$GOOGLE_OAUTH_CLIENT_ID"
               "GoogleClientSecret=$GOOGLE_OAUTH_CLIENT_SECRET"
+            )
+          fi
+          if [ -n "$FACEBOOK_APP_ID" ] && [ -n "$FACEBOOK_APP_SECRET" ]; then
+            PARAM_OVERRIDES+=(
+              "FacebookAppId=$FACEBOOK_APP_ID"
+              "FacebookAppSecret=$FACEBOOK_APP_SECRET"
             )
           fi
           if [ -n "$SIGNUP_SLACK_WEBHOOK_URL" ]; then

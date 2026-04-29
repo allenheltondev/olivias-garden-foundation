@@ -20,6 +20,7 @@ function buildEvent(overrides = {}) {
         email: "new-user@example.com",
         given_name: "Olivia",
         family_name: "Garden",
+        name: "Olivia Garden",
         "custom:newsletter_opt_in": "true",
       },
     },
@@ -146,6 +147,13 @@ describe("createHandler", () => {
     assert.equal(fake.queries.length, 2, "should run both upsert and order-link queries");
     assert.match(fake.queries[0].sql, /INSERT INTO users/i);
     assert.equal(fake.queries[0].params[0], "11111111-1111-1111-1111-111111111111");
+    assert.deepEqual(fake.queries[0].params, [
+      "11111111-1111-1111-1111-111111111111",
+      "new-user@example.com",
+      "Olivia",
+      "Garden",
+      "Olivia Garden",
+    ]);
     assert.match(fake.queries[1].sql, /UPDATE store_orders/i);
     assert.equal(eventBridgeClient.sent.length, 1);
     const detail = JSON.parse(eventBridgeClient.sent[0].input.Entries[0].Detail);

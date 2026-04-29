@@ -123,10 +123,15 @@ export async function fetchContributorProfileFromAccessToken(token, payload) {
   const baseContributor = {
     sub: firstNonEmptyString(payload.sub),
     email: firstNonEmptyString(payload.email),
-    name: firstNonEmptyString(payload.name, payload.given_name, payload.preferred_username, payload.username)
+    name: firstNonEmptyString(
+      payload.name,
+      payload.given_name,
+      payload.preferred_username,
+      usernameAsDisplayName(payload.username)
+    )
   };
 
-  if (baseContributor.email || baseContributor.name) {
+  if (baseContributor.email && baseContributor.name) {
     return baseContributor;
   }
 
@@ -160,6 +165,17 @@ function firstNonEmptyString(...values) {
   }
 
   return null;
+}
+
+// Cognito synthesizes usernames like `google_<sub>` or `facebook_<sub>` for
+// federated users. Those are opaque identifiers, not display names.
+const FEDERATED_USERNAME_PATTERN = /^(google|facebook|signinwithapple|apple|loginwithamazon|amazon|oidc)_/i;
+
+function usernameAsDisplayName(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || FEDERATED_USERNAME_PATTERN.test(trimmed)) return null;
+  return trimmed;
 }
 
 function attributesToObject(attributes = []) {

@@ -23,6 +23,16 @@ function resolveCorrelationId(event) {
   );
 }
 
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 export function extractSignupContext(event) {
   const triggerSource = event.triggerSource;
   const correlationId = resolveCorrelationId(event);
@@ -40,9 +50,12 @@ export function extractSignupContext(event) {
     throw new Error("Missing userAttributes.sub in Cognito event");
   }
 
-  const givenName = attributes.given_name?.trim() || null;
-  const familyName = attributes.family_name?.trim() || null;
-  const fullName = [givenName, familyName].filter(Boolean).join(" ").trim() || null;
+  const givenName = firstNonEmptyString(attributes.given_name);
+  const familyName = firstNonEmptyString(attributes.family_name);
+  const fullName = firstNonEmptyString(
+    attributes.name,
+    [givenName, familyName].filter(Boolean).join(" "),
+  );
 
   return {
     correlationId,
@@ -138,12 +151,22 @@ async function provisionShellUser(context, createClient, errorLogger) {
 
   try {
     const result = await client.query(
-      `INSERT INTO users (id, email)
-       VALUES ($1, $2)
+      `INSERT INTO users (id, email, first_name, last_name, display_name)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (id) DO UPDATE
-         SET email = COALESCE(users.email, EXCLUDED.email)
+         SET email = COALESCE(users.email, EXCLUDED.email),
+             first_name = COALESCE(users.first_name, EXCLUDED.first_name),
+             last_name = COALESCE(users.last_name, EXCLUDED.last_name),
+             display_name = COALESCE(users.display_name, EXCLUDED.display_name),
+             updated_at = now()
        RETURNING xmax = 0 AS inserted`,
-      [context.userId, context.email],
+      [
+        context.userId,
+        context.email,
+        context.givenName,
+        context.familyName,
+        context.fullName,
+      ],
     );
 
     const inserted = Boolean(result.rows[0]?.inserted);

@@ -131,6 +131,15 @@ The foundation stack derives the Cognito Hosted UI domain as `auth.<FOUNDATION_W
 
 If both the Google client ID and secret are present for an environment, the workflow passes them to the foundation stack and enables the Google Cognito identity provider for that environment.
 
+### Optional Facebook OAuth secrets for foundation web deployments
+
+- `FACEBOOK_APP_ID_STAGING`
+- `FACEBOOK_APP_SECRET_STAGING`
+- `FACEBOOK_APP_ID_PROD`
+- `FACEBOOK_APP_SECRET_PROD`
+
+If both the Facebook App ID and secret are present for an environment, the workflow passes them to the foundation stack and enables the Facebook Cognito identity provider for that environment.
+
 ## Multi-Account Strategy
 
 The workflows support deploying to different AWS accounts:
