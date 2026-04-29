@@ -116,9 +116,6 @@ export interface UpsertStoreProductRequest {
   is_featured: boolean;
   currency: string;
   unit_amount_cents: number;
-  statement_descriptor: string | null;
-  nonprofit_program: string | null;
-  impact_summary: string | null;
   image_url: string | null;
   images?: Array<{
     id: string;

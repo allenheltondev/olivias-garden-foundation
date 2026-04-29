@@ -646,20 +646,27 @@ body {
   font-weight: 700;
 }
 
+.admin-submission-card__deny-fields {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-submission-card__deny-reason,
 .admin-submission-card__deny-note {
   display: grid;
   gap: 0.35rem;
 }
 
+.admin-submission-card__deny-reason span,
 .admin-submission-card__deny-note span {
   color: rgba(79, 56, 37, 0.72);
   font-size: 0.82rem;
   font-weight: 700;
 }
 
+.admin-submission-card__deny-reason select,
 .admin-submission-card__deny-note textarea {
   width: 100%;
-  resize: vertical;
   border: 1px solid rgba(79, 56, 37, 0.22);
   border-radius: var(--og-radius-md);
   padding: 0.65rem 0.75rem;
@@ -669,6 +676,22 @@ body {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.admin-submission-card__deny-note textarea {
+  resize: vertical;
+}
+
+.admin-submission-card__deny-reason select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234f3825'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1.1rem;
+  padding-right: 2.25rem;
+  cursor: pointer;
+}
+
+.admin-submission-card__deny-reason select:focus,
 .admin-submission-card__deny-note textarea:focus {
   border-color: var(--og-color-moss);
   outline: 2px solid rgba(86, 118, 66, 0.16);

@@ -78,7 +78,6 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
     try {
       await markSeedRequestHandled(session.accessToken, request.id, {
         status: 'handled',
-        review_notes: 'Handled in admin dashboard.',
       });
       // Refetch the current page so the list stays correctly paginated
       // and total reflects the server's post-update view.

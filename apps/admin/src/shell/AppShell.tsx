@@ -37,23 +37,6 @@ const navItems: AdminNavItem[] = [
     ),
   },
   {
-    id: 'activity',
-    path: '/activity',
-    label: 'Activity',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path
-          d="M3 13h3l2-7 4 14 2-7 2 4h5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
     id: 'finance',
     path: '/finance',
     label: 'Finance',
@@ -82,7 +65,7 @@ const navItems: AdminNavItem[] = [
   {
     id: 'okra-queue',
     path: '/okra-queue',
-    label: 'Okra queue',
+    label: 'Okra',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
@@ -95,7 +78,7 @@ const navItems: AdminNavItem[] = [
   {
     id: 'store-catalog',
     path: '/store',
-    label: 'Store catalog',
+    label: 'Catalog',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
@@ -108,7 +91,7 @@ const navItems: AdminNavItem[] = [
   {
     id: 'store-orders',
     path: '/store/orders',
-    label: 'Store orders',
+    label: 'Orders',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
@@ -123,7 +106,6 @@ const navItems: AdminNavItem[] = [
 const footerLinks = [
   { id: 'home', label: 'Foundation home', href: `${foundationHomeUrl}/` },
   { id: 'okra', label: 'Okra Project', href: `${foundationHomeUrl}/okra` },
-  { id: 'grn', label: 'Good Roots Network', href: grnUrl },
 ];
 
 const foundationHeaderNav = [
@@ -322,7 +304,6 @@ export function AppShell({ session, children }: AppShellProps) {
         </main>
       </div>
       <SiteFooter
-        tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
         meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
         links={footerLinks}
         socialLinks={[

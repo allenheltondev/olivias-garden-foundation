@@ -261,7 +261,7 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
     <section className="admin-section">
       <div className="admin-section__header">
         <SectionHeading
-          eyebrow="Okra queue"
+          eyebrow="Okra"
           title={`Pending submissions (${total})`}
           body="Approve new submissions and edits. Approved submissions stay live while proposed edits wait here."
         />
