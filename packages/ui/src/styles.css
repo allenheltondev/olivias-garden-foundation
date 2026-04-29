@@ -445,11 +445,12 @@ body {
 
 @media (min-width: 800px) {
   .og-site-footer__inner {
-    grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "pages legal social"
-      "meta meta  meta";
-    column-gap: 2.5rem;
+      "pages social"
+      "pages legal"
+      "meta  meta";
+    column-gap: 3rem;
     row-gap: 0.5rem;
     align-items: start;
   }
@@ -457,6 +458,7 @@ body {
   .og-site-footer__links-block--pages {
     grid-area: pages;
     align-self: start;
+    min-width: 0;
   }
 
   .og-site-footer__social-block {
@@ -470,11 +472,15 @@ body {
 
   .og-site-footer__links-block--legal {
     grid-area: legal;
-    justify-self: start;
-    text-align: left;
+    justify-self: end;
+    text-align: right;
     border-top: 0;
     padding-top: 0;
     margin-top: 0;
+  }
+
+  .og-site-footer__links--legal {
+    justify-content: flex-end;
   }
 
   .og-site-footer__meta {
