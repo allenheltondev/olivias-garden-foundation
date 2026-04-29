@@ -287,8 +287,8 @@ body {
   width: min(1180px, calc(100% - 3rem));
   margin: 0 auto;
   display: grid;
-  gap: 0.9rem;
-  padding: 1.15rem 0 1.35rem;
+  gap: 0.65rem;
+  padding: 0.8rem 0 0.9rem;
 }
 
 .og-site-footer__links-block,
@@ -445,20 +445,18 @@ body {
 
 @media (min-width: 800px) {
   .og-site-footer__inner {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto;
     grid-template-areas:
-      "pages social"
-      "pages legal"
-      "meta meta";
-    column-gap: 5rem;
-    row-gap: 0.75rem;
+      "pages legal social"
+      "meta meta  meta";
+    column-gap: 2.5rem;
+    row-gap: 0.5rem;
     align-items: start;
   }
 
   .og-site-footer__links-block--pages {
     grid-area: pages;
     align-self: start;
-    max-width: min(34rem, 60%);
   }
 
   .og-site-footer__social-block {
@@ -472,20 +470,16 @@ body {
 
   .og-site-footer__links-block--legal {
     grid-area: legal;
-    justify-self: end;
-    text-align: right;
+    justify-self: start;
+    text-align: left;
     border-top: 0;
-    padding-top: 0.25rem;
+    padding-top: 0;
     margin-top: 0;
-  }
-
-  .og-site-footer__links--legal {
-    justify-content: flex-end;
   }
 
   .og-site-footer__meta {
     grid-area: meta;
-    margin-top: 0.4rem;
+    margin-top: 0.25rem;
   }
 }
 

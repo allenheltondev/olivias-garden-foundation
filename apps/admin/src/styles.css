@@ -1363,7 +1363,7 @@ body {
 .admin-activity__card {
   padding: 0.9rem 1rem;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.7rem;
 }
 
 .admin-activity__row {

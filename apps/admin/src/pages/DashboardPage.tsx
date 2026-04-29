@@ -158,7 +158,6 @@ export function DashboardPage({ session }: DashboardPageProps) {
         <StatTile
           label="Registered users"
           value={statsLoading ? '…' : formatCount(stats?.userCount)}
-          helper="Estimated from the shared Cognito user pool."
         />
         <StatTile
           label="Open seed requests"
@@ -175,7 +174,7 @@ export function DashboardPage({ session }: DashboardPageProps) {
       <SectionHeading
         eyebrow="Activity"
         title="Recent activity"
-        body="Donations, signups, seed requests, okra submissions, and Good Roots inquiries — newest first. Events are kept for 30 days."
+        body="Donations, signups, seed requests, okra submissions, and Good Roots inquiries."
       />
 
       <div className="admin-activity__filters" role="tablist">
