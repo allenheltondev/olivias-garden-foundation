@@ -132,7 +132,7 @@ export const routes: AppRoute[] = [
     prerender: true,
   },
   {
-    path: '/data-deletion',
+    path: '/data',
     label: 'Your data',
     showInLegalFooter: true,
     title: 'Data and account deletion',

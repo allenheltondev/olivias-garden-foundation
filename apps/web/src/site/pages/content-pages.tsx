@@ -625,7 +625,7 @@ export function PrivacyPolicyPage() {
         </p>
         <p>
           You can delete your account and the personal data associated with it at any time. See
-          our <a href="/data-deletion">data and account deletion page</a> for step-by-step
+          our <a href="/data">data and account deletion page</a> for step-by-step
           instructions, including how to remove data received from Facebook Login or Google
           Sign-In.
         </p>
