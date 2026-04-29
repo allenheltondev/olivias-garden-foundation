@@ -206,8 +206,8 @@ Resources:
           - !Ref AWS::NoValue
       SupportedIdentityProviders:
         - COGNITO
-        - !If [EnableGoogleOnClient, Google, !Ref AWS::NoValue]
-        - !If [EnableFacebookOnClient, Facebook, !Ref AWS::NoValue]
+        - !If [EnableGoogleOnClient, !Ref FoundationGoogleIdentityProvider, !Ref AWS::NoValue]
+        - !If [EnableFacebookOnClient, !Ref FoundationFacebookIdentityProvider, !Ref AWS::NoValue]
 
   FoundationFreeTierGroup:
     Type: AWS::Cognito::UserPoolGroup
