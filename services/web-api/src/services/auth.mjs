@@ -70,6 +70,13 @@ function usernameAsDisplayName(value) {
   return trimmed;
 }
 
+function fullNameFromParts(firstName, lastName) {
+  return [firstNonEmptyString(firstName), firstNonEmptyString(lastName)]
+    .filter(Boolean)
+    .join(' ')
+    .trim() || null;
+}
+
 function getAccessVerifier() {
   if (accessVerifier) {
     return accessVerifier;
@@ -118,18 +125,23 @@ async function resolveTokenClaims(token) {
 }
 
 async function enrichAccessTokenContext(token, payload) {
+  const baseFirstName = firstNonEmptyString(payload.given_name);
+  const baseLastName = firstNonEmptyString(payload.family_name);
   const base = {
     userId: firstNonEmptyString(payload.sub),
     email: firstNonEmptyString(payload.email),
     name: firstNonEmptyString(
       payload.name,
-      payload.given_name,
+      fullNameFromParts(baseFirstName, baseLastName),
+      baseFirstName,
       payload.preferred_username,
       usernameAsDisplayName(payload.username)
-    )
+    ),
+    firstName: baseFirstName,
+    lastName: baseLastName
   };
 
-  if (base.email && base.name) {
+  if (base.email && base.name && base.firstName && base.lastName) {
     return base;
   }
 
@@ -137,16 +149,22 @@ async function enrichAccessTokenContext(token, payload) {
     const response = await getCognitoClient().send(new GetUserCommand({ AccessToken: token }));
     const attributes = attributesToObject(response.UserAttributes);
 
+    const firstName = firstNonEmptyString(attributes.given_name, base.firstName);
+    const lastName = firstNonEmptyString(attributes.family_name, base.lastName);
+
     return {
       userId: base.userId,
       email: firstNonEmptyString(attributes.email, base.email),
       name: firstNonEmptyString(
         attributes.name,
-        attributes.given_name,
+        fullNameFromParts(firstName, lastName),
+        firstName,
         attributes.preferred_username,
         attributes.email,
         base.name
-      )
+      ),
+      firstName,
+      lastName
     };
   } catch {
     return base;
@@ -163,10 +181,20 @@ export async function resolveOptionalAuthContext(event) {
     const { payload, tokenUse } = await resolveTokenClaims(token);
 
     if (tokenUse === 'id') {
+      const firstName = firstNonEmptyString(payload.given_name);
+      const lastName = firstNonEmptyString(payload.family_name);
       return {
         userId: firstNonEmptyString(payload.sub),
         email: firstNonEmptyString(payload.email),
-        name: firstNonEmptyString(payload.name, payload.given_name, payload.preferred_username, payload.email)
+        name: firstNonEmptyString(
+          payload.name,
+          fullNameFromParts(firstName, lastName),
+          firstName,
+          payload.preferred_username,
+          payload.email
+        ),
+        firstName,
+        lastName
       };
     }
 

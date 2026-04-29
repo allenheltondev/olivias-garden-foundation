@@ -140,14 +140,22 @@ const PROFILE_SELECT_COLUMNS = `
 async function ensureUserRow(client, authContext) {
   await client.query(
     `
-      insert into users (id, email, display_name)
-      values ($1::uuid, $2, $3)
+      insert into users (id, email, first_name, last_name, display_name)
+      values ($1::uuid, $2, $3, $4, $5)
       on conflict (id) do update
         set email = coalesce(excluded.email, users.email),
+            first_name = coalesce(users.first_name, excluded.first_name),
+            last_name = coalesce(users.last_name, excluded.last_name),
             display_name = coalesce(users.display_name, excluded.display_name),
             updated_at = now()
     `,
-    [authContext.userId, authContext.email ?? null, authContext.name ?? null]
+    [
+      authContext.userId,
+      authContext.email ?? null,
+      authContext.firstName ?? null,
+      authContext.lastName ?? null,
+      authContext.name ?? null
+    ]
   );
 }
 
