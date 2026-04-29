@@ -871,13 +871,13 @@ body {
   border: 1px solid rgba(79, 56, 37, 0.08);
   border-radius: var(--og-radius-lg);
   box-shadow: var(--og-shadow-card);
-  padding: 1.5rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
 }
 
 .og-card--padding-none { padding: 0; }
-.og-card--padding-4 { padding: 1rem; }
-.og-card--padding-6 { padding: 1.5rem; }
-.og-card--padding-8 { padding: 2rem; }
+.og-card--padding-4 { padding: clamp(0.75rem, 3vw, 1rem); }
+.og-card--padding-6 { padding: clamp(1rem, 4vw, 1.5rem); }
+.og-card--padding-8 { padding: clamp(1.25rem, 5vw, 2rem); }
 
 .og-card--elevation-sm { box-shadow: var(--shadow-sm); }
 .og-card--elevation-base { box-shadow: var(--shadow-base); }

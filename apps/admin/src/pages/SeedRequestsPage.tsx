@@ -104,7 +104,13 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
           title={`Open requests (${total})`}
           body="Mark a request as done once the seeds are on their way or picked up."
         />
-        <Button variant="outline" size="sm" onClick={() => void load(page)} disabled={loading}>
+        <Button
+          className="admin-refresh-action"
+          variant="outline"
+          size="sm"
+          onClick={() => void load(page)}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>

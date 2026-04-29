@@ -265,7 +265,13 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
           title={`Pending submissions (${total})`}
           body="Approve new submissions and edits. Approved submissions stay live while proposed edits wait here."
         />
-        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+        <Button
+          className="admin-refresh-action"
+          variant="outline"
+          size="sm"
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>

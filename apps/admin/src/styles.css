@@ -1122,11 +1122,13 @@ body {
 .admin-store-variations__row {
   display: flex;
   align-items: flex-end;
+  flex-wrap: wrap;
   gap: 0.6rem;
 }
 
 .admin-store-variations__row > .og-input {
-  flex: 1;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 .admin-store-variations__values {
@@ -1254,6 +1256,19 @@ body {
     flex-wrap: wrap;
     gap: 0.65rem;
   }
+
+  /* Float the refresh control to a thumb-reachable corner on phones. */
+  .admin-refresh-action {
+    position: fixed;
+    right: clamp(0.85rem, 4vw, 1.5rem);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+    z-index: 35;
+    min-height: 2.75rem;
+    padding: 0.65rem 1.15rem;
+    border-radius: 999px;
+    background: var(--og-color-paper);
+    box-shadow: 0 10px 22px rgba(38, 23, 15, 0.22);
+  }
 }
 
 /* ── Store orders ─────────────────────────────────────────────────── */
@@ -1319,7 +1334,13 @@ body {
 .admin-store-orders__items li {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.admin-store-orders__items li > span:first-child {
+  flex: 1 1 60%;
+  min-width: 0;
 }
 
 /* Activity feed */
@@ -1335,10 +1356,12 @@ body {
   background: rgba(79, 56, 37, 0.06);
   border: 1px solid rgba(79, 56, 37, 0.15);
   border-radius: 999px;
-  padding: 0.35rem 0.85rem;
+  padding: 0.5rem 1rem;
+  min-height: 2.5rem;
   font-size: 0.9rem;
   color: var(--og-color-soil);
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -1409,7 +1432,9 @@ body {
   font-size: 0.85rem;
   text-decoration: underline;
   cursor: pointer;
-  padding: 0;
+  padding: 0.4rem 0;
+  min-height: 2.5rem;
+  touch-action: manipulation;
   align-self: flex-start;
 }
 
@@ -1448,10 +1473,12 @@ body {
   background: rgba(79, 56, 37, 0.06);
   border: 1px solid rgba(79, 56, 37, 0.15);
   border-radius: 999px;
-  padding: 0.35rem 0.85rem;
+  padding: 0.5rem 1rem;
+  min-height: 2.5rem;
   font-size: 0.88rem;
   color: var(--og-color-soil);
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .admin-finance__chip.is-active {
