@@ -225,6 +225,7 @@ export function PinPopup({ pin, onClose }: PinPopupProps) {
 
         <div className="pin-popup-body">
           <p className="pin-popup-contributor">{displayName}</p>
+          {pin.edited ? <p className="pin-popup-edited">edited</p> : null}
 
           {hasStory && (
             <>

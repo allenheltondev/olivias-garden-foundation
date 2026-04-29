@@ -1,5 +1,5 @@
-import { type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { AvatarMenu, SiteFooter, SiteHeader } from '@olivias/ui';
 import { signOut } from 'aws-amplify/auth';
 import type { AdminSession } from '../auth/session';
@@ -16,17 +16,102 @@ const grnUrl = (import.meta.env.VITE_GRN_URL as string | undefined)?.replace(/\/
 const instagramUrl = 'https://instagram.com/oliviasgardentx';
 const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
 
-const navItems = [
-  { id: 'dashboard', path: '/', label: 'Dashboard' },
-  { id: 'seed-requests', path: '/seed-requests', label: 'Seed requests' },
-  { id: 'okra-queue', path: '/okra-queue', label: 'Okra queue' },
-  { id: 'store-catalog', path: '/store', label: 'Store catalog' },
-] as const;
+const NAV_EXPANDED_STORAGE_KEY = 'og-admin-nav-expanded';
+
+type AdminNavItem = {
+  id: string;
+  path: string;
+  label: string;
+  icon: ReactNode;
+};
+
+const navItems: AdminNavItem[] = [
+  {
+    id: 'dashboard',
+    path: '/',
+    label: 'Dashboard',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: 'finance',
+    path: '/finance',
+    label: 'Finance',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M5 21V10h3v11H5Zm5 0V4h3v17h-3Zm5 0v-7h3v7h-3Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'seed-requests',
+    path: '/seed-requests',
+    label: 'Seed requests',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M12 3c-3.5 3-5 6-5 9a5 5 0 0 0 4 4.9V21a1 1 0 1 0 2 0v-4.1a5 5 0 0 0 4-4.9c0-3-1.5-6-5-9Zm0 12a3 3 0 0 1-3-3c0-1.7.8-3.6 3-5.7 2.2 2.1 3 4 3 5.7a3 3 0 0 1-3 3Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'okra-queue',
+    path: '/okra-queue',
+    label: 'Okra',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm0 2v14h13V8h-3V6H5Zm3 5h7v2H8v-2Zm0 4h7v2H8v-2Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'store-catalog',
+    path: '/store',
+    label: 'Catalog',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M4 7h16l-1.2 11.1a2 2 0 0 1-2 1.9H7.2a2 2 0 0 1-2-1.9L4 7Zm4 0V5a4 4 0 0 1 8 0v2h-2V5a2 2 0 0 0-4 0v2H8Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'store-orders',
+    path: '/store/orders',
+    label: 'Orders',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M3 5h13l3 4v9a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm0 2v12h15v-9.3l-2.4-2.7H3Zm2 4h11v2H5v-2Zm0 4h7v2H5v-2Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
+];
 
 const footerLinks = [
   { id: 'home', label: 'Foundation home', href: `${foundationHomeUrl}/` },
   { id: 'okra', label: 'Okra Project', href: `${foundationHomeUrl}/okra` },
-  { id: 'grn', label: 'Good Roots Network', href: grnUrl },
+];
+
+const foundationHeaderNav = [
+  { id: 'foundation-home', label: 'Home', href: `${foundationHomeUrl}/` },
+  { id: 'foundation-about', label: 'About', href: `${foundationHomeUrl}/about` },
+  { id: 'foundation-okra', label: 'Okra Project', href: `${foundationHomeUrl}/okra` },
 ];
 
 function getInitials(session: AdminSession): string {
@@ -40,14 +125,54 @@ function getInitials(session: AdminSession): string {
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || source.slice(0, 2).toUpperCase();
 }
 
+function readStoredExpanded(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const stored = window.localStorage.getItem(NAV_EXPANDED_STORAGE_KEY);
+    if (stored === null) return true;
+    return stored === 'true';
+  } catch {
+    return true;
+  }
+}
+
 export interface AppShellProps {
   session: AdminSession;
   children: ReactNode;
 }
 
 export function AppShell({ session, children }: AppShellProps) {
-  const navigate = useNavigate();
+  const [expanded, setExpanded] = useState<boolean>(() => readStoredExpanded());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(NAV_EXPANDED_STORAGE_KEY, String(expanded));
+    } catch {
+      // ignore storage errors
+    }
+  }, [expanded]);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Escape key dismissal + lock background scroll while the drawer is open.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileNavOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
 
   const handleLogout = async () => {
     try {
@@ -58,13 +183,10 @@ export function AppShell({ session, children }: AppShellProps) {
     window.location.assign(`${foundationHomeUrl}/login`);
   };
 
-  const headerNavItems = navItems.map((item) => ({
+  const headerNavItems = foundationHeaderNav.map((item) => ({
     id: item.id,
     label: item.label,
-    href: item.path,
-    active: location.pathname === item.path,
-    mobileOnly: true,
-    onSelect: () => navigate(item.path),
+    href: item.href,
   }));
 
   return (
@@ -73,9 +195,8 @@ export function AppShell({ session, children }: AppShellProps) {
         brandLogoSrc={foundationLogo}
         brandLogoAlt=""
         brandEyebrow="Olivia's Garden Foundation"
-        brandTitle="Homesteading, growing, and community"
-        brandHref="/"
-        onBrandClick={() => navigate('/')}
+        brandTitle="Administration console"
+        brandHref={`${foundationHomeUrl}/`}
         navItems={headerNavItems}
         utility={(
           <div className="og-auth-utility">
@@ -91,38 +212,98 @@ export function AppShell({ session, children }: AppShellProps) {
           </div>
         )}
       />
-      <main className="og-app-main admin-app-main">
-        <div className="admin-layout">
-          <aside className="admin-layout__sidebar" aria-label="Admin sections">
-            <nav className="og-side-nav admin-side-nav" aria-label="Admin sections">
-              <div className="admin-side-nav__intro">
-                <p className="og-side-nav__eyebrow">Admin</p>
-                <h2 className="og-side-nav__title">Admin console</h2>
-                <p className="og-side-nav__body">
-                  Review public submissions, manage seed requests, and keep the store catalog current.
-                </p>
-              </div>
-              <div className="og-side-nav__list">
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.id}
-                    to={item.path}
-                    end={item.path === '/'}
-                    className={({ isActive }) =>
-                      `og-side-nav__link ${isActive ? 'is-active' : ''}`.trim()
-                    }
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
-              </div>
-            </nav>
-          </aside>
-          <div className="admin-layout__content">{children}</div>
-        </div>
-      </main>
+      <div
+        className={`admin-shell-body ${expanded ? 'is-expanded' : 'is-collapsed'} ${mobileNavOpen ? 'is-mobile-nav-open' : ''}`.trim()}
+      >
+        <button
+          type="button"
+          className="admin-mobile-nav-trigger"
+          aria-expanded={mobileNavOpen}
+          aria-controls="admin-vertical-nav"
+          aria-label="Open admin sections"
+          onClick={() => setMobileNavOpen(true)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z" fill="currentColor" />
+          </svg>
+          <span>Sections</span>
+        </button>
+
+        <button
+          type="button"
+          className="admin-mobile-nav-backdrop"
+          aria-label="Close admin sections"
+          tabIndex={mobileNavOpen ? 0 : -1}
+          onClick={() => setMobileNavOpen(false)}
+        />
+
+        <aside
+          id="admin-vertical-nav"
+          className={`admin-vertical-nav ${expanded ? 'is-expanded' : 'is-collapsed'} ${mobileNavOpen ? 'is-mobile-open' : ''}`.trim()}
+          aria-label="Admin sections"
+        >
+          <div className="admin-vertical-nav__mobile-header">
+            <span className="admin-vertical-nav__mobile-title">Admin sections</span>
+            <button
+              type="button"
+              className="admin-vertical-nav__mobile-close"
+              aria-label="Close admin sections"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4L13.4 12 19 6.4 17.6 5 12 10.6 6.4 5Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <ul className="admin-vertical-nav__list" role="list">
+            {navItems.map((item) => (
+              <li key={item.id}>
+                <NavLink
+                  to={item.path}
+                  end={item.path === '/'}
+                  className={({ isActive }) =>
+                    `admin-vertical-nav__link ${isActive ? 'is-active' : ''}`.trim()
+                  }
+                  title={expanded ? undefined : item.label}
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <span className="admin-vertical-nav__icon" aria-hidden="true">{item.icon}</span>
+                  <span className="admin-vertical-nav__label">{item.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            type="button"
+            className="admin-vertical-nav__toggle"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
+            title={expanded ? 'Collapse navigation' : 'Expand navigation'}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d={expanded
+                  ? 'M15.4 6.4 14 5l-7 7 7 7 1.4-1.4L9.8 12Z'
+                  : 'M8.6 6.4 10 5l7 7-7 7-1.4-1.4L14.2 12Z'}
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </aside>
+
+        <main className="admin-shell-main">
+          <div className="admin-shell-main__inner">
+            {children}
+          </div>
+        </main>
+      </div>
       <SiteFooter
-        tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
         meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
         links={footerLinks}
         socialLinks={[

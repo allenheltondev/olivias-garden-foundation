@@ -8,6 +8,7 @@ import {
   retrieveCheckoutSessionStatus
 } from '../services/donations.mjs';
 import {
+  deleteProfile,
   getProfile,
   getProfileActivity,
   profileUpdateSchema,
@@ -147,6 +148,25 @@ app.put('/profile', async ({ req, event }) => {
       body: profile
     };
   } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.delete('/profile', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await deleteProfile(event);
+    logger.info('Account deletion completed', { correlationId });
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
+    };
+  } catch (error) {
+    logger.error('Account deletion failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return mapApiError(error, correlationId);
   }
 });

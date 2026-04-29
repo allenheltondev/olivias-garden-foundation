@@ -1,0 +1,25 @@
+$kind: http-request
+name: Complete Store Product Image Upload - Invalid UUID
+description: |-
+  Verify product image upload completion validates image identifiers.
+method: POST
+url: '{{baseUrl}}/admin/store/product-images/not-a-uuid/complete'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  mode: raw
+  raw: '{}'
+order: 3020
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Error explains invalid image id", function () {
+          const response = pm.response.json();
+          pm.expect(response.error).to.contain("image id must be a valid UUID");
+      });

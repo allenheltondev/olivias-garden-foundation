@@ -9,11 +9,18 @@ import {
   parseJsonBody
 } from '../services/http.mjs';
 import {
+  archiveStoreProduct,
   createStoreProduct,
   listAdminProducts,
   listPublicProducts,
   updateStoreProduct
 } from '../services/store.mjs';
+import {
+  completeStoreProductImageUpload,
+  createStoreProductImageUploadIntent
+} from '../services/store-images.mjs';
+import { listActivity } from '../services/activity.mjs';
+import { getRevenueSummary } from '../services/finance.mjs';
 
 const app = new Router();
 const logger = new Logger({ serviceName: 'admin-api', logLevel: 'DEBUG' });
@@ -85,6 +92,71 @@ app.post('/admin/store/products', async ({ event }) => {
   }
 });
 
+app.post('/admin/store/product-images', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('POST /admin/store/product-images', event);
+
+  try {
+    const payload = parseJsonBody(event);
+    const result = await createStoreProductImageUploadIntent(event, payload);
+    return jsonResponse(201, result, correlationId);
+  } catch (error) {
+    logger.error('POST /admin/store/product-images failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/admin/activity', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('GET /admin/activity', event);
+
+  try {
+    const params = event?.queryStringParameters ?? {};
+    const result = await listActivity({
+      cursor: params?.cursor,
+      limit: params?.limit,
+      detailType: params?.detailType
+    });
+    return jsonResponse(200, result, correlationId);
+  } catch (error) {
+    logger.error('GET /admin/activity failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/admin/finance/revenue', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('GET /admin/finance/revenue', event);
+
+  try {
+    const params = event?.queryStringParameters ?? {};
+    const result = await getRevenueSummary({
+      from: params?.from,
+      to: params?.to,
+      granularity: params?.granularity
+    });
+    return jsonResponse(200, result, correlationId);
+  } catch (error) {
+    logger.error('GET /admin/finance/revenue failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
 app.notFound(({ event }) => {
   const correlationId = getCorrelationId(event);
   logger.warn('Route not matched', {
@@ -97,6 +169,11 @@ app.notFound(({ event }) => {
 
 function matchStoreProductUpdatePath(path) {
   const match = path.match(/^\/admin\/store\/products\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+function matchStoreProductImageCompletePath(path) {
+  const match = path.match(/^\/admin\/store\/product-images\/([^/]+)\/complete$/);
   return match?.[1] ?? null;
 }
 
@@ -137,6 +214,22 @@ export async function handler(event, context) {
   }
 
   try {
+    const imageId =
+      method === 'POST' ? matchStoreProductImageCompletePath(normalizedPath) : null;
+
+    if (imageId) {
+      logRouteHit(`POST /admin/store/product-images/${imageId}/complete`, normalizedEvent);
+      const result = await completeStoreProductImageUpload(normalizedEvent, imageId);
+      const response = jsonResponse(200, result, correlationId);
+      logger.info('Response sent', {
+        correlationId,
+        method,
+        path: normalizedPath,
+        status: response.statusCode
+      });
+      return response;
+    }
+
     const productId =
       method === 'PUT' ? matchStoreProductUpdatePath(normalizedPath) : null;
 
@@ -147,6 +240,22 @@ export async function handler(event, context) {
         parseJsonBody(normalizedEvent),
         productId
       );
+      const response = jsonResponse(200, result, correlationId);
+      logger.info('Response sent', {
+        correlationId,
+        method,
+        path: normalizedPath,
+        status: response.statusCode
+      });
+      return response;
+    }
+
+    const archiveProductId =
+      method === 'DELETE' ? matchStoreProductUpdatePath(normalizedPath) : null;
+
+    if (archiveProductId) {
+      logRouteHit(`DELETE /admin/store/products/${archiveProductId}`, normalizedEvent);
+      const result = await archiveStoreProduct(normalizedEvent, archiveProductId);
       const response = jsonResponse(200, result, correlationId);
       logger.info('Response sent', {
         correlationId,

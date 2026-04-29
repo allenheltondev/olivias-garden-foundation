@@ -8,16 +8,18 @@ A simple, maintainable web app for Olivia's Garden Foundation to show where Clem
   - relative location (map pin)
   - at least one photo (required)
   - optional name and story
-  - optional email for a secure edit link
+  - signed-in contributors can revise their own submissions
 - Admin review queue to approve or deny submissions.
 - Public world map showing **approved** submissions only.
 - Clickable pins that show photos and optional details.
+- Edits to approved submissions stay private until approved; the current approved pin remains visible.
 
 ## Non-goals (MVP)
 
 - No advanced alerting/monitoring workflows.
 - No complex role systems.
 - No heavy analytics stack.
+- No anonymous self-service edit links; anonymous contributors contact the foundation to request changes.
 
 ## Tech Stack (AWS, Node.js 24)
 

@@ -134,20 +134,6 @@ export function OkraExperience({
         </figure>
       </section>
 
-      {/* STATS */}
-      {hasGrowers ? (
-        <section className="ok-stats" aria-label="Community stats">
-          <div className="ok-stats__item">
-            <span className="ok-stats__value">{stats!.total_pins.toLocaleString()}</span>
-            <span className="ok-stats__label">growers on the map</span>
-          </div>
-          <div className="ok-stats__item">
-            <span className="ok-stats__value">{stats!.country_count.toLocaleString()}</span>
-            <span className="ok-stats__label">countries represented</span>
-          </div>
-        </section>
-      ) : null}
-
       {/* HOW IT WORKS */}
       <section className="ok-how" aria-labelledby="ok-how-heading">
         <header className="ok-how__header">
@@ -218,6 +204,19 @@ export function OkraExperience({
             Pins go up once growers send back a photo. Click one to see their garden.
           </p>
         </header>
+
+        {hasGrowers ? (
+          <div className="ok-stats" aria-label="Community stats">
+            <div className="ok-stats__item">
+              <span className="ok-stats__value">{stats!.total_pins.toLocaleString()}</span>
+              <span className="ok-stats__label">growers on the map</span>
+            </div>
+            <div className="ok-stats__item">
+              <span className="ok-stats__value">{stats!.country_count.toLocaleString()}</span>
+              <span className="ok-stats__label">countries represented</span>
+            </div>
+          </div>
+        ) : null}
 
         <div className="ok-map-container">
           <MapView

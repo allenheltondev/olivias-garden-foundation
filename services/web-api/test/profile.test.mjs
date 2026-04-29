@@ -1,11 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveOptionalAuthContextMock = vi.fn();
+const extractBearerTokenMock = vi.fn();
 const createDbClientMock = vi.fn();
+const cognitoSendMock = vi.fn();
 
 vi.mock('../src/services/auth.mjs', () => ({
-  resolveOptionalAuthContext: resolveOptionalAuthContextMock
+  resolveOptionalAuthContext: resolveOptionalAuthContextMock,
+  extractBearerToken: extractBearerTokenMock
 }));
+
+vi.mock('@aws-sdk/client-cognito-identity-provider', () => {
+  class CognitoIdentityProviderClient {
+    send(command) { return cognitoSendMock(command); }
+  }
+  class DeleteUserCommand {
+    constructor(input) { this.commandName = 'DeleteUserCommand'; this.input = input; }
+  }
+  class AdminDeleteUserCommand {
+    constructor(input) { this.commandName = 'AdminDeleteUserCommand'; this.input = input; }
+  }
+  return {
+    CognitoIdentityProviderClient,
+    DeleteUserCommand,
+    AdminDeleteUserCommand
+  };
+});
 
 vi.mock('../scripts/db-client.mjs', () => ({
   createDbClient: createDbClientMock
@@ -77,7 +97,10 @@ function baseProfileRow(overrides = {}) {
 describe('web-api profile handler', () => {
   beforeEach(() => {
     resolveOptionalAuthContextMock.mockReset();
+    extractBearerTokenMock.mockReset();
     createDbClientMock.mockReset();
+    cognitoSendMock.mockReset();
+    cognitoSendMock.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -383,6 +406,86 @@ describe('web-api profile handler', () => {
       expect(body.avatarStatus).toBe('ready');
 
       delete process.env.MEDIA_CDN_DOMAIN;
+    });
+  });
+
+  describe('DELETE /profile', () => {
+    it('returns 400 with auth error when unauthenticated', async () => {
+      resolveOptionalAuthContextMock.mockResolvedValue(null);
+
+      const response = await handler(createApiGatewayEvent({
+        method: 'DELETE',
+        path: '/profile'
+      }));
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toBe('Authorization token is required');
+      expect(createDbClientMock).not.toHaveBeenCalled();
+      expect(cognitoSendMock).not.toHaveBeenCalled();
+    });
+
+    it('redacts profile PII, scrubs donor fields, and self-deletes the Cognito user', async () => {
+      process.env.OGF_USER_POOL_ID = 'us-east-1_abc123';
+      resolveOptionalAuthContextMock.mockResolvedValue({
+        userId: USER_ID,
+        email: 'olivia@example.com',
+        name: 'Olivia'
+      });
+      extractBearerTokenMock.mockReturnValue('access-token-value');
+
+      const client = createClientMock(() => Promise.resolve({ rowCount: 1 }));
+      createDbClientMock.mockResolvedValue(client);
+
+      const response = await handler(createApiGatewayEvent({
+        method: 'DELETE',
+        path: '/profile',
+        headers: { authorization: 'Bearer access-token-value' }
+      }));
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ status: 'deleted' });
+
+      const sqlCalls = client.query.mock.calls.map(([sql]) => sql.trim());
+      expect(sqlCalls.some((sql) => sql.startsWith('begin'))).toBe(true);
+      expect(sqlCalls.some((sql) => sql.includes('update users') && sql.includes('deleted_at = coalesce'))).toBe(true);
+      expect(sqlCalls.some((sql) => sql.includes('update donation_events'))).toBe(true);
+      expect(sqlCalls.some((sql) => sql.startsWith('commit'))).toBe(true);
+
+      expect(cognitoSendMock).toHaveBeenCalledOnce();
+      const command = cognitoSendMock.mock.calls[0][0];
+      expect(command.commandName).toBe('DeleteUserCommand');
+      expect(command.input).toEqual({ AccessToken: 'access-token-value' });
+
+      delete process.env.OGF_USER_POOL_ID;
+    });
+
+    it('falls back to AdminDeleteUser when the caller presented an id token', async () => {
+      process.env.OGF_USER_POOL_ID = 'us-east-1_abc123';
+      resolveOptionalAuthContextMock.mockResolvedValue({ userId: USER_ID });
+      extractBearerTokenMock.mockReturnValue('id-token-value');
+
+      const client = createClientMock(() => Promise.resolve({ rowCount: 1 }));
+      createDbClientMock.mockResolvedValue(client);
+
+      const notAuthorized = new Error('Access token is not valid');
+      notAuthorized.name = 'NotAuthorizedException';
+      cognitoSendMock.mockRejectedValueOnce(notAuthorized);
+      cognitoSendMock.mockResolvedValueOnce({});
+
+      const response = await handler(createApiGatewayEvent({
+        method: 'DELETE',
+        path: '/profile'
+      }));
+
+      expect(response.statusCode).toBe(200);
+      expect(cognitoSendMock).toHaveBeenCalledTimes(2);
+      expect(cognitoSendMock.mock.calls[1][0].commandName).toBe('AdminDeleteUserCommand');
+      expect(cognitoSendMock.mock.calls[1][0].input).toEqual({
+        UserPoolId: 'us-east-1_abc123',
+        Username: USER_ID
+      });
+
+      delete process.env.OGF_USER_POOL_ID;
     });
   });
 

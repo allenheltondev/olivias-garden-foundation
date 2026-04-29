@@ -1,5 +1,8 @@
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { createDbClient } from '../../scripts/db-client.mjs';
 import { resolveOptionalAuthContext } from './auth.mjs';
+
+const eventBridge = new EventBridgeClient({});
 
 export const donationCheckoutSessionSchema = {
   type: 'object',
@@ -76,7 +79,7 @@ function readMetadata(metadata, key) {
 }
 
 function extractMode(metadata) {
-  return readMetadata(metadata, 'donation_mode') ?? 'one_time';
+  return readMetadata(metadata, 'donation_mode');
 }
 
 function extractAnonymousDonation(metadata) {
@@ -111,67 +114,43 @@ function parseAndValidateReturnUrl(returnUrl) {
   return parsedUrl;
 }
 
-function donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference, anonymousDonation = false) {
-  const amount = `${String(currency ?? 'usd').toUpperCase()} ${(amountCents / 100).toFixed(2)}`;
-  const lines = [
-    ':sunflower: New donation',
-    `Mode: ${mode === 'recurring' ? 'Garden Club' : 'One-time'}`,
-    `Amount: ${amount}`
-  ];
-
-  if (anonymousDonation) {
-    lines.push('Donor: Anonymous');
-  }
-  if (donorName) {
-    lines.push(`Donor: ${donorName}`);
-  }
-  if (donorEmail) {
-    lines.push(`Email: ${donorEmail}`);
-  }
-  if (dedicationName) {
-    lines.push(`Bee nameplate: ${dedicationName}`);
-  }
-  if (tShirtPreference) {
-    lines.push(`T-shirt choice: ${tShirtPreference}`);
-  }
-
-  lines.push('Gift includes a permanent acrylic bee placed in the garden.');
-  return lines.join('\n');
-}
-
-async function notifySlack(text, correlationId) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl?.trim()) {
-    return;
-  }
-
+async function publishDonationCompletedEvent(donation, correlationId) {
   try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
+    const result = await eventBridge.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'ogf.donations',
+          DetailType: 'donation.completed',
+          Detail: JSON.stringify({
+            mode: donation.mode,
+            amountCents: donation.amountCents,
+            currency: donation.currency,
+            donorName: donation.donorName ?? null,
+            donorEmail: donation.donorEmail ?? null,
+            dedicationName: donation.dedicationName ?? null,
+            tShirtPreference: donation.tShirtPreference ?? null,
+            anonymous: Boolean(donation.anonymous),
+            stripeCheckoutSessionId: donation.stripeCheckoutSessionId ?? null,
+            stripeInvoiceId: donation.stripeInvoiceId ?? null,
+            correlationId
+          })
+        }
+      ]
+    }));
 
-    if (!response.ok) {
+    if ((result?.FailedEntryCount ?? 0) > 0) {
       console.error(JSON.stringify({
         level: 'error',
         correlationId,
-        status: response.status,
-        message: 'Donation Slack webhook returned non-success'
+        message: 'Donation EventBridge publish reported failed entries',
+        failedEntryCount: result.FailedEntryCount
       }));
-      return;
     }
-
-    console.info(JSON.stringify({
-      level: 'info',
-      correlationId,
-      message: 'Delivered donation Slack notification'
-    }));
   } catch (error) {
     console.error(JSON.stringify({
       level: 'error',
       correlationId,
-      message: 'Donation Slack webhook request failed',
+      message: 'Failed to publish donation completed event',
       error: error instanceof Error ? error.message : String(error)
     }));
   }
@@ -372,6 +351,22 @@ async function findDonationIdentity(client, subscriptionId, customerId) {
 async function persistCheckoutCompletion(client, eventId, object, correlationId) {
   const metadata = object.metadata ?? null;
   const mode = extractMode(metadata);
+
+  // Donations and the store share the same Stripe partner event bus, so this
+  // consumer also sees non-donation checkouts. Donation flows always set
+  // metadata.donation_mode; absence of that marker means the event belongs to
+  // a different consumer (e.g. the store) and we must not record it as a
+  // donation.
+  if (!mode) {
+    console.info(JSON.stringify({
+      level: 'info',
+      correlationId,
+      eventId,
+      message: 'Skipping checkout.session.completed without donation_mode metadata'
+    }));
+    return;
+  }
+
   const anonymousDonation = extractAnonymousDonation(metadata);
   const amountCents = Number(object.amount_total ?? 0);
   const currency = object.currency ?? 'usd';
@@ -436,8 +431,18 @@ async function persistCheckoutCompletion(client, eventId, object, correlationId)
     return;
   }
 
-  await notifySlack(
-    donationSlackText(mode, amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference, anonymousDonation),
+  await publishDonationCompletedEvent(
+    {
+      mode,
+      amountCents,
+      currency,
+      donorName,
+      donorEmail,
+      dedicationName,
+      tShirtPreference,
+      anonymous: anonymousDonation,
+      stripeCheckoutSessionId: checkoutSessionId
+    },
     correlationId
   );
 }
@@ -523,8 +528,18 @@ async function persistInvoicePaid(client, eventId, object, correlationId) {
     return;
   }
 
-  await notifySlack(
-    donationSlackText('recurring', amountCents, currency, donorName, donorEmail, dedicationName, tShirtPreference),
+  await publishDonationCompletedEvent(
+    {
+      mode: 'recurring',
+      amountCents,
+      currency,
+      donorName,
+      donorEmail,
+      dedicationName,
+      tShirtPreference,
+      anonymous: false,
+      stripeInvoiceId: invoiceId
+    },
     correlationId
   );
 }

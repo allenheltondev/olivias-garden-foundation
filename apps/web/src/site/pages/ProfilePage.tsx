@@ -235,6 +235,19 @@ async function completeAvatarUpload(authSession: AuthSession): Promise<void> {
   }
 }
 
+async function deleteAccount(authSession: AuthSession): Promise<void> {
+  const response = await fetch(webApiUrl('/profile'), {
+    method: 'DELETE',
+    headers: authHeaders(authSession, false),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.error ?? 'Unable to delete your account. Please try again.');
+  }
+}
+
+const DELETE_CONFIRMATION_PHRASE = 'DELETE';
+
 type EditableProfile = {
   firstName: string;
   lastName: string;
@@ -285,11 +298,13 @@ export function ProfilePage({
   authReady,
   onNavigate,
   onAvatarUrlChange,
+  onAccountDeleted,
 }: {
   authSession: AuthSession | null;
   authReady: boolean;
   onNavigate: (path: string) => void;
   onAvatarUrlChange?: (url: string | null) => void;
+  onAccountDeleted?: () => void;
 }) {
   useEffect(() => {
     if (authReady && !authSession) {
@@ -314,6 +329,11 @@ export function ProfilePage({
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authSession) {
@@ -465,6 +485,61 @@ export function ProfilePage({
       setAvatarUploading(false);
     }
   };
+
+  const openDeleteDialog = useCallback(() => {
+    setDeleteConfirmation('');
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const closeDeleteDialog = useCallback(() => {
+    if (deleteSubmitting) return;
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
+    setDeleteConfirmation('');
+  }, [deleteSubmitting]);
+
+  const submitAccountDeletion = useCallback(async () => {
+    if (!authSession) return;
+    if (deleteConfirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_PHRASE) {
+      setDeleteError(`Type ${DELETE_CONFIRMATION_PHRASE} to confirm.`);
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteSubmitting(true);
+    try {
+      await deleteAccount(authSession);
+      onAvatarUrlChange?.(null);
+      setDeleteDialogOpen(false);
+      if (onAccountDeleted) {
+        onAccountDeleted();
+      } else {
+        onNavigate('/');
+      }
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Unable to delete your account.');
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }, [authSession, deleteConfirmation, onAccountDeleted, onAvatarUrlChange, onNavigate]);
+
+  useEffect(() => {
+    if (!deleteDialogOpen) return;
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeDeleteDialog();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [deleteDialogOpen, closeDeleteDialog]);
 
   const refreshAvatarManually = async () => {
     if (!authSession) return;
@@ -716,6 +791,107 @@ export function ProfilePage({
           </ul>
         )}
       </Section>
+
+      <Section
+        title="Danger zone"
+        intro="Permanently delete your account and all the personal information tied to it. This cannot be undone."
+        className="profile-danger-zone"
+      >
+        <Panel tone="paper" className="profile-danger-zone__panel">
+          <div className="profile-danger-zone__body">
+            <h3 className="profile-danger-zone__heading">Delete your account</h3>
+            <p className="profile-danger-zone__text">
+              Deleting your account removes your profile details, avatar, saved preferences, and
+              sign-in. Donation records are retained for tax and accounting purposes but we scrub
+              your name and email from them. Seed requests and okra submissions you&apos;ve made will
+              be unlinked from your account.
+            </p>
+            <p className="profile-danger-zone__text">
+              This action takes effect immediately and cannot be reversed. If you change your mind
+              later, you&apos;d need to create a new account.
+            </p>
+            <div className="profile-danger-zone__actions">
+              <Button
+                type="button"
+                variant="danger"
+                onClick={openDeleteDialog}
+                className="profile-danger-zone__button"
+              >
+                Delete my account
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      </Section>
+
+      {deleteDialogOpen ? (
+        <div
+          className="profile-delete-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-delete-dialog-title"
+          aria-describedby="profile-delete-dialog-description"
+        >
+          <div
+            className="profile-delete-dialog__backdrop"
+            onClick={closeDeleteDialog}
+            aria-hidden="true"
+          />
+          <div className="profile-delete-dialog__panel" role="document">
+            <h2 id="profile-delete-dialog-title" className="profile-delete-dialog__title">
+              Delete your account?
+            </h2>
+            <p id="profile-delete-dialog-description" className="profile-delete-dialog__body">
+              Are you sure? This will permanently delete your Olivia&apos;s Garden account, remove
+              your profile, and sign you out. This cannot be undone.
+            </p>
+            <label className="profile-delete-dialog__label" htmlFor="profile-delete-confirm">
+              Type <strong>{DELETE_CONFIRMATION_PHRASE}</strong> to confirm.
+            </label>
+            <input
+              id="profile-delete-confirm"
+              className="profile-delete-dialog__input"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              value={deleteConfirmation}
+              onChange={(event) => {
+                setDeleteError(null);
+                setDeleteConfirmation(event.target.value);
+              }}
+              disabled={deleteSubmitting}
+            />
+            {deleteError ? (
+              <FormFeedback tone="error">{deleteError}</FormFeedback>
+            ) : null}
+            <div className="profile-delete-dialog__actions">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeDeleteDialog}
+                disabled={deleteSubmitting}
+                className="profile-delete-dialog__cancel"
+              >
+                Keep my account
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => void submitAccountDeletion()}
+                disabled={
+                  deleteSubmitting
+                  || deleteConfirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_PHRASE
+                }
+                loading={deleteSubmitting}
+                className="profile-delete-dialog__confirm"
+              >
+                {deleteSubmitting ? 'Deleting…' : 'Yes, delete my account'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

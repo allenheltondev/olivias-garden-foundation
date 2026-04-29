@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveOptionalAuthContextMock = vi.fn();
 const createDbClientMock = vi.fn();
+const eventBridgeSendMock = vi.fn();
 
 vi.mock('../src/services/auth.mjs', () => ({
   resolveOptionalAuthContext: resolveOptionalAuthContextMock,
@@ -11,18 +12,29 @@ vi.mock('../scripts/db-client.mjs', () => ({
   createDbClient: createDbClientMock,
 }));
 
+vi.mock('@aws-sdk/client-eventbridge', async () => {
+  const actual = await vi.importActual('@aws-sdk/client-eventbridge');
+  return {
+    ...actual,
+    EventBridgeClient: class {
+      send = eventBridgeSendMock;
+    },
+  };
+});
+
 const { createDonationCheckoutSession, handleEventBridgeEvent } = await import('../src/services/donations.mjs');
 
 describe('donations service', () => {
   beforeEach(() => {
     resolveOptionalAuthContextMock.mockResolvedValue(null);
+    eventBridgeSendMock.mockReset();
+    eventBridgeSendMock.mockResolvedValue({ FailedEntryCount: 0, Entries: [] });
     vi.stubGlobal('fetch', vi.fn());
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.STRIPE_SECRET_KEY;
-    delete process.env.SLACK_WEBHOOK_URL;
     delete process.env.DATABASE_URL;
   });
 
@@ -159,9 +171,39 @@ describe('donations service', () => {
     expect(checkoutParams.get('customer_email')).toBeNull();
   });
 
-  it('sends a Slack notification with donation details after checkout.session.completed from EventBridge', async () => {
-    process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/abc';
+  it('skips checkout.session.completed events that lack donation_mode metadata (e.g. store checkouts)', async () => {
+    const queryMock = vi.fn();
+    const client = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    };
+    createDbClientMock.mockResolvedValue(client);
 
+    await handleEventBridgeEvent({
+      id: 'evtbridge-store-1',
+      'detail-type': 'checkout.session.completed',
+      detail: {
+        id: 'evt_store_1',
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_store_1',
+            amount_total: 5000,
+            currency: 'usd',
+            metadata: { og_kind: 'store' },
+          },
+        },
+      },
+    });
+
+    expect(client.connect).toHaveBeenCalledOnce();
+    expect(client.end).toHaveBeenCalledOnce();
+    // No DB writes should happen — the donation consumer must ignore non-donation events.
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
+  it('publishes a donation event with details after checkout.session.completed from EventBridge', async () => {
     const queryMock = vi.fn((sql) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return Promise.resolve({ rowCount: null });
@@ -175,12 +217,6 @@ describe('donations service', () => {
       query: queryMock,
     };
     createDbClientMock.mockResolvedValue(client);
-
-    const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({}),
-    });
 
     await handleEventBridgeEvent({
       id: 'evtbridge-123',
@@ -230,24 +266,22 @@ describe('donations service', () => {
       ],
     );
     expect(queryMock).toHaveBeenNthCalledWith(3, 'COMMIT');
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://hooks.slack.test/services/abc',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-      }),
-    );
-    const slackBody = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(slackBody.text).toContain(':sunflower: New donation');
-    expect(slackBody.text).toContain('Mode: One-time');
-    expect(slackBody.text).toContain('Amount: USD 50.00');
-    expect(slackBody.text).toContain('Donor: Olivia Donor');
-    expect(slackBody.text).toContain('Email: donor@example.com');
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    const command = eventBridgeSendMock.mock.calls[0][0];
+    const entry = command.input.Entries[0];
+    expect(entry.Source).toBe('ogf.donations');
+    expect(entry.DetailType).toBe('donation.completed');
+    const detail = JSON.parse(entry.Detail);
+    expect(detail.mode).toBe('one_time');
+    expect(detail.amountCents).toBe(5000);
+    expect(detail.currency).toBe('usd');
+    expect(detail.donorName).toBe('Olivia Donor');
+    expect(detail.donorEmail).toBe('donor@example.com');
+    expect(detail.dedicationName).toBe('Grandma June');
+    expect(detail.anonymous).toBe(false);
   });
 
-  it('marks anonymous donations explicitly in Slack notifications', async () => {
-    process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.test/services/abc';
-
+  it('marks anonymous donations explicitly in the published event', async () => {
     const queryMock = vi.fn((sql) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return Promise.resolve({ rowCount: null });
@@ -261,12 +295,6 @@ describe('donations service', () => {
       query: queryMock,
     };
     createDbClientMock.mockResolvedValue(client);
-
-    const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({}),
-    });
 
     await handleEventBridgeEvent({
       id: 'evtbridge-456',
@@ -292,9 +320,10 @@ describe('donations service', () => {
       },
     });
 
-    const slackBody = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(slackBody.text).toContain('Donor: Anonymous');
-    expect(slackBody.text).not.toContain('Email:');
-    expect(slackBody.text).toContain('Bee nameplate: Anonymous donor');
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    const detail = JSON.parse(eventBridgeSendMock.mock.calls[0][0].input.Entries[0].Detail);
+    expect(detail.anonymous).toBe(true);
+    expect(detail.donorEmail).toBeNull();
+    expect(detail.dedicationName).toBe('Anonymous donor');
   });
 });

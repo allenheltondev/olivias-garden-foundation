@@ -1,0 +1,120 @@
+import { Logger } from '@aws-lambda-powertools/logger';
+import {
+  errorResponse,
+  getCorrelationId,
+  jsonResponse,
+  mapApiError,
+  normalizeRoutePath,
+  parseJsonBody
+} from '../services/http.mjs';
+import {
+  getPublicProductBySlug,
+  listPublicProducts
+} from '../services/products.mjs';
+import {
+  createCheckoutSession,
+  getOrderByStripeSession,
+  listAdminOrders,
+  listMyOrders
+} from '../services/orders.mjs';
+
+const logger = new Logger({ serviceName: 'store-api', logLevel: 'DEBUG' });
+
+function getMethod(event) {
+  return event?.requestContext?.http?.method ?? event?.httpMethod ?? 'GET';
+}
+
+function getPath(event) {
+  return event?.rawPath ?? event?.path ?? '/';
+}
+
+function logRouteHit(route, event, correlationId) {
+  logger.info('Route matched', {
+    route,
+    correlationId,
+    method: getMethod(event),
+    path: getPath(event)
+  });
+}
+
+function matchProductBySlug(path) {
+  const match = path.match(/^\/products\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+function matchOrderBySession(path) {
+  const match = path.match(/^\/orders\/by-session\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+export async function handler(event) {
+  const correlationId = getCorrelationId(event);
+  const method = getMethod(event);
+  const rawPath = getPath(event);
+  const path = normalizeRoutePath(rawPath);
+  const normalizedEvent = { ...event, rawPath: path, path };
+
+  logger.info('Request received', {
+    correlationId,
+    method,
+    rawPath,
+    path
+  });
+
+  if (method === 'OPTIONS') {
+    return jsonResponse(200, {}, correlationId);
+  }
+
+  try {
+    if (method === 'GET' && path === '/products') {
+      logRouteHit('GET /products', normalizedEvent, correlationId);
+      const result = await listPublicProducts();
+      return jsonResponse(200, result, correlationId);
+    }
+
+    const productSlug = method === 'GET' ? matchProductBySlug(path) : null;
+    if (productSlug) {
+      logRouteHit(`GET /products/${productSlug}`, normalizedEvent, correlationId);
+      const product = await getPublicProductBySlug(productSlug);
+      return jsonResponse(200, product, correlationId);
+    }
+
+    const orderSessionId = method === 'GET' ? matchOrderBySession(path) : null;
+    if (orderSessionId) {
+      logRouteHit('GET /orders/by-session/:id', normalizedEvent, correlationId);
+      const order = await getOrderByStripeSession(orderSessionId);
+      return jsonResponse(200, order, correlationId);
+    }
+
+    if (method === 'POST' && path === '/checkout') {
+      logRouteHit('POST /checkout', normalizedEvent, correlationId);
+      const payload = parseJsonBody(normalizedEvent);
+      const result = await createCheckoutSession(normalizedEvent, payload);
+      return jsonResponse(200, result, correlationId);
+    }
+
+    if (method === 'GET' && path === '/orders') {
+      logRouteHit('GET /orders', normalizedEvent, correlationId);
+      const result = await listMyOrders(normalizedEvent);
+      return jsonResponse(200, result, correlationId);
+    }
+
+    if (method === 'GET' && path === '/admin/orders') {
+      logRouteHit('GET /admin/orders', normalizedEvent, correlationId);
+      const result = await listAdminOrders(normalizedEvent);
+      return jsonResponse(200, result, correlationId);
+    }
+
+    logger.warn('Route not matched', { correlationId, method, path });
+    return errorResponse(404, 'Not Found', correlationId);
+  } catch (error) {
+    logger.error('Request handler returned error', {
+      correlationId,
+      method,
+      path,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+}

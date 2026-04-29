@@ -34,3 +34,24 @@ export async function query(text, params = []) {
     throw new Error(`Database query error: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+
+export async function withTransaction(fn) {
+  const client = await getPool().connect();
+  try {
+    await client.query('begin');
+    const result = await fn({
+      query: (text, params = []) => client.query(text, params)
+    });
+    await client.query('commit');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('rollback');
+    } catch {
+      // Preserve the original failure.
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}

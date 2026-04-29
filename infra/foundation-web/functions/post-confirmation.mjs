@@ -1,7 +1,8 @@
 import pg from "pg";
 import { randomUUID } from "node:crypto";
+import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
 
-const { DATABASE_URL, SLACK_WEBHOOK_URL, FOUNDATION_ENVIRONMENT = "unknown" } = process.env;
+const { DATABASE_URL } = process.env;
 
 export const POST_CONFIRMATION_TRIGGERS = new Set([
   "PostConfirmation_ConfirmSignUp",
@@ -56,51 +57,82 @@ export function extractSignupContext(event) {
   };
 }
 
-export function buildSlackPayload(context, foundationEnvironment = FOUNDATION_ENVIRONMENT) {
-  const lines = [
-    "*:boom: New foundation signup*",
-    `Environment: ${foundationEnvironment}`,
-    `Email: ${context.email ?? "missing"}`,
-    `User ID: ${context.userId}`,
-    `Newsletter opt-in: ${context.newsletterOptIn ? "yes" : "no"}`,
-  ];
-
-  if (context.fullName) {
-    lines.splice(2, 0, `Name: ${context.fullName}`);
-  }
-
+export function buildSignupEventDetail(context) {
   return {
-    text: lines.join("\n"),
+    userId: context.userId,
+    email: context.email ?? null,
+    givenName: context.givenName ?? null,
+    familyName: context.familyName ?? null,
+    fullName: context.fullName ?? null,
+    newsletterOptIn: Boolean(context.newsletterOptIn),
+    correlationId: context.correlationId,
   };
 }
 
-async function notifySlack(context, fetchImpl, logger, { slackWebhookUrl, foundationEnvironment }) {
-  if (!slackWebhookUrl || !SIGNUP_NOTIFICATION_TRIGGERS.has(context.triggerSource)) {
+async function publishSignupEvent(context, eventBridgeClient, logger) {
+  if (!SIGNUP_NOTIFICATION_TRIGGERS.has(context.triggerSource)) {
     return;
   }
 
-  const response = await fetchImpl(slackWebhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildSlackPayload(context, foundationEnvironment)),
-  });
+  const result = await eventBridgeClient.send(
+    new PutEventsCommand({
+      Entries: [
+        {
+          Source: "ogf.signups",
+          DetailType: "user.signed-up",
+          Detail: JSON.stringify(buildSignupEventDetail(context)),
+        },
+      ],
+    }),
+  );
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Slack webhook returned ${response.status}${body ? `: ${body}` : ""}`);
+  if ((result?.FailedEntryCount ?? 0) > 0) {
+    throw new Error(
+      `EventBridge reported ${result.FailedEntryCount} failed entries for signup event`,
+    );
   }
 
   logger(
     JSON.stringify({
       level: "INFO",
-      message: "Delivered foundation signup Slack notification",
+      message: "Published foundation signup event",
       correlationId: context.correlationId,
       userId: context.userId,
     }),
   );
 }
 
-async function provisionShellUser(context, createClient) {
+export async function linkGuestOrders(client, { userId, email }, errorLogger = console.error) {
+  if (!email) return 0;
+  try {
+    const result = await client.query(
+      `UPDATE store_orders
+          SET user_id = $1,
+              updated_at = now()
+        WHERE user_id IS NULL
+          AND email = $2`,
+      [userId, email],
+    );
+    return result.rowCount ?? 0;
+  } catch (error) {
+    // store_orders may not exist yet in environments where store-api hasn't
+    // been deployed. Swallow that case; surface unexpected errors so we know.
+    if (error?.code === '42P01') {
+      return 0;
+    }
+    errorLogger(
+      JSON.stringify({
+        level: "ERROR",
+        message: "Failed to link guest orders to new user",
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    return 0;
+  }
+}
+
+async function provisionShellUser(context, createClient, errorLogger) {
   const client = createClient();
   await client.connect();
 
@@ -114,7 +146,14 @@ async function provisionShellUser(context, createClient) {
       [context.userId, context.email],
     );
 
-    return Boolean(result.rows[0]?.inserted);
+    const inserted = Boolean(result.rows[0]?.inserted);
+    const linkedOrders = await linkGuestOrders(
+      client,
+      { userId: context.userId, email: context.email },
+      errorLogger,
+    );
+
+    return { inserted, linkedOrders };
   } finally {
     await client.end();
   }
@@ -126,11 +165,9 @@ export function createHandler({
       connectionString: DATABASE_URL,
       ssl: { rejectUnauthorized: false },
     }),
-  fetchImpl = fetch,
+  eventBridgeClient = new EventBridgeClient({}),
   logger = console.log,
   errorLogger = console.error,
-  slackWebhookUrl = SLACK_WEBHOOK_URL,
-  foundationEnvironment = FOUNDATION_ENVIRONMENT,
 } = {}) {
   return async function handler(event) {
     const context = extractSignupContext(event);
@@ -147,7 +184,11 @@ export function createHandler({
       return event;
     }
 
-    const inserted = await provisionShellUser(context, createClient);
+    const { inserted, linkedOrders } = await provisionShellUser(
+      context,
+      createClient,
+      errorLogger,
+    );
 
     logger(
       JSON.stringify({
@@ -158,17 +199,18 @@ export function createHandler({
         userId: context.userId,
         hasEmail: context.email !== null,
         inserted,
+        linkedOrders,
       }),
     );
 
     if (inserted) {
       try {
-        await notifySlack(context, fetchImpl, logger, { slackWebhookUrl, foundationEnvironment });
+        await publishSignupEvent(context, eventBridgeClient, logger);
       } catch (error) {
         errorLogger(
           JSON.stringify({
             level: "ERROR",
-            message: "Failed to deliver foundation signup Slack notification",
+            message: "Failed to publish foundation signup event",
             correlationId: context.correlationId,
             userId: context.userId,
             error: error instanceof Error ? error.message : String(error),

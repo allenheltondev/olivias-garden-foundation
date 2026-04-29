@@ -251,6 +251,7 @@ export function BottomSheet({ pin, onClose }: BottomSheetProps) {
 
           <div className="bottom-sheet-body">
             <p className="bottom-sheet-contributor">{displayName}</p>
+            {pin.edited ? <p className="bottom-sheet-edited">edited</p> : null}
 
             {hasStory && (
               <>

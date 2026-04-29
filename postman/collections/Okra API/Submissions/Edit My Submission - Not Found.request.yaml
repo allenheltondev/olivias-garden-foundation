@@ -1,0 +1,35 @@
+$kind: http-request
+name: Edit My Submission - Not Found
+description: Ensure authenticated contributors cannot edit submissions they do not own.
+method: PATCH
+url: '{{okraBaseUrl}}/me/submissions/550e8400-e29b-41d4-a716-446655440000'
+order: 1030
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+  - key: X-Correlation-Id
+    value: postman-okra-edit-submission-not-found
+body:
+  mode: raw
+  raw: |-
+    {
+      "rawLocationText": "McKinney, Texas",
+      "displayLat": 33.1972,
+      "displayLng": -96.6398,
+      "photoIds": [],
+      "editClientKey": "postman-edit-not-found"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("PATCH /me/submissions/:id returns 404 for missing or unowned submission", function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test("Response includes not found error", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.exist;
+      });

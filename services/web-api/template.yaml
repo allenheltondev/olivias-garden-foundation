@@ -41,12 +41,12 @@ Parameters:
     Type: String
     Default: ""
     NoEcho: true
-    Description: Optional Slack webhook URL used for donation notifications
+    Description: Deprecated. Donation Slack notifications now flow through services/notifications. Retained so existing CI parameter overrides keep deploying.
   ContactSlackWebhookUrl:
     Type: String
     Default: ""
     NoEcho: true
-    Description: Optional Slack webhook URL used for contact / organization inquiry notifications
+    Description: Deprecated. Contact Slack notifications now flow through services/notifications. Retained so existing CI parameter overrides keep deploying.
 
 Conditions:
   DeploySharedApiBasePathMapping: !And
@@ -73,8 +73,6 @@ Globals:
           - !Sub "${DomainProtocol}://${DomainName}"
           - "*"
         STRIPE_SECRET_KEY: !Ref StripeSecretKey
-        SLACK_WEBHOOK_URL: !Ref DonationSlackWebhookUrl
-        CONTACT_SLACK_WEBHOOK_URL: !Ref ContactSlackWebhookUrl
         FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
         OGF_USER_POOL_ID: !ImportValue OGF-UserPoolId
         OGF_USER_POOL_CLIENT_ID: !ImportValue OGF-UserPoolClientId
@@ -106,7 +104,7 @@ Resources:
       TracingEnabled: false
       StageName: api
       Cors:
-        AllowMethods: "'GET,POST,PUT,OPTIONS'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization,Idempotency-Key,X-Correlation-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: !If
           - DeploySharedApiBasePathMapping
@@ -157,6 +155,13 @@ Resources:
               Action:
                 - events:PutEvents
               Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
+            - Effect: Allow
+              Action:
+                - cognito-idp:DeleteUser
+                - cognito-idp:AdminDeleteUser
+              Resource: !Sub
+                - 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
+                - UserPoolId: !ImportValue OGF-UserPoolId
       Events:
         ApiProxy:
           Type: Api
@@ -230,6 +235,12 @@ Resources:
         - arm64
       Policies:
         - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
       Events:
         StripeDonationEvents:
           Type: EventBridgeRule

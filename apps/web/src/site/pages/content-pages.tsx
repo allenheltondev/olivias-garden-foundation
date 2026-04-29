@@ -1,7 +1,16 @@
 import { Button, Card, FormFeedback, Input, Select, Textarea } from '@olivias/ui';
 import { lazy, Suspense, useState, type FormEvent, type MouseEvent } from 'react';
 import type { AuthSession } from '../../auth/session';
-import { buildCrossAppUrl, CtaButton, PageHero, Section, WorkIcon } from '../chrome';
+import {
+  buildCrossAppUrl,
+  CtaButton,
+  LegalDocument,
+  LegalSection,
+  LegalTableOfContents,
+  PageHero,
+  Section,
+  WorkIcon,
+} from '../chrome';
 import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
 import { facebookUrl, goodRootsNetworkUrl, instagramUrl, webApiBase } from '../routes';
 
@@ -493,274 +502,536 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
   );
 }
 
+const PRIVACY_SECTIONS = [
+  { id: 'who-we-are', title: 'Who we are' },
+  { id: 'information-we-collect', title: 'Information we collect' },
+  { id: 'how-we-use-information', title: 'How we use information' },
+  { id: 'how-we-share-information', title: 'How we share information' },
+  { id: 'account-and-sign-in-data', title: 'Account and sign-in data' },
+  { id: 'cookies-and-analytics', title: 'Cookies and analytics' },
+  { id: 'data-retention', title: 'Data retention' },
+  { id: 'childrens-privacy', title: "Children's privacy" },
+  { id: 'your-choices', title: 'Your choices' },
+  { id: 'security', title: 'Security' },
+  { id: 'changes-to-this-policy', title: 'Changes to this policy' },
+  { id: 'contact', title: 'Contact' },
+];
+
 export function PrivacyPolicyPage() {
   return (
-    <>
-      <PageHero
-        eyebrow="Legal"
-        title="Privacy Policy"
-        body="This policy explains what information Olivia's Garden Foundation collects, how we use it, and the choices available to people who visit, donate, sign up, or participate in our programs and online tools."
-      />
+    <LegalDocument
+      title="Privacy Policy"
+      effectiveDate="April 23, 2026"
+      intro={(
+        <p>
+          This policy explains what information Olivia&apos;s Garden Foundation collects, how we
+          use it, and the choices available to people who visit, donate, sign up, or participate in
+          our programs and online tools.
+        </p>
+      )}
+    >
+      <LegalTableOfContents items={PRIVACY_SECTIONS} />
 
-      <Section title="Who we are" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="who-we-are" number={1} title="Who we are">
+        <p>
           Olivia&apos;s Garden Foundation is a nonprofit organization based in Texas. We operate
           oliviasgarden.org and related experiences, including account features, donation flows,
           seed request tools, and community applications tied to the foundation&apos;s work.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Information we collect" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="information-we-collect" number={2} title="Information we collect">
+        <p>
           We may collect information you provide directly, including your name, email address,
           mailing address, donation details, account profile details, messages you send us, seed
           request submissions, photo submissions, and any other information you choose to provide.
         </p>
-        <p className="page-text">
+        <p>
           We may also collect technical and usage information such as device type, browser
           information, approximate location data, pages viewed, referring pages, and interactions
           with our website or forms. Payment card information is generally processed by our payment
           providers and is not stored directly by us except for limited transaction metadata.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="How we use information" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="how-we-use-information" number={3} title="How we use information">
+        <p>
           We use information to operate the website, provide requested services, process donations,
           manage accounts, respond to inquiries, administer programs, improve the user experience,
           protect the platform from misuse, and communicate updates related to the foundation and
           its work.
         </p>
-        <p className="page-text">
+        <p>
           If you opt in to receive updates, we may send occasional emails about foundation news,
           programs, donations, events, or related community opportunities. You can unsubscribe from
           promotional emails at any time.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="How we share information" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="how-we-share-information" number={4} title="How we share information">
+        <p>
           We do not sell personal information. We may share information with service providers who
           help us operate the website and foundation operations, including hosting providers,
           authentication providers, analytics providers, payment processors, email platforms, and
           software vendors that support communication, fulfillment, moderation, and administration.
         </p>
-        <p className="page-text">
-          We may also disclose information when reasonably necessary to comply with law, protect the
-          rights and safety of the foundation or others, investigate abuse or fraud, or in
+        <p>
+          We may also disclose information when reasonably necessary to comply with law, protect
+          the rights and safety of the foundation or others, investigate abuse or fraud, or in
           connection with a reorganization, merger, or transfer of assets.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Account and sign-in data" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="account-and-sign-in-data" number={5} title="Account and sign-in data">
+        <p>
           When you create an account or sign in using services such as Google or, later, Facebook,
-          we receive profile and authentication information made available by that provider based on
-          your permissions and our configuration. We use that information to authenticate you,
+          we receive profile and authentication information made available by that provider based
+          on your permissions and our configuration. We use that information to authenticate you,
           create or maintain your account, and support access across foundation experiences.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Cookies and analytics" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="cookies-and-analytics" number={6} title="Cookies and analytics">
+        <p>
           We and our service providers may use cookies, local storage, pixels, and similar
           technologies to keep you signed in, remember preferences, understand site usage, measure
           campaign effectiveness, and improve performance. You can control cookies through your
           browser settings, though some site features may not function properly if disabled.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Data retention" className="about-prose-block">
-        <p className="page-text">
-          We retain information for as long as reasonably necessary to operate the website, fulfill
-          donations or program obligations, maintain records, resolve disputes, enforce our
-          agreements, and comply with legal, tax, accounting, or reporting requirements.
+      <LegalSection id="data-retention" number={7} title="Data retention">
+        <p>
+          We retain information for as long as reasonably necessary to operate the website,
+          fulfill donations or program obligations, maintain records, resolve disputes, enforce
+          our agreements, and comply with legal, tax, accounting, or reporting requirements.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Children's privacy" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="childrens-privacy" number={8} title="Children's privacy">
+        <p>
           Our website and tools are intended for general audiences and family participation, but
-          account creation and donations should be completed by an adult or authorized guardian. If
-          you believe a child has provided personal information to us inappropriately, contact us so
-          we can review and address the situation.
+          account creation and donations should be completed by an adult or authorized guardian.
+          If you believe a child has provided personal information to us inappropriately, contact
+          us so we can review and address the situation.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Your choices" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="your-choices" number={9} title="Your choices">
+        <p>
           You may contact us to request access to, correction of, or deletion of certain personal
-          information, subject to legal and operational limits. You may also opt out of promotional
-          emails through the unsubscribe link included in those messages.
+          information, subject to legal and operational limits. You may also opt out of
+          promotional emails through the unsubscribe link included in those messages.
         </p>
-      </Section>
+        <p>
+          You can delete your account and the personal data associated with it at any time. See
+          our <a href="/data">data and account deletion page</a> for step-by-step
+          instructions, including how to remove data received from Facebook Login or Google
+          Sign-In.
+        </p>
+      </LegalSection>
 
-      <Section title="Security" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="security" number={10} title="Security">
+        <p>
           We use reasonable administrative, technical, and organizational measures to protect
-          information, but no method of transmission or storage is completely secure. You use the
-          website and provide information at your own risk.
+          information, but no method of transmission or storage is completely secure. You use
+          the website and provide information at your own risk.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Changes to this policy" className="about-prose-block">
-        <p className="page-text">
-          We may update this Privacy Policy from time to time. When we do, we will post the updated
-          version on this page and update the effective date below. Continued use of the website
-          after an update means you accept the revised policy.
+      <LegalSection id="changes-to-this-policy" number={11} title="Changes to this policy">
+        <p>
+          We may update this Privacy Policy from time to time. When we do, we will post the
+          updated version on this page and update the effective date above. Continued use of the
+          website after an update means you accept the revised policy.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Contact" className="about-prose-block">
-        <p className="page-text">
-          Questions about this Privacy Policy can be sent through the contact information provided
-          on this website.
+      <LegalSection id="contact" number={12} title="Contact">
+        <p>
+          Questions about this Privacy Policy can be sent through the contact information
+          provided on this website, or by writing to{' '}
+          <a href="mailto:allen@oliviasgarden.org">allen@oliviasgarden.org</a>.
         </p>
-        <p className="page-text">
-          Effective date: April 23, 2026.
-        </p>
-      </Section>
-    </>
+      </LegalSection>
+    </LegalDocument>
   );
 }
 
+const DATA_DELETION_SECTIONS = [
+  { id: 'who-this-is-for', title: 'Who this page is for' },
+  { id: 'delete-from-account', title: 'Delete from inside your account' },
+  { id: 'delete-by-email', title: 'Request deletion by email' },
+  { id: 'what-gets-deleted', title: 'What gets deleted' },
+  { id: 'what-we-keep', title: 'What we keep and why' },
+  { id: 'third-party-sign-in', title: 'Third-party sign-in data (Facebook, Google)' },
+  { id: 'timing', title: 'How long deletion takes' },
+  { id: 'questions', title: 'Questions' },
+];
+
+export function DataDeletionPage({ onNavigate }: { onNavigate: (path: string) => void }) {
+  return (
+    <LegalDocument
+      title="Data and account deletion"
+      effectiveDate="April 24, 2026"
+      intro={(
+        <p>
+          How to delete your Olivia&apos;s Garden Foundation account and the personal data
+          associated with it, including data received from third-party sign-in providers such as
+          Facebook and Google.
+        </p>
+      )}
+    >
+      <LegalTableOfContents items={DATA_DELETION_SECTIONS} />
+
+      <LegalSection id="who-this-is-for" number={1} title="Who this page is for">
+        <p>
+          This page explains how anyone with an Olivia&apos;s Garden Foundation account —
+          including accounts created with Facebook Login, Google Sign-In, or an email and password
+          — can permanently delete their account and the personal data tied to it. It is provided
+          as a standing public reference so people and platforms always have clear instructions.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="delete-from-account" number={2} title="Delete from inside your account">
+        <p>
+          The fastest way to delete your account is from your profile page. You must be signed in.
+        </p>
+        <ol>
+          <li>
+            Sign in at{' '}
+            <a
+              href="/login"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/login');
+              }}
+            >
+              oliviasgarden.org/login
+            </a>
+            .
+          </li>
+          <li>
+            Open your{' '}
+            <a
+              href="/profile"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/profile');
+              }}
+            >
+              profile page
+            </a>
+            .
+          </li>
+          <li>Scroll to the <strong>Danger zone</strong> section at the bottom of the page.</li>
+          <li>Click <strong>Delete my account</strong>.</li>
+          <li>
+            Confirm by typing <code>DELETE</code> in the pop-up and choosing{' '}
+            <strong>Yes, delete my account</strong>.
+          </li>
+        </ol>
+        <p>
+          The deletion happens immediately. You&apos;ll be signed out automatically and your
+          Olivia&apos;s Garden profile, avatar, and saved preferences will be removed.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="delete-by-email" number={3} title="Request deletion by email">
+        <p>
+          If you can&apos;t sign in — for example, you lost access to the email address or social
+          account you signed up with — you can request deletion by emailing us instead.
+        </p>
+        <ul>
+          <li>
+            Send a message to{' '}
+            <a href="mailto:allen@oliviasgarden.org?subject=Account%20deletion%20request">
+              allen@oliviasgarden.org
+            </a>{' '}
+            with the subject <em>Account deletion request</em>.
+          </li>
+          <li>
+            Include the email address or social sign-in (Facebook, Google) you used to create the
+            account so we can match the request to the right record.
+          </li>
+          <li>
+            We&apos;ll confirm the request and complete deletion within 30 days. We may ask a
+            verification question before deleting if we can&apos;t confirm your identity from the
+            request alone.
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection id="what-gets-deleted" number={4} title="What gets deleted">
+        <p>
+          When your account is deleted, the following information is permanently removed or
+          irreversibly scrubbed from our systems:
+        </p>
+        <ul>
+          <li>Your profile: name, display name, bio, location, timezone, and website.</li>
+          <li>Your avatar image and any related processed versions.</li>
+          <li>
+            Your sign-in record, including any linked social provider identity (for example,
+            Facebook or Google).
+          </li>
+          <li>Your email address and contact details stored on your account.</li>
+          <li>Donor name and contact information attached to your donation history.</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection id="what-we-keep" number={5} title="What we keep and why">
+        <p>
+          A small set of records may be retained after account deletion for legal, tax, or
+          accounting reasons. In every case, records kept are scrubbed of personal identifiers so
+          they can no longer be tied back to you.
+        </p>
+        <ul>
+          <li>
+            <strong>Donation records.</strong> Nonprofit and tax reporting requires us to keep a
+            record of donations received. We remove your name, email, and dedication notes from
+            those records at deletion time, but the anonymized transaction remains in our
+            accounting.
+          </li>
+          <li>
+            <strong>Moderation and abuse records.</strong> If there is an active investigation
+            into content or abuse on the platform, we may retain the minimum information required
+            to resolve it.
+          </li>
+          <li>
+            <strong>System logs and backups.</strong> Routine operational logs and backups that
+            include account IDs roll off on normal retention schedules. Personal identifiers are
+            not restored if backups are used for recovery.
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection
+        id="third-party-sign-in"
+        number={6}
+        title="Third-party sign-in data (Facebook, Google)"
+      >
+        <p>
+          If you created an Olivia&apos;s Garden Foundation account using Facebook Login or Google
+          Sign-In, we received a limited set of profile information from that provider (such as
+          your name and email) to create and authenticate your account. When you delete your
+          account, that information is deleted from our systems along with the rest of your
+          account.
+        </p>
+        <p>
+          Deleting your Olivia&apos;s Garden account does <strong>not</strong> delete your account
+          with Facebook, Google, or any other third-party provider. To remove Olivia&apos;s Garden
+          from the apps connected to your Facebook account, visit{' '}
+          <a
+            href="https://www.facebook.com/settings?tab=business_tools"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Facebook&apos;s Business Integrations settings
+          </a>{' '}
+          and remove Olivia&apos;s Garden from the list of connected apps. Removing the app from
+          Facebook revokes Facebook&apos;s ongoing sharing of your profile information with us,
+          but it does not itself delete any data we already stored — use one of the methods above
+          to delete that data.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="timing" number={7} title="How long deletion takes">
+        <p>
+          Account deletions initiated from the profile page take effect immediately. Email-based
+          deletion requests are processed within 30 days of our receiving a verified request, and
+          usually much sooner.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="questions" number={8} title="Questions">
+        <p>
+          If you have questions about data deletion or your privacy, you can reach us at{' '}
+          <a href="mailto:allen@oliviasgarden.org">allen@oliviasgarden.org</a> or through our{' '}
+          <a
+            href="/contact"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate('/contact');
+            }}
+          >
+            contact page
+          </a>
+          . Our full{' '}
+          <a
+            href="/privacy"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate('/privacy');
+            }}
+          >
+            privacy policy
+          </a>{' '}
+          has more on what we collect and how we use it.
+        </p>
+      </LegalSection>
+    </LegalDocument>
+  );
+}
+
+const TERMS_SECTIONS = [
+  { id: 'acceptance', title: 'Acceptance of terms' },
+  { id: 'use-of-site', title: 'Use of the site' },
+  { id: 'accounts', title: 'Accounts' },
+  { id: 'donations', title: 'Donations and payments' },
+  { id: 'user-submissions', title: 'User submissions' },
+  { id: 'intellectual-property', title: 'Intellectual property' },
+  { id: 'third-party-services', title: 'Third-party services and links' },
+  { id: 'disclaimers', title: 'Disclaimers' },
+  { id: 'limitation-of-liability', title: 'Limitation of liability' },
+  { id: 'indemnification', title: 'Indemnification' },
+  { id: 'termination', title: 'Termination' },
+  { id: 'governing-law', title: 'Governing law' },
+  { id: 'changes', title: 'Changes to these terms' },
+  { id: 'contact', title: 'Contact' },
+];
+
 export function TermsOfServicePage() {
   return (
-    <>
-      <PageHero
-        eyebrow="Legal"
-        title="Terms of Service"
-        body="These terms govern access to and use of Olivia's Garden Foundation websites, accounts, donation experiences, and related community tools."
-      />
+    <LegalDocument
+      title="Terms of Service"
+      effectiveDate="April 23, 2026"
+      intro={(
+        <p>
+          These terms govern access to and use of Olivia&apos;s Garden Foundation websites,
+          accounts, donation experiences, and related community tools. Please read them carefully.
+        </p>
+      )}
+    >
+      <LegalTableOfContents items={TERMS_SECTIONS} />
 
-      <Section title="Acceptance of terms" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="acceptance" number={1} title="Acceptance of terms">
+        <p>
           By accessing or using this website or any related foundation service, you agree to these
           Terms of Service. If you do not agree, do not use the site or related services.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Use of the site" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="use-of-site" number={2} title="Use of the site">
+        <p>
           You may use the site only for lawful purposes and in a way that does not interfere with
           the operation, security, or availability of the website or the rights of others. You
-          agree not to misuse accounts, attempt unauthorized access, submit fraudulent information,
-          scrape restricted areas, upload malicious content, or use the services in violation of
-          applicable law.
+          agree not to misuse accounts, attempt unauthorized access, submit fraudulent
+          information, scrape restricted areas, upload malicious content, or use the services in
+          violation of applicable law.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Accounts" className="about-prose-block">
-        <p className="page-text">
-          If you create an account, you are responsible for maintaining the confidentiality of your
-          login credentials and for activity that occurs under your account. You agree to provide
-          accurate information and to notify us if you believe your account has been compromised.
+      <LegalSection id="accounts" number={3} title="Accounts">
+        <p>
+          If you create an account, you are responsible for maintaining the confidentiality of
+          your login credentials and for activity that occurs under your account. You agree to
+          provide accurate information and to notify us if you believe your account has been
+          compromised.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Donations and payments" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="donations" number={4} title="Donations and payments">
+        <p>
           Donations, purchases, and other payments made through the site may be processed by
           third-party payment providers. Additional terms from those providers may apply. Except
           where required by law or expressly stated otherwise, donations are generally final and
           non-refundable.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="User submissions" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="user-submissions" number={5} title="User submissions">
+        <p>
           If you submit photos, messages, profile content, seed requests, or other material, you
-          represent that you have the right to provide that content and that it does not violate the
-          rights of any other person. You grant Olivia&apos;s Garden Foundation a non-exclusive,
-          worldwide, royalty-free license to host, store, reproduce, adapt, display, and use that
-          content as needed to operate the site, administer programs, highlight community
-          participation, and support the foundation&apos;s mission.
+          represent that you have the right to provide that content and that it does not violate
+          the rights of any other person. You grant Olivia&apos;s Garden Foundation a
+          non-exclusive, worldwide, royalty-free license to host, store, reproduce, adapt,
+          display, and use that content as needed to operate the site, administer programs,
+          highlight community participation, and support the foundation&apos;s mission.
         </p>
-        <p className="page-text">
-          We may remove or moderate content at our discretion, including content that is unlawful,
-          misleading, abusive, inappropriate, infringing, unsafe, or inconsistent with the
-          foundation&apos;s mission.
+        <p>
+          We may remove or moderate content at our discretion, including content that is
+          unlawful, misleading, abusive, inappropriate, infringing, unsafe, or inconsistent with
+          the foundation&apos;s mission.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Intellectual property" className="about-prose-block">
-        <p className="page-text">
-          Unless otherwise stated, the website, design, text, graphics, logos, photos, videos, and
-          other content provided by Olivia&apos;s Garden Foundation are owned by or licensed to the
-          foundation and are protected by applicable intellectual property laws. You may not copy,
-          reproduce, distribute, or create derivative works from site content except as permitted by
-          law or with prior written permission.
+      <LegalSection id="intellectual-property" number={6} title="Intellectual property">
+        <p>
+          Unless otherwise stated, the website, design, text, graphics, logos, photos, videos,
+          and other content provided by Olivia&apos;s Garden Foundation are owned by or licensed
+          to the foundation and are protected by applicable intellectual property laws. You may
+          not copy, reproduce, distribute, or create derivative works from site content except as
+          permitted by law or with prior written permission.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Third-party services and links" className="about-prose-block">
-        <p className="page-text">
-          The site may link to third-party services or rely on third-party platforms for payments,
-          sign-in, analytics, maps, hosting, or communications. We are not responsible for the
-          content, policies, or practices of third-party services.
+      <LegalSection id="third-party-services" number={7} title="Third-party services and links">
+        <p>
+          The site may link to third-party services or rely on third-party platforms for
+          payments, sign-in, analytics, maps, hosting, or communications. We are not responsible
+          for the content, policies, or practices of third-party services.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Disclaimers" className="about-prose-block">
-        <p className="page-text">
-          The website and services are provided on an &quot;as is&quot; and &quot;as available&quot;
-          basis without warranties of any kind, whether express or implied, to the fullest extent
-          permitted by law. We do not guarantee uninterrupted access, error-free operation, or that
-          the site will always be secure or free from harmful components.
+      <LegalSection id="disclaimers" number={8} title="Disclaimers">
+        <p>
+          The website and services are provided on an &quot;as is&quot; and &quot;as
+          available&quot; basis without warranties of any kind, whether express or implied, to
+          the fullest extent permitted by law. We do not guarantee uninterrupted access,
+          error-free operation, or that the site will always be secure or free from harmful
+          components.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Limitation of liability" className="about-prose-block">
-        <p className="page-text">
-          To the fullest extent permitted by law, Olivia&apos;s Garden Foundation and its officers,
-          directors, volunteers, employees, and affiliates will not be liable for any indirect,
-          incidental, special, consequential, or punitive damages, or for any loss of data,
-          profits, goodwill, or business opportunities arising from or related to use of the site or
-          services.
+      <LegalSection id="limitation-of-liability" number={9} title="Limitation of liability">
+        <p>
+          To the fullest extent permitted by law, Olivia&apos;s Garden Foundation and its
+          officers, directors, volunteers, employees, and affiliates will not be liable for any
+          indirect, incidental, special, consequential, or punitive damages, or for any loss of
+          data, profits, goodwill, or business opportunities arising from or related to use of
+          the site or services.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Indemnification" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="indemnification" number={10} title="Indemnification">
+        <p>
           You agree to indemnify and hold harmless Olivia&apos;s Garden Foundation from claims,
           liabilities, damages, losses, and expenses arising out of your use of the site, your
           submissions, or your violation of these terms or applicable law.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Termination" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="termination" number={11} title="Termination">
+        <p>
           We may suspend or terminate access to the site or specific features at any time if we
           believe it is necessary to protect the foundation, users, or the public, or to address
           violations of these terms.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Governing law" className="about-prose-block">
-        <p className="page-text">
-          These terms are governed by the laws of the State of Texas, without regard to conflict of
-          law principles, except where superseded by applicable federal law.
+      <LegalSection id="governing-law" number={12} title="Governing law">
+        <p>
+          These terms are governed by the laws of the State of Texas, without regard to conflict
+          of law principles, except where superseded by applicable federal law.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Changes to these terms" className="about-prose-block">
-        <p className="page-text">
-          We may update these terms from time to time. The updated version will be posted on this
-          page with a revised effective date. Continued use of the site after changes become
-          effective means you accept the updated terms.
+      <LegalSection id="changes" number={13} title="Changes to these terms">
+        <p>
+          We may update these terms from time to time. The updated version will be posted on
+          this page with a revised effective date. Continued use of the site after changes
+          become effective means you accept the updated terms.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="Contact" className="about-prose-block">
-        <p className="page-text">
+      <LegalSection id="contact" number={14} title="Contact">
+        <p>
           Questions about these Terms of Service can be sent through the contact information
-          provided on this website.
+          provided on this website, or by writing to{' '}
+          <a href="mailto:allen@oliviasgarden.org">allen@oliviasgarden.org</a>.
         </p>
-        <p className="page-text">
-          Effective date: April 23, 2026.
-        </p>
-      </Section>
-    </>
+      </LegalSection>
+    </LegalDocument>
   );
 }
 

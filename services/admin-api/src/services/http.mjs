@@ -71,12 +71,25 @@ export function mapApiError(error, correlationId) {
     || message.includes('currency must be a 3-letter lowercase ISO code')
     || message.includes('unitAmountCents must be greater than or equal to 0')
     || message.includes('metadata must be a JSON object')
+    || message.includes('contentType must be one of')
+    || message.includes('contentLength must be')
+    || message.includes('images must')
+    || message.includes('each image must be an object')
+    || message.includes('image id must be a valid UUID')
+    || message.includes('image alt_text must')
   ) {
     return errorResponse(400, message, correlationId);
   }
 
-  if (message.includes('Store product not found')) {
+  if (message.includes('Store product not found') || message.includes('Store product image not found')) {
     return errorResponse(404, message, correlationId);
+  }
+
+  if (
+    message.includes('Idempotency-Key request is already in progress')
+    || message.includes('Idempotency-Key was reused')
+  ) {
+    return errorResponse(409, message, correlationId);
   }
 
   if (message.includes('Missing userId in authorizer context')) {

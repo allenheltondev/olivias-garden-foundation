@@ -27,7 +27,6 @@ export const AppShell: React.FC<AppShellProps> = ({
         {children}
       </main>
       <SiteFooter
-        tagline="Growing food, sharing seeds, and helping more people feel at home on the land."
         meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
         links={footerLinks.map((link) => ({
           id: link.id,

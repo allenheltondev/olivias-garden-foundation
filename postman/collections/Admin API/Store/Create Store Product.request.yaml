@@ -7,6 +7,8 @@ url: '{{baseUrl}}/admin/store/products'
 headers:
   - key: Content-Type
     value: application/json
+  - key: Idempotency-Key
+    value: postman-store-product-create
 body:
   mode: raw
   raw: |-
@@ -26,6 +28,7 @@ body:
       "nonprofit_program": "Food access",
       "impact_summary": "Supports produce distribution",
       "image_url": null,
+      "images": [],
       "metadata": {
         "source": "postman"
       }
@@ -43,4 +46,11 @@ scripts:
 
       pm.test("Created product contains expected name", function () {
           pm.expect(product).to.have.property("name", "Postman Store Product");
+      });
+
+      pm.test("Created product exposes multi-image fields", function () {
+          pm.expect(product).to.have.property("images");
+          pm.expect(product).to.have.property("image_urls");
+          pm.expect(product.images).to.be.an("array");
+          pm.expect(product.image_urls).to.be.an("array");
       });

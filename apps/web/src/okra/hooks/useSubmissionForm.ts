@@ -17,7 +17,7 @@ export interface UseSubmissionFormReturn {
   isSubmitting: boolean;
   submitError: string | null;
   submitSuccess: boolean;
-  submit: (photoIds: string[], location: LocationData) => Promise<void>;
+  submit: (photoIds: string[], location: LocationData, removePhotoIds?: string[]) => Promise<void>;
   reset: () => void;
   hasUnsavedProgress: (photos: PhotoEntry[], location: LocationData) => boolean;
 }
@@ -27,6 +27,7 @@ const MAX_STORY_LENGTH = 2000;
 
 interface ValidationInput {
   uploadedPhotoIds: string[];
+  existingPhotoCount?: number;
   hasUploadingPhotos: boolean;
   hasFailedPhotos: boolean;
   location: LocationData;
@@ -35,7 +36,7 @@ interface ValidationInput {
 function computeValidation(input: ValidationInput): { canSubmit: boolean; missingFields: string[] } {
   const missing: string[] = [];
 
-  if (input.uploadedPhotoIds.length < 1) {
+  if (input.uploadedPhotoIds.length + (input.existingPhotoCount ?? 0) < 1) {
     missing.push(input.hasFailedPhotos ? 'Photo uploads failed — retry or add new photos' : 'At least one photo is required');
   }
 
@@ -68,17 +69,33 @@ export function useSubmissionForm(
   hasFailedPhotos: boolean = false,
   accessToken?: string | null,
   defaultContributorName?: string,
+  options: {
+    mode?: 'create' | 'edit';
+    submissionId?: string;
+    initialStoryText?: string;
+    initialPrivacyMode?: PrivacyMode;
+    existingPhotoCount?: number;
+    editClientKey?: string;
+  } = {},
 ): UseSubmissionFormReturn {
   const [contributorName, setContributorNameRaw] = useState(defaultContributorName ?? '');
-  const [storyText, setStoryTextRaw] = useState('');
-  const [privacyMode, setPrivacyMode] = useState<PrivacyMode>('city');
+  const [storyText, setStoryTextRaw] = useState(options.initialStoryText ?? '');
+  const [privacyMode, setPrivacyMode] = useState<PrivacyMode>(options.initialPrivacyMode ?? 'city');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   useEffect(() => {
+    if (options.mode === 'edit') {
+      setContributorNameRaw(defaultContributorName ?? '');
+      setStoryTextRaw(options.initialStoryText ?? '');
+      setPrivacyMode(options.initialPrivacyMode ?? 'city');
+      setSubmitError(null);
+      setSubmitSuccess(false);
+      return;
+    }
     setContributorNameRaw((current) => (current.trim().length > 0 ? current : (defaultContributorName ?? '')));
-  }, [defaultContributorName]);
+  }, [defaultContributorName, options.initialPrivacyMode, options.initialStoryText, options.mode, options.submissionId]);
 
   const setContributorName = useCallback((v: string) => {
     setContributorNameRaw(v.slice(0, MAX_NAME_LENGTH));
@@ -89,17 +106,24 @@ export function useSubmissionForm(
   }, []);
 
   const { canSubmit, missingFields } = useMemo(
-    () => computeValidation({ uploadedPhotoIds, hasUploadingPhotos, hasFailedPhotos, location }),
-    [uploadedPhotoIds, hasUploadingPhotos, hasFailedPhotos, location],
+    () => computeValidation({
+      uploadedPhotoIds,
+      hasUploadingPhotos,
+      hasFailedPhotos,
+      location,
+      existingPhotoCount: options.existingPhotoCount ?? 0,
+    }),
+    [uploadedPhotoIds, hasUploadingPhotos, hasFailedPhotos, location, options.existingPhotoCount],
   );
 
   const submit = useCallback(
-    async (photoIds: string[], loc: LocationData): Promise<void> => {
+    async (photoIds: string[], loc: LocationData, removePhotoIds: string[] = []): Promise<void> => {
       setSubmitError(null);
       setIsSubmitting(true);
 
       try {
-        const payload = {
+        const isEdit = options.mode === 'edit' && Boolean(options.submissionId);
+        const payload: Record<string, unknown> = {
           photoIds,
           rawLocationText: loc.rawLocationText,
           displayLat: loc.displayLat,
@@ -108,14 +132,25 @@ export function useSubmissionForm(
           storyText: storyText || undefined,
           privacyMode,
         };
+        if (isEdit) {
+          payload.removePhotoIds = removePhotoIds;
+          if (options.editClientKey) {
+            payload.editClientKey = options.editClientKey;
+          }
+        }
 
-        const res = await fetch(okraApiUrl('/submissions'), {
-          method: 'POST',
-          headers: createOkraHeaders({ contentType: 'application/json', accessToken }),
-          body: JSON.stringify(payload),
-        });
+        const res = await fetch(
+          isEdit
+            ? okraApiUrl(`/me/submissions/${options.submissionId}`)
+            : okraApiUrl('/submissions'),
+          {
+            method: isEdit ? 'PATCH' : 'POST',
+            headers: createOkraHeaders({ contentType: 'application/json', accessToken }),
+            body: JSON.stringify(payload),
+          },
+        );
 
-        if (res.status === 201) {
+        if (res.status === 201 || res.status === 202) {
           setSubmitSuccess(true);
           return;
         }
@@ -126,7 +161,7 @@ export function useSubmissionForm(
           if (Array.isArray(issues) && issues.length > 0) {
             setSubmitError(issues.map((i: { message?: string }) => i.message ?? String(i)).join('. '));
           } else {
-            setSubmitError(body?.message ?? 'Validation error. Please check your submission.');
+            setSubmitError(body?.message ?? body?.error?.message ?? 'Validation error. Please check your submission.');
           }
           return;
         }
@@ -138,17 +173,17 @@ export function useSubmissionForm(
         setIsSubmitting(false);
       }
     },
-    [accessToken, contributorName, storyText, privacyMode],
+    [accessToken, contributorName, storyText, privacyMode, options.mode, options.submissionId, options.editClientKey],
   );
 
   const reset = useCallback(() => {
     setContributorNameRaw(defaultContributorName ?? '');
-    setStoryTextRaw('');
-    setPrivacyMode('city');
+    setStoryTextRaw(options.initialStoryText ?? '');
+    setPrivacyMode(options.initialPrivacyMode ?? 'city');
     setIsSubmitting(false);
     setSubmitError(null);
     setSubmitSuccess(false);
-  }, [defaultContributorName]);
+  }, [defaultContributorName, options.initialPrivacyMode, options.initialStoryText]);
 
   const hasUnsavedProgress = useCallback(
     (photos: PhotoEntry[], loc: LocationData): boolean => {

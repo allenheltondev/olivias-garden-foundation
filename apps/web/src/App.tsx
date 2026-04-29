@@ -21,6 +21,7 @@ import { readRedirectTargetFromSearch } from './auth/redirect';
 import {
   AboutPage,
   ContactPage,
+  DataDeletionPage,
   GetInvolvedPage,
   GoodRootsPage,
   HomePage,
@@ -41,6 +42,11 @@ const DonatePage = lazy(async () => {
 const ProfilePage = lazy(async () => {
   const module = await import('./site/pages/ProfilePage');
   return { default: module.ProfilePage };
+});
+
+const OkraSubmissionsPage = lazy(async () => {
+  const module = await import('./site/pages/OkraSubmissionsPage');
+  return { default: module.OkraSubmissionsPage };
 });
 
 function App() {
@@ -238,6 +244,13 @@ function App() {
     signOut(authConfig);
   };
 
+  const handleAccountDeleted = () => {
+    setAuthSession(null);
+    setProfileAvatarUrl(null);
+    signOut(authConfig);
+    navigate('/');
+  };
+
   const handleAuthSuccess = (session: AuthSession) => {
     setAuthSession(session);
     setAuthError(null);
@@ -351,6 +364,19 @@ function App() {
                   authReady={authReady}
                   onNavigate={navigate}
                   onAvatarUrlChange={setProfileAvatarUrl}
+                  onAccountDeleted={handleAccountDeleted}
+                />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/okra/submissions"
+            element={
+              <Suspense fallback={routeFallback}>
+                <OkraSubmissionsPage
+                  authSession={authSession}
+                  authReady={authReady}
+                  onNavigate={navigate}
                 />
               </Suspense>
             }
@@ -358,11 +384,13 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/data" element={<DataDeletionPage onNavigate={navigate} />} />
           <Route
             path="/good-roots"
             element={<GoodRootsPage authSession={authSession} onNavigate={navigate} />}
           />
           <Route path="/seeds" element={<Navigate to="/okra" replace />} />
+          <Route path="/data-deletion" element={<Navigate to="/data" replace />} />
           <Route path="*" element={<HomePage onNavigate={navigate} />} />
         </Routes>
       </main>

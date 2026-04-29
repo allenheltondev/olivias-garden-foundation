@@ -18,6 +18,10 @@ on:
       grn_stack_name:
         required: true
         type: string
+      admin_stack_name:
+        required: false
+        type: string
+        default: ""
       aws_region:
         required: false
         type: string
@@ -135,6 +139,7 @@ jobs:
           cache-dependency-path: |
             infra/foundation-web/package-lock.json
             infra/foundation-web/functions/package-lock.json
+            services/notifications/package-lock.json
             package-lock.json
 
       - name: Install esbuild for SAM
@@ -189,6 +194,46 @@ jobs:
             echo "Production Foundation Web deploys require FOUNDATION_WEB_DOMAIN_NAME_PROD and FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD."
             exit 1
           fi
+
+      # The notifications stack must exist before we deploy any producers
+      # (foundation post-confirmation publishes signups, web-api publishes
+      # donations + contact). Deploying it idempotently here guarantees the
+      # consumer Lambda + EventBridge rule are in place. CloudFormation
+      # no-ops when the stack is already at the desired state.
+      - name: Install notifications dependencies
+        working-directory: services/notifications
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Build notifications stack
+        working-directory: services/notifications
+        run: sam build --template-file template.yaml --build-dir .aws-sam/build
+
+      - name: Deploy notifications stack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.signup_slack_webhook_url }}
+          CONTACT_SLACK_WEBHOOK_URL: ${{ secrets.signup_slack_webhook_url }}
+          DOMAIN_NAME: ${{ inputs.domain_name }}
+        run: |
+          NOTIFICATIONS_STACK_NAME="ogf-notifications-${{ inputs.environment_name }}"
+          PARAM_OVERRIDES=("EnvironmentName=${{ inputs.environment_name }}")
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("SlackWebhookUrl=$SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$CONTACT_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("ContactSlackWebhookUrl=$CONTACT_SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$DOMAIN_NAME" ]; then
+            PARAM_OVERRIDES+=("AdminFrontendUrl=https://admin.$DOMAIN_NAME")
+          fi
+          sam deploy \
+            --template-file services/notifications/.aws-sam/build/template.yaml \
+            --stack-name "$NOTIFICATIONS_STACK_NAME" \
+            --resolve-s3 \
+            --s3-prefix "$NOTIFICATIONS_STACK_NAME" \
+            --region "${{ inputs.aws_region }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
       - name: Build shared foundation web stack
         run: sam build --template-file infra/foundation-web/template.yaml --build-dir infra/foundation-web/.aws-sam/build
@@ -396,6 +441,12 @@ jobs:
         working-directory: services/okra-api
         run: npm ci --workspaces=false --ignore-scripts
 
+      - name: Run okra database migrations
+        working-directory: services/okra-api
+        env:
+          DATABASE_URL: ${{ secrets.database_url }}
+        run: npm run db:migrate
+
       - name: Generate okra CI auth credentials
         id: okra-ci-auth
         run: |
@@ -475,6 +526,19 @@ jobs:
             --output text 2>/dev/null || echo "")
           echo "frontend-url=$GRN_FRONTEND_URL" >> $GITHUB_OUTPUT
 
+      - name: Read admin stack frontend URL
+        id: admin-stack
+        run: |
+          ADMIN_FRONTEND_URL=""
+          if [ -n "${{ inputs.admin_stack_name }}" ]; then
+            ADMIN_FRONTEND_URL=$(aws cloudformation describe-stacks \
+              --stack-name "${{ inputs.admin_stack_name }}" \
+              --region "${{ inputs.aws_region }}" \
+              --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+              --output text 2>/dev/null || echo "")
+          fi
+          echo "frontend-url=$ADMIN_FRONTEND_URL" >> $GITHUB_OUTPUT
+
       - name: Build foundation web app
         env:
           VITE_OKRA_API_BASE: ${{ steps.okra-stack.outputs.api-url }}
@@ -482,6 +546,7 @@ jobs:
           VITE_AUTH_USER_POOL_CLIENT_ID: ${{ steps.stack-outputs.outputs.user-pool-client-id }}
           VITE_AUTH_USER_POOL_DOMAIN: ${{ steps.stack-outputs.outputs.user-pool-domain }}
           VITE_GRN_URL: ${{ steps.grn-stack.outputs.frontend-url }}
+          VITE_ADMIN_URL: ${{ steps.admin-stack.outputs.frontend-url }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ inputs.stripe_publishable_key }}
           VITE_WEB_API_BASE: ${{ steps.web-api-stack.outputs.api-url }}
         run: npm --workspace @olivias/web run build

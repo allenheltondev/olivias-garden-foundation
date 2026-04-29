@@ -27,7 +27,7 @@ Parameters:
     Type: String
     Default: ''
     NoEcho: true
-    Description: Optional Slack webhook URL for foundation signup notifications.
+    Description: Deprecated. Signup Slack notifications now flow through services/notifications. Retained so existing CI parameter overrides keep deploying.
   GoogleClientId:
     Type: String
     Default: ''
@@ -136,11 +136,15 @@ Resources:
       Handler: post-confirmation.handler
       Policies:
         - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
       Environment:
         Variables:
           DATABASE_URL: !Ref DatabaseUrl
-          SLACK_WEBHOOK_URL: !Ref SignupSlackWebhookUrl
-          FOUNDATION_ENVIRONMENT: !Ref EnvironmentName
 
   FoundationPostConfirmationInvokePermission:
     Type: AWS::Lambda::Permission

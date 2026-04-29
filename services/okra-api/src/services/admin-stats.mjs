@@ -90,7 +90,7 @@ export async function getUserCount() {
   }
 }
 
-// Mirrors the GET /submissions?status=pending_review review-queue filter:
+// Mirrors the GET /submissions?status=pending moderation-queue filter:
 // a submission only counts as actionable when it has at least one
 // submission_photos row in `ready` status. Without this, the dashboard
 // inflates the backlog whenever photo processing lags or fails.
@@ -99,14 +99,20 @@ export async function countPendingOkraSubmissions() {
   await client.connect();
   try {
     const result = await client.query(
-      `SELECT COUNT(*)::int AS count
-         FROM submissions s
-        WHERE s.status = 'pending_review'
-          AND EXISTS (
-            SELECT 1 FROM submission_photos sp
-             WHERE sp.submission_id = s.id
-               AND sp.status = 'ready'
-          )`
+      `SELECT (
+          SELECT COUNT(*)::int
+            FROM submissions s
+           WHERE s.status = 'pending_review'
+             AND EXISTS (
+               SELECT 1 FROM submission_photos sp
+                WHERE sp.submission_id = s.id
+                  AND sp.status = 'ready'
+             )
+        ) + (
+          SELECT COUNT(*)::int
+            FROM submission_edits se
+           WHERE se.status = 'pending_review'
+        ) AS count`
     );
     return result.rows[0]?.count ?? 0;
   } finally {

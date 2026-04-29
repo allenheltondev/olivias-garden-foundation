@@ -19,16 +19,22 @@ import { resolveOptionalContributor } from '../services/auth.mjs';
 import {
   enrichSubmissionPayload,
   insertPendingSubmissionWithPhotos,
-  submissionSchema
+  listContributorSubmissions,
+  submissionEditSchema,
+  submissionSchema,
+  submitContributorSubmissionEdit
 } from '../services/submissions.mjs';
 import {
   createSeedRequest,
   enforceSeedRequestRateLimit,
-  notifySeedRequestSlack,
+  publishSeedRequestCreatedEvent,
   seedRequestSchema,
   validateSeedRequest
 } from '../services/seed-requests.mjs';
-import { publishSubmissionCreatedEvent } from '../services/submission-notifications.mjs';
+import {
+  publishSubmissionCreatedEvent,
+  publishSubmissionEditSubmittedEvent
+} from '../services/submission-notifications.mjs';
 import { getUserActivity } from '../services/user-activity.mjs';
 
 const seedRequestIdempotencyPersistence = new DynamoDBPersistenceLayer({
@@ -50,7 +56,7 @@ const processSeedRequestIdempotent = makeIdempotent(
     const sourceIp = event?.requestContext?.identity?.sourceIp ?? 'unknown';
     await enforceSeedRequestRateLimit(sourceIp);
     const created = await createSeedRequest(payload, contributor);
-    await notifySeedRequestSlack(created, correlationId);
+    await publishSeedRequestCreatedEvent(created, correlationId);
     return {
       requestId: created.requestId,
       createdAt: created.createdAt
@@ -368,7 +374,7 @@ app.get('/okra', async () => {
   try {
     const res = await client.query(
       `SELECT s.id, s.contributor_name, s.story_text, s.privacy_mode,
-              s.display_lat, s.display_lng, s.country
+              s.display_lat, s.display_lng, s.country, s.edit_count, s.edited_at
        FROM submissions s
        WHERE s.status = 'approved'
          AND NOT (s.display_lat = 0 AND s.display_lng = 0)
@@ -385,6 +391,16 @@ app.get('/okra', async () => {
          FROM submission_photos
          WHERE submission_id = ANY($1)
            AND status = 'ready'
+           AND removed_at IS NULL
+           AND review_status = 'approved'
+           AND NOT EXISTS (
+             SELECT 1
+               FROM submission_edit_photos sep
+               JOIN submission_edits se ON se.id = sep.edit_id
+              WHERE sep.photo_id = submission_photos.id
+                AND sep.action = 'add'
+                AND se.status <> 'approved'
+           )
          ORDER BY submission_id, created_at ASC`,
         [submissionIds]
       );
@@ -404,6 +420,8 @@ app.get('/okra', async () => {
         display_lng: fuzzed.lng,
         contributor_name: row.contributor_name,
         story_text: row.story_text,
+        edited: Number(row.edit_count ?? 0) > 0,
+        edited_at: row.edited_at,
         country: row.country || null,
         photo_urls: photoMap[row.id] || []
       };
@@ -499,6 +517,117 @@ app.get('/me/activity', async ({ event }) => {
     };
   } finally {
     await client.end();
+  }
+});
+
+app.get('/me/submissions', async ({ event }) => {
+  const authResult = await resolveOptionalContributor(event);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
+  const cognitoSub = authResult.contributor?.sub;
+  if (!cognitoSub) {
+    return errorResponse(401, 'UNAUTHORIZED', 'Sign in to view your okra submissions');
+  }
+
+  const client = await createDbClient();
+  await client.connect();
+
+  try {
+    const submissions = await listContributorSubmissions(
+      client,
+      cognitoSub,
+      process.env.MEDIA_CDN_DOMAIN
+    );
+    return {
+      statusCode: 200,
+      body: { submissions }
+    };
+  } finally {
+    await client.end();
+  }
+});
+
+app.patch('/me/submissions/:id', async ({ req, event, params }) => {
+  const correlationId = getCorrelationId(event);
+  const authResult = await resolveOptionalContributor(event);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
+  const cognitoSub = authResult.contributor?.sub;
+  if (!cognitoSub) {
+    return errorResponse(401, 'UNAUTHORIZED', 'Sign in to edit your okra submission');
+  }
+
+  let payload;
+  try {
+    payload = await req.json();
+  } catch {
+    return errorResponse(400, 'INVALID_JSON', 'Request body must be valid JSON');
+  }
+
+  try {
+    validate({ payload, schema: submissionEditSchema });
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      return {
+        statusCode: 422,
+        body: {
+          error: 'RequestValidationError',
+          message: 'Validation failed for request',
+          details: {
+            issues: error.errors?.map((e) => e.message) ?? [error.message]
+          }
+        }
+      };
+    }
+    throw error;
+  }
+
+  let client;
+  try {
+    client = await createDbClient();
+    await client.connect();
+    const result = await submitContributorSubmissionEdit(client, params.id, cognitoSub, payload);
+    if (result.queuedPhotoIds.length > 0) {
+      await enqueuePhotoProcessing(result.queuedPhotoIds);
+    }
+    if (!result.idempotentReplay) {
+      await publishSubmissionEditSubmittedEvent(result, correlationId);
+    }
+    return {
+      statusCode: 202,
+      body: {
+        submissionId: result.submissionId,
+        editId: result.editId,
+        status: result.status,
+        createdAt: result.createdAt
+      }
+    };
+  } catch (error) {
+    if (error?.code === 'SUBMISSION_NOT_FOUND') {
+      return errorResponse(404, 'NOT_FOUND', 'Submission not found');
+    }
+    if (error?.code === 'INVALID_PHOTO_IDS' || error?.code === 'MISSING_PHOTOS') {
+      return errorResponse(
+        422,
+        error.code === 'MISSING_PHOTOS' ? 'MISSING_PHOTOS' : 'INVALID_PHOTO_IDS',
+        error.message
+      );
+    }
+    console.error(JSON.stringify({
+      level: 'error',
+      message: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      endpoint: 'PATCH /me/submissions/:id',
+      submissionId: params.id,
+      correlationId
+    }));
+    return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+  } finally {
+    await client?.end?.();
   }
 });
 

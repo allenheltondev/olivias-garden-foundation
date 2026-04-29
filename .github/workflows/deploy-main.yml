@@ -33,8 +33,10 @@ env:
   ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   STACK_NAME: ogf-grn-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   ADMIN_STACK_NAME: ogf-admin-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
+  STORE_STACK_NAME: ogf-store-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FOUNDATION_STACK_NAME: ogf-web-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   OKRA_STACK_NAME: ${{ (github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging')) == 'prod' && 'ogf-okra-prod' || 'ogf-okra-staging' }}
+  NOTIFICATIONS_STACK_NAME: ogf-notifications-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'staging') }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -203,9 +205,58 @@ jobs:
       - name: Admin Frontend - Type check
         run: npm --workspace @olivias/admin run typecheck
 
+  store-lint-and-test:
+    name: Store Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install store API dependencies
+        run: npm ci --workspace services/store-api --include-workspace-root=false --ignore-scripts
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Store API - Run ESLint
+        run: npm --workspace services/store-api run lint
+
+      - name: Store API - Type check
+        run: npm --workspace services/store-api run typecheck
+
+      - name: Store API - Run tests
+        run: npm --workspace services/store-api run test
+
+      - name: Store Backend - Build
+        working-directory: services/store-api
+        run: npm run build
+
+      - name: Store Frontend - Install workspace dependencies
+        run: npm ci
+
+      - name: Store Frontend - Run ESLint
+        run: npm --workspace @olivias/store run lint
+
+      - name: Store Frontend - Type check
+        run: npm --workspace @olivias/store run typecheck
+
   deploy-foundation:
     name: Deploy Foundation Stack
     runs-on: ubuntu-latest
+    needs: [deploy-notifications]
     concurrency:
       group: foundation-stack-${{ github.event.inputs.environment == 'prod' && 'ogf-web-prod' || github.event.inputs.environment == 'staging' && 'ogf-web-staging' || github.ref == 'refs/heads/main' && 'ogf-web-prod' || 'ogf-web-staging' }}
       cancel-in-progress: false
@@ -356,6 +407,122 @@ jobs:
 
       - name: Build check
         run: npm run build
+
+  notifications-lint-and-test:
+    name: Notifications Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/notifications
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/notifications/package-lock.json
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install dependencies
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build check
+        run: npm run build
+
+  deploy-notifications:
+    name: Deploy Notifications Stack
+    runs-on: ubuntu-latest
+    needs: [notifications-lint-and-test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ env.ENVIRONMENT == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Notifications-Deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: services/notifications/package-lock.json
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Install notifications dependencies
+        working-directory: services/notifications
+        run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Build notifications stack
+        working-directory: services/notifications
+        run: sam build --template-file template.yaml --build-dir .aws-sam/build
+
+      - name: Deploy notifications stack
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+          CONTACT_SLACK_WEBHOOK_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_PROD || secrets.FOUNDATION_SIGNUP_SLACK_WEBHOOK_URL_STAGING }}
+          DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+        run: |
+          PARAM_OVERRIDES=("EnvironmentName=${{ env.ENVIRONMENT }}")
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("SlackWebhookUrl=$SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$CONTACT_SLACK_WEBHOOK_URL" ]; then
+            PARAM_OVERRIDES+=("ContactSlackWebhookUrl=$CONTACT_SLACK_WEBHOOK_URL")
+          fi
+          if [ -n "$DOMAIN_NAME" ]; then
+            PARAM_OVERRIDES+=("AdminFrontendUrl=https://admin.$DOMAIN_NAME")
+          fi
+          # Deploy the BUILT template (esbuild output). Using the source
+          # template causes SAM to package the entire CodeUri including
+          # node_modules and skip the bundle.
+          sam deploy \
+            --template-file services/notifications/.aws-sam/build/template.yaml \
+            --stack-name "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Diagnose failed notifications deploy
+        if: ${{ failure() }}
+        run: |
+          echo "Notifications deploy failed. Dumping CloudFormation diagnostics for ${{ env.NOTIFICATIONS_STACK_NAME }}."
+          aws cloudformation describe-stack-events \
+            --stack-name "${{ env.NOTIFICATIONS_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "StackEvents[:50].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" \
+            --output table || true
 
   deploy-backend:
     name: Deploy GRN Backend
@@ -560,7 +727,7 @@ jobs:
   deploy-okra-backend:
     name: Deploy Okra Backend
     runs-on: ubuntu-latest
-    needs: [okra-lint-and-test, deploy-foundation]
+    needs: [okra-lint-and-test, deploy-foundation, deploy-notifications]
     outputs:
       api-url: ${{ steps.get-outputs.outputs.api-url }}
       admin-api-url: ${{ steps.get-outputs.outputs.admin-api-url }}
@@ -594,6 +761,12 @@ jobs:
       - name: Install Okra backend dependencies
         working-directory: services/okra-api
         run: npm ci --workspaces=false --ignore-scripts
+
+      - name: Run okra database migrations
+        working-directory: services/okra-api
+        env:
+          DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+        run: npm run db:migrate
 
       - name: Generate CI admin credentials
         id: okra-ci-auth
@@ -657,7 +830,7 @@ jobs:
   deploy-admin-backend:
     name: Deploy Admin Backend
     runs-on: ubuntu-latest
-    needs: [admin-lint-and-test, deploy-foundation]
+    needs: [admin-lint-and-test, deploy-foundation, deploy-notifications]
     outputs:
       user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
       user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
@@ -913,7 +1086,7 @@ jobs:
   deploy-admin-frontend:
     name: Deploy Admin Frontend
     runs-on: ubuntu-latest
-    needs: [deploy-admin-backend, deploy-okra-backend]
+    needs: [deploy-admin-backend, deploy-okra-backend, deploy-store-backend]
 
     steps:
       - name: Checkout code
@@ -953,6 +1126,7 @@ jobs:
           VITE_USER_POOL_DOMAIN=${{ needs.deploy-admin-backend.outputs.user-pool-domain }}
           VITE_ADMIN_API_URL=${{ needs.deploy-admin-backend.outputs.api-url }}
           VITE_OKRA_ADMIN_API_URL=${{ needs.deploy-okra-backend.outputs.admin-api-url }}
+          VITE_STORE_API_URL=${{ needs.deploy-store-backend.outputs.api-url }}
           VITE_AWS_REGION=${{ env.AWS_REGION }}
           VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
           VITE_GRN_URL=${{ needs.deploy-backend.outputs.frontend-url }}
@@ -995,10 +1169,211 @@ jobs:
             echo "Admin CloudFront distribution ID not available"
           fi
 
+  deploy-store-backend:
+    name: Deploy Store Backend
+    runs-on: ubuntu-latest
+    needs: [store-lint-and-test, deploy-foundation]
+    outputs:
+      user-pool-id: ${{ steps.get-outputs.outputs.user-pool-id }}
+      user-pool-client-id: ${{ steps.get-outputs.outputs.user-pool-client-id }}
+      api-url: ${{ steps.get-outputs.outputs.api-url }}
+      frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
+      frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
+      cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ env.ENVIRONMENT == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Store-Backend-Deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Setup Node.js for store backend build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install store API dependencies
+        run: npm ci --workspace services/store-api --include-workspace-root=false --ignore-scripts
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run store database migrations
+        run: |
+          DATABASE_URL="${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}"
+          export DATABASE_URL
+          cd services/store-api
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
+      - name: Build store backend
+        run: sam build --template-file services/store-api/template.yaml --build-dir services/store-api/.aws-sam/build
+
+      - name: Deploy store backend
+        env:
+          DATABASE_URL: ${{ env.ENVIRONMENT == 'prod' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
+          DOMAIN_HOSTED_ZONE_ID: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_PROD || vars.FOUNDATION_WEB_DOMAIN_HOSTED_ZONE_ID_STAGING || '' }}
+          FOUNDATION_DOMAIN_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.FOUNDATION_WEB_DOMAIN_NAME_PROD || vars.FOUNDATION_WEB_DOMAIN_NAME_STAGING || '' }}
+          STRIPE_SECRET_KEY: ${{ env.ENVIRONMENT == 'prod' && secrets.STRIPE_SECRET_KEY_PROD || secrets.STRIPE_SECRET_KEY_STAGING || '' }}
+          STRIPE_EVENT_BUS_NAME: ${{ env.ENVIRONMENT == 'prod' && vars.STRIPE_EVENT_BUS_NAME_PROD || vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}
+        run: |
+          PARAM_OVERRIDES=(
+            "DatabaseUrl=$DATABASE_URL"
+            "EnvironmentName=${{ env.ENVIRONMENT }}"
+          )
+          if [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
+          fi
+          if [ -n "$FOUNDATION_DOMAIN_NAME" ] && [ -n "$DOMAIN_HOSTED_ZONE_ID" ]; then
+            PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME")
+          fi
+          if [ -n "$STRIPE_SECRET_KEY" ]; then
+            PARAM_OVERRIDES+=("StripeSecretKey=$STRIPE_SECRET_KEY")
+          fi
+          if [ -n "$STRIPE_EVENT_BUS_NAME" ]; then
+            PARAM_OVERRIDES+=("StripeEventBusName=$STRIPE_EVENT_BUS_NAME")
+          fi
+          sam deploy \
+            --template-file services/store-api/.aws-sam/build/template.yaml \
+            --stack-name "${{ env.STORE_STACK_NAME }}" \
+            --resolve-s3 \
+            --s3-prefix "${{ env.STORE_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${PARAM_OVERRIDES[@]}"
+
+      - name: Get store stack outputs
+        id: get-outputs
+        run: |
+          USER_POOL_ID=$(aws cloudformation list-exports \
+            --region ${{ env.AWS_REGION }} \
+            --query "Exports[?Name=='OGF-UserPoolId'].Value | [0]" \
+            --output text)
+          USER_POOL_CLIENT_ID=$(aws cloudformation list-exports \
+            --region ${{ env.AWS_REGION }} \
+            --query "Exports[?Name=='OGF-UserPoolClientId'].Value | [0]" \
+            --output text)
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucket'].OutputValue" \
+            --output text)
+          CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)
+
+          echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
+          echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+
+  deploy-store-frontend:
+    name: Deploy Store Frontend
+    runs-on: ubuntu-latest
+    needs: [deploy-store-backend, deploy-foundation, deploy-backend, deploy-admin-backend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ env.ENVIRONMENT == 'prod' && secrets.AWS_PROD_ROLE_ARN || secrets.AWS_STAGING_ROLE_ARN }}
+          role-session-name: GitHubActions-Store-Deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Get foundation web frontend URL
+        id: get-foundation-url
+        run: |
+          FOUNDATION_FRONTEND_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${{ env.FOUNDATION_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebFrontendUrl'].OutputValue" \
+            --output text)
+          echo "url=$FOUNDATION_FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Create store environment file
+        working-directory: apps/store
+        run: |
+          cat > .env << EOF
+          VITE_USER_POOL_ID=${{ needs.deploy-store-backend.outputs.user-pool-id }}
+          VITE_USER_POOL_CLIENT_ID=${{ needs.deploy-store-backend.outputs.user-pool-client-id }}
+          VITE_AWS_REGION=${{ env.AWS_REGION }}
+          VITE_STORE_API_URL=${{ needs.deploy-store-backend.outputs.api-url }}
+          VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
+          VITE_GRN_URL=${{ needs.deploy-backend.outputs.frontend-url }}
+          VITE_ADMIN_URL=${{ needs.deploy-admin-backend.outputs.frontend-url }}
+          EOF
+
+      - name: Build store frontend
+        run: npm --workspace @olivias/store run build
+
+      - name: Deploy store frontend to S3
+        run: |
+          aws s3 sync apps/store/dist/ "s3://${{ needs.deploy-store-backend.outputs.frontend-bucket }}/" \
+            --region ${{ env.AWS_REGION }} \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "manifest.json"
+
+          aws s3 cp apps/store/dist/index.html "s3://${{ needs.deploy-store-backend.outputs.frontend-bucket }}/index.html" \
+            --region ${{ env.AWS_REGION }} \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate store CloudFront cache
+        run: |
+          DISTRIBUTION_ID="${{ needs.deploy-store-backend.outputs.cloudfront-distribution-id }}"
+          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+            echo "Store CloudFront cache invalidated for distribution $DISTRIBUTION_ID"
+          else
+            echo "Store CloudFront distribution ID not available"
+          fi
+
   deployment-summary:
     name: Platform Deployment Summary
     runs-on: ubuntu-latest
-    needs: [deploy-backend, deploy-admin-backend, deploy-okra-backend, deploy-frontend, deploy-admin-frontend]
+    needs: [deploy-backend, deploy-admin-backend, deploy-okra-backend, deploy-store-backend, deploy-notifications, deploy-frontend, deploy-admin-frontend, deploy-store-frontend]
     if: always()
 
     steps:
@@ -1012,6 +1387,7 @@ jobs:
           echo "Admin Stack Name: ${{ env.ADMIN_STACK_NAME }}"
           echo "Foundation Stack Name: ${{ env.FOUNDATION_STACK_NAME }}"
           echo "Okra Stack Name: ${{ env.OKRA_STACK_NAME }}"
+          echo "Notifications Stack Name: ${{ env.NOTIFICATIONS_STACK_NAME }}"
           echo "Region: ${{ env.AWS_REGION }}"
           echo ""
           echo "Frontend URL (apps/grn): ${{ needs.deploy-backend.outputs.frontend-url }}"
@@ -1022,7 +1398,7 @@ jobs:
           echo "User Pool ID: ${{ needs.deploy-backend.outputs.user-pool-id }}"
           echo "=========================================="
 
-          if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-admin-backend.result }}" != "success" ] || [ "${{ needs.deploy-okra-backend.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ] || [ "${{ needs.deploy-admin-frontend.result }}" != "success" ]; then
+          if [ "${{ needs.deploy-backend.result }}" != "success" ] || [ "${{ needs.deploy-admin-backend.result }}" != "success" ] || [ "${{ needs.deploy-okra-backend.result }}" != "success" ] || [ "${{ needs.deploy-store-backend.result }}" != "success" ] || [ "${{ needs.deploy-notifications.result }}" != "success" ] || [ "${{ needs.deploy-frontend.result }}" != "success" ] || [ "${{ needs.deploy-admin-frontend.result }}" != "success" ] || [ "${{ needs.deploy-store-frontend.result }}" != "success" ]; then
             echo "Deployment failed"
             exit 1
           fi

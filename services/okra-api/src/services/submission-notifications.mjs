@@ -53,3 +53,33 @@ export async function publishSubmissionCreatedEvent(submission, correlationId) {
     }));
   }
 }
+
+export async function publishSubmissionEditSubmittedEvent(edit, correlationId) {
+  try {
+    await eventBridge.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'okra.submissions',
+          DetailType: 'submission.edit_submitted',
+          Detail: JSON.stringify({
+            submissionId: edit.submissionId,
+            editId: edit.editId,
+            status: edit.status,
+            createdAt: edit.createdAt,
+            idempotentReplay: Boolean(edit.idempotentReplay),
+            correlationId
+          })
+        }
+      ]
+    }));
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'warn',
+      message: 'Failed to publish okra submission edit event',
+      submissionId: edit?.submissionId ?? null,
+      editId: edit?.editId ?? null,
+      correlationId,
+      error: error instanceof Error ? error.message : String(error)
+    }));
+  }
+}
