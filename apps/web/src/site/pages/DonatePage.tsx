@@ -438,7 +438,10 @@ export function DonatePage({
               to add the donor&apos;s permanent bee to the garden.
             </p>
             {checkoutStatus.customerEmail ? (
-              <p>A receipt should be on its way to {checkoutStatus.customerEmail}.</p>
+              <p>
+                A tax-deductible receipt has been emailed to {checkoutStatus.customerEmail}.{' '}
+                {foundationOrganization.legalName}, EIN {foundationOrganization.ein}.
+              </p>
             ) : null}
             <div className="donate-status-card__actions">
               <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>Make another gift</Button>
@@ -610,13 +613,17 @@ export function DonatePage({
                       {foundationOrganization.legalName}, EIN {foundationOrganization.ein}
                     </p>
                     <p className="page-text">
+                      {foundationOrganization.legalName} is a 501(c)(3). Donations are
+                      tax-deductible to the extent permitted by law.
+                    </p>
+                    <p className="page-text">
                       {selectedMode === 'recurring'
                         ? 'Begins monthly support and includes your free t-shirt at signup.'
                         : 'Includes a permanent bee placed in the memorial garden in your honor, no matter the amount.'}
                     </p>
                     {selectedMode === 'recurring' ? (
                       <p className="page-text donate-form-card__cancel-note">
-                        Cancel anytime from{' '}
+                        Garden Club members can cancel at any time from{' '}
                         <a
                           href="/profile"
                           onClick={(event) => {
