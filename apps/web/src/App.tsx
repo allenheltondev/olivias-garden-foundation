@@ -17,6 +17,7 @@ import { SiteFooter, SiteHeader } from './site/chrome';
 import { webApiBase } from './site/routes';
 import { useRouteSeo } from './site/seo';
 import { LoginPage } from './site/pages/LoginPage';
+import { NotFoundPage } from './site/pages/NotFoundPage';
 import { readRedirectTargetFromSearch } from './auth/redirect';
 import {
   AboutPage,
@@ -391,7 +392,7 @@ function App() {
           />
           <Route path="/seeds" element={<Navigate to="/okra" replace />} />
           <Route path="/data-deletion" element={<Navigate to="/data" replace />} />
-          <Route path="*" element={<HomePage onNavigate={navigate} />} />
+          <Route path="*" element={<NotFoundPage onNavigate={navigate} />} />
         </Routes>
       </main>
       <SiteFooter currentPage={page} onNavigate={navigate} />

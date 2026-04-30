@@ -1,9 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { internalPaths } from './routes';
 
 function normalize(path: string) {
-  const trimmed = path.replace(/\/+$/, '') || '/';
-  return internalPaths.has(trimmed) ? trimmed : '/';
+  return path.replace(/\/+$/, '') || '/';
 }
 
 export function usePathname() {

@@ -37,6 +37,18 @@ test('homepage and donate page expose core metadata', async ({ page }) => {
   expect(await readMetaContent(page, 'meta[name="twitter:image:alt"]')).toBeTruthy();
 });
 
+test('unknown routes render a noindex 404 page inside the site shell', async ({ page }) => {
+  await gotoAndWait(page, '/totally-fake-route');
+
+  await expect(page.getByRole('banner')).toBeVisible();
+  await expect(page.getByRole('contentinfo')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: /page not found/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Go home' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the Okra map' })).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/totally-fake-route$/);
+  expect(await readMetaContent(page, 'meta[name="robots"]')).toContain('noindex');
+});
+
 test('main internal routes respond without broken links', async ({ page, request, baseURL }) => {
   expect(baseURL).toBeTruthy();
 
