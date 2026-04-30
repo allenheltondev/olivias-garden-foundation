@@ -82,6 +82,7 @@ export function SiteHeader({
       label: route.label,
       href: route.path,
       active: pathname === route.path,
+      accent: route.path === '/donate',
       onSelect: () => onNavigate(route.path),
     })),
     {
@@ -91,14 +92,6 @@ export function SiteHeader({
       active: authSession ? pathname === '/profile' : pathname === '/login',
       mobileOnly: true,
       onSelect: () => onNavigate(authSession ? '/profile' : '/login'),
-    },
-    {
-      id: 'donate',
-      label: 'Donate',
-      href: '/donate',
-      active: pathname === '/donate',
-      accent: true,
-      onSelect: () => onNavigate('/donate'),
     },
   ];
 
