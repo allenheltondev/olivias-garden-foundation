@@ -524,7 +524,7 @@ export function PrivacyPolicyPage() {
   return (
     <LegalDocument
       title="Privacy Policy"
-      effectiveDate="April 23, 2026"
+      effectiveDate="April 30, 2026"
       intro={(
         <p>
           This policy explains what information Olivia&apos;s Garden Foundation collects, how we
@@ -596,10 +596,15 @@ export function PrivacyPolicyPage() {
 
       <LegalSection id="cookies-and-analytics" number={6} title="Cookies and analytics">
         <p>
-          We and our service providers may use cookies, local storage, pixels, and similar
-          technologies to keep you signed in, remember preferences, understand site usage, measure
-          campaign effectiveness, and improve performance. You can control cookies through your
-          browser settings, though some site features may not function properly if disabled.
+          We use Google Analytics 4 to understand site usage in aggregate. Analytics runs in
+          cookieless mode by default through Google Consent Mode v2: storage of analytics and
+          advertising identifiers is denied unless you tell us otherwise, and Google receives only
+          anonymous, aggregated pings without writing analytics cookies to your device.
+        </p>
+        <p>
+          When you sign in to an account, we use storage that is strictly necessary to keep you
+          signed in and remember session preferences. You can further control storage through your
+          browser settings, though some signed-in features may not function properly if disabled.
         </p>
       </LegalSection>
 
