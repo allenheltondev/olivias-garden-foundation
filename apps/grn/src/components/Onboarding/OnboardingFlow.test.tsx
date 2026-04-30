@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { OnboardingFlow } from './OnboardingFlow';
 import * as useUserModule from '../../hooks/useUser';
 import * as useOnboardingModule from '../../hooks/useOnboarding';
@@ -62,7 +63,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       expect(screen.getByText(/How would you like to participate/i)).toBeInTheDocument();
       expect(screen.getByText(/I'm a Grower/i)).toBeInTheDocument();
@@ -90,7 +91,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       expect(screen.getByText(/I grow food and want to share my surplus/i)).toBeInTheDocument();
     });
@@ -116,7 +117,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       expect(screen.getByText(/I'm looking for locally grown food/i)).toBeInTheDocument();
     });
@@ -145,7 +146,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       const growerButton = screen.getByRole('button', { name: /I'm a Grower/i });
       await user.click(growerButton);
@@ -181,7 +182,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       const gathererButton = screen.getByRole('button', { name: /I'm a Gatherer/i });
       await user.click(gathererButton);
@@ -191,7 +192,7 @@ describe('OnboardingFlow', () => {
       await user.click(continueButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Where are you located/i)).toBeInTheDocument();
+        expect(screen.getByText(/Where are you looking/i)).toBeInTheDocument();
       });
     });
   });
@@ -218,7 +219,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       expect(screen.getByText(/Where are you growing/i)).toBeInTheDocument();
       expect(screen.queryByText(/How would you like to participate/i)).not.toBeInTheDocument();
@@ -245,9 +246,9 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
-      expect(screen.getByText(/Where are you located/i)).toBeInTheDocument();
+      expect(screen.getByText(/Where are you looking/i)).toBeInTheDocument();
       expect(screen.queryByText(/How would you like to participate/i)).not.toBeInTheDocument();
     });
   });
@@ -275,7 +276,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       // Navigate to grower wizard
       const growerButton = screen.getByRole('button', { name: /I'm a Grower/i });
@@ -319,7 +320,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      render(<OnboardingFlow />);
+      render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       // Navigate to gatherer wizard
       const gathererButton = screen.getByRole('button', { name: /I'm a Gatherer/i });
@@ -329,7 +330,7 @@ describe('OnboardingFlow', () => {
       await user.click(continueButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Where are you located/i)).toBeInTheDocument();
+        expect(screen.getByText(/Where are you looking/i)).toBeInTheDocument();
       });
 
       // Navigate back
@@ -356,7 +357,7 @@ describe('OnboardingFlow', () => {
         gathererProfile: null,
       };
 
-      const { rerender } = render(<OnboardingFlow />);
+      const { rerender } = render(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       mockUseUser.mockReturnValue({
         user: mockUser,
@@ -383,7 +384,7 @@ describe('OnboardingFlow', () => {
         clearError: vi.fn(),
       });
 
-      rerender(<OnboardingFlow />);
+      rerender(<MemoryRouter><OnboardingFlow /></MemoryRouter>);
 
       await waitFor(() => {
         expect(screen.getByText(/Where are you growing/i)).toBeInTheDocument();

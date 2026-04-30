@@ -30,15 +30,21 @@ describe('GathererWizard', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders address-based location step', () => {
+  it('renders address-based location prompt', () => {
     render(<GathererWizard onComplete={mockOnComplete} />);
 
-    expect(screen.getByText('Where are you located?')).toBeInTheDocument();
+    expect(screen.getByText('Where are you looking?')).toBeInTheDocument();
     expect(screen.getByLabelText(/Address/i)).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('37.7749')).not.toBeInTheDocument();
   });
 
-  it('fills address from geolocation when reverse geocoding succeeds', async () => {
+  it('does not prompt for geolocation on mount', () => {
+    render(<GathererWizard onComplete={mockOnComplete} />);
+
+    expect(mockGeolocation.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('fills address from geolocation when the user clicks the button', async () => {
     mockGeolocation.getCurrentPosition.mockImplementation((success: (v: { coords: { latitude: number; longitude: number; }; }) => void) => {
       success({
         coords: {
@@ -49,6 +55,8 @@ describe('GathererWizard', () => {
     });
 
     render(<GathererWizard onComplete={mockOnComplete} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /use my current location/i }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('456 Oak Ave, Springfield, IL')).toBeInTheDocument();
@@ -63,10 +71,7 @@ describe('GathererWizard', () => {
       target: { value: '456 Oak Ave, Springfield, IL' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /next/i }));
-
-    const submitButton = await screen.findByRole('button', { name: /complete setup/i });
-    fireEvent.click(submitButton);
+    fireEvent.click(screen.getByRole('button', { name: /complete setup/i }));
 
     await waitFor(() => {
       expect(mockOnComplete).toHaveBeenCalledWith(

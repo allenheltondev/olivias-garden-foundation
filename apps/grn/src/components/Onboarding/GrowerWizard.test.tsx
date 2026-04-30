@@ -39,7 +39,13 @@ describe('GrowerWizard', () => {
     expect(screen.queryByLabelText(/Longitude/i)).not.toBeInTheDocument();
   });
 
-  it('fills address from geolocation when reverse geocoding succeeds', async () => {
+  it('does not prompt for geolocation on mount', () => {
+    render(<GrowerWizard onComplete={mockOnComplete} />);
+
+    expect(mockGeolocation.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('fills address from geolocation when the user clicks the button', async () => {
     mockGeolocation.getCurrentPosition.mockImplementation((success: (v: { coords: { latitude: number; longitude: number; }; }) => void) => {
       success({
         coords: {
@@ -50,6 +56,8 @@ describe('GrowerWizard', () => {
     });
 
     render(<GrowerWizard onComplete={mockOnComplete} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /use my current location/i }));
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('123 Main St, Springfield, IL')).toBeInTheDocument();

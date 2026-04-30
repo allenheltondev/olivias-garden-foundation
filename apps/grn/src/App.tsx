@@ -1,9 +1,14 @@
-import { lazy, Suspense } from 'react'
-import { useAuth } from './hooks/useAuth'
-import { PlantLoader } from './components/branding/PlantLoader'
-import './App.css'
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import { PlantLoader } from './components/branding/PlantLoader';
+import { AppShell } from './shell/AppShell';
+import { DashboardPage } from './pages/DashboardPage';
+import { CropsPage } from './pages/CropsPage';
+import { ListingsPage } from './pages/ListingsPage';
+import { RequestsPage } from './pages/RequestsPage';
+import { RemindersPage } from './pages/RemindersPage';
 
-const ProfileView = lazy(() => import('./components/Profile/ProfileView').then((m) => ({ default: m.ProfileView })));
 const OnboardingGuard = lazy(() =>
   import('./components/Onboarding/OnboardingGuard').then((m) => ({ default: m.OnboardingGuard }))
 );
@@ -20,10 +25,10 @@ function redirectToLogin() {
 
 function FullPageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
+    <div className="grn-fullpage">
+      <div className="grn-page-status">
         <PlantLoader size="md" />
-        <p className="text-gray-600 mt-4">Loading...</p>
+        <p>Loading…</p>
       </div>
     </div>
   );
@@ -44,10 +49,19 @@ function App() {
   return (
     <Suspense fallback={<FullPageLoader />}>
       <OnboardingGuard>
-        <ProfileView />
+        <AppShell>
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/crops" element={<CropsPage />} />
+            <Route path="/listings" element={<ListingsPage />} />
+            <Route path="/requests" element={<RequestsPage />} />
+            <Route path="/reminders" element={<RemindersPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppShell>
       </OnboardingGuard>
     </Suspense>
   );
 }
 
-export default App
+export default App;

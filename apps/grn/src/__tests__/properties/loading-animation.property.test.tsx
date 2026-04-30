@@ -1,13 +1,21 @@
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import App from '../../App';
 import * as useAuthModule from '../../hooks/useAuth';
 import fc from 'fast-check';
 
-// Mock ProfileView to avoid API calls
-vi.mock('../../components/Profile/ProfileView', () => ({
-  ProfileView: () => <div>Profile View</div>,
+// Stub the shell + page tree to avoid API calls when authenticated paths render.
+vi.mock('../../shell/AppShell', () => ({
+  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock('../../pages/DashboardPage', () => ({
+  DashboardPage: () => <div>Dashboard</div>,
+}));
+vi.mock('../../pages/CropsPage', () => ({ CropsPage: () => <div /> }));
+vi.mock('../../pages/ListingsPage', () => ({ ListingsPage: () => <div /> }));
+vi.mock('../../pages/RequestsPage', () => ({ RequestsPage: () => <div /> }));
+vi.mock('../../pages/RemindersPage', () => ({ RemindersPage: () => <div /> }));
 
 /**
  * Property 3: Loading Animation Consistency
@@ -66,7 +74,11 @@ describe('Property 3: Loading Animation Consistency', () => {
             error: null,
           });
 
-          const { container, unmount } = render(<App />);
+          const { container, unmount } = render(
+            <MemoryRouter>
+              <App />
+            </MemoryRouter>
+          );
 
           try {
             if (isLoading) {
@@ -100,7 +112,11 @@ describe('Property 3: Loading Animation Consistency', () => {
       error: null,
     });
 
-    const { container } = render(<App />);
+    const { container } = render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
 
     // Check for PlantLoader
     const plantLoader = container.querySelector('.plant-loader') ||
@@ -108,6 +124,6 @@ describe('Property 3: Loading Animation Consistency', () => {
     expect(plantLoader).toBeTruthy();
 
     // Check for loading text
-    expect(container.textContent).toContain('Loading...');
+    expect(container.textContent).toContain('Loading');
   });
 });
