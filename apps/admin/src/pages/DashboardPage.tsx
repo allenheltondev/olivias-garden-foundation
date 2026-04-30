@@ -19,6 +19,7 @@ const TYPE_FILTERS: Array<{ id: string; label: string; detailType: string | null
   { id: 'okra', label: 'Okra submissions', detailType: 'submission.created' },
   { id: 'seed-requests', label: 'Seed requests', detailType: 'seed-request.created' },
   { id: 'inquiries', label: 'Good Roots inquiries', detailType: 'org-inquiry.received' },
+  { id: 'contact', label: 'Contact messages', detailType: 'general-inquiry.received' },
 ];
 
 const TYPE_TONE: Record<string, string> = {
@@ -27,6 +28,7 @@ const TYPE_TONE: Record<string, string> = {
   'submission.created': 'admin-activity__chip--okra',
   'seed-request.created': 'admin-activity__chip--seed',
   'org-inquiry.received': 'admin-activity__chip--inquiry',
+  'general-inquiry.received': 'admin-activity__chip--inquiry',
 };
 
 function formatCount(value: number | null | undefined): string {

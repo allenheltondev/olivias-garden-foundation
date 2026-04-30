@@ -154,6 +154,7 @@ Resources:
                 - garden-club.canceled
                 - user.signed-up
                 - org-inquiry.received
+                - general-inquiry.received
 
 Outputs:
   ConsumerDeadLetterQueueUrl:

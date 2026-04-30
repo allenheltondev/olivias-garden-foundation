@@ -1,0 +1,33 @@
+$kind: http-request
+name: Submit General Contact Inquiry
+description: |-
+  Ensure the public contact form can POST a general inquiry without authentication.
+method: POST
+url: '{{webBaseUrl}}/contact'
+order: 900
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: X-Correlation-Id
+    value: postman-contact-general
+body:
+  type: json
+  content: |-
+    {
+      "kind": "general_inquiry",
+      "contactName": "Casey Green",
+      "email": "casey@example.com",
+      "message": "I would like to volunteer.",
+      "referral": "Postman"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("POST /contact accepts a general inquiry", function () {
+          pm.expect(pm.response.code).to.equal(204);
+      });
+
+      pm.test("Response includes correlation id header", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });

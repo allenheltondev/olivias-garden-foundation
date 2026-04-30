@@ -135,6 +135,20 @@ describe('renderEvent', () => {
     expect(result.slack.text).not.toContain('Location:');
   });
 
+  it('renders general contact inquiries with message details', () => {
+    const result = renderEvent('ogf.contact', 'general-inquiry.received', {
+      contactName: 'Casey Green',
+      email: 'casey@example.com',
+      message: 'I would like to volunteer.',
+      referral: 'Instagram'
+    });
+
+    expect(result.summary).toBe('Website contact from Casey Green');
+    expect(result.slack.text).toContain('Contact: Casey Green <casey@example.com>');
+    expect(result.slack.text).toContain('Referral: Instagram');
+    expect(result.slack.text).toContain('I would like to volunteer.');
+  });
+
   it('renders Garden Club cancellation_scheduled with formatted end date', () => {
     const result = renderEvent('ogf.donations', 'garden-club.cancellation_scheduled', {
       donorEmail: 'donor@example.com',

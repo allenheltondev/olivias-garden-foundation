@@ -62,6 +62,7 @@ export function mapApiError(error, correlationId) {
     || message.includes('Unsupported contact kind')
     || message.includes('email must be a valid email address')
     || message.includes('contactName is required')
+    || message.includes('message is required')
   ) {
     return errorResponse(400, message, correlationId);
   }

@@ -1,0 +1,37 @@
+$kind: http-request
+name: Submit General Contact Inquiry - Invalid Email
+description: |-
+  Ensure POST /contact rejects malformed reply-to email addresses for general inquiries.
+method: POST
+url: '{{webBaseUrl}}/contact'
+order: 901
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: X-Correlation-Id
+    value: postman-contact-general-invalid-email
+body:
+  type: json
+  content: |-
+    {
+      "kind": "general_inquiry",
+      "contactName": "Casey Green",
+      "email": "not-an-email",
+      "message": "I would like to volunteer."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("POST /contact rejects invalid email", function () {
+          pm.expect(pm.response.code).to.equal(400);
+      });
+
+      pm.test("Response body surfaces the email validation error", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.be.a("string").and.not.empty;
+      });
+
+      pm.test("Response includes correlation id header", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });
