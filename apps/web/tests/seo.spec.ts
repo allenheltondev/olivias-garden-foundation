@@ -14,6 +14,21 @@ test('homepage and donate page expose core metadata', async ({ page }) => {
   expect(await readMetaContent(page, 'meta[property="og:image:alt"]')).toBeTruthy();
   expect(await readMetaContent(page, 'meta[property="og:url"]')).toBeTruthy();
 
+  const organizationJsonLd = await page
+    .locator('script[type="application/ld+json"][data-seo-id="organization"]')
+    .textContent();
+  expect(organizationJsonLd).toBeTruthy();
+  const organization = JSON.parse(organizationJsonLd ?? '{}') as {
+    '@type'?: string;
+    legalName?: string;
+    taxID?: string;
+    email?: string;
+  };
+  expect(organization['@type']).toBe('NonprofitOrganization');
+  expect(organization.legalName).toBe("Olivia's Garden Foundation");
+  expect(organization.taxID).toBe('33-3101032');
+  expect(organization.email).toBe('allen@oliviasgarden.org');
+
   await gotoAndWait(page, '/donate');
   await expect(page).toHaveTitle(/Support Olivia's Garden/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/donate$/);

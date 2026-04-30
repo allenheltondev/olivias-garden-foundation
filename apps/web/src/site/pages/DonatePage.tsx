@@ -3,6 +3,7 @@ import { loadStripe, type StripeEmbeddedCheckout } from '@stripe/stripe-js';
 import { Button, FormFeedback } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { CtaButton, PageHero } from '../chrome';
+import { foundationOrganization } from '../organization';
 import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
 import { stripePublishableKey, webApiBase } from '../routes';
 
@@ -604,6 +605,9 @@ export function DonatePage({
                     <p className="donate-form-card__summary-eyebrow">Gift summary</p>
                     <p className="donate-form-card__summary">
                       {selectedMode === 'recurring' ? 'Garden Club' : 'One-time donation'}: ${(effectiveAmount / 100).toFixed(2)}
+                    </p>
+                    <p className="donate-form-card__legal-note">
+                      {foundationOrganization.legalName}, EIN {foundationOrganization.ein}
                     </p>
                     <p className="page-text">
                       {selectedMode === 'recurring'

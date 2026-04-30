@@ -16,6 +16,7 @@ import {
   legalFooterRoutes,
   navRoutes,
 } from './routes';
+import { foundationOrganization } from './organization';
 
 export function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
   try {
@@ -31,8 +32,6 @@ export function buildCrossAppUrl(targetUrl: string, session: AuthSession) {
     return targetUrl;
   }
 }
-
-const foundationLogo = '/images/icons/logo.svg';
 
 export function getUserInitials(session: AuthSession | null) {
   if (!session) {
@@ -97,9 +96,9 @@ export function SiteHeader({
 
   return (
     <SharedSiteHeader
-      brandLogoSrc={foundationLogo}
+      brandLogoSrc={foundationOrganization.logoImage}
       brandLogoAlt=""
-      brandEyebrow="Olivia's Garden Foundation"
+      brandEyebrow={foundationOrganization.name}
       brandTitle="Homesteading, growing, and community"
       brandHref="/"
       onBrandClick={() => onNavigate('/')}
@@ -172,20 +171,20 @@ export function SiteFooter({
 
   return (
     <SharedSiteFooter
-      meta={`${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`}
+      meta={`${foundationOrganization.name} is a 501(c)(3) nonprofit organization, EIN ${foundationOrganization.ein}. Donations are tax-deductible. ©2026 ${foundationOrganization.name}. All rights reserved.`}
       links={footerLinks}
       legalLinks={legalFooterLinks}
       socialLinks={[
         {
           id: 'instagram',
           href: instagramUrl,
-          label: "Follow Olivia's Garden Foundation on Instagram",
+          label: `Follow ${foundationOrganization.name} on Instagram`,
           icon: 'instagram',
         },
         {
           id: 'facebook',
           href: facebookUrl,
-          label: "Follow Olivia's Garden Foundation on Facebook",
+          label: `Follow ${foundationOrganization.name} on Facebook`,
           icon: 'facebook',
         },
       ]}

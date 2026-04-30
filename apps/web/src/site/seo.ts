@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
+import { foundationOrganization } from './organization';
 import type { AppRoute } from './routes';
 import { facebookUrl, instagramUrl, siteUrl, socialShareImage } from './routes';
 
 const socialShareImageAlt = "Olivia's Garden Foundation social sharing image.";
-const logoImage = '/images/icons/logo.svg';
 
 type GtagCommand = (
   command: 'event' | 'config' | 'js',
@@ -80,7 +80,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     ensureMeta('meta[name="description"]', { name: 'description' }, route.description);
     ensureMeta('meta[name="robots"]', { name: 'robots' }, robots);
     ensureMeta('meta[property="og:type"]', { property: 'og:type' }, 'website');
-    ensureMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, "Olivia's Garden Foundation");
+    ensureMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, foundationOrganization.name);
     ensureMeta('meta[property="og:title"]', { property: 'og:title' }, pageTitle);
     ensureMeta('meta[property="og:description"]', { property: 'og:description' }, route.description);
     ensureMeta('meta[property="og:url"]', { property: 'og:url' }, pageUrl);
@@ -96,9 +96,12 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     ensureStructuredData('organization', {
       '@context': 'https://schema.org',
       '@type': 'NonprofitOrganization',
-      name: "Olivia's Garden Foundation",
+      name: foundationOrganization.name,
+      legalName: foundationOrganization.legalName,
+      taxID: foundationOrganization.ein,
+      email: foundationOrganization.contactEmail,
       url: siteUrl,
-      logo: absoluteUrl(logoImage),
+      logo: absoluteUrl(foundationOrganization.logoImage),
       sameAs: [instagramUrl, facebookUrl],
     });
 
@@ -110,7 +113,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
       url: pageUrl,
       isPartOf: {
         '@type': 'WebSite',
-        name: "Olivia's Garden Foundation",
+        name: foundationOrganization.name,
         url: siteUrl,
       },
     });
