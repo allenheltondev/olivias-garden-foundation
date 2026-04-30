@@ -251,6 +251,7 @@ Resources:
                 - checkout.session.completed
                 - checkout.session.expired
                 - customer.subscription.deleted
+                - customer.subscription.updated
                 - invoice.paid
                 - invoice.payment_failed
 

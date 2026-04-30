@@ -134,6 +134,35 @@ describe('renderEvent', () => {
     expect(result.summary).toContain('(no organization name)');
     expect(result.slack.text).not.toContain('Location:');
   });
+
+  it('renders Garden Club cancellation_scheduled with formatted end date', () => {
+    const result = renderEvent('ogf.donations', 'garden-club.cancellation_scheduled', {
+      donorEmail: 'donor@example.com',
+      stripeSubscriptionId: 'sub_123',
+      cancelAt: '2027-05-15T00:00:00.000Z'
+    });
+    expect(result.summary).toBe('Garden Club cancellation scheduled for donor@example.com (ends May 14, 2027)');
+    expect(result.slack.text).toContain('Donor: donor@example.com');
+    expect(result.slack.text).toContain('Ends on: May 14, 2027');
+  });
+
+  it('renders Garden Club cancellation_reverted', () => {
+    const result = renderEvent('ogf.donations', 'garden-club.cancellation_reverted', {
+      donorEmail: 'donor@example.com',
+      stripeSubscriptionId: 'sub_123'
+    });
+    expect(result.summary).toBe('Garden Club cancellation reverted for donor@example.com');
+    expect(result.slack.text).toContain('Subscription: sub_123');
+  });
+
+  it('renders Garden Club canceled', () => {
+    const result = renderEvent('ogf.donations', 'garden-club.canceled', {
+      donorEmail: 'donor@example.com',
+      stripeSubscriptionId: 'sub_123'
+    });
+    expect(result.summary).toBe('Garden Club ended for donor@example.com');
+    expect(result.slack.text).toContain('Garden Club ended');
+  });
 });
 
 describe('isContactEvent', () => {

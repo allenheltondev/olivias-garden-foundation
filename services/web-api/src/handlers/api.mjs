@@ -3,8 +3,10 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { validate } from '@aws-lambda-powertools/validation';
 import { SchemaValidationError } from '@aws-lambda-powertools/validation/errors';
 import {
+  cancelGardenClubSubscription,
   createDonationCheckoutSession,
   donationCheckoutSessionSchema,
+  resumeGardenClubSubscription,
   retrieveCheckoutSessionStatus
 } from '../services/donations.mjs';
 import {
@@ -230,6 +232,42 @@ app.post('/profile/avatar/complete', async ({ event }) => {
       body: result
     };
   } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/profile/garden-club/cancel', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await cancelGardenClubSubscription(event, correlationId);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
+    };
+  } catch (error) {
+    logger.warn('Garden Club cancel request failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/profile/garden-club/resume', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await resumeGardenClubSubscription(event, correlationId);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
+    };
+  } catch (error) {
+    logger.warn('Garden Club resume request failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return mapApiError(error, correlationId);
   }
 });

@@ -92,6 +92,7 @@ function mapProfileRow(row, authContext) {
       websiteUrl: null,
       tier: null,
       gardenClubStatus: 'none',
+      gardenClubCancelAt: null,
       donationTotalCents: 0,
       donationCount: 0,
       lastDonatedAt: null,
@@ -119,6 +120,7 @@ function mapProfileRow(row, authContext) {
     websiteUrl: row.website_url,
     tier: row.tier,
     gardenClubStatus: row.garden_club_status ?? 'none',
+    gardenClubCancelAt: row.garden_club_cancel_at,
     donationTotalCents: Number(row.donation_total_cents ?? 0),
     donationCount: Number(row.donation_count ?? 0),
     lastDonatedAt: row.last_donated_at,
@@ -131,7 +133,7 @@ function mapProfileRow(row, authContext) {
 const PROFILE_SELECT_COLUMNS = `
   id::text as id, email::text as email, display_name, tier,
   first_name, last_name, bio, city, region, country, timezone,
-  website_url, garden_club_status,
+  website_url, garden_club_status, garden_club_cancel_at,
   avatar_s3_key, avatar_thumbnail_s3_key, avatar_status, avatar_processing_error,
   donation_total_cents, donation_count, last_donated_at,
   created_at, updated_at, profile_updated_at

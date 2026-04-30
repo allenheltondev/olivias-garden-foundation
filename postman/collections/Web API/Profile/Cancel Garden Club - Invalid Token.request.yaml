@@ -1,0 +1,26 @@
+$kind: http-request
+name: Cancel Garden Club - Invalid Token
+description: |-
+  Ensure POST /profile/garden-club/cancel rejects requests bearing a clearly-
+  invalid bearer token. The Cognito verifier should fail closed before any
+  Stripe call is made.
+method: POST
+url: '{{webBaseUrl}}/profile/garden-club/cancel'
+order: 1201
+headers:
+  - key: Authorization
+    value: 'Bearer not-a-real-token'
+  - key: X-Correlation-Id
+    value: postman-cancel-gc-invalid
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Invalid tokens are rejected with 400 or 401", function () {
+          pm.expect([400, 401]).to.include(pm.response.code);
+      });
+
+      pm.test("Response body surfaces an error message", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.be.a("string").and.not.empty;
+      });
