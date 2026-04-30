@@ -143,6 +143,15 @@ export const routes: AppRoute[] = [
   },
 ];
 
+export const notFoundRoute: AppRoute = {
+  path: '*',
+  label: 'Page not found',
+  title: 'Page not found',
+  description: "This page could not be found on Olivia's Garden Foundation.",
+  seoImage: socialShareImage,
+  allowIndex: false,
+};
+
 const primaryPageOrder = new Map([
   ['/', 0],
   ['/okra', 1],
@@ -158,7 +167,6 @@ export const navRoutes = routes.filter((route) => route.showInNav).sort(byPrimar
 export const footerRoutes = routes.filter((route) => route.showInFooter).sort(byPrimaryPageOrder);
 export const legalFooterRoutes = routes.filter((route) => route.showInLegalFooter);
 export const prerenderRoutes = routes.filter((route) => route.prerender);
-export const internalPaths = new Set(routes.map((route) => route.path));
 
 export const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://grn.oliviasgarden.org';
 export const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.oliviasgarden.org';
@@ -169,5 +177,5 @@ export const webApiBase = (import.meta.env.VITE_WEB_API_BASE ?? '/api/web').repl
 export const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim() ?? '';
 
 export function getRouteByPath(pathname: string) {
-  return routes.find((route) => route.path === pathname) ?? routes[0];
+  return routes.find((route) => route.path === pathname) ?? notFoundRoute;
 }
