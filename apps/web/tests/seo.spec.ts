@@ -74,7 +74,7 @@ test('accessibility smoke checks keep labels and headings in place', async ({ pa
   await expect(page.getByLabel('Name')).toBeVisible();
   await expect(page.getByLabel('Email')).toBeVisible();
   await expect(page.getByLabel('Message')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open email to send' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
 
   const buttonNames = await page.getByRole('button').evaluateAll((buttons) =>
     buttons

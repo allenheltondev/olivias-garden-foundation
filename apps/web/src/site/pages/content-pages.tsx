@@ -1486,9 +1486,13 @@ export function ContactPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [referral, setReferral] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const canSend = message.trim().length > 0;
+  const canSend =
+    name.trim().length > 0 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    message.trim().length > 0;
 
   const clearFeedback = () => {
     if (feedback) {
@@ -1496,35 +1500,52 @@ export function ContactPage() {
     }
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSend) {
+    if (!canSend || submitting) {
       setFeedback({
         type: 'error',
-        message: 'Add a message before opening your email app.',
+        message: 'Add your name, a valid email, and a message before sending.',
       });
       return;
     }
 
-    const subject = name.trim()
-      ? `Message from ${name.trim()} via oliviasgarden.org`
-      : 'Message from oliviasgarden.org';
+    setSubmitting(true);
+    setFeedback(null);
 
-    const bodyLines = [
-      message.trim(),
-      '',
-      '—',
-      name.trim() ? `From: ${name.trim()}` : null,
-      email.trim() ? `Reply to: ${email.trim()}` : null,
-      referral.trim() ? `Heard about us via: ${referral.trim()}` : null,
-    ].filter(Boolean);
+    try {
+      const response = await fetch(`${webApiBase}/contact`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'general_inquiry',
+          contactName: name.trim(),
+          email: email.trim(),
+          message: message.trim(),
+          referral: referral.trim() || undefined,
+        }),
+      });
 
-    const href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
-    setFeedback({
-      type: 'success',
-      message: `Your email app should open with this note pre-filled. If it does not, email ${CONTACT_EMAIL} directly.`,
-    });
-    window.location.href = href;
+      if (!response.ok) {
+        throw new Error(`Submission failed (${response.status})`);
+      }
+
+      setFeedback({
+        type: 'success',
+        message: "Thanks. Your message was sent, and we'll reply as soon as we can.",
+      });
+      setName('');
+      setEmail('');
+      setMessage('');
+      setReferral('');
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : `We couldn't send your message. Please email ${CONTACT_EMAIL} directly.`,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -1570,8 +1591,8 @@ export function ContactPage() {
         <Card title="Send a message" className="contact-card">
           <p className="contact-card__eyebrow">Prefer a form</p>
           <p className="page-text">
-            This opens your email app with your message pre-filled so you can send it from your
-            own inbox — easier for us to reply to you directly.
+            Send a note here and it will go straight to our inbox. Or email us directly at{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
           </p>
           <form className="contact-form" onSubmit={handleSubmit} noValidate>
             <Input
@@ -1582,6 +1603,7 @@ export function ContactPage() {
                 clearFeedback();
                 setName(event.target.value);
               }}
+              required
               autoComplete="name"
             />
             <Input
@@ -1593,6 +1615,7 @@ export function ContactPage() {
                 clearFeedback();
                 setEmail(event.target.value);
               }}
+              required
               autoComplete="email"
             />
             <Textarea
@@ -1615,13 +1638,13 @@ export function ContactPage() {
                 setReferral(event.target.value);
               }}
             />
-            <button
+            <Button
               type="submit"
-              className="site-cta og-button og-button--primary og-button--md"
               disabled={!canSend}
+              loading={submitting}
             >
-              Open email to send
-            </button>
+              {submitting ? 'Sending...' : 'Send message'}
+            </Button>
             {feedback ? (
               <FormFeedback tone={feedback.type}>{feedback.message}</FormFeedback>
             ) : null}

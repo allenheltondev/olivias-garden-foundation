@@ -219,6 +219,21 @@ function renderOrgInquiryReceived(detail) {
   };
 }
 
+function renderGeneralInquiryReceived(detail) {
+  const contact = detail.contactName ?? 'unknown';
+  const lines = [
+    ':email: New website contact message',
+    `Contact: ${contact} <${detail.email ?? 'unknown'}>`
+  ];
+  if (detail.referral) lines.push(`Referral: ${detail.referral}`);
+  if (detail.message) lines.push('', detail.message);
+
+  return {
+    summary: `Website contact from ${contact}`,
+    slack: { text: lines.join('\n') }
+  };
+}
+
 const renderers = new Map([
   ['okra.submissions|submission.created', renderOkraSubmissionCreated],
   ['okra.seed-requests|seed-request.created', renderSeedRequestCreated],
@@ -227,7 +242,8 @@ const renderers = new Map([
   ['ogf.donations|garden-club.cancellation_reverted', renderGardenClubCancellationReverted],
   ['ogf.donations|garden-club.canceled', renderGardenClubCanceled],
   ['ogf.signups|user.signed-up', renderUserSignedUp],
-  ['ogf.contact|org-inquiry.received', renderOrgInquiryReceived]
+  ['ogf.contact|org-inquiry.received', renderOrgInquiryReceived],
+  ['ogf.contact|general-inquiry.received', renderGeneralInquiryReceived]
 ]);
 
 export function renderEvent(source, detailType, detail) {

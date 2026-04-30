@@ -7,7 +7,7 @@ export const contactInquirySchema = {
   required: ['kind', 'contactName', 'email'],
   additionalProperties: false,
   properties: {
-    kind: { type: 'string', enum: ['organization_inquiry'] },
+    kind: { type: 'string', enum: ['organization_inquiry', 'general_inquiry'] },
     orgName: { type: 'string', maxLength: 200 },
     contactName: { type: 'string', minLength: 1, maxLength: 200 },
     email: { type: 'string', minLength: 3, maxLength: 320 },
@@ -15,6 +15,7 @@ export const contactInquirySchema = {
     orgType: { type: 'string', maxLength: 50 },
     city: { type: 'string', maxLength: 120 },
     state: { type: 'string', maxLength: 120 },
+    referral: { type: 'string', maxLength: 200 },
     message: { type: 'string', maxLength: 4000 }
   }
 };
@@ -65,8 +66,44 @@ async function publishOrgInquiryEvent(payload, correlationId, eventBridgeClient)
   }
 }
 
+async function publishGeneralInquiryEvent(payload, correlationId, eventBridgeClient) {
+  try {
+    const result = await eventBridgeClient.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'ogf.contact',
+          DetailType: 'general-inquiry.received',
+          Detail: JSON.stringify({
+            contactName: sanitize(payload.contactName),
+            email: sanitize(payload.email),
+            message: sanitize(payload.message) || null,
+            referral: sanitize(payload.referral) || null,
+            correlationId
+          })
+        }
+      ]
+    }));
+
+    if ((result?.FailedEntryCount ?? 0) > 0) {
+      console.error(JSON.stringify({
+        level: 'error',
+        correlationId,
+        message: 'Contact EventBridge publish reported failed entries',
+        failedEntryCount: result.FailedEntryCount
+      }));
+    }
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'error',
+      correlationId,
+      message: 'Contact EventBridge publish failed',
+      error: error instanceof Error ? error.message : String(error)
+    }));
+  }
+}
+
 export async function submitContactInquiry(payload, correlationId, { eventBridgeClient = eventBridge } = {}) {
-  if (payload?.kind !== 'organization_inquiry') {
+  if (!['organization_inquiry', 'general_inquiry'].includes(payload?.kind)) {
     throw new Error('Unsupported contact kind');
   }
 
@@ -78,5 +115,14 @@ export async function submitContactInquiry(payload, correlationId, { eventBridge
     throw new Error('contactName is required');
   }
 
-  await publishOrgInquiryEvent(payload, correlationId, eventBridgeClient);
+  if (payload.kind === 'general_inquiry' && !sanitize(payload.message)) {
+    throw new Error('message is required');
+  }
+
+  if (payload.kind === 'organization_inquiry') {
+    await publishOrgInquiryEvent(payload, correlationId, eventBridgeClient);
+    return;
+  }
+
+  await publishGeneralInquiryEvent(payload, correlationId, eventBridgeClient);
 }

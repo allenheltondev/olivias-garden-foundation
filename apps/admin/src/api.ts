@@ -406,7 +406,8 @@ export type ActivityEventType =
   | 'seed-request.created'
   | 'donation.completed'
   | 'user.signed-up'
-  | 'org-inquiry.received';
+  | 'org-inquiry.received'
+  | 'general-inquiry.received';
 
 export interface ActivityEvent {
   eventId: string;

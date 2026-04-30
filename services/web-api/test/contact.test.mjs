@@ -71,6 +71,28 @@ describe('POST /contact', () => {
     expect(detail.city).toBe('McKinney');
   });
 
+  it('accepts a valid general inquiry and publishes a contact event', async () => {
+    const response = await handler(createEvent({
+      kind: 'general_inquiry',
+      contactName: 'Casey Green',
+      email: 'casey@example.com',
+      message: 'I would like to volunteer.',
+      referral: 'Instagram'
+    }));
+
+    expect(response.statusCode).toBe(204);
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    const command = eventBridgeSendMock.mock.calls[0][0];
+    const entry = command.input.Entries[0];
+    expect(entry.Source).toBe('ogf.contact');
+    expect(entry.DetailType).toBe('general-inquiry.received');
+    const detail = JSON.parse(entry.Detail);
+    expect(detail.contactName).toBe('Casey Green');
+    expect(detail.email).toBe('casey@example.com');
+    expect(detail.message).toBe('I would like to volunteer.');
+    expect(detail.referral).toBe('Instagram');
+  });
+
   it('returns 422 when required fields are missing', async () => {
     const response = await handler(createEvent({
       kind: 'organization_inquiry',
@@ -86,6 +108,17 @@ describe('POST /contact', () => {
       kind: 'organization_inquiry',
       contactName: 'Jordan Rivers',
       email: 'not-an-email'
+    }));
+
+    expect(response.statusCode).toBe(400);
+    expect(eventBridgeSendMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when a general inquiry is missing a message', async () => {
+    const response = await handler(createEvent({
+      kind: 'general_inquiry',
+      contactName: 'Casey Green',
+      email: 'casey@example.com'
     }));
 
     expect(response.statusCode).toBe(400);
