@@ -102,6 +102,9 @@ jobs:
       - name: Run type check
         run: npm --workspace @olivias/web run typecheck
 
+      - name: Check prerender drift (routes.ts vs seo-data.mjs)
+        run: npm --workspace @olivias/web run check:prerender-drift
+
   web-build:
     name: Foundation Web Build
     runs-on: ubuntu-latest
