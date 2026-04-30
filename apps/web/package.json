@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && npm run prerender:head",
+    "build": "tsc -b && vite build && npm run prerender:head && npm run sitemap:generate",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "images:generate": "node ./scripts/generate-responsive-images.mjs",
-    "prerender:head": "node ./scripts/prerender-head.mjs"
+    "prerender:head": "node ./scripts/prerender-head.mjs",
+    "sitemap:generate": "node ./scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@olivias/ui": "file:../../packages/ui",
