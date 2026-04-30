@@ -1,102 +1,45 @@
-// Head-only prerender: walks a list of public routes, clones dist/index.html,
-// and rewrites the <head> tags so that crawlers and unfurl bots see per-route
-// titles, descriptions, OG images, canonical URLs, and JSON-LD metadata.
+// Per-route prerender. Walks the SEO route list and writes a static
+// dist/<path>/index.html for each entry with route-specific <head> tags
+// (title, description, canonical, OG/Twitter, JSON-LD) and a <noscript>
+// body fallback containing the page's key copy.
 //
-// This does NOT pre-render the React tree — modern text crawlers (Google, Bing,
-// Claude, ChatGPT) run JS and see the hydrated body; unfurl scrapers
-// (Facebook, Twitter, Slack, LinkedIn, Discord) only read <head>, which is
-// what this script populates.
+// The <noscript> block is the important new piece: the site is a React
+// SPA, so the body served on first byte is just <div id="root"></div>.
+// Crawlers that don't execute JS (LLM training pipelines, basic indexers,
+// curl/WebFetch-style retrievals, simple unfurl bots) used to see nothing
+// on the page. They now read the noscript content as plain text in the
+// document.
+//
+// JS-enabled clients (browsers, Googlebot's renderer, Claude/GPT renderers)
+// never display the noscript content; they hydrate React on top of #root
+// the same as before.
 //
 // Output layout:
-//   dist/index.html           -> home page head tags
-//   dist/about/index.html     -> About page head tags
+//   dist/index.html           -> home page
+//   dist/about/index.html     -> About page
 //   dist/get-involved/index.html
 //   ...
 //
-// For this to actually serve per-route files on CloudFront, the distribution
-// needs a viewer-request function (or equivalent) that rewrites `/about` to
-// `/about/index.html`. See infra/foundation-web/template.yaml.
+// CloudFront / static-host routing must rewrite `/about` -> `/about/index.html`
+// for these per-route files to be served. See infra/foundation-web/template.yaml.
 //
-// ⚠ Route metadata below is duplicated from src/site/routes.ts. If you add a
-//    route with `prerender: true` there, mirror it here.
+// Route data (head + body fallback + sitemap weights) is the single source of
+// truth in scripts/seo-data.mjs. Both this script and generate-sitemap.mjs
+// import from it.
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  defaultImage,
+  defaultImageAlt,
+  organizationJsonLd,
+  prerenderRoutes,
+  siteUrl,
+} from './seo-data.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = join(__dirname, '..', 'dist');
-const siteUrl = (process.env.VITE_SITE_URL ?? 'https://oliviasgarden.org').replace(/\/+$/, '');
-const instagramUrl = 'https://instagram.com/oliviasgardentx';
-const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
-const defaultImage = '/images/home/og-image.png';
-const defaultImageAlt = "Olivia's Garden Foundation social sharing image.";
-const logoImage = '/images/icons/logo.svg';
-
-/** @typedef {{ path: string, title: string, description: string, seoImage?: string, allowIndex?: boolean }} PrerenderRoute */
-/** @type {PrerenderRoute[]} */
-const prerenderRoutes = [
-  {
-    path: '/',
-    title: "Olivia's Garden Foundation",
-    description: "Olivia's Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/about',
-    title: "About Olivia's Garden",
-    description: "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/get-involved',
-    title: 'Get involved',
-    description: "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/seeds',
-    title: 'Request free okra seeds',
-    description: "Request free okra seeds from Olivia's Garden Foundation and join a growing food project rooted in Olivia's seed line.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/impact',
-    title: "What we're building",
-    description: "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/contact',
-    title: 'Get in touch',
-    description: "Contact Olivia's Garden Foundation for volunteering, seeds, donations, partnerships, and general questions.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/good-roots',
-    title: 'Good Roots Network',
-    description: 'A community platform that connects home growers with neighbors and organizations who need fresh food. Plan your garden, see local food gaps, and share what you have extra.',
-    seoImage: defaultImage,
-  },
-  {
-    path: '/privacy',
-    title: 'Privacy Policy',
-    description: "Read how Olivia's Garden Foundation collects, uses, stores, and protects information across the foundation website, donations, and account features.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/terms',
-    title: 'Terms of Service',
-    description: "Review the terms that govern use of Olivia's Garden Foundation websites, accounts, donations, community tools, and submitted content.",
-    seoImage: defaultImage,
-  },
-  {
-    path: '/data',
-    title: 'Data and account deletion',
-    description: "How to delete your Olivia's Garden Foundation account and the personal data associated with it, including data from Facebook or Google sign-in.",
-    seoImage: defaultImage,
-  },
-];
 
 function buildPageTitle(route) {
   return route.path === '/'
@@ -119,19 +62,13 @@ function escapeAttr(value) {
 function buildHeadFragment(route) {
   const pageTitle = buildPageTitle(route);
   const pageUrl = absoluteUrl(route.path === '/' ? '/' : route.path);
+  const canonicalUrl = route.canonicalPath ? absoluteUrl(route.canonicalPath) : pageUrl;
   const pageImage = absoluteUrl(route.seoImage ?? defaultImage);
   const robots = route.allowIndex === false
     ? 'noindex, nofollow, noarchive'
     : 'index, follow, max-image-preview:large';
 
-  const jsonLdOrg = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'NonprofitOrganization',
-    name: "Olivia's Garden Foundation",
-    url: siteUrl,
-    logo: absoluteUrl(logoImage),
-    sameAs: [instagramUrl, facebookUrl],
-  });
+  const jsonLdOrg = JSON.stringify(organizationJsonLd);
 
   const jsonLdPage = JSON.stringify({
     '@context': 'https://schema.org',
@@ -144,11 +81,13 @@ function buildHeadFragment(route) {
       name: "Olivia's Garden Foundation",
       url: siteUrl,
     },
+    about: { '@id': `${siteUrl}/#organization` },
   });
 
   return {
     pageTitle,
     pageUrl,
+    canonicalUrl,
     pageImage,
     robots,
     jsonLdOrg,
@@ -157,8 +96,8 @@ function buildHeadFragment(route) {
 }
 
 function applyHead(templateHtml, route) {
-  const { pageTitle, pageUrl, pageImage, robots, jsonLdOrg, jsonLdPage } = buildHeadFragment(route);
-  const desc = escapeAttr(route.description);
+  const { pageTitle, pageUrl, canonicalUrl, pageImage, robots, jsonLdOrg, jsonLdPage } = buildHeadFragment(route);
+  const desc = route.description;
   const title = escapeAttr(pageTitle);
 
   let html = templateHtml;
@@ -178,14 +117,14 @@ function applyHead(templateHtml, route) {
     }
   };
 
-  replaceMeta('name="description"', route.description);
+  replaceMeta('name="description"', desc);
   replaceMeta('name="robots"', robots);
   replaceMeta('property="og:title"', pageTitle);
-  replaceMeta('property="og:description"', route.description);
+  replaceMeta('property="og:description"', desc);
   replaceMeta('property="og:image"', pageImage);
   replaceMeta('property="og:image:alt"', defaultImageAlt);
   replaceMeta('name="twitter:title"', pageTitle);
-  replaceMeta('name="twitter:description"', route.description);
+  replaceMeta('name="twitter:description"', desc);
   replaceMeta('name="twitter:image"', pageImage);
   replaceMeta('name="twitter:image:alt"', defaultImageAlt);
 
@@ -196,8 +135,8 @@ function applyHead(templateHtml, route) {
     html = html.replace('<meta property="og:type"', `<meta property="og:url" content="${escapeAttr(pageUrl)}" />\n    <meta property="og:type"`);
   }
 
-  // Canonical link
-  html = html.replace(/<link\s+rel="canonical"[^>]*\/?>/i, `<link rel="canonical" href="${escapeAttr(pageUrl)}" />`);
+  // Canonical link - may point at a different URL for alias routes (e.g. /seeds -> /okra).
+  html = html.replace(/<link\s+rel="canonical"[^>]*\/?>/i, `<link rel="canonical" href="${escapeAttr(canonicalUrl)}" />`);
 
   // JSON-LD blocks (inject once, before </head>)
   const jsonLdScripts =
@@ -211,8 +150,38 @@ function applyHead(templateHtml, route) {
   return html;
 }
 
+function applyBody(html, route) {
+  if (!route.bodyFallback) {
+    return html;
+  }
+
+  // Trim leading/trailing whitespace from the literal but keep internal
+  // formatting so the rendered HTML stays readable in dev tools.
+  const fallback = route.bodyFallback.trim();
+  const noscriptBlock = `    <noscript data-seo-fallback="true">\n${fallback}\n    </noscript>\n`;
+
+  // Idempotent: strip any prior prerender noscript block first.
+  html = html.replace(
+    /\s*<noscript\s+data-seo-fallback="true">[\s\S]*?<\/noscript>\s*/i,
+    '\n',
+  );
+
+  // Inject the noscript right after the opening of the React mount point so it
+  // sits inside <body> at a predictable spot. We don't put it *inside* #root
+  // because React.createRoot().render() would replace it on hydration; placing
+  // it as a sibling lets browsers ignore it entirely once JS runs.
+  if (/<div id="root"><\/div>/i.test(html)) {
+    html = html.replace(/<div id="root"><\/div>/i, `<div id="root"></div>\n${noscriptBlock}`);
+  } else {
+    html = html.replace('</body>', `${noscriptBlock}  </body>`);
+  }
+
+  return html;
+}
+
 async function writeRoute(templateHtml, route) {
-  const html = applyHead(templateHtml, route);
+  const headApplied = applyHead(templateHtml, route);
+  const html = applyBody(headApplied, route);
   const outPath = route.path === '/'
     ? join(distDir, 'index.html')
     : join(distDir, route.path.replace(/^\//, ''), 'index.html');
