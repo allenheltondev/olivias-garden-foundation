@@ -85,6 +85,7 @@ export const routes: AppRoute[] = [
   {
     path: '/donate',
     label: 'Donate',
+    showInNav: true,
     showInFooter: true,
     title: "Support Olivia's Garden",
     description: "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
@@ -142,8 +143,19 @@ export const routes: AppRoute[] = [
   },
 ];
 
-export const navRoutes = routes.filter((route) => route.showInNav);
-export const footerRoutes = routes.filter((route) => route.showInFooter);
+const primaryPageOrder = new Map([
+  ['/', 0],
+  ['/okra', 1],
+  ['/donate', 2],
+  ['/about', 3],
+]);
+
+function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
+  return (primaryPageOrder.get(left.path) ?? routes.indexOf(left)) - (primaryPageOrder.get(right.path) ?? routes.indexOf(right));
+}
+
+export const navRoutes = routes.filter((route) => route.showInNav).sort(byPrimaryPageOrder);
+export const footerRoutes = routes.filter((route) => route.showInFooter).sort(byPrimaryPageOrder);
 export const legalFooterRoutes = routes.filter((route) => route.showInLegalFooter);
 export const prerenderRoutes = routes.filter((route) => route.prerender);
 export const internalPaths = new Set(routes.map((route) => route.path));

@@ -23,10 +23,39 @@ export interface SiteFooterProps {
 function renderLinkGroup(
   label: string,
   navLabel: string,
-  linkClassName: string,
   variant: 'pages' | 'legal',
   links: SiteFooterLink[],
+  legalLinks: SiteFooterLink[] = [],
 ) {
+  const renderLinks = (items: SiteFooterLink[], linkClassName: string) =>
+    items.map((link) => (
+      <li key={link.id} className="og-site-footer__link-item">
+        {link.href ? (
+          <a
+            href={link.href}
+            className={`${linkClassName} ${link.active ? 'is-active' : ''}`.trim()}
+            aria-current={link.active ? 'page' : undefined}
+            onClick={(event) => {
+              if (link.onSelect) {
+                event.preventDefault();
+                link.onSelect();
+              }
+            }}
+          >
+            {link.label}
+          </a>
+        ) : (
+          <button
+            type="button"
+            className={`${linkClassName} ${link.active ? 'is-active' : ''}`.trim()}
+            onClick={link.onSelect}
+          >
+            {link.label}
+          </button>
+        )}
+      </li>
+    ));
+
   return (
     <nav
       className={`og-site-footer__links-block og-site-footer__links-block--${variant}`}
@@ -34,34 +63,13 @@ function renderLinkGroup(
     >
       <p className="og-site-footer__label">{label}</p>
       <ul className={`og-site-footer__links og-site-footer__links--${variant}`}>
-        {links.map((link) => (
-          <li key={link.id} className="og-site-footer__link-item">
-            {link.href ? (
-              <a
-                href={link.href}
-                className={`${linkClassName} ${link.active ? 'is-active' : ''}`.trim()}
-                aria-current={link.active ? 'page' : undefined}
-                onClick={(event) => {
-                  if (link.onSelect) {
-                    event.preventDefault();
-                    link.onSelect();
-                  }
-                }}
-              >
-                {link.label}
-              </a>
-            ) : (
-              <button
-                type="button"
-                className={`${linkClassName} ${link.active ? 'is-active' : ''}`.trim()}
-                onClick={link.onSelect}
-              >
-                {link.label}
-              </button>
-            )}
-          </li>
-        ))}
+        {renderLinks(links, 'og-site-footer__link')}
       </ul>
+      {legalLinks.length > 0 ? (
+        <ul className="og-site-footer__links og-site-footer__links--legal">
+          {renderLinks(legalLinks, 'og-site-footer__link og-site-footer__link--legal')}
+        </ul>
+      ) : null}
     </nav>
   );
 }
@@ -75,8 +83,8 @@ export function SiteFooter({
   return (
     <footer className="og-site-footer">
       <div className="og-site-footer__inner">
-        {links.length > 0
-          ? renderLinkGroup('Pages', 'Footer', 'og-site-footer__link', 'pages', links)
+        {links.length > 0 || legalLinks.length > 0
+          ? renderLinkGroup('Pages', 'Footer', 'pages', links, legalLinks)
           : null}
 
         {socialLinks.length > 0 ? (
@@ -111,10 +119,6 @@ export function SiteFooter({
             </div>
           </div>
         ) : null}
-        {legalLinks.length > 0
-          ? renderLinkGroup('Legal', 'Legal', 'og-site-footer__link og-site-footer__link--legal', 'legal', legalLinks)
-          : null}
-
         <p className="og-site-footer__meta">{meta}</p>
       </div>
     </footer>
