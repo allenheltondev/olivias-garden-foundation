@@ -41,11 +41,22 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <!-- Google tag (gtag.js) -->
+    <!-- Google tag (gtag.js) — Consent Mode v2, default denied (cookieless analytics) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MKLN0PPMJZ"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'denied',
+        personalization_storage: 'denied',
+        security_storage: 'granted',
+      });
+
       gtag('js', new Date());
 
       gtag('config', 'G-MKLN0PPMJZ', { send_page_view: false });

@@ -6,7 +6,7 @@ test.describe('legal pages', () => {
     await gotoAndWait(page, '/privacy');
 
     await expect(page.getByRole('heading', { name: 'Privacy Policy', level: 1 })).toBeVisible();
-    await expect(page.locator('.legal-document__effective')).toContainText('April 23, 2026');
+    await expect(page.locator('.legal-document__effective')).toContainText('April 30, 2026');
 
     const footerLink = page.locator('footer').getByRole('link', { name: 'Terms of Service' });
     await expect(footerLink).toBeVisible();
