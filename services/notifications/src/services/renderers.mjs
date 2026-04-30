@@ -135,6 +135,54 @@ function renderDonationCompleted(detail) {
   };
 }
 
+function formatCancelDate(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function renderGardenClubCancellationScheduled(detail) {
+  const donor = detail.donorEmail ?? 'unknown donor';
+  const cancelDate = formatCancelDate(detail.cancelAt);
+  const lines = [':calendar: Garden Club cancellation scheduled', `Donor: ${donor}`];
+  if (cancelDate) lines.push(`Ends on: ${cancelDate}`);
+  lines.push(`Subscription: ${detail.stripeSubscriptionId ?? 'unknown'}`);
+
+  return {
+    summary: `Garden Club cancellation scheduled for ${donor}${cancelDate ? ` (ends ${cancelDate})` : ''}`,
+    slack: { text: lines.join('\n') }
+  };
+}
+
+function renderGardenClubCancellationReverted(detail) {
+  const donor = detail.donorEmail ?? 'unknown donor';
+  const lines = [
+    ':seedling: Garden Club cancellation reverted',
+    `Donor: ${donor}`,
+    `Subscription: ${detail.stripeSubscriptionId ?? 'unknown'}`
+  ];
+
+  return {
+    summary: `Garden Club cancellation reverted for ${donor}`,
+    slack: { text: lines.join('\n') }
+  };
+}
+
+function renderGardenClubCanceled(detail) {
+  const donor = detail.donorEmail ?? 'unknown donor';
+  const lines = [
+    ':wave: Garden Club ended',
+    `Donor: ${donor}`,
+    `Subscription: ${detail.stripeSubscriptionId ?? 'unknown'}`
+  ];
+
+  return {
+    summary: `Garden Club ended for ${donor}`,
+    slack: { text: lines.join('\n') }
+  };
+}
+
 function renderUserSignedUp(detail) {
   const env = process.env.FOUNDATION_ENVIRONMENT ?? 'unknown';
   const lines = [
@@ -175,6 +223,9 @@ const renderers = new Map([
   ['okra.submissions|submission.created', renderOkraSubmissionCreated],
   ['okra.seed-requests|seed-request.created', renderSeedRequestCreated],
   ['ogf.donations|donation.completed', renderDonationCompleted],
+  ['ogf.donations|garden-club.cancellation_scheduled', renderGardenClubCancellationScheduled],
+  ['ogf.donations|garden-club.cancellation_reverted', renderGardenClubCancellationReverted],
+  ['ogf.donations|garden-club.canceled', renderGardenClubCanceled],
   ['ogf.signups|user.signed-up', renderUserSignedUp],
   ['ogf.contact|org-inquiry.received', renderOrgInquiryReceived]
 ]);

@@ -149,6 +149,9 @@ Resources:
                 - submission.created
                 - seed-request.created
                 - donation.completed
+                - garden-club.cancellation_scheduled
+                - garden-club.cancellation_reverted
+                - garden-club.canceled
                 - user.signed-up
                 - org-inquiry.received
 

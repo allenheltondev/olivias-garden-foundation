@@ -610,6 +610,21 @@ export function DonatePage({
                         ? 'Begins monthly support and includes your free t-shirt at signup.'
                         : 'Includes a permanent bee placed in the memorial garden in your honor, no matter the amount.'}
                     </p>
+                    {selectedMode === 'recurring' ? (
+                      <p className="page-text donate-form-card__cancel-note">
+                        Cancel anytime from{' '}
+                        <a
+                          href="/profile"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            onNavigate('/profile');
+                          }}
+                        >
+                          your profile
+                        </a>
+                        .
+                      </p>
+                    ) : null}
                   </div>
                   <div className="donate-form-card__cta-group">
                     <Button

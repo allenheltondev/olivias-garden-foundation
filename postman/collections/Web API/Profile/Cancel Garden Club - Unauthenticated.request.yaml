@@ -1,0 +1,28 @@
+$kind: http-request
+name: Cancel Garden Club - Unauthenticated
+description: |-
+  Ensure POST /profile/garden-club/cancel rejects unauthenticated requests. The
+  endpoint must require a Cognito bearer token before contacting Stripe.
+method: POST
+url: '{{webBaseUrl}}/profile/garden-club/cancel'
+order: 1200
+headers:
+  - key: X-Correlation-Id
+    value: postman-cancel-gc-unauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("POST /profile/garden-club/cancel returns 400 when unauthenticated", function () {
+          pm.expect(pm.response.code).to.equal(400);
+      });
+
+      pm.test("Response body surfaces the missing-auth error", function () {
+          const body = pm.response.json();
+          pm.expect(body.error).to.be.a("string").and.not.empty;
+          pm.expect(body.error.toLowerCase()).to.include("authorization");
+      });
+
+      pm.test("Response includes correlation id header", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });

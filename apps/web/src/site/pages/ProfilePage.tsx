@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { Button, FormFeedback, Input, Panel, Textarea } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { createOkraHeaders, okraApiUrl } from '../../okra/api';
@@ -6,6 +6,13 @@ import { PageHero, Section } from '../chrome';
 import { webApiBase } from '../routes';
 
 type AvatarStatus = 'none' | 'uploaded' | 'processing' | 'ready' | 'failed';
+
+type GardenClubStatus = 'none' | 'active' | 'past_due' | 'canceling' | 'canceled';
+
+type GardenClubMutationResponse = {
+  gardenClubStatus: GardenClubStatus;
+  gardenClubCancelAt: string | null;
+};
 
 type ProfileResponse = {
   userId: string | null;
@@ -24,7 +31,8 @@ type ProfileResponse = {
   avatarProcessingError: string | null;
   websiteUrl: string | null;
   tier: string | null;
-  gardenClubStatus: string | null;
+  gardenClubStatus: GardenClubStatus | string | null;
+  gardenClubCancelAt: string | null;
   donationTotalCents: number;
   donationCount: number;
   lastDonatedAt: string | null;
@@ -235,6 +243,26 @@ async function completeAvatarUpload(authSession: AuthSession): Promise<void> {
   }
 }
 
+async function postGardenClubAction(
+  authSession: AuthSession,
+  action: 'cancel' | 'resume',
+): Promise<GardenClubMutationResponse> {
+  const response = await fetch(webApiUrl(`/profile/garden-club/${action}`), {
+    method: 'POST',
+    headers: authHeaders(authSession, false),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const message = body?.error
+      ?? body?.message
+      ?? (action === 'cancel'
+        ? 'Unable to cancel your Garden Club support right now.'
+        : 'Unable to resume your Garden Club support right now.');
+    throw new Error(message);
+  }
+  return (await response.json()) as GardenClubMutationResponse;
+}
+
 async function deleteAccount(authSession: AuthSession): Promise<void> {
   const response = await fetch(webApiUrl('/profile'), {
     method: 'DELETE',
@@ -334,6 +362,10 @@ export function ProfilePage({
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [gardenClubCancelDialogOpen, setGardenClubCancelDialogOpen] = useState(false);
+  const [gardenClubBusy, setGardenClubBusy] = useState(false);
+  const [gardenClubError, setGardenClubError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authSession) {
@@ -541,6 +573,66 @@ export function ProfilePage({
     };
   }, [deleteDialogOpen, closeDeleteDialog]);
 
+  const closeGardenClubCancelDialog = useCallback(() => {
+    if (gardenClubBusy) return;
+    setGardenClubCancelDialogOpen(false);
+    setGardenClubError(null);
+  }, [gardenClubBusy]);
+
+  const submitGardenClubCancel = useCallback(async () => {
+    if (!authSession) return;
+    setGardenClubBusy(true);
+    setGardenClubError(null);
+    try {
+      const result = await postGardenClubAction(authSession, 'cancel');
+      setProfile((prev) => (prev ? {
+        ...prev,
+        gardenClubStatus: result.gardenClubStatus,
+        gardenClubCancelAt: result.gardenClubCancelAt,
+      } : prev));
+      setGardenClubCancelDialogOpen(false);
+    } catch (error) {
+      setGardenClubError(error instanceof Error ? error.message : 'Unable to cancel right now.');
+    } finally {
+      setGardenClubBusy(false);
+    }
+  }, [authSession]);
+
+  const submitGardenClubResume = useCallback(async () => {
+    if (!authSession) return;
+    setGardenClubBusy(true);
+    setGardenClubError(null);
+    try {
+      const result = await postGardenClubAction(authSession, 'resume');
+      setProfile((prev) => (prev ? {
+        ...prev,
+        gardenClubStatus: result.gardenClubStatus,
+        gardenClubCancelAt: result.gardenClubCancelAt,
+      } : prev));
+    } catch (error) {
+      setGardenClubError(error instanceof Error ? error.message : 'Unable to resume right now.');
+    } finally {
+      setGardenClubBusy(false);
+    }
+  }, [authSession]);
+
+  useEffect(() => {
+    if (!gardenClubCancelDialogOpen) return;
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeGardenClubCancelDialog();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [gardenClubCancelDialogOpen, closeGardenClubCancelDialog]);
+
   const refreshAvatarManually = async () => {
     if (!authSession) return;
     setAvatarPollTimedOut(false);
@@ -747,6 +839,19 @@ export function ProfilePage({
         )}
       </Section>
 
+      <GardenClubSection
+        status={(profile?.gardenClubStatus ?? 'none') as GardenClubStatus}
+        cancelAt={profile?.gardenClubCancelAt ?? null}
+        busy={gardenClubBusy}
+        error={gardenClubError}
+        onCancelRequest={() => {
+          setGardenClubError(null);
+          setGardenClubCancelDialogOpen(true);
+        }}
+        onResume={() => void submitGardenClubResume()}
+        onNavigate={onNavigate}
+      />
+
       <Section
         title="Your activity"
         intro="A running history of seed requests, okra submissions, and donations tied to your account."
@@ -824,6 +929,52 @@ export function ProfilePage({
         </Panel>
       </Section>
 
+      {gardenClubCancelDialogOpen ? (
+        <div
+          className="profile-cancel-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-cancel-dialog-title"
+          aria-describedby="profile-cancel-dialog-description"
+        >
+          <div
+            className="profile-cancel-dialog__backdrop"
+            onClick={closeGardenClubCancelDialog}
+            aria-hidden="true"
+          />
+          <div className="profile-cancel-dialog__panel" role="document">
+            <h2 id="profile-cancel-dialog-title" className="profile-cancel-dialog__title">
+              Cancel monthly support?
+            </h2>
+            <p id="profile-cancel-dialog-description" className="profile-cancel-dialog__body">
+              Your bee stays in the garden — that part is permanent. Your Garden Club membership
+              will continue through the end of your current billing period and then end. You can
+              resume any time before then.
+            </p>
+            {gardenClubError ? <FormFeedback tone="error">{gardenClubError}</FormFeedback> : null}
+            <div className="profile-cancel-dialog__actions">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeGardenClubCancelDialog}
+                disabled={gardenClubBusy}
+              >
+                Keep my support
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => void submitGardenClubCancel()}
+                disabled={gardenClubBusy}
+                loading={gardenClubBusy}
+              >
+                {gardenClubBusy ? 'Canceling…' : 'Yes, cancel'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {deleteDialogOpen ? (
         <div
           className="profile-delete-dialog"
@@ -893,6 +1044,96 @@ export function ProfilePage({
         </div>
       ) : null}
     </>
+  );
+}
+
+function GardenClubSection({
+  status,
+  cancelAt,
+  busy,
+  error,
+  onCancelRequest,
+  onResume,
+  onNavigate,
+}: {
+  status: GardenClubStatus;
+  cancelAt: string | null;
+  busy: boolean;
+  error: string | null;
+  onCancelRequest: () => void;
+  onResume: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  if (status === 'none') {
+    return null;
+  }
+
+  const goToDonate = (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    onNavigate('/donate');
+  };
+
+  let body: ReactNode;
+  let actions: ReactNode = null;
+
+  if (status === 'active') {
+    body = (
+      <p>
+        You&apos;re a Garden Club member. Thank you for keeping the work going every month.
+        Your bee is in the garden.
+      </p>
+    );
+    actions = (
+      <Button type="button" variant="secondary" onClick={onCancelRequest} disabled={busy}>
+        Cancel monthly support
+      </Button>
+    );
+  } else if (status === 'canceling') {
+    body = (
+      <p>
+        Your Garden Club support ends on {formatDate(cancelAt)}. You&apos;ll keep access through
+        that date and your bee stays in the garden either way. Change your mind?
+      </p>
+    );
+    actions = (
+      <Button type="button" onClick={onResume} disabled={busy} loading={busy}>
+        {busy ? 'Resuming…' : 'Resume monthly support'}
+      </Button>
+    );
+  } else if (status === 'past_due') {
+    body = (
+      <p>
+        We couldn&apos;t process your last Garden Club gift. Email{' '}
+        <a href="mailto:allen@oliviasgarden.org">allen@oliviasgarden.org</a> and we&apos;ll help
+        get the payment method updated.
+      </p>
+    );
+  } else {
+    body = (
+      <p>
+        Your Garden Club support has ended. Thank you for being part of the network — you can
+        join again whenever you&apos;d like.
+      </p>
+    );
+    actions = (
+      <a className="site-cta og-button og-button--primary og-button--md" href="/donate" onClick={goToDonate}>
+        Become a member again
+      </a>
+    );
+  }
+
+  return (
+    <Section
+      title="Garden Club"
+      intro="Your monthly support of Olivia's Garden Foundation."
+      className="profile-garden-club"
+    >
+      <Panel tone="paper" className="profile-garden-club__panel">
+        <div className="profile-garden-club__body">{body}</div>
+        {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
+        {actions ? <div className="profile-garden-club__actions">{actions}</div> : null}
+      </Panel>
+    </Section>
   );
 }
 

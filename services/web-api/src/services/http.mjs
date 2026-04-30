@@ -74,6 +74,13 @@ export function mapApiError(error, correlationId) {
     return errorResponse(404, message, correlationId);
   }
 
+  if (
+    message.includes('No active Garden Club membership for this account')
+    || message.includes('Garden Club membership is already active')
+  ) {
+    return errorResponse(409, message, correlationId);
+  }
+
   if (message.includes('is not configured')) {
     return errorResponse(503, 'Service not configured in this environment', correlationId);
   }

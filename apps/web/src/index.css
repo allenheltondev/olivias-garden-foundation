@@ -2840,3 +2840,125 @@ html {
     max-height: 90vh;
   }
 }
+
+/* ── Garden Club section ────────────────────────────────────────────── */
+
+.profile-garden-club__panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.profile-garden-club__body p {
+  margin: 0;
+  color: var(--site-ink);
+  line-height: 1.55;
+  font-size: 0.98rem;
+}
+
+.profile-garden-club__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .profile-garden-club__actions {
+    justify-content: stretch;
+  }
+
+  .profile-garden-club__actions > * {
+    flex: 1 1 100%;
+  }
+}
+
+/* ── Garden Club cancel dialog (mirrors delete dialog styling) ─────── */
+
+.profile-cancel-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.profile-cancel-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.profile-cancel-dialog__panel {
+  position: relative;
+  background: var(--site-paper, #fbf7ef);
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  padding: 1.5rem;
+  max-width: 32rem;
+  width: 100%;
+  display: grid;
+  gap: 0.8rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.profile-cancel-dialog__title {
+  margin: 0;
+  font-family: var(--site-display);
+  font-size: 1.35rem;
+  color: var(--site-ink);
+}
+
+.profile-cancel-dialog__body {
+  margin: 0;
+  color: var(--site-ink);
+  line-height: 1.55;
+  font-size: 0.96rem;
+}
+
+.profile-cancel-dialog__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.profile-cancel-dialog__actions > * {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 520px) {
+  .profile-cancel-dialog__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  .profile-cancel-dialog__actions > * {
+    width: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-cancel-dialog {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .profile-cancel-dialog__panel {
+    max-width: 100%;
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.25rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    max-height: 90vh;
+  }
+}
+
+.donate-form-card__cancel-note {
+  margin-top: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--site-ink-muted, rgba(76, 52, 38, 0.7));
+}

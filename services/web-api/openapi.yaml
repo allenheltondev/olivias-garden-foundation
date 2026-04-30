@@ -58,6 +58,59 @@ paths:
           description: Missing or invalid authorization header
         '401':
           description: Invalid access token
+  /profile/garden-club/cancel:
+    post:
+      summary: Schedule a Garden Club cancellation at the end of the current billing period
+      description: |
+        Sets the authenticated user's Garden Club Stripe subscription to
+        `cancel_at_period_end=true`. The donor keeps access through the end of
+        the period they paid for, then the subscription transitions to canceled
+        when Stripe sends `customer.subscription.deleted`.
+
+        Returns the cancellation date so the client can update its UI without a
+        round-trip through the webhook. A `garden-club.cancellation_scheduled`
+        event is published for downstream notifications.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cancellation scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GardenClubMutationResponse'
+        '400':
+          description: Missing or invalid authorization header
+        '401':
+          description: Invalid access token
+        '409':
+          description: User has no active Garden Club subscription on file
+  /profile/garden-club/resume:
+    post:
+      summary: Reverse a scheduled Garden Club cancellation
+      description: |
+        Sets the authenticated user's Garden Club Stripe subscription back to
+        `cancel_at_period_end=false`. Only valid while the subscription is in
+        the `canceling` state — once Stripe has actually deleted the
+        subscription the donor must start a new Garden Club through the
+        donate flow.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscription resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GardenClubMutationResponse'
+        '400':
+          description: Missing or invalid authorization header
+        '401':
+          description: Invalid access token
+        '409':
+          description: |
+            User has no Garden Club subscription that can be resumed (already
+            active, fully canceled, or never enrolled).
   /donations/checkout-session-status:
     get:
       summary: Read the current Stripe Checkout Session status after return from embedded checkout
@@ -128,3 +181,16 @@ components:
           type: [string, 'null']
         customerEmail:
           type: [string, 'null']
+    GardenClubMutationResponse:
+      type: object
+      required: [gardenClubStatus, gardenClubCancelAt]
+      properties:
+        gardenClubStatus:
+          type: string
+          enum: [none, active, past_due, canceling, canceled]
+        gardenClubCancelAt:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            ISO 8601 timestamp when the Garden Club access ends, when the
+            subscription is in the `canceling` state. Null otherwise.

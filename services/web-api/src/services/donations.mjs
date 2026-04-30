@@ -544,21 +544,25 @@ async function persistInvoicePaid(client, eventId, object, correlationId) {
   );
 }
 
-async function markGardenClubStatus(client, subscriptionId, nextStatus) {
+async function setGardenClubStatusBySubscription(client, subscriptionId, nextStatus, cancelAt = null) {
   if (!subscriptionId) {
-    return;
+    return null;
   }
 
-  await client.query(
+  const result = await client.query(
     `
       update users
          set garden_club_status = $2,
+             garden_club_cancel_at = $3,
              updated_at = now()
        where stripe_garden_club_subscription_id = $1
          and deleted_at is null
+       returning id::text as id, email::text as email, garden_club_cancel_at
     `,
-    [subscriptionId, nextStatus]
+    [subscriptionId, nextStatus, cancelAt]
   );
+
+  return result.rows[0] ?? null;
 }
 
 async function persistInvoicePaymentFailed(client, object, correlationId) {
@@ -567,7 +571,7 @@ async function persistInvoicePaymentFailed(client, object, correlationId) {
     return;
   }
 
-  await markGardenClubStatus(client, subscriptionId, 'past_due');
+  await setGardenClubStatusBySubscription(client, subscriptionId, 'past_due');
 
   console.info(JSON.stringify({
     level: 'info',
@@ -577,13 +581,80 @@ async function persistInvoicePaymentFailed(client, object, correlationId) {
   }));
 }
 
+function epochSecondsToIsoString(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+  return new Date(value * 1000).toISOString();
+}
+
+async function persistSubscriptionUpdated(client, object, correlationId) {
+  const subscriptionId = object.id ?? null;
+  if (!subscriptionId) {
+    return;
+  }
+
+  const cancelAtPeriodEnd = object.cancel_at_period_end === true;
+  const stripeStatus = typeof object.status === 'string' ? object.status : null;
+
+  // Stripe sends `customer.subscription.updated` for many reasons: price changes,
+  // metadata edits, status transitions, etc. We only react to the cancel-at-
+  // period-end toggle and to past_due/active flips. Everything else we ignore so
+  // we don't accidentally overwrite local state.
+  if (cancelAtPeriodEnd) {
+    const cancelAtIso = epochSecondsToIsoString(object.cancel_at)
+      ?? epochSecondsToIsoString(object.current_period_end);
+    const updated = await setGardenClubStatusBySubscription(client, subscriptionId, 'canceling', cancelAtIso);
+
+    console.info(JSON.stringify({
+      level: 'info',
+      correlationId,
+      subscriptionId,
+      cancelAt: cancelAtIso,
+      message: 'Marked Garden Club subscription as canceling after customer.subscription.updated'
+    }));
+
+    if (updated) {
+      await publishGardenClubLifecycleEvent('garden-club.cancellation_scheduled', {
+        userId: updated.id,
+        donorEmail: updated.email,
+        stripeSubscriptionId: subscriptionId,
+        cancelAt: cancelAtIso
+      }, correlationId);
+    }
+    return;
+  }
+
+  // cancel_at_period_end is false. Either the donor never asked to cancel, or
+  // they reversed a pending cancellation. Re-active only when Stripe also says
+  // the subscription is active, otherwise leave whatever local status (e.g.
+  // past_due) alone.
+  if (stripeStatus === 'active') {
+    const updated = await setGardenClubStatusBySubscription(client, subscriptionId, 'active', null);
+    console.info(JSON.stringify({
+      level: 'info',
+      correlationId,
+      subscriptionId,
+      message: 'Reverted Garden Club subscription to active after customer.subscription.updated'
+    }));
+
+    if (updated) {
+      await publishGardenClubLifecycleEvent('garden-club.cancellation_reverted', {
+        userId: updated.id,
+        donorEmail: updated.email,
+        stripeSubscriptionId: subscriptionId
+      }, correlationId);
+    }
+  }
+}
+
 async function persistSubscriptionDeleted(client, object, correlationId) {
   const subscriptionId = object.id ?? null;
   if (!subscriptionId) {
     return;
   }
 
-  await markGardenClubStatus(client, subscriptionId, 'canceled');
+  const updated = await setGardenClubStatusBySubscription(client, subscriptionId, 'canceled', null);
 
   console.info(JSON.stringify({
     level: 'info',
@@ -591,6 +662,46 @@ async function persistSubscriptionDeleted(client, object, correlationId) {
     subscriptionId,
     message: 'Marked Garden Club subscription as canceled after customer.subscription.deleted'
   }));
+
+  if (updated) {
+    await publishGardenClubLifecycleEvent('garden-club.canceled', {
+      userId: updated.id,
+      donorEmail: updated.email,
+      stripeSubscriptionId: subscriptionId
+    }, correlationId);
+  }
+}
+
+async function publishGardenClubLifecycleEvent(detailType, detail, correlationId) {
+  try {
+    const result = await eventBridge.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'ogf.donations',
+          DetailType: detailType,
+          Detail: JSON.stringify({ ...detail, correlationId })
+        }
+      ]
+    }));
+
+    if ((result?.FailedEntryCount ?? 0) > 0) {
+      console.error(JSON.stringify({
+        level: 'error',
+        correlationId,
+        detailType,
+        message: 'Garden Club lifecycle event publish reported failed entries',
+        failedEntryCount: result.FailedEntryCount
+      }));
+    }
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'error',
+      correlationId,
+      detailType,
+      message: 'Failed to publish Garden Club lifecycle event',
+      error: error instanceof Error ? error.message : String(error)
+    }));
+  }
 }
 
 async function processStripeEvent(event, correlationId) {
@@ -622,6 +733,11 @@ async function processStripeEvent(event, correlationId) {
 
     if (eventType === 'invoice.payment_failed') {
       await persistInvoicePaymentFailed(client, object, correlationId);
+      return;
+    }
+
+    if (eventType === 'customer.subscription.updated') {
+      await persistSubscriptionUpdated(client, object, correlationId);
       return;
     }
 
@@ -721,3 +837,181 @@ export async function retrieveCheckoutSessionStatus(sessionId) {
     customerEmail: stripePayload.customer_details?.email ?? stripePayload.customer_email ?? null
   };
 }
+
+class GardenClubMembershipNotFoundError extends Error {
+  constructor() {
+    super('No active Garden Club membership for this account');
+    this.code = 'GardenClubMembershipNotFound';
+  }
+}
+
+class GardenClubAlreadyActiveError extends Error {
+  constructor() {
+    super('Garden Club membership is already active');
+    this.code = 'GardenClubAlreadyActive';
+  }
+}
+
+async function fetchGardenClubMembership(client, userId) {
+  const result = await client.query(
+    `
+      select id::text as id,
+             email::text as email,
+             stripe_garden_club_subscription_id,
+             garden_club_status,
+             garden_club_cancel_at
+        from users
+       where id = $1::uuid
+         and deleted_at is null
+    `,
+    [userId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function updateStripeSubscriptionCancelAtPeriodEnd(stripeSecretKey, subscriptionId, cancelAtPeriodEnd) {
+  const params = new URLSearchParams();
+  params.set('cancel_at_period_end', cancelAtPeriodEnd ? 'true' : 'false');
+
+  const response = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    method: 'POST',
+    headers: {
+      authorization: `Basic ${Buffer.from(`${stripeSecretKey}:`).toString('base64')}`,
+      'content-type': 'application/x-www-form-urlencoded'
+    },
+    body: params
+  });
+
+  if (!response.ok) {
+    throw new Error(`Stripe subscription update failed (${response.status}): ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
+export async function cancelGardenClubSubscription(event, correlationId) {
+  const authContext = await resolveOptionalAuthContext(event);
+  if (!authContext?.userId) {
+    throw new Error('Authorization token is required');
+  }
+
+  const stripeSecretKey = requiredEnvVar('STRIPE_SECRET_KEY');
+  const client = await createDbClient();
+  await client.connect();
+
+  try {
+    const membership = await fetchGardenClubMembership(client, authContext.userId);
+    if (!membership?.stripe_garden_club_subscription_id) {
+      throw new GardenClubMembershipNotFoundError();
+    }
+
+    const stripeSubscription = await updateStripeSubscriptionCancelAtPeriodEnd(
+      stripeSecretKey,
+      membership.stripe_garden_club_subscription_id,
+      true
+    );
+
+    const cancelAtIso = epochSecondsToIsoString(stripeSubscription.cancel_at)
+      ?? epochSecondsToIsoString(stripeSubscription.current_period_end);
+
+    const updated = await setGardenClubStatusBySubscription(
+      client,
+      membership.stripe_garden_club_subscription_id,
+      'canceling',
+      cancelAtIso
+    );
+
+    console.info(JSON.stringify({
+      level: 'info',
+      correlationId,
+      userId: authContext.userId,
+      subscriptionId: membership.stripe_garden_club_subscription_id,
+      cancelAt: cancelAtIso,
+      message: 'Scheduled Garden Club cancellation at period end'
+    }));
+
+    if (updated) {
+      await publishGardenClubLifecycleEvent('garden-club.cancellation_scheduled', {
+        userId: updated.id,
+        donorEmail: updated.email,
+        stripeSubscriptionId: membership.stripe_garden_club_subscription_id,
+        cancelAt: cancelAtIso
+      }, correlationId);
+    }
+
+    return {
+      gardenClubStatus: 'canceling',
+      gardenClubCancelAt: cancelAtIso
+    };
+  } finally {
+    await client.end();
+  }
+}
+
+export async function resumeGardenClubSubscription(event, correlationId) {
+  const authContext = await resolveOptionalAuthContext(event);
+  if (!authContext?.userId) {
+    throw new Error('Authorization token is required');
+  }
+
+  const stripeSecretKey = requiredEnvVar('STRIPE_SECRET_KEY');
+  const client = await createDbClient();
+  await client.connect();
+
+  try {
+    const membership = await fetchGardenClubMembership(client, authContext.userId);
+    if (!membership?.stripe_garden_club_subscription_id) {
+      throw new GardenClubMembershipNotFoundError();
+    }
+
+    if (membership.garden_club_status === 'active') {
+      throw new GardenClubAlreadyActiveError();
+    }
+
+    if (membership.garden_club_status !== 'canceling') {
+      // Only `canceling` is reversible from the donor side. `canceled` means
+      // Stripe already deleted the subscription and they would need to start
+      // a new Garden Club from the donate page.
+      throw new GardenClubMembershipNotFoundError();
+    }
+
+    await updateStripeSubscriptionCancelAtPeriodEnd(
+      stripeSecretKey,
+      membership.stripe_garden_club_subscription_id,
+      false
+    );
+
+    const updated = await setGardenClubStatusBySubscription(
+      client,
+      membership.stripe_garden_club_subscription_id,
+      'active',
+      null
+    );
+
+    console.info(JSON.stringify({
+      level: 'info',
+      correlationId,
+      userId: authContext.userId,
+      subscriptionId: membership.stripe_garden_club_subscription_id,
+      message: 'Reverted scheduled Garden Club cancellation'
+    }));
+
+    if (updated) {
+      await publishGardenClubLifecycleEvent('garden-club.cancellation_reverted', {
+        userId: updated.id,
+        donorEmail: updated.email,
+        stripeSubscriptionId: membership.stripe_garden_club_subscription_id
+      }, correlationId);
+    }
+
+    return {
+      gardenClubStatus: 'active',
+      gardenClubCancelAt: null
+    };
+  } finally {
+    await client.end();
+  }
+}
+
+export { GardenClubMembershipNotFoundError, GardenClubAlreadyActiveError };

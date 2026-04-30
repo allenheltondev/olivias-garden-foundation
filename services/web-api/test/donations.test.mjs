@@ -22,7 +22,12 @@ vi.mock('@aws-sdk/client-eventbridge', async () => {
   };
 });
 
-const { createDonationCheckoutSession, handleEventBridgeEvent } = await import('../src/services/donations.mjs');
+const {
+  cancelGardenClubSubscription,
+  createDonationCheckoutSession,
+  handleEventBridgeEvent,
+  resumeGardenClubSubscription
+} = await import('../src/services/donations.mjs');
 
 describe('donations service', () => {
   beforeEach(() => {
@@ -325,5 +330,307 @@ describe('donations service', () => {
     expect(detail.anonymous).toBe(true);
     expect(detail.donorEmail).toBeNull();
     expect(detail.dedicationName).toBe('Anonymous donor');
+  });
+
+  it('schedules Garden Club cancellation at period end and returns the cancel date', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    resolveOptionalAuthContextMock.mockResolvedValue({
+      userId: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+    });
+
+    const cancelAtSeconds = 1_900_000_000;
+    const queryMock = vi.fn((sql) => {
+      if (sql.includes('select id::text as id') && sql.includes('from users')) {
+        return Promise.resolve({
+          rows: [
+            {
+              id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+              email: 'donor@example.com',
+              stripe_garden_club_subscription_id: 'sub_123',
+              garden_club_status: 'active',
+              garden_club_cancel_at: null,
+            },
+          ],
+        });
+      }
+
+      if (sql.includes('update users') && sql.includes('garden_club_status')) {
+        return Promise.resolve({
+          rows: [
+            {
+              id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+              email: 'donor@example.com',
+              garden_club_cancel_at: new Date(cancelAtSeconds * 1000).toISOString(),
+            },
+          ],
+        });
+      }
+
+      return Promise.resolve({ rowCount: 0 });
+    });
+    const client = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    };
+    createDbClientMock.mockResolvedValue(client);
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 'sub_123',
+        cancel_at_period_end: true,
+        cancel_at: cancelAtSeconds,
+        current_period_end: cancelAtSeconds,
+        status: 'active',
+      }),
+    });
+
+    const result = await cancelGardenClubSubscription({ headers: {} }, 'corr-cancel-1');
+
+    expect(result.gardenClubStatus).toBe('canceling');
+    expect(result.gardenClubCancelAt).toBe(new Date(cancelAtSeconds * 1000).toISOString());
+
+    const [stripeUrl, stripeOptions] = vi.mocked(fetch).mock.calls[0];
+    expect(stripeUrl).toBe('https://api.stripe.com/v1/subscriptions/sub_123');
+    expect(stripeOptions.method).toBe('POST');
+    expect(stripeOptions.body).toBeInstanceOf(URLSearchParams);
+    expect(stripeOptions.body.get('cancel_at_period_end')).toBe('true');
+
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    const entry = eventBridgeSendMock.mock.calls[0][0].input.Entries[0];
+    expect(entry.DetailType).toBe('garden-club.cancellation_scheduled');
+    const detail = JSON.parse(entry.Detail);
+    expect(detail.userId).toBe('cf399090-0f65-4d15-bd10-50944ce0ff9b');
+    expect(detail.donorEmail).toBe('donor@example.com');
+    expect(detail.cancelAt).toBe(new Date(cancelAtSeconds * 1000).toISOString());
+  });
+
+  it('rejects cancel requests when the user has no Garden Club subscription on file', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    resolveOptionalAuthContextMock.mockResolvedValue({ userId: 'cf399090-0f65-4d15-bd10-50944ce0ff9b' });
+
+    const queryMock = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+          email: 'donor@example.com',
+          stripe_garden_club_subscription_id: null,
+          garden_club_status: 'none',
+          garden_club_cancel_at: null,
+        },
+      ],
+    });
+    createDbClientMock.mockResolvedValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    });
+
+    await expect(cancelGardenClubSubscription({ headers: {} }, 'corr-cancel-2'))
+      .rejects.toThrow('No active Garden Club membership');
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  it('reverts a scheduled cancellation when the donor resumes monthly support', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    resolveOptionalAuthContextMock.mockResolvedValue({ userId: 'cf399090-0f65-4d15-bd10-50944ce0ff9b' });
+
+    const queryMock = vi.fn((sql) => {
+      if (sql.includes('select id::text as id') && sql.includes('from users')) {
+        return Promise.resolve({
+          rows: [
+            {
+              id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+              email: 'donor@example.com',
+              stripe_garden_club_subscription_id: 'sub_123',
+              garden_club_status: 'canceling',
+              garden_club_cancel_at: '2027-05-15T00:00:00.000Z',
+            },
+          ],
+        });
+      }
+
+      if (sql.includes('update users') && sql.includes('garden_club_status')) {
+        return Promise.resolve({
+          rows: [
+            {
+              id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+              email: 'donor@example.com',
+              garden_club_cancel_at: null,
+            },
+          ],
+        });
+      }
+
+      return Promise.resolve({ rowCount: 0 });
+    });
+    createDbClientMock.mockResolvedValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 'sub_123',
+        cancel_at_period_end: false,
+        status: 'active',
+      }),
+    });
+
+    const result = await resumeGardenClubSubscription({ headers: {} }, 'corr-resume-1');
+
+    expect(result.gardenClubStatus).toBe('active');
+    expect(result.gardenClubCancelAt).toBeNull();
+    expect(vi.mocked(fetch).mock.calls[0][1].body.get('cancel_at_period_end')).toBe('false');
+
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    expect(eventBridgeSendMock.mock.calls[0][0].input.Entries[0].DetailType).toBe('garden-club.cancellation_reverted');
+  });
+
+  it('rejects resume when the membership is already active', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+    resolveOptionalAuthContextMock.mockResolvedValue({ userId: 'cf399090-0f65-4d15-bd10-50944ce0ff9b' });
+
+    createDbClientMock.mockResolvedValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+            email: 'donor@example.com',
+            stripe_garden_club_subscription_id: 'sub_123',
+            garden_club_status: 'active',
+            garden_club_cancel_at: null,
+          },
+        ],
+      }),
+    });
+
+    await expect(resumeGardenClubSubscription({ headers: {} }, 'corr-resume-2'))
+      .rejects.toThrow('already active');
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  it('marks the user as canceling when customer.subscription.updated arrives with cancel_at_period_end', async () => {
+    const cancelAtSeconds = 1_900_000_000;
+    const queryMock = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+          email: 'donor@example.com',
+          garden_club_cancel_at: new Date(cancelAtSeconds * 1000).toISOString(),
+        },
+      ],
+    });
+    createDbClientMock.mockResolvedValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    });
+
+    await handleEventBridgeEvent({
+      id: 'evtbridge-canceling-1',
+      'detail-type': 'customer.subscription.updated',
+      detail: {
+        id: 'evt_canceling_1',
+        type: 'customer.subscription.updated',
+        data: {
+          object: {
+            id: 'sub_123',
+            cancel_at_period_end: true,
+            cancel_at: cancelAtSeconds,
+            current_period_end: cancelAtSeconds,
+            status: 'active',
+          },
+        },
+      },
+    });
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('update users'),
+      ['sub_123', 'canceling', new Date(cancelAtSeconds * 1000).toISOString()],
+    );
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    expect(eventBridgeSendMock.mock.calls[0][0].input.Entries[0].DetailType).toBe('garden-club.cancellation_scheduled');
+  });
+
+  it('reverts to active when customer.subscription.updated reports cancel_at_period_end=false on an active sub', async () => {
+    const queryMock = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+          email: 'donor@example.com',
+          garden_club_cancel_at: null,
+        },
+      ],
+    });
+    createDbClientMock.mockResolvedValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    });
+
+    await handleEventBridgeEvent({
+      id: 'evtbridge-active-1',
+      'detail-type': 'customer.subscription.updated',
+      detail: {
+        id: 'evt_active_1',
+        type: 'customer.subscription.updated',
+        data: {
+          object: {
+            id: 'sub_123',
+            cancel_at_period_end: false,
+            status: 'active',
+          },
+        },
+      },
+    });
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('update users'),
+      ['sub_123', 'active', null],
+    );
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    expect(eventBridgeSendMock.mock.calls[0][0].input.Entries[0].DetailType).toBe('garden-club.cancellation_reverted');
+  });
+
+  it('clears cancel_at when customer.subscription.deleted finalizes the cancellation', async () => {
+    const queryMock = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: 'cf399090-0f65-4d15-bd10-50944ce0ff9b',
+          email: 'donor@example.com',
+          garden_club_cancel_at: null,
+        },
+      ],
+    });
+    createDbClientMock.mockResolvedValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      end: vi.fn().mockResolvedValue(undefined),
+      query: queryMock,
+    });
+
+    await handleEventBridgeEvent({
+      id: 'evtbridge-deleted-1',
+      'detail-type': 'customer.subscription.deleted',
+      detail: {
+        id: 'evt_deleted_1',
+        type: 'customer.subscription.deleted',
+        data: {
+          object: { id: 'sub_123' },
+        },
+      },
+    });
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('update users'),
+      ['sub_123', 'canceled', null],
+    );
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    expect(eventBridgeSendMock.mock.calls[0][0].input.Entries[0].DetailType).toBe('garden-club.canceled');
   });
 });
