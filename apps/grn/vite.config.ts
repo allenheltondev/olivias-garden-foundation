@@ -12,7 +12,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'aws-vendor': ['aws-amplify', '@aws-amplify/ui-react'],
           'query-vendor': ['@tanstack/react-query']
         }

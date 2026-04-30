@@ -1,7 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Button, Card, Input } from '@olivias/ui';
 import type { GrowerProfileInput } from '../../hooks/useOnboarding';
 import { logger } from '../../utils/logging';
+import {
+  defaultUnitsForLocale,
+  lookupHardinessZone,
+  reverseGeocode,
+} from '../../utils/geolocation';
 
 export interface GrowerWizardProps {
   onComplete: (data: GrowerProfileInput) => Promise<void>;
@@ -27,52 +32,21 @@ interface ValidationErrors {
   organizationName?: string;
 }
 
-async function reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
-
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
-      {
-        headers: {
-          Accept: 'application/json',
-        },
-        signal: controller.signal,
-      }
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = (await response.json()) as { display_name?: string };
-    if (typeof data.display_name === 'string' && data.display_name.trim().length > 0) {
-      return data.display_name;
-    }
-    return null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStep>('location');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
+  const [zoneAutoFilled, setZoneAutoFilled] = useState(false);
+  const [formData, setFormData] = useState<FormData>(() => ({
     homeZone: '',
     address: '',
     shareRadiusMiles: 5,
     isOrganization: false,
     organizationName: '',
-    units: 'imperial',
+    units: defaultUnitsForLocale(),
     locale: navigator.language || 'en-US',
-  });
+  }));
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const hasRequestedLocation = useRef(false);
 
   const requestGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -89,24 +63,32 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        const derivedAddress = await reverseGeocode(latitude, longitude);
+        const resolved = await reverseGeocode(latitude, longitude);
 
-        if (derivedAddress) {
-          setFormData((prev) => ({
-            ...prev,
-            address: derivedAddress,
-          }));
-          setErrors((prev) => ({ ...prev, location: undefined }));
-          logger.info('Location-derived address obtained', {
-            latitude,
-            longitude,
-          });
-        } else {
+        if (!resolved) {
           setErrors((prev) => ({
             ...prev,
             location: 'Could not determine your address. Please enter it manually.',
           }));
           logger.warn('Reverse geocoding failed', { latitude, longitude });
+          setIsLoadingLocation(false);
+          return;
+        }
+
+        setFormData((prev) => ({ ...prev, address: resolved.address }));
+        setErrors((prev) => ({ ...prev, location: undefined }));
+        logger.info('Location-derived address obtained', { latitude, longitude });
+
+        if (resolved.postcode) {
+          const zone = await lookupHardinessZone(resolved.postcode);
+          if (zone) {
+            setFormData((prev) => ({ ...prev, homeZone: zone }));
+            setZoneAutoFilled(true);
+            logger.info('Auto-filled hardiness zone from postcode', {
+              postcode: resolved.postcode,
+              zone,
+            });
+          }
         }
 
         setIsLoadingLocation(false);
@@ -124,15 +106,6 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
       }
     );
   }, []);
-
-  useEffect(() => {
-    if (!hasRequestedLocation.current && formData.address.trim().length === 0) {
-      hasRequestedLocation.current = true;
-      setTimeout(() => {
-        requestGeolocation();
-      }, 0);
-    }
-  }, [formData.address, requestGeolocation]);
 
   const validateLocation = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -305,7 +278,9 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
                 What's your growing zone?
               </h2>
               <p className="text-neutral-600">
-                This helps us provide relevant seasonal guidance.
+                {zoneAutoFilled
+                  ? 'We auto-detected your zone from your address. Edit it if it looks wrong.'
+                  : 'This helps us provide relevant seasonal guidance.'}
               </p>
             </div>
 
@@ -318,6 +293,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
                   ...prev,
                   homeZone: e.target.value,
                 }));
+                setZoneAutoFilled(false);
                 if (errors.homeZone) {
                   setErrors((prev) => ({ ...prev, homeZone: undefined }));
                 }
@@ -436,7 +412,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
                   </p>
                 )}
                 <p className="text-sm text-neutral-500 mt-1">
-                  How far you're willing to share surplus
+                  How far away neighbors will see your listings
                 </p>
               </div>
 

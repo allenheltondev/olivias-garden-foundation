@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import type { UserType } from '../../types/user';
@@ -35,6 +36,7 @@ export interface OnboardingFlowState {
  */
 export function OnboardingFlow() {
   const { user, refreshUser } = useUser();
+  const navigate = useNavigate();
   const isInitialMount = useRef(true);
   const { submitUserType, submitGrowerProfile, submitGathererProfile } = useOnboarding(
     () => {
@@ -137,6 +139,8 @@ export function OnboardingFlow() {
       <GrowerWizard
         onComplete={async (data) => {
           await submitGrowerProfile(data);
+          // Drop the new grower straight onto Listings — their primary first action.
+          navigate('/listings');
         }}
         onBack={handleBack}
       />
@@ -148,6 +152,8 @@ export function OnboardingFlow() {
       <GathererWizard
         onComplete={async (data) => {
           await submitGathererProfile(data);
+          // Drop the new gatherer straight onto Requests — their primary first action.
+          navigate('/requests');
         }}
         onBack={handleBack}
       />

@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 import * as useAuthModule from './hooks/useAuth';
 import * as useUserModule from './hooks/useUser';
 
 vi.mock('./hooks/useAuth');
 vi.mock('./hooks/useUser');
-vi.mock('./components/Profile/ProfileView', () => ({
-  ProfileView: () => <div>Profile View</div>,
+vi.mock('./shell/AppShell', () => ({
+  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock('./pages/DashboardPage', () => ({
+  DashboardPage: () => <div>Profile View</div>,
+}));
+vi.mock('./pages/CropsPage', () => ({ CropsPage: () => <div /> }));
+vi.mock('./pages/ListingsPage', () => ({ ListingsPage: () => <div /> }));
+vi.mock('./pages/RequestsPage', () => ({ RequestsPage: () => <div /> }));
+vi.mock('./pages/RemindersPage', () => ({ RemindersPage: () => <div /> }));
 vi.mock('./components/Onboarding/OnboardingGuard', () => ({
   OnboardingGuard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -60,7 +68,11 @@ describe('App', () => {
       refreshAuth: vi.fn(),
     });
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
@@ -77,7 +89,11 @@ describe('App', () => {
       refreshAuth: vi.fn(),
     });
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
 
     expect(assignSpy).toHaveBeenCalledTimes(1);
     const redirectUrl = assignSpy.mock.calls[0][0] as string;
@@ -116,7 +132,11 @@ describe('App', () => {
       clearError: vi.fn(),
     });
 
-    render(<App />);
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    );
 
     expect(await screen.findByText(/profile view/i)).toBeInTheDocument();
     expect(assignSpy).not.toHaveBeenCalled();
