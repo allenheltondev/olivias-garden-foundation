@@ -34,9 +34,11 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
         actions={(
           <a
             className="home-hero__cta"
-            href="https://instagram.com/oliviasgardentx"
-            target="_blank"
-            rel="noreferrer"
+            href="/get-involved"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate('/get-involved');
+            }}
           >
             Get involved
           </a>
@@ -497,7 +499,7 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
         title="See it as it happens."
         body="The best way to understand the foundation is to see the work as it happens: what is growing, what is getting built, what worked, and what had to be adjusted."
       >
-        <CtaButton variant="secondary">Follow on Instagram</CtaButton>
+        <CtaButton variant="secondary" href={instagramUrl}>Follow on Instagram</CtaButton>
       </Section>
     </>
   );

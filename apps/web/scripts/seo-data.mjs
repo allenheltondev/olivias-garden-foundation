@@ -204,24 +204,6 @@ export const seoRoutes = [
     `,
   },
   {
-    path: '/seeds',
-    title: 'Request free okra seeds',
-    description:
-      "Request free okra seeds from Olivia's Garden Foundation and join a growing food project rooted in Olivia's seed line.",
-    seoImage: defaultImage,
-    prerender: true,
-    canonicalPath: '/okra',
-    sitemap: { changefreq: 'weekly', priority: 0.6 },
-    bodyFallback: `
-      <h1>Request free okra seeds</h1>
-      <p>
-        Olivia's Garden Foundation mails free okra seeds, grown from Olivia Helton's own
-        seed line, to anyone who wants to grow them. Visit <a href="/okra">The Okra Project</a>
-        to fill out the short request form.
-      </p>
-    `,
-  },
-  {
     path: '/okra',
     title: 'The Okra Project',
     description:
