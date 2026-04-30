@@ -11,10 +11,11 @@ import {
   Section,
   WorkIcon,
 } from '../chrome';
+import { foundationOrganization } from '../organization';
 import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
 import { facebookUrl, goodRootsNetworkUrl, instagramUrl, webApiBase } from '../routes';
 
-const CONTACT_EMAIL = 'allen@oliviasgarden.org';
+const CONTACT_EMAIL = foundationOrganization.contactEmail;
 
 const OkraExperience = lazy(async () => {
   const module = await import('../../okra/OkraExperience');
@@ -1544,6 +1545,11 @@ export function ContactPage() {
             <a className="contact-meta__link" href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
             </a>
+          </p>
+          <p className="contact-meta">
+            Legal name: {foundationOrganization.legalName}
+            <br />
+            EIN: {foundationOrganization.ein}
           </p>
           <ul className="site-list contact-card__list">
             <li>
