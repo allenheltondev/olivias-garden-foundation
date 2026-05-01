@@ -69,4 +69,20 @@ describe('api handler wrapper', () => {
     });
     expect(res.headers['x-correlation-id']).toBe('corr-123');
   });
+
+  it('strips the /okra base path so custom-domain requests reach the right route', async () => {
+    // Reproduces the prod symptom: API Gateway custom-domain base-path
+    // mapping forwards `/okra/photos` to the integration without stripping
+    // `/okra`, so the router must strip it before resolving the route.
+    const res = await handler(
+      makeRestApiEvent('/okra/photos', 'POST', {
+        'content-type': 'application/json'
+      })
+    );
+
+    // Without the basePath strip this returns 404 NOT_FOUND from
+    // app.notFound(); with it the request reaches POST /photos and is
+    // rejected only because the empty body fails JSON parsing.
+    expect(res.statusCode).not.toBe(404);
+  });
 });

@@ -1,20 +1,35 @@
 import { corsHeaders, errorResponse } from './pagination.mjs';
 
-function normalizePath(path, stage) {
-  if (!path || !stage) {
+function stripPrefix(path, prefix) {
+  if (!path || !prefix) {
     return path;
   }
 
-  const stagePrefix = `/${stage}`;
-  if (path === stagePrefix) {
+  if (path === prefix) {
     return '/';
   }
 
-  if (path.startsWith(`${stagePrefix}/`)) {
-    return path.slice(stagePrefix.length);
+  if (path.startsWith(`${prefix}/`)) {
+    return path.slice(prefix.length);
   }
 
   return path;
+}
+
+function normalizePath(path, stage, basePath) {
+  // Strip both the stage and the API Gateway custom-domain base path so the
+  // router resolves consistently whether the request arrives via the raw
+  // invoke URL (path includes `/${stage}`) or the custom domain (path
+  // includes the base path because REST API base-path mapping does not
+  // strip it before invoking the integration).
+  let normalized = path;
+  if (stage) {
+    normalized = stripPrefix(normalized, `/${stage}`);
+  }
+  if (basePath) {
+    normalized = stripPrefix(normalized, basePath);
+  }
+  return normalized;
 }
 
 function hasHeader(headers = {}, name) {
@@ -31,10 +46,11 @@ export function getCorrelationId(event = {}) {
   );
 }
 
-export function normalizeRouterEvent(event = {}) {
+export function normalizeRouterEvent(event = {}, options = {}) {
   const normalizedPath = normalizePath(
     event.path ?? event.rawPath ?? event.requestContext?.path,
-    event.requestContext?.stage
+    event.requestContext?.stage,
+    options.basePath
   );
 
   return {
@@ -116,10 +132,10 @@ function logHandlerError(handlerName, error, event) {
   }));
 }
 
-export function createHttpRouterHandler({ app, handlerName }) {
+export function createHttpRouterHandler({ app, handlerName, basePath }) {
   return async (event, context) => {
     const normalizedEvent = {
-      ...normalizeRouterEvent(event),
+      ...normalizeRouterEvent(event, { basePath }),
       lambdaContext: context
     };
 

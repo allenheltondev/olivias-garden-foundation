@@ -23,4 +23,4 @@ app.notFound(() => {
   );
 });
 
-export const handler = createHttpRouterHandler({ app, handlerName: 'admin-api' });
+export const handler = createHttpRouterHandler({ app, handlerName: 'admin-api', basePath: '/okra-admin' });
