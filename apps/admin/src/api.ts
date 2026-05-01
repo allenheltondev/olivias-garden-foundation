@@ -145,7 +145,11 @@ function getAdminApiBaseUrl(): string {
   if (!baseUrl) {
     throw new Error('Missing VITE_ADMIN_API_URL for admin app.');
   }
-  return trimTrailingSlash(baseUrl);
+  // Production deploys set this to `https://api.<domain>/admin` (the
+  // shared-API base-path mapping). Every call site appends `/admin/...`,
+  // so strip a trailing `/admin` here to avoid `/admin/admin/...` URLs.
+  // In dev (raw invoke URL ends in `/api`) the strip is a no-op.
+  return trimTrailingSlash(baseUrl).replace(/\/admin$/, '');
 }
 
 function getOkraAdminApiBaseUrl(): string {
