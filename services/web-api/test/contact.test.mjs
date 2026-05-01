@@ -124,4 +124,45 @@ describe('POST /contact', () => {
     expect(response.statusCode).toBe(400);
     expect(eventBridgeSendMock).not.toHaveBeenCalled();
   });
+
+  it('accepts a tier_interest signup and publishes a tier-interest event', async () => {
+    const response = await handler(createEvent({
+      kind: 'tier_interest',
+      email: 'grower@example.com',
+      tier: 'pro',
+      source: 'good-roots-tiers'
+    }));
+
+    expect(response.statusCode).toBe(204);
+    expect(eventBridgeSendMock).toHaveBeenCalledTimes(1);
+    const command = eventBridgeSendMock.mock.calls[0][0];
+    const entry = command.input.Entries[0];
+    expect(entry.Source).toBe('ogf.contact');
+    expect(entry.DetailType).toBe('tier-interest.received');
+    const detail = JSON.parse(entry.Detail);
+    expect(detail.email).toBe('grower@example.com');
+    expect(detail.tier).toBe('pro');
+    expect(detail.source).toBe('good-roots-tiers');
+  });
+
+  it('returns 422 when tier_interest is missing the tier field', async () => {
+    const response = await handler(createEvent({
+      kind: 'tier_interest',
+      email: 'grower@example.com'
+    }));
+
+    expect(response.statusCode).toBe(422);
+    expect(eventBridgeSendMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 422 when tier_interest tier is invalid', async () => {
+    const response = await handler(createEvent({
+      kind: 'tier_interest',
+      email: 'grower@example.com',
+      tier: 'enterprise'
+    }));
+
+    expect(response.statusCode).toBe(422);
+    expect(eventBridgeSendMock).not.toHaveBeenCalled();
+  });
 });

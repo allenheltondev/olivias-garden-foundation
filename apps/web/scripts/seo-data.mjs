@@ -346,10 +346,10 @@ export const seoRoutes = [
         <li>Gather what you need from nearby listings, claim it, and pick it up directly from the grower.</li>
       </ol>
       <p>
-        Tiers: Free includes one garden, basic planner, browsing, and your neighborhood food
-        map. Supporter ($10/month) adds multiple gardens, season history, and advanced planning.
-        Pro ($50/month, 30-day free trial) adds AI planting recommendations based on local gaps,
-        season-aware timing, and troubleshooting help.
+        Free is live today: one garden, basic planner, browsing, and your neighborhood food map.
+        Paid Supporter and Pro tiers are in the works and will add things like multiple gardens,
+        season history, advanced planning, and AI planting recommendations based on local gaps.
+        Sign up on the page to be notified when they open.
       </p>
     `,
   },
