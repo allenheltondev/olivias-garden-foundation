@@ -762,6 +762,7 @@ body {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
   transition: transform var(--duration-fast) var(--easing-out),
               box-shadow var(--duration-fast) var(--easing-out),
               background-color var(--duration-fast) var(--easing-out);
@@ -769,6 +770,7 @@ body {
 
 .og-button:hover {
   transform: translateY(-1px);
+  text-decoration: none;
 }
 
 .og-button:disabled {

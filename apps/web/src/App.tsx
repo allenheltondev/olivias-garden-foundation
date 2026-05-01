@@ -18,6 +18,7 @@ import { webApiBase } from './site/routes';
 import { useRouteSeo } from './site/seo';
 import { LoginPage } from './site/pages/LoginPage';
 import { NotFoundPage } from './site/pages/NotFoundPage';
+import { RefundPolicyPage } from './site/pages/RefundPolicyPage';
 import { readRedirectTargetFromSearch } from './auth/redirect';
 import {
   AboutPage,
@@ -385,6 +386,7 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/refunds" element={<RefundPolicyPage />} />
           <Route path="/data" element={<DataDeletionPage onNavigate={navigate} />} />
           <Route
             path="/good-roots"
