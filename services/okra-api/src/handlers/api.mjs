@@ -359,7 +359,7 @@ app.post('/requests', async ({ req, event }) => {
   }
 });
 
-app.get('/okra', async () => {
+app.get('/', async () => {
   const cdnDomain = process.env.MEDIA_CDN_DOMAIN;
   if (!cdnDomain) {
     console.error(JSON.stringify({
@@ -451,7 +451,7 @@ app.get('/okra', async () => {
   }
 });
 
-app.get('/okra/stats', async () => {
+app.get('/stats', async () => {
   const client = await createDbClient();
   await client.connect();
   try {
@@ -649,4 +649,4 @@ app.notFound(() => {
   );
 });
 
-export const handler = createHttpRouterHandler({ app, handlerName: 'public-api' });
+export const handler = createHttpRouterHandler({ app, handlerName: 'public-api', basePath: '/okra' });
