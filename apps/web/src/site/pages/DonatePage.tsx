@@ -438,8 +438,16 @@ export function DonatePage({
               to add the donor&apos;s permanent bee to the garden.
             </p>
             {checkoutStatus.customerEmail ? (
-              <p>A receipt should be on its way to {checkoutStatus.customerEmail}.</p>
-            ) : null}
+              <p>
+                A tax-deductible receipt has been emailed to {checkoutStatus.customerEmail}.{' '}
+                {foundationOrganization.legalName}, EIN {foundationOrganization.ein}.
+              </p>
+            ) : (
+              <p>
+                A tax-deductible receipt is on its way. {foundationOrganization.legalName},
+                EIN {foundationOrganization.ein}.
+              </p>
+            )}
             <div className="donate-status-card__actions">
               <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>Make another gift</Button>
               <CtaButton
@@ -607,7 +615,8 @@ export function DonatePage({
                       {selectedMode === 'recurring' ? 'Garden Club' : 'One-time donation'}: ${(effectiveAmount / 100).toFixed(2)}
                     </p>
                     <p className="donate-form-card__legal-note">
-                      {foundationOrganization.legalName}, EIN {foundationOrganization.ein}
+                      {foundationOrganization.legalName} is a 501(c)(3) nonprofit (EIN {foundationOrganization.ein}).
+                      Donations are tax-deductible to the extent permitted by law.
                     </p>
                     <p className="page-text">
                       {selectedMode === 'recurring'
