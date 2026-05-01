@@ -694,12 +694,16 @@ export function ProfilePage({
       || authSession.user.name
       || authSession.user.email
       || 'Your profile';
+  const greetingName =
+    profile?.firstName?.trim()
+      || authSession.user.firstName?.trim()
+      || displayName;
 
   return (
     <>
       <PageHero
         eyebrow="Profile"
-        title={`Welcome, ${displayName}.`}
+        title={`Welcome, ${greetingName}.`}
         body="Keep your public details up to date and review what you've been part of at Olivia's Garden."
         className="profile-hero"
       />

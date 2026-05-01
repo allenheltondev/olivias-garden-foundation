@@ -135,6 +135,15 @@ export const routes: AppRoute[] = [
     prerender: true,
   },
   {
+    path: '/refunds',
+    label: 'Refund Policy',
+    showInLegalFooter: true,
+    title: 'Refund Policy',
+    description: "Review Olivia's Garden Foundation's refund and cancellation policy for one-time donations and recurring Garden Club support.",
+    allowIndex: true,
+    prerender: true,
+  },
+  {
     path: '/data',
     label: 'Your data',
     showInLegalFooter: true,

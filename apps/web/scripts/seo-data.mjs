@@ -392,6 +392,36 @@ export const seoRoutes = [
     `,
   },
   {
+    path: '/refunds',
+    title: 'Refund Policy',
+    description:
+      "Review Olivia's Garden Foundation's refund and cancellation policy for one-time donations and recurring Garden Club support.",
+    prerender: true,
+    sitemap: { changefreq: 'yearly', priority: 0.3 },
+    bodyFallback: `
+      <h1>Refund Policy</h1>
+      <p>
+        One-time donations to Olivia's Garden Foundation are refundable within 7 days for
+        accidental gifts, incorrect amounts, duplicate donations, or other donations made in
+        error. After 7 days, one-time donations are generally final unless a refund is required
+        by law or approved by the foundation.
+      </p>
+      <p>
+        Garden Club recurring support can be canceled at any time. Cancellation stops future
+        charges, including cancel-at-period-end requests when supported by the payment provider.
+        Past monthly donations are generally not refunded unless they were accidental,
+        duplicated, or required to be refunded by law.
+      </p>
+      <p>
+        To request a refund or cancellation, email
+        <a href="mailto:${contactEmail}">${contactEmail}</a> with the transaction reference,
+        donation date, donation amount, and the email used for the donation. We respond within
+        5 business days. If a donation is refunded, the refunded amount is no longer a completed
+        charitable contribution and any related tax deduction should be reversed or excluded.
+      </p>
+    `,
+  },
+  {
     path: '/data',
     title: 'Data and account deletion',
     description:

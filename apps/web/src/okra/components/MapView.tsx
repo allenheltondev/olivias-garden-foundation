@@ -200,7 +200,7 @@ export function MapView({
           <div className="map-view__empty" role="status">
             <p className="map-view__empty-message">No gardens yet — be the first to add yours</p>
             <button type="button" className="map-view__cta-link" onClick={onOpenSubmission}>
-              I&apos;m already growing this
+              Share your okra pictures
             </button>
           </div>
         ) : null}

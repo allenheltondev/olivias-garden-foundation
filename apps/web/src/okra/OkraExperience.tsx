@@ -288,7 +288,7 @@ export function OkraExperience({
             Request free seeds
           </button>
           <button type="button" className="ok-btn ok-btn--ghost ok-btn--lg" onClick={openSubmission}>
-            I&apos;m already growing this
+            Share your okra pictures
           </button>
         </div>
       </section>

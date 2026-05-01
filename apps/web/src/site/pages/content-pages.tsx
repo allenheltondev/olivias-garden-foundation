@@ -943,7 +943,8 @@ export function TermsOfServicePage() {
           Donations, purchases, and other payments made through the site may be processed by
           third-party payment providers. Additional terms from those providers may apply. Except
           where required by law or expressly stated otherwise, donations are generally final and
-          non-refundable.
+          non-refundable. See our <a href="/refunds">Refund Policy</a> for one-time donation
+          refund windows, Garden Club cancellation terms, and refund request instructions.
         </p>
       </LegalSection>
 
