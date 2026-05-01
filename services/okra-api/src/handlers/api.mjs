@@ -8,6 +8,7 @@ import {
 import { DynamoDBPersistenceLayer } from '@aws-lambda-powertools/idempotency/dynamodb';
 import { validate } from '@aws-lambda-powertools/validation';
 import { SchemaValidationError } from '@aws-lambda-powertools/validation/errors';
+import { S3Client, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { createDbClient } from '../../scripts/db-client.mjs';
 import {
   createPhotoUploadIntent,
@@ -17,6 +18,7 @@ import {
 import { enqueuePhotoProcessing } from '../services/photo-processing-queue.mjs';
 import { resolveOptionalContributor } from '../services/auth.mjs';
 import {
+  deleteContributorSubmission,
   enrichSubmissionPayload,
   insertPendingSubmissionWithPhotos,
   listContributorSubmissions,
@@ -73,6 +75,56 @@ import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
 import { createHttpRouterHandler, getCorrelationId } from '../services/http-handler.mjs';
 
 const app = new Router();
+const s3 = new S3Client({});
+
+async function deletePhotoObjectsFromS3(photos, { submissionId, correlationId }) {
+  const objectsByBucket = Object.create(null);
+  for (const photo of photos) {
+    const pairs = [
+      [photo.original_s3_bucket, photo.original_s3_key],
+      [photo.normalized_s3_bucket, photo.normalized_s3_key],
+      [photo.thumbnail_s3_bucket, photo.thumbnail_s3_key]
+    ];
+    for (const [bucket, key] of pairs) {
+      if (bucket && key) {
+        if (!objectsByBucket[bucket]) objectsByBucket[bucket] = [];
+        objectsByBucket[bucket].push({ Key: key });
+      }
+    }
+  }
+
+  for (const [bucket, objects] of Object.entries(objectsByBucket)) {
+    for (let i = 0; i < objects.length; i += 1000) {
+      const batch = objects.slice(i, i + 1000);
+      try {
+        const result = await s3.send(new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: { Objects: batch, Quiet: true }
+        }));
+
+        if (result.Errors && result.Errors.length > 0) {
+          console.error(JSON.stringify({
+            level: 'warn',
+            message: 'Partial S3 cleanup failure for contributor submission delete',
+            submissionId,
+            bucket,
+            failedKeys: result.Errors.map((e) => e.Key),
+            correlationId
+          }));
+        }
+      } catch (err) {
+        console.error(JSON.stringify({
+          level: 'warn',
+          message: 'S3 cleanup failed for contributor submission delete',
+          submissionId,
+          bucket,
+          error: err instanceof Error ? err.message : String(err),
+          correlationId
+        }));
+      }
+    }
+  }
+}
 
 app.post('/photos', async ({ req, event }) => {
   const payload = await req.json();
@@ -622,6 +674,49 @@ app.patch('/me/submissions/:id', async ({ req, event, params }) => {
       message: error instanceof Error ? error.message : String(error),
       errorName: error instanceof Error ? error.name : 'UnknownError',
       endpoint: 'PATCH /me/submissions/:id',
+      submissionId: params.id,
+      correlationId
+    }));
+    return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+  } finally {
+    await client?.end?.();
+  }
+});
+
+app.delete('/me/submissions/:id', async ({ event, params }) => {
+  const correlationId = getCorrelationId(event);
+  const authResult = await resolveOptionalContributor(event);
+  if (!authResult.ok) {
+    return authResult;
+  }
+
+  const cognitoSub = authResult.contributor?.sub;
+  if (!cognitoSub) {
+    return errorResponse(401, 'UNAUTHORIZED', 'Sign in to delete your okra submission');
+  }
+
+  let client;
+  try {
+    client = await createDbClient();
+    await client.connect();
+    const { photos } = await deleteContributorSubmission(client, params.id, cognitoSub);
+    await client.end();
+    client = null;
+
+    if (photos.length > 0) {
+      await deletePhotoObjectsFromS3(photos, { submissionId: params.id, correlationId });
+    }
+
+    return { statusCode: 204 };
+  } catch (error) {
+    if (error?.code === 'SUBMISSION_NOT_FOUND') {
+      return errorResponse(404, 'NOT_FOUND', 'Submission not found');
+    }
+    console.error(JSON.stringify({
+      level: 'error',
+      message: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      endpoint: 'DELETE /me/submissions/:id',
       submissionId: params.id,
       correlationId
     }));

@@ -462,3 +462,44 @@ export async function submitContributorSubmissionEdit(client, submissionId, cogn
     throw error;
   }
 }
+
+export async function deleteContributorSubmission(client, submissionId, cognitoSub) {
+  await client.query('begin');
+
+  try {
+    const submissionResult = await client.query(
+      `
+        select id
+          from submissions
+         where id = $1 and contributor_cognito_sub = $2
+         for update
+      `,
+      [submissionId, cognitoSub]
+    );
+
+    if (submissionResult.rowCount === 0) {
+      const error = new Error('Submission not found');
+      error.code = 'SUBMISSION_NOT_FOUND';
+      throw error;
+    }
+
+    const photoResult = await client.query(
+      `
+        select original_s3_bucket, original_s3_key,
+               normalized_s3_bucket, normalized_s3_key,
+               thumbnail_s3_bucket, thumbnail_s3_key
+          from submission_photos
+         where submission_id = $1
+      `,
+      [submissionId]
+    );
+
+    await client.query('delete from submissions where id = $1', [submissionId]);
+    await client.query('commit');
+
+    return { photos: photoResult.rows };
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  }
+}
