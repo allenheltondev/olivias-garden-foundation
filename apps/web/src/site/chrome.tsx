@@ -92,6 +92,14 @@ export function SiteHeader({
       mobileOnly: true,
       onSelect: () => onNavigate(authSession ? '/profile' : '/login'),
     },
+    ...(authSession?.user.isAdmin
+      ? [{
+          id: 'admin',
+          label: 'Admin',
+          href: buildCrossAppUrl(adminUrl, authSession),
+          mobileOnly: true,
+        }]
+      : []),
   ];
 
   return (
