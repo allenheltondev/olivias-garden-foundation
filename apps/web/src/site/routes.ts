@@ -168,7 +168,8 @@ const primaryPageOrder = new Map([
   ['/', 0],
   ['/okra', 1],
   ['/donate', 2],
-  ['/about', 3],
+  ['/good-roots', 3],
+  ['/about', 4],
 ]);
 
 function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
