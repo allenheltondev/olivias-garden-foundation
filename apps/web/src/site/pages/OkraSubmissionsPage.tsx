@@ -42,6 +42,18 @@ async function fetchOkraSubmissions(authSession: AuthSession): Promise<OkraSubmi
   return body.submissions ?? [];
 }
 
+async function deleteOkraSubmission(authSession: AuthSession, submissionId: string): Promise<void> {
+  const response = await fetch(okraApiUrl(`/me/submissions/${submissionId}`), {
+    method: 'DELETE',
+    headers: createOkraHeaders({ accessToken: authSession.accessToken }),
+  });
+
+  if (!response.ok && response.status !== 204) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.message ?? body?.error?.message ?? body?.error ?? 'Unable to delete your okra submission.');
+  }
+}
+
 function formatDate(value: string | null) {
   if (!value) return '';
   const date = new Date(value);
@@ -102,6 +114,17 @@ function PencilIcon({ className }: { className?: string }) {
   );
 }
 
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M9 3h6a1 1 0 0 1 1 1v1h4v2h-1.07l-1 12.14A2 2 0 0 1 15.94 21H8.06a2 2 0 0 1-2-1.86L5.07 7H4V5h4V4a1 1 0 0 1 1-1Zm1 4v11h2V7h-2Zm4 0v11h2V7h-2Z"
+      />
+    </svg>
+  );
+}
+
 export function OkraSubmissionsPage({
   authSession,
   authReady,
@@ -116,6 +139,31 @@ export function OkraSubmissionsPage({
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<OkraSubmission | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<OkraSubmission | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  const closeDeleteDialog = useCallback(() => {
+    if (deleteSubmitting) return;
+    setDeleting(null);
+    setDeleteError(null);
+  }, [deleteSubmitting]);
+
+  const submitDeletion = useCallback(async () => {
+    if (!authSession || !deleting) return;
+    setDeleteSubmitting(true);
+    setDeleteError(null);
+    try {
+      await deleteOkraSubmission(authSession, deleting.id);
+      setSubmissions((current) => current.filter((entry) => entry.id !== deleting.id));
+      setNotice('Your okra submission was deleted.');
+      setDeleting(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Unable to delete your okra submission.');
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }, [authSession, deleting]);
 
   useEffect(() => {
     if (authReady && !authSession) {
@@ -256,6 +304,18 @@ export function OkraSubmissionsPage({
                           Edit submission
                         </Button>
                       )}
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => {
+                          setNotice(null);
+                          setDeleteError(null);
+                          setDeleting(submission);
+                        }}
+                      >
+                        <TrashIcon className="okra-submission-card__btn-icon" />
+                        Delete
+                      </Button>
                     </footer>
                   </div>
                 </article>
@@ -277,6 +337,51 @@ export function OkraSubmissionsPage({
           void refresh();
         }}
       />
+
+      {deleting ? (
+        <div
+          className="profile-cancel-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="okra-delete-dialog-title"
+          aria-describedby="okra-delete-dialog-description"
+        >
+          <div
+            className="profile-cancel-dialog__backdrop"
+            onClick={closeDeleteDialog}
+            aria-hidden="true"
+          />
+          <div className="profile-cancel-dialog__panel" role="document">
+            <h2 id="okra-delete-dialog-title" className="profile-cancel-dialog__title">
+              Delete this okra submission?
+            </h2>
+            <p id="okra-delete-dialog-description" className="profile-cancel-dialog__body">
+              This permanently removes your pin from the map and deletes the photos and story you
+              shared. This cannot be undone &mdash; you can always submit again later.
+            </p>
+            {deleteError ? <FormFeedback tone="error">{deleteError}</FormFeedback> : null}
+            <div className="profile-cancel-dialog__actions">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeDeleteDialog}
+                disabled={deleteSubmitting}
+              >
+                Keep submission
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => void submitDeletion()}
+                disabled={deleteSubmitting}
+                loading={deleteSubmitting}
+              >
+                {deleteSubmitting ? 'Deleting…' : 'Yes, delete it'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
