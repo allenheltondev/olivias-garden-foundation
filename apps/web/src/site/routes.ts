@@ -69,6 +69,7 @@ export const routes: AppRoute[] = [
   {
     path: '/good-roots',
     label: 'Good Roots Network',
+    showInNav: true,
     title: 'Good Roots Network',
     description: 'A community platform that connects home growers with neighbors and organizations who need fresh food. Plan your garden, see local food gaps, and share what you have extra.',
     seoImage: socialShareImage,
