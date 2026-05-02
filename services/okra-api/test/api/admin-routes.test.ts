@@ -49,7 +49,7 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
     from: vi.fn(() => ({ send: mockDynamoSend })),
   },
   ScanCommand: vi.fn((input: any) => ({ input, _type: 'ScanCommand' })),
-  UpdateCommand: vi.fn((input: any) => ({ input, _type: 'UpdateCommand' })),
+  TransactWriteCommand: vi.fn((input: any) => ({ input, _type: 'TransactWriteCommand' })),
 }));
 
 const mockResolveCountry = vi.hoisted(() => vi.fn(() => 'United States'));
@@ -152,8 +152,8 @@ beforeEach(() => {
     if (command?._type === 'ScanCommand') {
       return Promise.resolve(scanResponses.shift() ?? { Items: [] });
     }
-    if (command?._type === 'UpdateCommand') {
-      return Promise.resolve({ Attributes: {} });
+    if (command?._type === 'TransactWriteCommand') {
+      return Promise.resolve({});
     }
     return Promise.resolve({});
   });
@@ -875,16 +875,16 @@ describe('seed request admin queue', () => {
 
   it('marks a seed request as handled', async () => {
     mockDynamoSend.mockImplementationOnce((command: any) => {
-      expect(command._type).toBe('UpdateCommand');
-      return Promise.resolve({
-        Attributes: {
-          requestId: '33333333-3333-3333-3333-333333333333',
-          requestStatus: 'handled',
-          handledAt: '2026-04-22T12:00:00.000Z',
-          handledByCognitoSub: 'admin-cognito-sub-1',
-          reviewNotes: 'Handled in admin dashboard.',
-        },
+      expect(command._type).toBe('TransactWriteCommand');
+      expect(command.input.TransactItems).toHaveLength(2);
+      expect(command.input.TransactItems[0].Update.Key).toEqual({
+        requestId: '33333333-3333-3333-3333-333333333333',
       });
+      expect(command.input.TransactItems[1].Update.Key).toEqual({
+        requestId: 'stats#seed-packets-sent',
+      });
+      expect(command.input.TransactItems[1].Update.UpdateExpression).toContain('ADD #count :one');
+      return Promise.resolve({});
     });
 
     const { statusCode, body } = parseRes(await handler(
@@ -897,6 +897,7 @@ describe('seed request admin queue', () => {
     expect(statusCode).toBe(200);
     expect(body.requestStatus).toBe('handled');
     expect(body.handledByCognitoSub).toBe('admin-cognito-sub-1');
+    expect(body.reviewNotes).toBe('Handled in admin dashboard.');
   });
 
   it('returns INVALID_ACTION for unsupported seed request action', async () => {

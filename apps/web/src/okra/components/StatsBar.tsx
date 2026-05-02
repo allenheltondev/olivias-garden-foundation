@@ -4,6 +4,7 @@ export interface StatsData {
   total_pins: number;
   country_count: number;
   contributor_count: number;
+  seed_packets_sent: number;
 }
 
 export interface StatsBarProps {
@@ -48,6 +49,7 @@ export function StatsBar({ stats, loading, error }: StatsBarProps) {
       <dl className="stats-bar" aria-label="Community statistics" aria-busy="true">
         <SkeletonItem primary />
         <SkeletonItem />
+        <SkeletonItem />
       </dl>
     );
   }
@@ -63,6 +65,10 @@ export function StatsBar({ stats, loading, error }: StatsBarProps) {
       <div className="stats-bar__item">
         <dt className="stats-bar__value">{fmt.format(stats.country_count)}</dt>
         <dd className="stats-bar__label">countries</dd>
+      </div>
+      <div className="stats-bar__item">
+        <dt className="stats-bar__value">{fmt.format(stats.seed_packets_sent)}</dt>
+        <dd className="stats-bar__label">seed packets</dd>
       </div>
     </dl>
   );

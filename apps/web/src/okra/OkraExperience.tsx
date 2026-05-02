@@ -76,7 +76,7 @@ export function OkraExperience({
   const requestSeeds = useCallback(() => setIsSeedModalOpen(true), []);
 
   const recentPins = pins.slice(0, 5);
-  const hasGrowers = stats !== null && stats.total_pins > 0;
+  const hasStats = stats !== null && (stats.total_pins > 0 || stats.seed_packets_sent > 0);
 
   return (
     <div className="okra-experience">
@@ -205,7 +205,7 @@ export function OkraExperience({
           </p>
         </header>
 
-        {hasGrowers ? (
+        {hasStats ? (
           <div className="ok-stats" aria-label="Community stats">
             <div className="ok-stats__item">
               <span className="ok-stats__value">{stats!.total_pins.toLocaleString()}</span>
@@ -214,6 +214,10 @@ export function OkraExperience({
             <div className="ok-stats__item">
               <span className="ok-stats__value">{stats!.country_count.toLocaleString()}</span>
               <span className="ok-stats__label">countries represented</span>
+            </div>
+            <div className="ok-stats__item">
+              <span className="ok-stats__value">{stats!.seed_packets_sent.toLocaleString()}</span>
+              <span className="ok-stats__label">seed packets sent</span>
             </div>
           </div>
         ) : null}

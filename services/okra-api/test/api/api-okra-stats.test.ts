@@ -3,6 +3,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 let queryResponses: Record<string, any>;
+const mockDynamoSend = vi.hoisted(() => vi.fn());
 
 const mockClient = {
   connect: vi.fn(),
@@ -20,6 +21,19 @@ const mockClient = {
 
 vi.mock('../../scripts/db-client.mjs', () => ({
   createDbClient: vi.fn(() => mockClient),
+}));
+
+vi.mock('@aws-sdk/client-dynamodb', () => ({
+  DynamoDBClient: vi.fn(() => ({})),
+}));
+
+vi.mock('@aws-sdk/lib-dynamodb', () => ({
+  DynamoDBDocumentClient: {
+    from: vi.fn(() => ({ send: mockDynamoSend })),
+  },
+  GetCommand: vi.fn((input: any) => ({ input, _type: 'GetCommand' })),
+  TransactWriteCommand: vi.fn((input: any) => ({ input, _type: 'TransactWriteCommand' })),
+  UpdateCommand: vi.fn((input: any) => ({ input, _type: 'UpdateCommand' })),
 }));
 
 import { handler } from '../../src/handlers/api.mjs';
@@ -60,11 +74,15 @@ function parseRes(res: any) {
 // ─── Setup / Teardown ───────────────────────────────────────────────────────
 
 beforeEach(() => {
+  process.env.SEED_REQUESTS_TABLE_NAME = 'test-seed-requests';
   queryResponses = {};
   vi.clearAllMocks();
+  mockDynamoSend.mockResolvedValue({ Item: { count: 12 } });
 });
 
-afterEach(() => {});
+afterEach(() => {
+  delete process.env.SEED_REQUESTS_TABLE_NAME;
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GET /okra/stats — Correct aggregates with mixed data (Requirement 3.1, 3.2, 3.3)
@@ -87,6 +105,7 @@ describe('GET /okra/stats — correct aggregates with mixed data', () => {
       total_pins: 42,
       country_count: 7,
       contributor_count: 15,
+      seed_packets_sent: 12,
     });
   });
 });
@@ -135,6 +154,7 @@ describe('GET /okra/stats — zero results', () => {
     expect(body.total_pins).toBe(0);
     expect(body.country_count).toBe(0);
     expect(body.contributor_count).toBe(0);
+    expect(body.seed_packets_sent).toBe(12);
   });
 });
 
@@ -159,6 +179,7 @@ describe('GET /okra/stats — null/empty contributor names excluded', () => {
     expect(statusCode).toBe(200);
     expect(body.total_pins).toBe(5);
     expect(body.contributor_count).toBe(2);
+    expect(body.seed_packets_sent).toBe(12);
   });
 });
 
@@ -182,9 +203,28 @@ describe('GET /okra/stats — null countries excluded', () => {
     expect(statusCode).toBe(200);
     expect(body.total_pins).toBe(10);
     expect(body.country_count).toBe(4);
+    expect(body.seed_packets_sent).toBe(12);
     // total_pins > country_count confirms null countries are excluded from count
     // but those submissions are still counted in total_pins
     expect(body.total_pins).toBeGreaterThan(body.country_count);
+  });
+});
+
+describe('GET /okra/stats — seed packets sent counter', () => {
+  it('returns zero seed_packets_sent when the DynamoDB counter has not been created yet', async () => {
+    queryResponses = {
+      'COUNT(*)': {
+        rows: [{ total_pins: 2, country_count: 1, contributor_count: 2 }],
+        rowCount: 1,
+      },
+    };
+    mockDynamoSend.mockResolvedValueOnce({});
+
+    const res = await handler(makeRestApiEvent('/okra/stats'));
+    const { statusCode, body } = parseRes(res);
+
+    expect(statusCode).toBe(200);
+    expect(body.seed_packets_sent).toBe(0);
   });
 });
 

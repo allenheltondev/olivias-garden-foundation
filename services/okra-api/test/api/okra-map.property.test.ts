@@ -5,6 +5,7 @@ import { fuzzCoordinates } from '../../src/services/privacy-fuzzing.mjs';
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 let queryResponses: Record<string, any>;
+const mockDynamoSend = vi.hoisted(() => vi.fn());
 
 const mockClient = {
   connect: vi.fn(),
@@ -22,6 +23,19 @@ const mockClient = {
 
 vi.mock('../../scripts/db-client.mjs', () => ({
   createDbClient: vi.fn(() => mockClient),
+}));
+
+vi.mock('@aws-sdk/client-dynamodb', () => ({
+  DynamoDBClient: vi.fn(() => ({})),
+}));
+
+vi.mock('@aws-sdk/lib-dynamodb', () => ({
+  DynamoDBDocumentClient: {
+    from: vi.fn(() => ({ send: mockDynamoSend })),
+  },
+  GetCommand: vi.fn((input: any) => ({ input, _type: 'GetCommand' })),
+  TransactWriteCommand: vi.fn((input: any) => ({ input, _type: 'TransactWriteCommand' })),
+  UpdateCommand: vi.fn((input: any) => ({ input, _type: 'UpdateCommand' })),
 }));
 
 import { handler } from '../../src/handlers/api.mjs';
@@ -81,12 +95,15 @@ const arbSubmission = fc.record({
 
 beforeEach(() => {
   process.env.MEDIA_CDN_DOMAIN = 'dtest123.cloudfront.net';
+  process.env.SEED_REQUESTS_TABLE_NAME = 'test-seed-requests';
   queryResponses = {};
   vi.clearAllMocks();
+  mockDynamoSend.mockResolvedValue({ Item: { count: 6 } });
 });
 
 afterEach(() => {
   delete process.env.MEDIA_CDN_DOMAIN;
+  delete process.env.SEED_REQUESTS_TABLE_NAME;
 });
 
 // ─── Mock reset helper ──────────────────────────────────────────────────────
@@ -337,6 +354,7 @@ describe('Property 3: Stats endpoint computes correct aggregates from stored dat
           expect(body.total_pins).toBe(expectedTotalPins);
           expect(body.country_count).toBe(expectedCountryCount);
           expect(body.contributor_count).toBe(expectedContributorCount);
+          expect(body.seed_packets_sent).toBe(6);
         }
       ),
       { numRuns: 100 }

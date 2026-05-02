@@ -277,6 +277,7 @@ Resources:
               Action:
                 - dynamodb:Scan
                 - dynamodb:UpdateItem
+                - dynamodb:TransactWriteItems
               Resource:
                 - !GetAtt SeedRequestsTable.Arn
                 - !Sub '${SeedRequestsTable.Arn}/index/*'
