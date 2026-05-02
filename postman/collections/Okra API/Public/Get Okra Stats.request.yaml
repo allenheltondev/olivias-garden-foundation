@@ -1,0 +1,24 @@
+$kind: http-request
+name: Get Okra Stats
+description: Retrieve public Okra Project aggregate stats for the map page.
+method: GET
+url: '{{okraBaseUrl}}/okra/stats'
+order: 100
+headers:
+  - key: X-Correlation-Id
+    value: postman-okra-stats
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("GET /okra/stats returns 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response has public stats schema", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("total_pins").that.is.a("number");
+          pm.expect(body).to.have.property("country_count").that.is.a("number");
+          pm.expect(body).to.have.property("contributor_count").that.is.a("number");
+          pm.expect(body).to.have.property("seed_packets_sent").that.is.a("number");
+      });

@@ -2,7 +2,7 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { createDbClient } from '../../scripts/db-client.mjs';
 import { isUuid } from '../services/photos.mjs';
 import { encodeCursor, decodeCursor, errorResponse } from '../services/pagination.mjs';
@@ -24,6 +24,7 @@ const VALID_ACTIONS = ['approved', 'denied'];
 const VALID_DENIAL_REASONS = ['spam', 'invalid_location', 'inappropriate', 'other'];
 const VALID_REQUEST_ACTIONS = ['handled'];
 const VALID_REQUEST_STATUSES = ['open'];
+const SEED_PACKETS_SENT_COUNTER_KEY = 'stats#seed-packets-sent';
 
 function getSeedRequestsTableName() {
   const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
@@ -48,7 +49,7 @@ async function listOpenSeedRequests() {
   return (result.Items ?? [])
     .filter((item) => {
       const requestId = String(item.requestId ?? '');
-      return requestId !== 'stats#seed-requests' && !requestId.startsWith('ratelimit#');
+      return !requestId.startsWith('stats#') && !requestId.startsWith('ratelimit#');
     })
     .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
     .map((item) => ({
@@ -65,28 +66,58 @@ async function listOpenSeedRequests() {
 }
 
 async function markSeedRequestHandled(requestId, cognitoSub, reviewNotes) {
-  const result = await dynamo.send(new UpdateCommand({
-    TableName: getSeedRequestsTableName(),
-    Key: { requestId },
-    UpdateExpression: 'SET #status = :handled, #handledAt = :handledAt, #handledBy = :handledBy, #notes = :notes',
-    ConditionExpression: 'attribute_exists(requestId) AND attribute_exists(createdAt) AND (attribute_not_exists(#status) OR #status = :open)',
-    ExpressionAttributeNames: {
-      '#status': 'requestStatus',
-      '#handledAt': 'handledAt',
-      '#handledBy': 'handledByCognitoSub',
-      '#notes': 'reviewNotes',
-    },
-    ExpressionAttributeValues: {
-      ':handled': 'handled',
-      ':handledAt': new Date().toISOString(),
-      ':handledBy': cognitoSub,
-      ':notes': reviewNotes ?? null,
-      ':open': 'open',
-    },
-    ReturnValues: 'ALL_NEW',
+  const handledAt = new Date().toISOString();
+
+  await dynamo.send(new TransactWriteCommand({
+    TransactItems: [
+      {
+        Update: {
+          TableName: getSeedRequestsTableName(),
+          Key: { requestId },
+          UpdateExpression: 'SET #status = :handled, #handledAt = :handledAt, #handledBy = :handledBy, #notes = :notes',
+          ConditionExpression: 'attribute_exists(requestId) AND attribute_exists(createdAt) AND (attribute_not_exists(#status) OR #status = :open)',
+          ExpressionAttributeNames: {
+            '#status': 'requestStatus',
+            '#handledAt': 'handledAt',
+            '#handledBy': 'handledByCognitoSub',
+            '#notes': 'reviewNotes',
+          },
+          ExpressionAttributeValues: {
+            ':handled': 'handled',
+            ':handledAt': handledAt,
+            ':handledBy': cognitoSub,
+            ':notes': reviewNotes ?? null,
+            ':open': 'open',
+          },
+        },
+      },
+      {
+        Update: {
+          TableName: getSeedRequestsTableName(),
+          Key: { requestId: SEED_PACKETS_SENT_COUNTER_KEY },
+          UpdateExpression: 'ADD #count :one SET #entityType = if_not_exists(#entityType, :entityType), #updatedAt = :updatedAt',
+          ExpressionAttributeNames: {
+            '#count': 'count',
+            '#entityType': 'entityType',
+            '#updatedAt': 'updatedAt',
+          },
+          ExpressionAttributeValues: {
+            ':one': 1,
+            ':entityType': 'seed_packet_stats',
+            ':updatedAt': handledAt,
+          },
+        },
+      },
+    ],
   }));
 
-  return result.Attributes ?? null;
+  return {
+    requestId,
+    requestStatus: 'handled',
+    handledAt,
+    handledByCognitoSub: cognitoSub,
+    reviewNotes: reviewNotes ?? null,
+  };
 }
 
 /**
@@ -221,7 +252,7 @@ export function registerAdminRoutes(app) {
         reviewNotes: updated.reviewNotes ?? null,
       };
     } catch (err) {
-      if (err?.name === 'ConditionalCheckFailedException') {
+      if (err?.name === 'ConditionalCheckFailedException' || err?.name === 'TransactionCanceledException') {
         return errorResponse(409, 'INVALID_STATE', 'Seed request is already handled or missing');
       }
 

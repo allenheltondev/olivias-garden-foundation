@@ -190,7 +190,7 @@
 /* ── Stats (when pins exist) ─────────────────────────────────── */
 .ok-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: 0.8rem;
 }
 .ok-stats__item {
@@ -588,7 +588,7 @@
   }
 
   .ok-stats {
-    grid-template-columns: repeat(2, minmax(0, 18rem));
+    grid-template-columns: repeat(3, minmax(0, 18rem));
   }
 
   .ok-how {

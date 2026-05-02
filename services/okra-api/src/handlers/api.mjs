@@ -6,6 +6,8 @@ import {
   makeIdempotent
 } from '@aws-lambda-powertools/idempotency';
 import { DynamoDBPersistenceLayer } from '@aws-lambda-powertools/idempotency/dynamodb';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { validate } from '@aws-lambda-powertools/validation';
 import { SchemaValidationError } from '@aws-lambda-powertools/validation/errors';
 import { createDbClient } from '../../scripts/db-client.mjs';
@@ -73,6 +75,31 @@ import { fuzzCoordinates } from '../services/privacy-fuzzing.mjs';
 import { createHttpRouterHandler, getCorrelationId } from '../services/http-handler.mjs';
 
 const app = new Router();
+let statsDynamoClient = null;
+const SEED_PACKETS_SENT_COUNTER_KEY = 'stats#seed-packets-sent';
+
+function getStatsDynamoClient() {
+  if (!statsDynamoClient) {
+    statsDynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+      marshallOptions: { removeUndefinedValues: true }
+    });
+  }
+  return statsDynamoClient;
+}
+
+async function getSeedPacketsSentCount() {
+  const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
+  if (!tableName) {
+    throw new Error('SEED_REQUESTS_TABLE_NAME is not configured');
+  }
+
+  const result = await getStatsDynamoClient().send(new GetCommand({
+    TableName: tableName,
+    Key: { requestId: SEED_PACKETS_SENT_COUNTER_KEY }
+  }));
+
+  return Number(result.Item?.count ?? 0);
+}
 
 app.post('/photos', async ({ req, event }) => {
   const payload = await req.json();
@@ -455,18 +482,21 @@ app.get('/okra/stats', async () => {
   const client = await createDbClient();
   await client.connect();
   try {
-    const res = await client.query(
-      `SELECT
-         COUNT(*)::int AS total_pins,
-         COUNT(DISTINCT country)::int AS country_count,
-         COUNT(DISTINCT contributor_name) FILTER (WHERE contributor_name IS NOT NULL AND contributor_name <> '')::int AS contributor_count
-       FROM submissions
-       WHERE status = 'approved'
-         AND NOT (display_lat = 0 AND display_lng = 0)`
-    );
+    const [res, seedPacketsSent] = await Promise.all([
+      client.query(
+        `SELECT
+           COUNT(*)::int AS total_pins,
+           COUNT(DISTINCT country)::int AS country_count,
+           COUNT(DISTINCT contributor_name) FILTER (WHERE contributor_name IS NOT NULL AND contributor_name <> '')::int AS contributor_count
+         FROM submissions
+         WHERE status = 'approved'
+           AND NOT (display_lat = 0 AND display_lng = 0)`
+      ),
+      getSeedPacketsSentCount()
+    ]);
     const { total_pins, country_count, contributor_count } = res.rows[0];
     return new Response(
-      JSON.stringify({ total_pins, country_count, contributor_count }),
+      JSON.stringify({ total_pins, country_count, contributor_count, seed_packets_sent: seedPacketsSent }),
       {
         status: 200,
         headers: {

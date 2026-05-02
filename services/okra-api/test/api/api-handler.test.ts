@@ -5,9 +5,23 @@ const mockClient = {
   query: vi.fn(),
   end: vi.fn()
 };
+const mockDynamoSend = vi.hoisted(() => vi.fn());
 
 vi.mock('../../scripts/db-client.mjs', () => ({
   createDbClient: vi.fn(() => mockClient)
+}));
+
+vi.mock('@aws-sdk/client-dynamodb', () => ({
+  DynamoDBClient: vi.fn(() => ({}))
+}));
+
+vi.mock('@aws-sdk/lib-dynamodb', () => ({
+  DynamoDBDocumentClient: {
+    from: vi.fn(() => ({ send: mockDynamoSend }))
+  },
+  GetCommand: vi.fn((input) => ({ input, _type: 'GetCommand' })),
+  TransactWriteCommand: vi.fn((input) => ({ input, _type: 'TransactWriteCommand' })),
+  UpdateCommand: vi.fn((input) => ({ input, _type: 'UpdateCommand' }))
 }));
 
 import { handler } from '../../src/handlers/api.mjs';
@@ -38,11 +52,13 @@ function makeRestApiEvent(path, method = 'GET', headers = {}) {
 }
 
 beforeEach(() => {
+  process.env.SEED_REQUESTS_TABLE_NAME = 'test-seed-requests';
   vi.clearAllMocks();
   mockClient.query.mockResolvedValue({
     rows: [{ total_pins: 3, country_count: 2, contributor_count: 2 }],
     rowCount: 1
   });
+  mockDynamoSend.mockResolvedValue({ Item: { count: 9 } });
 });
 
 describe('api handler wrapper', () => {
@@ -65,7 +81,8 @@ describe('api handler wrapper', () => {
     expect(JSON.parse(String(res.body))).toEqual({
       total_pins: 3,
       country_count: 2,
-      contributor_count: 2
+      contributor_count: 2,
+      seed_packets_sent: 9
     });
     expect(res.headers['x-correlation-id']).toBe('corr-123');
   });

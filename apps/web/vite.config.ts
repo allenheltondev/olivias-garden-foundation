@@ -7,7 +7,7 @@ function mockOkraApi(): Plugin {
   }) => {
     middlewares.use('/api/okra/stats', (_req, res) => {
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ total_pins: 5, country_count: 3, contributor_count: 4 }));
+      res.end(JSON.stringify({ total_pins: 5, country_count: 3, contributor_count: 4, seed_packets_sent: 28 }));
     });
 
     middlewares.use('/api/okra', (_req, res) => {
