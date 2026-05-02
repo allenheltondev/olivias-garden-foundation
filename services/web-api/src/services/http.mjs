@@ -63,6 +63,7 @@ export function mapApiError(error, correlationId) {
     || message.includes('email must be a valid email address')
     || message.includes('contactName is required')
     || message.includes('message is required')
+    || message.includes('tier must be one of supporter, pro, either')
   ) {
     return errorResponse(400, message, correlationId);
   }

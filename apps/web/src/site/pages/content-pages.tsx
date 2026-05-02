@@ -1084,18 +1084,95 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
   if (tier === 'supporter') {
     return {
       title: 'Thanks for keeping the network growing.',
-      body: 'Want the full toolkit? Pro adds AI planting recommendations and local gap signals for $50/month, with a 30-day free trial on us.',
-      primary: { label: 'Try Pro free for 30 days', href: '#tiers', internal: true },
-      secondary: { label: 'Open Good Roots Network', href: appHref },
+      body: "Pro is in the works — AI planting recommendations and local gap signals are coming soon. We'll let you know the moment they open up.",
+      primary: { label: 'Open Good Roots Network', href: appHref },
+      secondary: { label: 'Hear when Pro opens', href: '#tiers', internal: true },
     };
   }
 
   return {
     title: "You're in. Now grow with the whole network behind you.",
-    body: "Your Olivia's Garden account already works in Good Roots. Upgrade to Pro for AI planting recommendations tuned to your neighborhood — free for 30 days, then $50/month.",
-    primary: { label: 'Start my 30-day Pro trial', href: '#tiers', internal: true },
-    secondary: { label: 'Open Good Roots Network', href: appHref },
+    body: "Your Olivia's Garden account already works in Good Roots. Paid tiers with AI planting recommendations and gap signals are coming — get on the list and we'll tell you when they're live.",
+    primary: { label: 'Open Good Roots Network', href: appHref },
+    secondary: { label: 'Hear when paid tiers open', href: '#tiers', internal: true },
   };
+}
+
+type TierInterestChoice = 'supporter' | 'pro' | 'either';
+
+function TierInterestForm({
+  tier = 'either',
+  source,
+  submitLabel = 'Notify me when paid tiers open',
+}: {
+  tier?: TierInterestChoice;
+  source: string;
+  submitLabel?: string;
+}) {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const canSubmit = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const clearFeedback = () => {
+    if (feedback) setFeedback(null);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSubmit || submitting) return;
+
+    setSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch(`${webApiBase}/contact`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'tier_interest',
+          email: email.trim(),
+          tier,
+          source,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Submission failed (${response.status})`);
+      }
+
+      setFeedback({
+        type: 'success',
+        message: "Thanks. We'll email you the moment paid tiers open up.",
+      });
+      setEmail('');
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message: error instanceof Error ? error.message : "We couldn't sign you up. Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="contact-form good-roots-tier-form" onSubmit={handleSubmit} noValidate>
+      <Input
+        type="email"
+        label="Email"
+        value={email}
+        onChange={(event) => { clearFeedback(); setEmail(event.target.value); }}
+        required
+        autoComplete="email"
+      />
+      <Button type="submit" disabled={!canSubmit} loading={submitting}>
+        {submitting ? 'Submitting...' : submitLabel}
+      </Button>
+      {feedback ? <FormFeedback tone={feedback.type}>{feedback.message}</FormFeedback> : null}
+    </form>
+  );
 }
 
 function OrganizationInquiryForm() {
@@ -1383,8 +1460,8 @@ export function GoodRootsPage({
         <div className="good-roots-map-placeholder" aria-hidden="true" />
       </Section>
 
-      <Section id="tiers" title="Pick the plot that fits you." intro="All tiers come with your Olivia's Garden account. Supporter and Pro help keep the network free for families and food organizations.">
-        <div className="good-roots-tiers">
+      <Section id="tiers" title="Pick the plot that fits you." intro="Free is live today. Supporter and Pro tiers are on the way — leave your email and we'll tell you the moment they open.">
+        <div className="good-roots-tiers good-roots-tiers--two">
           <article className={`good-roots-tier${tier === 'free' ? ' good-roots-tier--current' : ''}`}>
             <header>
               <p className="good-roots-tier__eyebrow">Free</p>
@@ -1398,37 +1475,17 @@ export function GoodRootsPage({
             </ul>
           </article>
 
-          <article className={`good-roots-tier${tier === 'supporter' ? ' good-roots-tier--current' : ''}`}>
+          <article className="good-roots-tier good-roots-tier--featured good-roots-tier--coming-soon">
             <header>
-              <p className="good-roots-tier__eyebrow">Supporter</p>
-              <p className="good-roots-tier__price">$10/month</p>
+              <p className="good-roots-tier__eyebrow">Supporter & Pro — coming soon</p>
+              <p className="good-roots-tier__price">In the works</p>
             </header>
-            <ul className="site-list">
-              <li>Everything in Free</li>
-              <li>Multiple gardens and season history</li>
-              <li>Advanced planner with crop rotation</li>
-              <li>Priority placement when you have surplus</li>
-              <li>Your support keeps the network free for families and food organizations</li>
-            </ul>
-          </article>
-
-          <article className={`good-roots-tier good-roots-tier--featured${tier === 'pro' ? ' good-roots-tier--current' : ''}`}>
-            <header>
-              <p className="good-roots-tier__eyebrow">Pro</p>
-              <p className="good-roots-tier__price">$50/month · 30-day free trial</p>
-            </header>
-            <ul className="site-list">
-              <li>Everything in Supporter</li>
-              <li>AI planting recommendations based on local gaps</li>
-              <li>Season-aware timing and rotation guidance</li>
-              <li>Scarcity and abundance signals for every crop</li>
-              <li>Troubleshooting help when something's off in the garden</li>
-            </ul>
-            <p className="good-roots-tier__note">
-              {authSession
-                ? 'Start your 30-day trial from inside the app.'
-                : 'Start your 30-day trial after you create your account.'}
+            <p>
+              We're building out the paid tiers that will keep the network free for families and food
+              organizations, with extras like AI planting recommendations, local gap signals, and
+              multi-garden tracking. Get on the list and we'll email you the moment they open.
             </p>
+            <TierInterestForm tier="either" source="good-roots-tiers" />
           </article>
         </div>
       </Section>

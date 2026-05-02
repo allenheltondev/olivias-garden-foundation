@@ -92,6 +92,32 @@ export function SiteHeader({
       mobileOnly: true,
       onSelect: () => onNavigate(authSession ? '/profile' : '/login'),
     },
+    ...(authSession
+      ? [
+          {
+            id: 'okra-submissions',
+            label: 'My okra submissions',
+            href: '/okra/submissions',
+            active: pathname === '/okra/submissions',
+            mobileOnly: true,
+            onSelect: () => onNavigate('/okra/submissions'),
+          },
+          {
+            id: 'grn',
+            label: 'Good Roots Network',
+            href: buildCrossAppUrl(goodRootsNetworkUrl, authSession),
+            mobileOnly: true,
+          },
+          ...(authSession.user.isAdmin
+            ? [{
+                id: 'admin',
+                label: 'Admin',
+                href: buildCrossAppUrl(adminUrl, authSession),
+                mobileOnly: true,
+              }]
+            : []),
+        ]
+      : []),
   ];
 
   return (

@@ -196,6 +196,12 @@ Resources:
                 - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
             - Effect: Allow
               Action:
+                - s3:DeleteObject
+              Resource: !Sub
+                - '${SharedAssetsBucketArn}/*'
+                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+            - Effect: Allow
+              Action:
                 - cognito-idp:GetUser
               Resource: '*'
             - Effect: Allow

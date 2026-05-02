@@ -15,11 +15,13 @@ test.describe('foundation disclosures', () => {
     await expect(footer).toContainText("©2026 Olivia's Garden Foundation. All rights reserved.");
   });
 
-  test('donate page surfaces the EIN near the gift action', async ({ page }) => {
+  test('donate page surfaces the EIN and tax-deductible language near the gift action', async ({ page }) => {
     await gotoAndWait(page, '/donate');
 
     const donateForm = page.locator('.donate-form-card');
-    await expect(donateForm).toContainText(`Olivia's Garden Foundation, EIN ${FOUNDATION_EIN}`);
+    await expect(donateForm).toContainText('501(c)(3)');
+    await expect(donateForm).toContainText(`EIN ${FOUNDATION_EIN}`);
+    await expect(donateForm).toContainText('tax-deductible');
     await expect(donateForm.getByRole('button', { name: 'Make donation' })).toBeVisible();
   });
 

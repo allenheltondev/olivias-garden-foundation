@@ -20,6 +20,18 @@ export const contactInquirySchema = {
   }
 };
 
+export const tierInterestSchema = {
+  type: 'object',
+  required: ['kind', 'email', 'tier'],
+  additionalProperties: false,
+  properties: {
+    kind: { type: 'string', enum: ['tier_interest'] },
+    email: { type: 'string', minLength: 3, maxLength: 320 },
+    tier: { type: 'string', enum: ['supporter', 'pro', 'either'] },
+    source: { type: 'string', maxLength: 80 }
+  }
+};
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function sanitize(value) {
@@ -102,6 +114,41 @@ async function publishGeneralInquiryEvent(payload, correlationId, eventBridgeCli
   }
 }
 
+async function publishTierInterestEvent(payload, correlationId, eventBridgeClient) {
+  try {
+    const result = await eventBridgeClient.send(new PutEventsCommand({
+      Entries: [
+        {
+          Source: 'ogf.contact',
+          DetailType: 'tier-interest.received',
+          Detail: JSON.stringify({
+            email: sanitize(payload.email),
+            tier: sanitize(payload.tier),
+            source: sanitize(payload.source) || null,
+            correlationId
+          })
+        }
+      ]
+    }));
+
+    if ((result?.FailedEntryCount ?? 0) > 0) {
+      console.error(JSON.stringify({
+        level: 'error',
+        correlationId,
+        message: 'Tier interest EventBridge publish reported failed entries',
+        failedEntryCount: result.FailedEntryCount
+      }));
+    }
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'error',
+      correlationId,
+      message: 'Tier interest EventBridge publish failed',
+      error: error instanceof Error ? error.message : String(error)
+    }));
+  }
+}
+
 export async function submitContactInquiry(payload, correlationId, { eventBridgeClient = eventBridge } = {}) {
   if (!['organization_inquiry', 'general_inquiry'].includes(payload?.kind)) {
     throw new Error('Unsupported contact kind');
@@ -125,4 +172,20 @@ export async function submitContactInquiry(payload, correlationId, { eventBridge
   }
 
   await publishGeneralInquiryEvent(payload, correlationId, eventBridgeClient);
+}
+
+export async function submitTierInterestInquiry(payload, correlationId, { eventBridgeClient = eventBridge } = {}) {
+  if (payload?.kind !== 'tier_interest') {
+    throw new Error('Unsupported contact kind');
+  }
+
+  if (!EMAIL_PATTERN.test(sanitize(payload.email))) {
+    throw new Error('email must be a valid email address');
+  }
+
+  if (!['supporter', 'pro', 'either'].includes(sanitize(payload.tier))) {
+    throw new Error('tier must be one of supporter, pro, either');
+  }
+
+  await publishTierInterestEvent(payload, correlationId, eventBridgeClient);
 }

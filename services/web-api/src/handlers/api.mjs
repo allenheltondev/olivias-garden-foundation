@@ -21,7 +21,12 @@ import {
   completeAvatarUpload,
   createAvatarUploadIntent
 } from '../services/avatar.mjs';
-import { contactInquirySchema, submitContactInquiry } from '../services/contact.mjs';
+import {
+  contactInquirySchema,
+  submitContactInquiry,
+  submitTierInterestInquiry,
+  tierInterestSchema
+} from '../services/contact.mjs';
 import {
   corsHeaders,
   errorResponse,
@@ -275,9 +280,11 @@ app.post('/profile/garden-club/resume', async ({ event }) => {
 app.post('/contact', async ({ req, event }) => {
   const correlationId = getCorrelationId(event);
   const payload = await req.json();
+  const isTierInterest = payload?.kind === 'tier_interest';
+  const schema = isTierInterest ? tierInterestSchema : contactInquirySchema;
 
   try {
-    validate({ payload, schema: contactInquirySchema });
+    validate({ payload, schema });
   } catch (error) {
     if (error instanceof SchemaValidationError) {
       logger.warn('Contact inquiry validation failed', {
@@ -300,7 +307,11 @@ app.post('/contact', async ({ req, event }) => {
   }
 
   try {
-    await submitContactInquiry(payload, correlationId);
+    if (isTierInterest) {
+      await submitTierInterestInquiry(payload, correlationId);
+    } else {
+      await submitContactInquiry(payload, correlationId);
+    }
     return {
       statusCode: 204,
       headers: { 'x-correlation-id': correlationId }
