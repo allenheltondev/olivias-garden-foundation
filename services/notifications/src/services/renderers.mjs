@@ -183,11 +183,23 @@ function renderGardenClubCanceled(detail) {
   };
 }
 
+const SIGNUP_METHOD_LABELS = {
+  email: ':email: Email & password',
+  google: ':google: Google',
+  facebook: ':facebook: Facebook',
+  unknown: ':grey_question: Unknown'
+};
+
+function formatSignupMethod(method) {
+  return SIGNUP_METHOD_LABELS[method] ?? SIGNUP_METHOD_LABELS.unknown;
+}
+
 function renderUserSignedUp(detail) {
   const env = process.env.FOUNDATION_ENVIRONMENT ?? 'unknown';
   const lines = [
     '*:boom: New foundation signup*',
     `Environment: ${env}`,
+    `Signup method: ${formatSignupMethod(detail.signupMethod)}`,
     `Email: ${detail.email ?? 'missing'}`,
     `User ID: ${detail.userId}`,
     `Newsletter opt-in: ${detail.newsletterOptIn ? 'yes' : 'no'}`

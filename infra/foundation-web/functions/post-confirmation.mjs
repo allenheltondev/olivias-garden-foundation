@@ -33,6 +33,30 @@ function firstNonEmptyString(...values) {
   return null;
 }
 
+export function extractSignupMethod(attributes = {}) {
+  const raw = attributes.identities;
+
+  if (typeof raw !== "string" || !raw.trim()) {
+    // Cognito-native (email/password) users have no identities attribute.
+    return "email";
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return "unknown";
+  }
+
+  const entry = Array.isArray(parsed) ? parsed[0] : parsed;
+  const provider = entry?.providerName ?? entry?.providerType;
+  const normalized = typeof provider === "string" ? provider.toLowerCase() : "";
+
+  if (normalized === "google") return "google";
+  if (normalized === "facebook") return "facebook";
+  return "unknown";
+}
+
 export function extractSignupContext(event) {
   const triggerSource = event.triggerSource;
   const correlationId = resolveCorrelationId(event);
@@ -67,6 +91,7 @@ export function extractSignupContext(event) {
     familyName,
     fullName,
     newsletterOptIn: attributes["custom:newsletter_opt_in"] === "true",
+    signupMethod: extractSignupMethod(attributes),
   };
 }
 
@@ -78,6 +103,7 @@ export function buildSignupEventDetail(context) {
     familyName: context.familyName ?? null,
     fullName: context.fullName ?? null,
     newsletterOptIn: Boolean(context.newsletterOptIn),
+    signupMethod: context.signupMethod ?? "unknown",
     correlationId: context.correlationId,
   };
 }
@@ -151,13 +177,14 @@ async function provisionShellUser(context, createClient, errorLogger) {
 
   try {
     const result = await client.query(
-      `INSERT INTO users (id, email, first_name, last_name, display_name)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO users (id, email, first_name, last_name, display_name, signup_method)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (id) DO UPDATE
          SET email = COALESCE(users.email, EXCLUDED.email),
              first_name = COALESCE(users.first_name, EXCLUDED.first_name),
              last_name = COALESCE(users.last_name, EXCLUDED.last_name),
              display_name = COALESCE(users.display_name, EXCLUDED.display_name),
+             signup_method = COALESCE(users.signup_method, EXCLUDED.signup_method),
              updated_at = now()
        RETURNING xmax = 0 AS inserted`,
       [
@@ -166,6 +193,7 @@ async function provisionShellUser(context, createClient, errorLogger) {
         context.givenName,
         context.familyName,
         context.fullName,
+        context.signupMethod ?? "unknown",
       ],
     );
 
@@ -221,6 +249,7 @@ export function createHandler({
         triggerSource: context.triggerSource,
         userId: context.userId,
         hasEmail: context.email !== null,
+        signupMethod: context.signupMethod,
         inserted,
         linkedOrders,
       }),
