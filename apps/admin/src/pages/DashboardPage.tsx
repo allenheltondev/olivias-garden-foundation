@@ -7,6 +7,7 @@ import {
   type AdminStats,
 } from '../api';
 import type { AdminSession } from '../auth/session';
+import { ActivityDetails } from '../components/ActivityDetails';
 
 export interface DashboardPageProps {
   session: AdminSession;
@@ -228,9 +229,7 @@ export function DashboardPage({ session }: DashboardPageProps) {
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
-                  {isExpanded ? (
-                    <pre className="admin-activity__details">{JSON.stringify(event.data, null, 2)}</pre>
-                  ) : null}
+                  {isExpanded ? <ActivityDetails event={event} /> : null}
                 </Card>
               </li>
             );
