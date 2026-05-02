@@ -27,26 +27,32 @@ pub async fn get_current_user(
     correlation_id: &str,
 ) -> Result<Response<Body>, lambda_http::Error> {
     let user_id = extract_user_id(request, correlation_id)?;
+    let auth_email = extract_authorizer_field(request, "email");
+    let auth_display_name = extract_authorizer_display_name(request);
     let client = db::connect().await?;
 
-    let user_row = client
-        .query_opt(
-            "select id, email::text as email, display_name, is_verified, user_type, onboarding_completed, tier, subscription_status, pro_expires_at, created_at from users where id = $1 and deleted_at is null",
-            &[&user_id],
-        )
-        .await
-        .map_err(|error| db_error(&error))?;
+    let mut user_row = load_user_row(&client, user_id).await?;
 
-    if let Some(row) = user_row {
-        return json_response(200, &to_me_response(&client, row).await?);
+    if user_row.is_none() {
+        ensure_user_row(
+            &client,
+            user_id,
+            auth_email.as_deref(),
+            auth_display_name.as_deref(),
+        )
+        .await?;
+        user_row = load_user_row(&client, user_id).await?;
     }
 
-    json_response(
-        404,
-        &ErrorResponse {
-            error: "User profile not found".to_string(),
-        },
-    )
+    match user_row {
+        Some(row) => json_response(200, &to_me_response(&client, row).await?),
+        None => json_response(
+            404,
+            &ErrorResponse {
+                error: "User profile not found".to_string(),
+            },
+        ),
+    }
 }
 
 pub async fn upsert_current_user(
@@ -55,12 +61,14 @@ pub async fn upsert_current_user(
 ) -> Result<Response<Body>, lambda_http::Error> {
     let user_id = extract_user_id(request, correlation_id)?;
     let auth_email = extract_authorizer_field(request, "email");
+    let auth_display_name = extract_authorizer_display_name(request);
     let payload: PutMeRequest = parse_json_body(request)?;
 
     validate_put_me_payload(&payload)?;
 
     let client = db::connect().await?;
     let should_complete_onboarding = should_mark_onboarding_complete(&payload);
+    let display_name = payload.display_name.or(auth_display_name);
 
     client
         .execute(
@@ -80,7 +88,7 @@ pub async fn upsert_current_user(
             &[
                 &user_id,
                 &auth_email,
-                &payload.display_name,
+                &display_name,
                 &payload.user_type.as_ref().map(|t| match t {
                     UserType::Grower => "grower",
                     UserType::Gatherer => "gatherer",
@@ -322,6 +330,64 @@ fn extract_authorizer_field(request: &Request, field_name: &str) -> Option<Strin
         .and_then(|auth| auth.fields.get(field_name))
         .and_then(|v| v.as_str())
         .map(ToString::to_string)
+}
+
+fn extract_authorizer_display_name(request: &Request) -> Option<String> {
+    let first_name = extract_authorizer_field(request, "firstName");
+    let last_name = extract_authorizer_field(request, "lastName");
+    display_name_from_parts(first_name.as_deref(), last_name.as_deref())
+}
+
+fn display_name_from_parts(first_name: Option<&str>, last_name: Option<&str>) -> Option<String> {
+    let parts = [first_name, last_name]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" "))
+    }
+}
+
+async fn load_user_row(
+    client: &tokio_postgres::Client,
+    user_id: Uuid,
+) -> Result<Option<Row>, lambda_http::Error> {
+    client
+        .query_opt(
+            "select id, email::text as email, display_name, is_verified, user_type, onboarding_completed, tier, subscription_status, pro_expires_at, created_at from users where id = $1 and deleted_at is null",
+            &[&user_id],
+        )
+        .await
+        .map_err(|error| db_error(&error))
+}
+
+async fn ensure_user_row(
+    client: &tokio_postgres::Client,
+    user_id: Uuid,
+    email: Option<&str>,
+    display_name: Option<&str>,
+) -> Result<(), lambda_http::Error> {
+    client
+        .execute(
+            "
+            insert into users (id, email, display_name)
+            values ($1, $2, $3)
+            on conflict (id) do update
+            set email = coalesce(users.email, excluded.email),
+                display_name = coalesce(users.display_name, excluded.display_name),
+                updated_at = now()
+            ",
+            &[&user_id, &email, &display_name],
+        )
+        .await
+        .map_err(|error| db_error(&error))?;
+
+    Ok(())
 }
 
 fn validate_put_me_payload(payload: &PutMeRequest) -> Result<(), lambda_http::Error> {
@@ -750,6 +816,27 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Cannot provide both"));
+    }
+
+    #[test]
+    fn display_name_from_parts_joins_trimmed_names() {
+        assert_eq!(
+            display_name_from_parts(Some(" Olivia "), Some(" Garden ")),
+            Some("Olivia Garden".to_string())
+        );
+    }
+
+    #[test]
+    fn display_name_from_parts_uses_available_name() {
+        assert_eq!(
+            display_name_from_parts(None, Some(" Garden ")),
+            Some("Garden".to_string())
+        );
+    }
+
+    #[test]
+    fn display_name_from_parts_returns_none_when_empty() {
+        assert_eq!(display_name_from_parts(Some(" "), None), None);
     }
 
     #[test]

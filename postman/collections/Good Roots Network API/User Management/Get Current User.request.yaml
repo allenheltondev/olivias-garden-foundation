@@ -15,6 +15,12 @@ scripts:
           pm.response.to.have.status(200);
       });
 
+      pm.test("Authenticated users are bootstrapped instead of returning profile not found", function () {
+          pm.response.to.have.status(200);
+          const bodyText = pm.response.text();
+          pm.expect(bodyText).not.to.include("User profile not found");
+      });
+
       pm.test("Response matches current user contract", function () {
           const user = pm.response.json();
           pm.expect(user).to.have.property("id");
