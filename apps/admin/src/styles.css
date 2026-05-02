@@ -323,8 +323,23 @@ body {
 /* ── Mobile: off-canvas drawer (matches web app's 799px breakpoint) ─ */
 
 @media (max-width: 799px) {
+  /* Drop the body-level scroll lock on phones so the page scrolls
+     normally and the footer sits at the document bottom — matching the
+     web app — instead of being pinned to the viewport. */
+  .admin-app-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .admin-shell-body {
     flex-direction: column;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .admin-shell-main {
+    overflow: visible;
   }
 
   .admin-mobile-nav-trigger {
