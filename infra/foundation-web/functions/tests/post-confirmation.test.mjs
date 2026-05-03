@@ -7,6 +7,7 @@ import {
   buildSignupEventDetail,
   createHandler,
   extractSignupContext,
+  extractSignupMethod,
   linkGuestOrders,
 } from "../post-confirmation.mjs";
 
@@ -41,6 +42,35 @@ describe("post-confirmation trigger sets", () => {
   });
 });
 
+describe("extractSignupMethod", () => {
+  it("returns 'email' when no identities attribute is present", () => {
+    assert.equal(extractSignupMethod({}), "email");
+    assert.equal(extractSignupMethod({ identities: "" }), "email");
+  });
+
+  it("detects Google federated signups", () => {
+    const identities = JSON.stringify([
+      { providerName: "Google", providerType: "Google", userId: "abc" },
+    ]);
+    assert.equal(extractSignupMethod({ identities }), "google");
+  });
+
+  it("detects Facebook federated signups", () => {
+    const identities = JSON.stringify([
+      { providerName: "Facebook", providerType: "Facebook", userId: "xyz" },
+    ]);
+    assert.equal(extractSignupMethod({ identities }), "facebook");
+  });
+
+  it("returns 'unknown' for unrecognized providers and bad JSON", () => {
+    assert.equal(
+      extractSignupMethod({ identities: JSON.stringify([{ providerName: "Apple" }]) }),
+      "unknown",
+    );
+    assert.equal(extractSignupMethod({ identities: "not-json" }), "unknown");
+  });
+});
+
 describe("extractSignupContext", () => {
   it("extracts user details and newsletter opt-in", () => {
     const context = extractSignupContext(buildEvent());
@@ -49,6 +79,24 @@ describe("extractSignupContext", () => {
     assert.equal(context.email, "new-user@example.com");
     assert.equal(context.fullName, "Olivia Garden");
     assert.equal(context.newsletterOptIn, true);
+    assert.equal(context.signupMethod, "email");
+  });
+
+  it("captures the federated provider as the signup method", () => {
+    const context = extractSignupContext(
+      buildEvent({
+        request: {
+          clientMetadata: { correlationId: "corr-google" },
+          userAttributes: {
+            sub: "33333333-3333-3333-3333-333333333333",
+            email: "google-user@example.com",
+            identities: JSON.stringify([{ providerName: "Google" }]),
+          },
+        },
+      }),
+    );
+
+    assert.equal(context.signupMethod, "google");
   });
 
   it("supports snake_case correlation ids", () => {
@@ -91,6 +139,7 @@ describe("buildSignupEventDetail", () => {
     assert.equal(detail.email, "new-user@example.com");
     assert.equal(detail.fullName, "Olivia Garden");
     assert.equal(detail.newsletterOptIn, true);
+    assert.equal(detail.signupMethod, "email");
     assert.equal(detail.correlationId, "corr-123");
   });
 });
@@ -153,11 +202,13 @@ describe("createHandler", () => {
       "Olivia",
       "Garden",
       "Olivia Garden",
+      "email",
     ]);
     assert.match(fake.queries[1].sql, /UPDATE store_orders/i);
     assert.equal(eventBridgeClient.sent.length, 1);
     const detail = JSON.parse(eventBridgeClient.sent[0].input.Entries[0].Detail);
     assert.equal(detail.userId, "11111111-1111-1111-1111-111111111111");
+    assert.equal(detail.signupMethod, "email");
   });
 
   it("skips publishing when the user already exists", async () => {

@@ -101,12 +101,40 @@ describe('renderEvent', () => {
       userId: 'user-1',
       email: 'new@example.com',
       fullName: 'New User',
-      newsletterOptIn: true
+      newsletterOptIn: true,
+      signupMethod: 'email'
     });
     expect(result.summary).toBe('New signup: New User');
     expect(result.slack.text).toContain('Environment: staging');
     expect(result.slack.text).toContain('Name: New User');
     expect(result.slack.text).toContain('Newsletter opt-in: yes');
+    expect(result.slack.text).toContain('Signup method: :email: Email & password');
+  });
+
+  it('labels Google signups in the slack notification', () => {
+    const result = renderEvent('ogf.signups', 'user.signed-up', {
+      userId: 'user-2',
+      email: 'g@example.com',
+      signupMethod: 'google'
+    });
+    expect(result.slack.text).toContain('Signup method: :google: Google');
+  });
+
+  it('labels Facebook signups in the slack notification', () => {
+    const result = renderEvent('ogf.signups', 'user.signed-up', {
+      userId: 'user-3',
+      email: 'f@example.com',
+      signupMethod: 'facebook'
+    });
+    expect(result.slack.text).toContain('Signup method: :facebook: Facebook');
+  });
+
+  it('falls back to an unknown signup method label when missing', () => {
+    const result = renderEvent('ogf.signups', 'user.signed-up', {
+      userId: 'user-4',
+      email: 'u@example.com'
+    });
+    expect(result.slack.text).toContain('Signup method: :grey_question: Unknown');
   });
 
   it('renders Good Roots org inquiries with org-type label and optional fields', () => {
