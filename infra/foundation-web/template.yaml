@@ -466,8 +466,41 @@ Resources:
       Roles:
         unauthenticated: !GetAtt WebRumUnauthenticatedRole.Arn
 
+  WebRumLogDeliveryPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-web-rum-log-delivery'
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AWSLogDeliveryWrite20150319",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "delivery.logs.amazonaws.com"
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vendedlogs/RUMService_${AWS::StackName}-web-rum*:*",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": "${AWS::AccountId}"
+                },
+                "ArnLike": {
+                  "aws:SourceArn": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+                }
+              }
+            }
+          ]
+        }
+
   WebRumAppMonitor:
     Type: AWS::RUM::AppMonitor
+    DependsOn:
+      - WebRumLogDeliveryPolicy
     Properties:
       Name: !Sub '${AWS::StackName}-web-rum'
       Domain: !If
