@@ -34,6 +34,17 @@ function pickRandomImages() {
   return shuffled.slice(0, count);
 }
 
+function buildQuery(path, params) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined) {
+      query.set(key, String(value));
+    }
+  }
+  const queryString = query.toString();
+  return queryString ? `${path}?${queryString}` : path;
+}
+
 // --- Environment variable validation ---
 
 const REQUIRED_ENV_VARS = [
@@ -83,6 +94,37 @@ async function run() {
   let denialSubmissionId = null;
   // Track all created photo IDs for cleanup
   const createdPhotoIds = [];
+
+  async function findAdminSubmission({ status, submissionId, requirePhotos = false, maxPages = 20 }) {
+    let cursor = null;
+    let pages = 0;
+    let lastResult = null;
+
+    do {
+      pages += 1;
+      const res = await adminApi.request(buildQuery('/submissions', {
+        status,
+        limit: 100,
+        cursor
+      }));
+      lastResult = res;
+
+      if (!Array.isArray(res.json?.data)) {
+        return { status: res.status, json: res.json, found: false, pages };
+      }
+
+      const found = res.json.data.some(
+        (s) => s.id === submissionId && (!requirePhotos || s.has_photos === true)
+      );
+      if (found) {
+        return { status: res.status, json: res.json, found: true, pages };
+      }
+
+      cursor = res.json.cursor ?? null;
+    } while (cursor && pages < maxPages);
+
+    return { status: lastResult?.status, json: lastResult?.json, found: false, pages };
+  }
 
   /**
    * Clean up test data.
@@ -302,18 +344,17 @@ async function run() {
     // Step 4: Poll pending_review listing until submission appears with has_photos: true
     console.log('  Polling pending_review listing for approval submission...');
     const queueResult = await poll({
-      fn: () => adminApi.request('/submissions?status=pending_review&limit=100'),
-      until: (res) => {
-        if (!Array.isArray(res.json?.data)) return false;
-        return res.json.data.some(
-          (s) => s.id === approvalSubmissionId && s.has_photos === true
-        );
-      },
+      fn: () => findAdminSubmission({
+        status: 'pending_review',
+        submissionId: approvalSubmissionId,
+        requirePhotos: true
+      }),
+      until: (res) => res.found,
       intervalMs: 2000,
       timeoutMs: 60000,
       label: `pending_review listing for approval submission ${approvalSubmissionId}`
     });
-    reporter.pass('approval', `Submission ${approvalSubmissionId} appeared in pending_review listing with has_photos: true (${queueResult.attempts} attempts, ${queueResult.elapsedMs}ms)`);
+    reporter.pass('approval', `Submission ${approvalSubmissionId} appeared in pending_review listing with has_photos: true (${queueResult.result.pages} page(s), ${queueResult.attempts} attempts, ${queueResult.elapsedMs}ms)`);
 
     // Step 5: Approve the submission
     const approveRes = await adminApi.request(`/submissions/${approvalSubmissionId}/statuses`, {
@@ -399,18 +440,17 @@ async function run() {
     // Step 4: Poll pending_review listing until submission appears with has_photos: true
     console.log('  Polling pending_review listing for denial submission...');
     const queueResult = await poll({
-      fn: () => adminApi.request('/submissions?status=pending_review&limit=100'),
-      until: (res) => {
-        if (!Array.isArray(res.json?.data)) return false;
-        return res.json.data.some(
-          (s) => s.id === denialSubmissionId && s.has_photos === true
-        );
-      },
+      fn: () => findAdminSubmission({
+        status: 'pending_review',
+        submissionId: denialSubmissionId,
+        requirePhotos: true
+      }),
+      until: (res) => res.found,
       intervalMs: 2000,
       timeoutMs: 60000,
       label: `pending_review listing for denial submission ${denialSubmissionId}`
     });
-    reporter.pass('denial', `Submission ${denialSubmissionId} appeared in pending_review listing with has_photos: true (${queueResult.attempts} attempts, ${queueResult.elapsedMs}ms)`);
+    reporter.pass('denial', `Submission ${denialSubmissionId} appeared in pending_review listing with has_photos: true (${queueResult.result.pages} page(s), ${queueResult.attempts} attempts, ${queueResult.elapsedMs}ms)`);
 
     // Step 5: Deny the submission
     const denyRes = await adminApi.request(`/submissions/${denialSubmissionId}/statuses`, {
@@ -659,26 +699,26 @@ async function run() {
   console.log('\n=== Admin Listing Checks ===');
   {
     // pending_review listing
-    const pendingRes = await adminApi.request('/submissions?status=pending_review');
+    const pendingRes = await adminApi.request('/submissions?status=pending_review&limit=100');
     reporter.assert('admin-listing', Array.isArray(pendingRes.json?.data), 'GET /admin/submissions?status=pending_review has data array', pendingRes.json);
     reporter.assert('admin-listing', pendingRes.json?.cursor !== undefined, 'GET /admin/submissions?status=pending_review has cursor field', pendingRes.json);
 
     // approved listing
-    const approvedRes = await adminApi.request('/submissions?status=approved');
+    const approvedRes = await adminApi.request('/submissions?status=approved&limit=100');
     reporter.assert('admin-listing', Array.isArray(approvedRes.json?.data), 'GET /admin/submissions?status=approved has data array', approvedRes.json);
     reporter.assert('admin-listing', approvedRes.json?.cursor !== undefined, 'GET /admin/submissions?status=approved has cursor field', approvedRes.json);
     if (approvalSubmissionId) {
-      const found = Array.isArray(approvedRes.json?.data) && approvedRes.json.data.some((s) => s.id === approvalSubmissionId);
-      reporter.assert('admin-listing', found, `Approval submission ${approvalSubmissionId} appears in approved listing`, approvedRes.json);
+      const found = await findAdminSubmission({ status: 'approved', submissionId: approvalSubmissionId });
+      reporter.assert('admin-listing', found.found, `Approval submission ${approvalSubmissionId} appears in approved listing`, found.json);
     }
 
     // denied listing
-    const deniedRes = await adminApi.request('/submissions?status=denied');
+    const deniedRes = await adminApi.request('/submissions?status=denied&limit=100');
     reporter.assert('admin-listing', Array.isArray(deniedRes.json?.data), 'GET /admin/submissions?status=denied has data array', deniedRes.json);
     reporter.assert('admin-listing', deniedRes.json?.cursor !== undefined, 'GET /admin/submissions?status=denied has cursor field', deniedRes.json);
     if (denialSubmissionId) {
-      const found = Array.isArray(deniedRes.json?.data) && deniedRes.json.data.some((s) => s.id === denialSubmissionId);
-      reporter.assert('admin-listing', found, `Denial submission ${denialSubmissionId} appears in denied listing`, deniedRes.json);
+      const found = await findAdminSubmission({ status: 'denied', submissionId: denialSubmissionId });
+      reporter.assert('admin-listing', found.found, `Denial submission ${denialSubmissionId} appears in denied listing`, found.json);
     }
   }
 
