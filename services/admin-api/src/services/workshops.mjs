@@ -194,6 +194,23 @@ export async function getAdminWorkshop(event, workshopId) {
   return mapWorkshopRow(result.rows[0], counts.get(workshopId));
 }
 
+// Ensure a row exists in `users` for the admin's userId before we
+// reference it via FK from workshops.created_by_user_id /
+// updated_by_user_id. Cognito users only get a `users` row the first
+// time they touch the web-api profile flow (see profile.mjs#ensureUserRow);
+// admins who have only ever signed in to the admin app — including
+// the CI test admin — won't have one yet. The web-api side does this
+// upsert with full identity (email/name); we don't have those fields
+// in the admin auth context, but `users.id` is the only NOT NULL
+// column without a default, so a bare-id insert is enough to satisfy
+// the FK. The web-api fills in email/name on the first profile read.
+async function ensureAdminUserRow(userId) {
+  await query(
+    `insert into users (id) values ($1::uuid) on conflict (id) do nothing`,
+    [userId]
+  );
+}
+
 export async function createWorkshop(event, payload, options = {}) {
   const auth = extractAuthContext(event);
   requireAdmin(auth);
@@ -222,6 +239,7 @@ export async function createWorkshop(event, payload, options = {}) {
   }
 
   try {
+    await ensureAdminUserRow(auth.userId);
     const result = await query(
       `
         insert into workshops (
@@ -338,6 +356,7 @@ export async function updateWorkshop(event, payload, workshopId, options = {}) {
     }
   }
 
+  await ensureAdminUserRow(auth.userId);
   const result = await query(
     `
       update workshops
