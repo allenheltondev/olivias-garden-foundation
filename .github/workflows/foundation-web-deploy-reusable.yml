@@ -286,6 +286,21 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides "${PARAM_OVERRIDES[@]}"
 
+      # Run admin-api migrations before web-api migrations + deploy:
+      # the public web-api now depends on admin-managed tables (e.g.
+      # workshops, workshop_signups), so those tables have to exist
+      # before the web-api Lambda starts serving traffic. The full
+      # staging-validation workflow already does this for admin
+      # deploys; the foundation web preview path missed it because
+      # it doesn't deploy the admin stack.
+      - name: Run admin-api database migrations
+        working-directory: services/admin-api
+        env:
+          DATABASE_URL: ${{ secrets.database_url }}
+        run: |
+          chmod +x ./db/migrate.sh
+          ./db/migrate.sh
+
       - name: Run web-api database migrations
         working-directory: services/web-api
         env:
