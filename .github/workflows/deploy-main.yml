@@ -1184,6 +1184,10 @@ jobs:
       frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
       cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
+      source-maps-bucket: ${{ steps.get-outputs.outputs.source-maps-bucket }}
+      rum-app-monitor-id: ${{ steps.get-outputs.outputs.rum-app-monitor-id }}
+      rum-identity-pool-id: ${{ steps.get-outputs.outputs.rum-identity-pool-id }}
+      rum-guest-role-arn: ${{ steps.get-outputs.outputs.rum-guest-role-arn }}
 
     steps:
       - name: Checkout code
