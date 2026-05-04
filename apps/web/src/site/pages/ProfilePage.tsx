@@ -87,6 +87,33 @@ type SeedRequestActivityItem = {
 
 type ActivityItem = DonationActivityItem | SubmissionActivityItem | SeedRequestActivityItem;
 
+// Mirrors /workshops/me/signups response from web-api. Kept inline rather
+// than imported from WorkshopsPage so this file doesn't take a hard
+// dependency on the lazy workshops module.
+type MyWorkshopSignup = {
+  id: string;
+  workshop_id: string;
+  kind: 'interested' | 'registered' | 'waitlisted';
+  payment_status: 'not_required' | 'pending' | 'paid' | 'refunded';
+  amount_cents: number | null;
+  currency: string | null;
+  checkout_url: string | null;
+  expires_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+  workshop: {
+    slug: string;
+    title: string;
+    status: 'coming_soon' | 'gauging_interest' | 'open' | 'closed' | 'past';
+    workshop_date: string | null;
+    location: string | null;
+    image_url: string | null;
+    is_paid: boolean;
+    price_cents: number | null;
+    currency: string | null;
+  };
+};
+
 function webApiUrl(path: string) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${webApiBase}${normalizedPath}`;
@@ -155,6 +182,21 @@ async function fetchDonationActivity(authSession: AuthSession): Promise<Donation
   }
   const body = await response.json() as { donations?: DonationActivityItem[] };
   return body.donations ?? [];
+}
+
+async function fetchMyWorkshopSignups(authSession: AuthSession): Promise<MyWorkshopSignup[]> {
+  // Non-blocking like the other activity fetchers — the profile page is
+  // useful even if this fails. Swallow non-OK responses and render the
+  // empty state.
+  const response = await fetch(webApiUrl('/workshops/me/signups'), {
+    method: 'GET',
+    headers: authHeaders(authSession, false),
+  });
+  if (!response.ok) {
+    return [];
+  }
+  const body = await response.json() as { items?: MyWorkshopSignup[] };
+  return Array.isArray(body.items) ? body.items : [];
 }
 
 async function fetchOkraActivity(
@@ -354,6 +396,9 @@ export function ProfilePage({
   const [seedRequests, setSeedRequests] = useState<SeedRequestActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
+  const [workshopSignups, setWorkshopSignups] = useState<MyWorkshopSignup[]>([]);
+  const [workshopsLoading, setWorkshopsLoading] = useState(true);
+
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -421,6 +466,27 @@ export function ProfilePage({
         if (!cancelled) setActivityLoading(false);
       });
 
+    return () => {
+      cancelled = true;
+    };
+  }, [authSession?.accessToken]);
+
+  useEffect(() => {
+    if (!authSession) return;
+    let cancelled = false;
+    setWorkshopsLoading(true);
+    fetchMyWorkshopSignups(authSession)
+      .then((items) => {
+        if (cancelled) return;
+        setWorkshopSignups(items);
+      })
+      .catch(() => {
+        // Non-blocking — the rest of the profile renders without
+        // workshops if this fails.
+      })
+      .finally(() => {
+        if (!cancelled) setWorkshopsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -855,6 +921,95 @@ export function ProfilePage({
         onResume={() => void submitGardenClubResume()}
         onNavigate={onNavigate}
       />
+
+      <Section
+        title="Your workshops"
+        intro="Workshops you've registered for, joined the waitlist for, or expressed interest in."
+      >
+        {workshopsLoading ? (
+          <p className="page-text">Loading your workshops…</p>
+        ) : workshopSignups.length === 0 ? (
+          <p className="page-text">
+            You haven&apos;t signed up for any workshops yet.{' '}
+            <a
+              href="/workshops"
+              onClick={(event) => {
+                event.preventDefault();
+                onNavigate('/workshops');
+              }}
+            >
+              See upcoming workshops
+            </a>
+            .
+          </p>
+        ) : (
+          <ul className="profile-workshops">
+            {workshopSignups.map((signup) => {
+              const detailPath = `/workshops/${signup.workshop.slug}`;
+              const kindLabel =
+                signup.kind === 'registered' ? 'Registered'
+                : signup.kind === 'waitlisted' ? 'Waitlisted'
+                : 'Interested';
+              const dateText = signup.workshop.workshop_date
+                ? formatDate(signup.workshop.workshop_date)
+                : null;
+              const isPendingPayment = signup.payment_status === 'pending';
+              const isPaid = signup.payment_status === 'paid';
+              return (
+                <li
+                  key={signup.id}
+                  className={`profile-workshops__item${isPendingPayment ? ' profile-workshops__item--pending' : ''}`}
+                >
+                  <div className="profile-workshops__meta">
+                    <span className="profile-workshops__badge">{kindLabel}</span>
+                    {isPendingPayment ? (
+                      <span className="profile-workshops__badge profile-workshops__badge--pending">
+                        Payment pending
+                      </span>
+                    ) : null}
+                    {isPaid ? (
+                      <span className="profile-workshops__badge profile-workshops__badge--paid">
+                        Paid
+                      </span>
+                    ) : null}
+                    {signup.workshop.status === 'past' ? (
+                      <span className="profile-workshops__badge profile-workshops__badge--past">
+                        Past
+                      </span>
+                    ) : null}
+                  </div>
+                  <h3 className="profile-workshops__title">
+                    <a
+                      href={detailPath}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        onNavigate(detailPath);
+                      }}
+                    >
+                      {signup.workshop.title}
+                    </a>
+                  </h3>
+                  {dateText || signup.workshop.location ? (
+                    <p className="profile-workshops__details">
+                      {dateText}
+                      {dateText && signup.workshop.location ? ' · ' : null}
+                      {signup.workshop.location}
+                    </p>
+                  ) : null}
+                  {isPendingPayment && signup.checkout_url ? (
+                    <a
+                      className="og-button og-button--primary og-button--md site-cta"
+                      href={signup.checkout_url}
+                    >
+                      Finish payment
+                    </a>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Section>
 
       <Section
         title="Your activity"

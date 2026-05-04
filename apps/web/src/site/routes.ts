@@ -87,6 +87,8 @@ export const routes: AppRoute[] = [
   {
     path: '/workshops',
     label: 'Workshops',
+    showInNav: true,
+    showInFooter: true,
     title: 'Workshops',
     description: "Hands-on workshops at Olivia's Garden Foundation: garden prep, animal care, food preservation, and more. Sign up or get on the waitlist for upcoming sessions.",
     seoImage: socialShareImage,
@@ -175,9 +177,10 @@ export const notFoundRoute: AppRoute = {
 const primaryPageOrder = new Map([
   ['/', 0],
   ['/okra', 1],
-  ['/donate', 2],
-  ['/good-roots', 3],
-  ['/about', 4],
+  ['/workshops', 2],
+  ['/donate', 3],
+  ['/good-roots', 4],
+  ['/about', 5],
 ]);
 
 function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
