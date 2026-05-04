@@ -281,9 +281,19 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:PutObject
-              Resource: !Sub
-                - '${SharedAssetsBucketArn}/store-products/*'
-                - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+              # Two prefixes here: store-products/ for the legacy
+              # store-image flow, and workshops/ for paid/free workshop
+              # cover images. Presigned upload URLs are signed with the
+              # ApiFunction's role, so S3 evaluates this policy when
+              # the browser PUTs the image — without workshops/ here
+              # the upload fails with 403.
+              Resource:
+                - !Sub
+                  - '${SharedAssetsBucketArn}/store-products/*'
+                  - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
+                - !Sub
+                  - '${SharedAssetsBucketArn}/workshops/*'
+                  - SharedAssetsBucketArn: !ImportValue OGF-AssetsBucketArn
             - Effect: Allow
               Action:
                 - events:PutEvents
