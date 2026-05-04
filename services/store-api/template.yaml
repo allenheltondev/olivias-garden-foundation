@@ -146,6 +146,92 @@ Resources:
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
 
+  StoreSourceMapsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldSourceMaps
+            Status: Enabled
+            ExpirationInDays: 90
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+
+  StoreRumIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Sub "${AWS::StackName}-store-rum"
+      AllowUnauthenticatedIdentities: true
+
+  StoreRumUnauthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref StoreRumIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Policies:
+        - PolicyName: PutStoreRumEvents
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rum:PutRumEvents
+                Resource: !Sub "arn:${AWS::Partition}:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/${AWS::StackName}-store-rum"
+
+  StoreRumIdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref StoreRumIdentityPool
+      Roles:
+        unauthenticated: !GetAtt StoreRumUnauthenticatedRole.Arn
+
+  StoreRumAppMonitor:
+    Type: AWS::RUM::AppMonitor
+    Properties:
+      Name: !Sub "${AWS::StackName}-store-rum"
+      Domain: !If
+        - DeployFrontendCustomDomain
+        - !Sub "store.${DomainName}"
+        - !GetAtt FrontendDistribution.DomainName
+      CwLogEnabled: true
+      AppMonitorConfiguration:
+        AllowCookies: false
+        EnableXRay: false
+        GuestRoleArn: !GetAtt StoreRumUnauthenticatedRole.Arn
+        IdentityPoolId: !Ref StoreRumIdentityPool
+        SessionSampleRate: 1
+        Telemetries:
+          - performance
+          - errors
+          - http
+      DeobfuscationConfiguration:
+        JavaScriptSourceMaps:
+          Status: ENABLED
+          S3Uri: !Sub "s3://${StoreSourceMapsBucket}"
+
   CloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
@@ -176,6 +262,45 @@ Resources:
             Resource:
               - !GetAtt FrontendBucket.Arn
               - !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
+
+  StoreSourceMapsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StoreSourceMapsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowRumSourceMapList
+            Effect: Allow
+            Principal:
+              Service: rum.amazonaws.com
+            Action:
+              - s3:ListBucket
+            Resource: !GetAtt StoreSourceMapsBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/${AWS::StackName}-store-rum"
+          - Sid: AllowRumSourceMapRead
+            Effect: Allow
+            Principal:
+              Service: rum.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub "${StoreSourceMapsBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/${AWS::StackName}-store-rum"
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt StoreSourceMapsBucket.Arn
+              - !Sub "${StoreSourceMapsBucket.Arn}/*"
             Condition:
               Bool:
                 "aws:SecureTransport": false
@@ -342,3 +467,23 @@ Outputs:
   CloudFrontDistributionId:
     Description: CloudFront distribution ID for store frontend cache invalidation
     Value: !Ref FrontendDistribution
+
+  StoreSourceMapsBucketName:
+    Description: Private S3 bucket that stores Store CloudWatch RUM JavaScript source maps.
+    Value: !Ref StoreSourceMapsBucket
+
+  StoreRumAppMonitorId:
+    Description: CloudWatch RUM app monitor ID for the store frontend.
+    Value: !GetAtt StoreRumAppMonitor.Id
+
+  StoreRumAppMonitorName:
+    Description: CloudWatch RUM app monitor name for the store frontend.
+    Value: !Ref StoreRumAppMonitor
+
+  StoreRumIdentityPoolId:
+    Description: Cognito identity pool ID used by the Store CloudWatch RUM web client.
+    Value: !Ref StoreRumIdentityPool
+
+  StoreRumGuestRoleArn:
+    Description: Unauthenticated Cognito role ARN used by the Store CloudWatch RUM web client.
+    Value: !GetAtt StoreRumUnauthenticatedRole.Arn

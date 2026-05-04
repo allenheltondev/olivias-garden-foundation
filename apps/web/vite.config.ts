@@ -128,6 +128,9 @@ function mockOkraApi(): Plugin {
 
 export default defineConfig({
   plugins: [react(), mockOkraApi()],
+  build: {
+    sourcemap: Boolean(process.env.VITE_CLOUDWATCH_RUM_APP_MONITOR_ID),
+  },
   server: {
     host: true,
     port: 4174,

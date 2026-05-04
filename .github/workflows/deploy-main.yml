@@ -536,6 +536,10 @@ jobs:
       frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.get-outputs.outputs.frontend-bucket }}
       cloudfront-distribution-id: ${{ steps.get-outputs.outputs.cloudfront-distribution-id }}
+      source-maps-bucket: ${{ steps.get-outputs.outputs.source-maps-bucket }}
+      rum-app-monitor-id: ${{ steps.get-outputs.outputs.rum-app-monitor-id }}
+      rum-identity-pool-id: ${{ steps.get-outputs.outputs.rum-identity-pool-id }}
+      rum-guest-role-arn: ${{ steps.get-outputs.outputs.rum-guest-role-arn }}
 
     steps:
       - name: Checkout code
@@ -1286,6 +1290,26 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
             --output text)
+          SOURCE_MAPS_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='StoreSourceMapsBucketName'].OutputValue" \
+            --output text)
+          RUM_APP_MONITOR_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='StoreRumAppMonitorId'].OutputValue" \
+            --output text)
+          RUM_IDENTITY_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='StoreRumIdentityPoolId'].OutputValue" \
+            --output text)
+          RUM_GUEST_ROLE_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STORE_STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query "Stacks[0].Outputs[?OutputKey=='StoreRumGuestRoleArn'].OutputValue" \
+            --output text)
 
           echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
           echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
@@ -1293,6 +1317,10 @@ jobs:
           echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "source-maps-bucket=$SOURCE_MAPS_BUCKET" >> $GITHUB_OUTPUT
+          echo "rum-app-monitor-id=$RUM_APP_MONITOR_ID" >> $GITHUB_OUTPUT
+          echo "rum-identity-pool-id=$RUM_IDENTITY_POOL_ID" >> $GITHUB_OUTPUT
+          echo "rum-guest-role-arn=$RUM_GUEST_ROLE_ARN" >> $GITHUB_OUTPUT
 
   deploy-store-frontend:
     name: Deploy Store Frontend
@@ -1332,6 +1360,7 @@ jobs:
         working-directory: apps/store
         run: |
           cat > .env << EOF
+          VITE_APP_ENVIRONMENT=${{ env.ENVIRONMENT }}
           VITE_USER_POOL_ID=${{ needs.deploy-store-backend.outputs.user-pool-id }}
           VITE_USER_POOL_CLIENT_ID=${{ needs.deploy-store-backend.outputs.user-pool-client-id }}
           VITE_AWS_REGION=${{ env.AWS_REGION }}
@@ -1339,6 +1368,11 @@ jobs:
           VITE_FOUNDATION_URL=${{ steps.get-foundation-url.outputs.url }}
           VITE_GRN_URL=${{ needs.deploy-backend.outputs.frontend-url }}
           VITE_ADMIN_URL=${{ needs.deploy-admin-backend.outputs.frontend-url }}
+          VITE_STORE_CLOUDWATCH_RUM_APP_MONITOR_ID=${{ needs.deploy-store-backend.outputs.rum-app-monitor-id }}
+          VITE_STORE_CLOUDWATCH_RUM_GUEST_ROLE_ARN=${{ needs.deploy-store-backend.outputs.rum-guest-role-arn }}
+          VITE_STORE_CLOUDWATCH_RUM_IDENTITY_POOL_ID=${{ needs.deploy-store-backend.outputs.rum-identity-pool-id }}
+          VITE_STORE_CLOUDWATCH_RUM_REGION=${{ env.AWS_REGION }}
+          VITE_STORE_CLOUDWATCH_RUM_RELEASE_ID=store-web-${{ env.ENVIRONMENT }}-${{ github.sha }}
           EOF
 
       - name: Build store frontend
@@ -1351,12 +1385,29 @@ jobs:
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
-            --exclude "manifest.json"
+            --exclude "manifest.json" \
+            --exclude "*.map"
 
           aws s3 cp apps/store/dist/index.html "s3://${{ needs.deploy-store-backend.outputs.frontend-bucket }}/index.html" \
             --region ${{ env.AWS_REGION }} \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
+
+      - name: Upload store RUM source maps
+        env:
+          SOURCE_MAPS_BUCKET: ${{ needs.deploy-store-backend.outputs.source-maps-bucket }}
+          RELEASE_ID: store-web-${{ env.ENVIRONMENT }}-${{ github.sha }}
+        run: |
+          if [ -z "$SOURCE_MAPS_BUCKET" ] || [ "$SOURCE_MAPS_BUCKET" = "None" ]; then
+            echo "Store CloudWatch RUM source map bucket output is missing."
+            exit 1
+          fi
+
+          aws s3 sync apps/store/dist/ "s3://$SOURCE_MAPS_BUCKET/$RELEASE_ID/" \
+            --region ${{ env.AWS_REGION }} \
+            --delete \
+            --exclude "*" \
+            --include "*.map"
 
       - name: Invalidate store CloudFront cache
         run: |
