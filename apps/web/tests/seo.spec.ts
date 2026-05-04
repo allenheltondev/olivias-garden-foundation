@@ -29,7 +29,10 @@ test('homepage and donate page expose core metadata', async ({ page }) => {
   expect(organization.taxID).toBe('33-3101032');
   expect(organization.email).toBe('allen@oliviasgarden.org');
 
-  await gotoAndWait(page, '/donate');
+  // /donate mounts Stripe Embedded Checkout iframes that keep the network
+  // from going idle. We only inspect <title> and meta tags here, so
+  // DOMContentLoaded is enough.
+  await gotoAndWait(page, '/donate', { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(/Support Olivia's Garden/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/donate$/);
   expect(await readMetaContent(page, 'meta[name="description"]')).toBeTruthy();
@@ -55,7 +58,10 @@ test('main internal routes respond without broken links', async ({ page, request
   const discoveredLinks = new Set<string>(mainPaths);
 
   for (const path of mainPaths) {
-    await gotoAndWait(page, path);
+    // /donate keeps the network busy via Stripe iframes; everything
+    // else is fine on networkidle.
+    const waitUntil = path === '/donate' ? 'domcontentloaded' : 'networkidle';
+    await gotoAndWait(page, path, { waitUntil });
     for (const href of await readInternalLinks(page)) {
       discoveredLinks.add(href);
     }

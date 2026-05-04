@@ -16,7 +16,10 @@ test.describe('foundation disclosures', () => {
   });
 
   test('donate page surfaces the EIN and tax-deductible language near the gift action', async ({ page }) => {
-    await gotoAndWait(page, '/donate');
+    // /donate mounts Stripe Embedded Checkout — its iframes block
+    // `networkidle` from settling. DOMContentLoaded is enough; the
+    // toContainText assertions auto-wait for hydration.
+    await gotoAndWait(page, '/donate', { waitUntil: 'domcontentloaded' });
 
     const donateForm = page.locator('.donate-form-card');
     await expect(donateForm).toContainText('501(c)(3)');

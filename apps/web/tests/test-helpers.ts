@@ -33,8 +33,27 @@ export function trackBrowserErrors(page: Page) {
 const CI_USERNAME = process.env.OGF_CI_USERNAME ?? process.env.OKRA_CI_ADMIN_USERNAME;
 const CI_PASSWORD = process.env.OGF_CI_PASSWORD ?? process.env.OKRA_CI_ADMIN_PASSWORD;
 
-export async function gotoAndWait(page: Page, path: string) {
-  const response = await page.goto(path, { waitUntil: 'networkidle' });
+type GotoWaitUntil = 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
+
+/**
+ * Navigate to `path` and wait for the page to be ready.
+ *
+ * Defaults to `networkidle` because the original tests relied on it for
+ * "no analytics fired" / "page is fully settled" semantics. Pass
+ * `{ waitUntil: 'domcontentloaded' }` for pages that mount third-party
+ * iframes (Stripe Embedded Checkout on /donate, etc.) — those iframes
+ * keep the network busy past the 30s timeout, breaking networkidle in
+ * a way no amount of retries fixes. Auto-waiting assertions
+ * (toBeVisible, toHaveAttribute) handle the rest.
+ */
+export async function gotoAndWait(
+  page: Page,
+  path: string,
+  options?: { waitUntil?: GotoWaitUntil },
+) {
+  const response = await page.goto(path, {
+    waitUntil: options?.waitUntil ?? 'networkidle',
+  });
   expect(response, `Expected a response when visiting ${path}`).not.toBeNull();
   return response;
 }
