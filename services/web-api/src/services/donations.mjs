@@ -1,6 +1,11 @@
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { createDbClient } from '../../scripts/db-client.mjs';
 import { resolveOptionalAuthContext } from './auth.mjs';
+import {
+  persistWorkshopCheckoutCompletion,
+  persistWorkshopCheckoutExpiry,
+  persistWorkshopRefund
+} from './workshops.mjs';
 
 const eventBridge = new EventBridgeClient({});
 
@@ -721,6 +726,45 @@ async function processStripeEvent(event, correlationId) {
   await client.connect();
 
   try {
+    // Workshops, donations, and the store all share the same Stripe partner
+    // event bus. Route by metadata before falling through to the donation
+    // path: workshop sessions carry metadata.workshop_id (set in
+    // workshops.mjs createWorkshopCheckoutSession), donations carry
+    // metadata.donation_mode (set in donations.mjs buildCheckoutForm), and
+    // store sessions have neither. Each handler is idempotent.
+    const isWorkshopSession =
+      typeof object?.metadata?.workshop_id === 'string'
+      && object.metadata.workshop_id.length > 0;
+
+    if (isWorkshopSession) {
+      if (eventType === 'checkout.session.completed') {
+        await persistWorkshopCheckoutCompletion(client, eventId, object, correlationId);
+        return;
+      }
+      if (eventType === 'checkout.session.expired') {
+        await persistWorkshopCheckoutExpiry(client, eventId, object, correlationId);
+        return;
+      }
+      if (eventType === 'charge.refunded') {
+        // charge.refunded carries metadata on the charge that we mirrored
+        // from the PaymentIntent (set via payment_intent_data.metadata at
+        // checkout creation). The handler keys off payment_intent_id, not
+        // metadata, so the metadata check above is just for routing.
+        await persistWorkshopRefund(client, eventId, object, correlationId);
+        return;
+      }
+      // Other event types on a workshop session (e.g. payment_intent.*)
+      // aren't actionable for us yet — log and move on.
+      console.info(JSON.stringify({
+        level: 'info',
+        correlationId,
+        eventId,
+        eventType,
+        message: 'Ignoring non-actionable workshop Stripe event'
+      }));
+      return;
+    }
+
     if (eventType === 'checkout.session.completed') {
       await persistCheckoutCompletion(client, eventId, object, correlationId);
       return;

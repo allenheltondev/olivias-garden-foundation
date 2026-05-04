@@ -11,6 +11,7 @@
     "build": "sam build --template-file template.yaml",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:integration": "node ./scripts/integration-test.mjs",
     "typecheck": "node -e \"console.log('backend typecheck: no TypeScript files yet')\""
   },
   "dependencies": {

@@ -111,6 +111,154 @@ paths:
           description: |
             User has no Garden Club subscription that can be resumed (already
             active, fully canceled, or never enrolled).
+  /workshops:
+    get:
+      summary: List public-facing workshops
+      description: |
+        Returns all workshops with status other than `past`, ordered by
+        `workshop_date` ascending. The endpoint is public, but if a bearer
+        token is supplied the response includes the caller's `my_signup` for
+        each workshop they've signed up for.
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: List of workshops visible to the public
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workshop'
+  /workshops/me/signups:
+    get:
+      summary: List the signed-in user's workshop signups
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's workshop signups across all workshops
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MyWorkshopSignup'
+        '401':
+          description: Authentication required
+  /workshops/{slug}:
+    get:
+      summary: Get a single workshop by slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: Workshop detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workshop'
+        '404':
+          description: Workshop not found
+  /workshops/{workshopId}/signup:
+    post:
+      summary: Sign up the authenticated user for a workshop
+      description: |
+        The server picks the signup `kind` based on workshop status and
+        capacity:
+          - `gauging_interest` → `interested`
+          - `open` and capacity available → `registered`
+          - `open` but at capacity → `waitlisted`
+          - `closed` → `waitlisted`
+          - `coming_soon` and `past` → 400 (signups not open)
+
+        For **paid** workshops the kind path interacts with the payment flow:
+          - `interested` and `waitlisted` are always free — the signup row is
+            written immediately with `payment_status: not_required`.
+          - `registered` requires payment. The server creates a Stripe
+            Checkout session and returns its URL in `checkout_url`. The row
+            is written with `payment_status: pending` and an expires_at 30
+            minutes out; the seat is held until the webhook flips the row
+            to `paid` or the session expires.
+
+        For paid signup paths the request body must include `returnUrl` —
+        an absolute URL on an allowed origin that Stripe will bounce the
+        user back to after checkout. For free paths the body is optional.
+
+        Idempotent: a second call returns `already_signed_up: true` with the
+        existing signup. If the prior signup was a `pending` paid row that
+        has expired, it is dropped and a fresh checkout is issued.
+      parameters:
+        - in: path
+          name: workshopId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                returnUrl:
+                  type: string
+                  format: uri
+                  description: |
+                    Absolute URL on an allowed origin where Stripe will
+                    return the user after checkout. Required when the
+                    resulting signup would be paid.
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Signup recorded (free) or checkout session created (paid)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkshopSignupResponse'
+        '400':
+          description: Workshop is not accepting signups, or returnUrl missing/invalid for a paid signup
+        '401':
+          description: Authentication required
+        '404':
+          description: Workshop not found
+    delete:
+      summary: Cancel the authenticated user's signup for a workshop
+      parameters:
+        - in: path
+          name: workshopId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Signup canceled
+        '401':
+          description: Authentication required
+        '404':
+          description: Signup not found
   /donations/checkout-session-status:
     get:
       summary: Read the current Stripe Checkout Session status after return from embedded checkout
@@ -181,6 +329,182 @@ components:
           type: [string, 'null']
         customerEmail:
           type: [string, 'null']
+    Workshop:
+      type: object
+      required: [id, slug, title, status, is_paid, currency]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        title:
+          type: string
+        short_description:
+          type: [string, 'null']
+        description:
+          type: [string, 'null']
+        status:
+          type: string
+          enum: [coming_soon, gauging_interest, open, closed, past]
+        workshop_date:
+          type: [string, 'null']
+          format: date-time
+        location:
+          type: [string, 'null']
+        capacity:
+          type: [integer, 'null']
+        seats_remaining:
+          type: [integer, 'null']
+          description: Remaining capacity for status=open. Null when capacity is unbounded.
+        image_url:
+          type: [string, 'null']
+        is_paid:
+          type: boolean
+          description: Whether the workshop requires payment to register.
+        price_cents:
+          type: [integer, 'null']
+          description: Price in the smallest currency unit (e.g. cents). Null when is_paid=false.
+        currency:
+          type: string
+          description: Lowercase 3-letter ISO currency code. Defaults to "usd".
+        interested_count:
+          type: integer
+          description: Count of users who marked themselves interested while gauging interest.
+        my_signup:
+          oneOf:
+            - $ref: '#/components/schemas/WorkshopSignup'
+            - type: 'null'
+    WorkshopSignup:
+      type: object
+      required: [kind, payment_status, created_at]
+      properties:
+        kind:
+          type: string
+          enum: [interested, registered, waitlisted]
+        payment_status:
+          type: string
+          enum: [not_required, pending, paid, refunded]
+        created_at:
+          type: string
+          format: date-time
+        checkout_url:
+          type: [string, 'null']
+          format: uri
+          description: |
+            When `payment_status` is `pending` and the held checkout
+            session has not yet expired, this is the Stripe Checkout URL
+            the user should be sent back to so they can resume payment.
+            Null in any other state, or once the held seat expires.
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            When `payment_status` is `pending`, the timestamp at which
+            the held seat is released and the user must restart
+            checkout. Null otherwise.
+    WorkshopSignupResponse:
+      type: object
+      required: [already_signed_up, checkout_required, signup]
+      properties:
+        already_signed_up:
+          type: boolean
+        checkout_required:
+          type: boolean
+          description: |
+            True when the user must complete a Stripe Checkout session
+            (paid workshops, kind=registered). False for free signups.
+        checkout_url:
+          type: [string, 'null']
+          format: uri
+          description: |
+            Stripe Checkout URL when checkout_required=true on the
+            originating call. Null on idempotent re-calls — the client
+            should rely on `checkout_session_id` plus
+            /donations/checkout-session-status to look up state.
+        checkout_session_id:
+          type: [string, 'null']
+        signup:
+          type: object
+          required: [id, workshop_id, kind, payment_status, created_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+            workshop_id:
+              type: string
+              format: uuid
+            kind:
+              type: string
+              enum: [interested, registered, waitlisted]
+            payment_status:
+              type: string
+              enum: [not_required, pending, paid, refunded]
+            created_at:
+              type: string
+              format: date-time
+    MyWorkshopSignup:
+      type: object
+      required: [id, workshop_id, kind, payment_status, created_at, workshop]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workshop_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [interested, registered, waitlisted]
+        payment_status:
+          type: string
+          enum: [not_required, pending, paid, refunded]
+        amount_cents:
+          type: [integer, 'null']
+        currency:
+          type: [string, 'null']
+        checkout_url:
+          type: [string, 'null']
+          format: uri
+          description: |
+            When `payment_status` is `pending` and the held checkout
+            session has not expired, this is the resume URL.
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            When `payment_status` is `pending`, the timestamp at which
+            the held seat is released.
+        paid_at:
+          type: [string, 'null']
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        workshop:
+          type: object
+          required: [slug, title, status]
+          properties:
+            slug:
+              type: string
+            title:
+              type: string
+            status:
+              type: string
+              enum: [coming_soon, gauging_interest, open, closed, past]
+            workshop_date:
+              type: [string, 'null']
+              format: date-time
+            location:
+              type: [string, 'null']
+            image_url:
+              type: [string, 'null']
+            is_paid:
+              type: boolean
+            price_cents:
+              type: [integer, 'null']
+            currency:
+              type: [string, 'null']
     GardenClubMutationResponse:
       type: object
       required: [gardenClubStatus, gardenClubCancelAt]

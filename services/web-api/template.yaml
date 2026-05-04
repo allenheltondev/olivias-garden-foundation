@@ -254,6 +254,11 @@ Resources:
                 - customer.subscription.updated
                 - invoice.paid
                 - invoice.payment_failed
+                # charge.refunded fires when an admin refunds a workshop
+                # (or donation) charge in the Stripe dashboard. The
+                # workshop handler keys off metadata.workshop_id and
+                # flips the matching signup row to payment_status='refunded'.
+                - charge.refunded
 
 Outputs:
   ApiUrl:

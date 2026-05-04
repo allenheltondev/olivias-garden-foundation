@@ -101,6 +101,19 @@ const navItems: AdminNavItem[] = [
       </svg>
     ),
   },
+  {
+    id: 'workshops',
+    path: '/workshops',
+    label: 'Workshops',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M4 4h16v3H4V4Zm0 5h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9Zm3 3v2h4v-2H7Zm0 4v2h10v-2H7Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
 ];
 
 const footerLinks = [

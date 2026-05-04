@@ -51,6 +51,16 @@ const OkraSubmissionsPage = lazy(async () => {
   return { default: module.OkraSubmissionsPage };
 });
 
+const WorkshopsPage = lazy(async () => {
+  const module = await import('./site/pages/WorkshopsPage');
+  return { default: module.WorkshopsPage };
+});
+
+const WorkshopDetailPage = lazy(async () => {
+  const module = await import('./site/pages/WorkshopDetailPage');
+  return { default: module.WorkshopDetailPage };
+});
+
 function App() {
   const { pathname, navigate } = usePathname();
   const authConfig = getCognitoConfig();
@@ -379,6 +389,26 @@ function App() {
                   authSession={authSession}
                   authReady={authReady}
                   onNavigate={navigate}
+                />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/workshops"
+            element={
+              <Suspense fallback={routeFallback}>
+                <WorkshopsPage onNavigate={navigate} authSession={authSession} />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/workshops/:slug"
+            element={
+              <Suspense fallback={routeFallback}>
+                <WorkshopDetailPage
+                  onNavigate={navigate}
+                  authSession={authSession}
+                  authReady={authReady}
                 />
               </Suspense>
             }

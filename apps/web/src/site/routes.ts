@@ -85,6 +85,14 @@ export const routes: AppRoute[] = [
     prerender: true,
   },
   {
+    path: '/workshops',
+    label: 'Workshops',
+    title: 'Workshops',
+    description: "Hands-on workshops at Olivia's Garden Foundation: garden prep, animal care, food preservation, and more. Sign up or get on the waitlist for upcoming sessions.",
+    seoImage: socialShareImage,
+    prerender: true,
+  },
+  {
     path: '/donate',
     label: 'Donate',
     showInNav: true,

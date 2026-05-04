@@ -28,6 +28,13 @@ import {
   tierInterestSchema
 } from '../services/contact.mjs';
 import {
+  cancelMyWorkshopSignup,
+  getPublicWorkshopBySlug,
+  listMyWorkshopSignups,
+  listPublicWorkshops,
+  signUpForWorkshop
+} from '../services/workshops.mjs';
+import {
   corsHeaders,
   errorResponse,
   getCorrelationId,
@@ -321,9 +328,47 @@ app.post('/contact', async ({ req, event }) => {
   }
 });
 
+app.get('/workshops', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await listPublicWorkshops(event);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.get('/workshops/me/signups', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  try {
+    const result = await listMyWorkshopSignups(event);
+    return {
+      statusCode: 200,
+      headers: { 'x-correlation-id': correlationId },
+      body: result
+    };
+  } catch (error) {
+    return mapApiError(error, correlationId);
+  }
+});
+
 app.notFound(({ event }) => {
   return errorResponse(404, 'Not Found', getCorrelationId(event));
 });
+
+function matchWorkshopBySlugPath(path) {
+  const match = path.match(/^\/workshops\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+function matchWorkshopSignupPath(path) {
+  const match = path.match(/^\/workshops\/([^/]+)\/signup$/);
+  return match?.[1] ?? null;
+}
 
 export async function handler(event, context) {
   const correlationId = getCorrelationId(event);
@@ -349,7 +394,37 @@ export async function handler(event, context) {
 
   let response;
   try {
-    response = await app.resolve(normalizedEvent, context);
+    const signupWorkshopId =
+      method === 'POST' || method === 'DELETE'
+        ? matchWorkshopSignupPath(normalizedPath)
+        : null;
+
+    if (signupWorkshopId) {
+      try {
+        const result = method === 'POST'
+          ? await signUpForWorkshop(normalizedEvent, signupWorkshopId)
+          : await cancelMyWorkshopSignup(normalizedEvent, signupWorkshopId);
+        response = jsonResponse(method === 'POST' ? 201 : 200, result, correlationId);
+      } catch (error) {
+        response = mapApiError(error, correlationId);
+      }
+    } else {
+      const slug =
+        method === 'GET' && normalizedPath !== '/workshops' && normalizedPath !== '/workshops/me/signups'
+          ? matchWorkshopBySlugPath(normalizedPath)
+          : null;
+
+      if (slug) {
+        try {
+          const result = await getPublicWorkshopBySlug(normalizedEvent, slug);
+          response = jsonResponse(200, result, correlationId);
+        } catch (error) {
+          response = mapApiError(error, correlationId);
+        }
+      } else {
+        response = await app.resolve(normalizedEvent, context);
+      }
+    }
   } catch (error) {
     logger.error('Request handler returned error', {
       correlationId,

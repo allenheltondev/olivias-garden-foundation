@@ -473,3 +473,163 @@ export async function getFinanceRevenue(
   const url = `${getAdminApiBaseUrl()}/admin/finance/revenue${search ? `?${search}` : ''}`;
   return requestJson<FinanceRevenueResponse>(url, accessToken);
 }
+
+// --- Workshops ---
+
+export type WorkshopStatus =
+  | 'coming_soon'
+  | 'gauging_interest'
+  | 'open'
+  | 'closed'
+  | 'past';
+
+export type WorkshopSignupKind = 'interested' | 'registered' | 'waitlisted';
+
+export type WorkshopPaymentStatus = 'not_required' | 'pending' | 'paid' | 'refunded';
+
+export interface AdminWorkshop {
+  id: string;
+  slug: string;
+  title: string;
+  short_description: string | null;
+  description: string | null;
+  status: WorkshopStatus;
+  workshop_date: string | null;
+  location: string | null;
+  capacity: number | null;
+  image_s3_key: string | null;
+  image_url: string | null;
+  is_paid: boolean;
+  price_cents: number | null;
+  currency: string;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
+  signup_counts: { registered: number; waitlisted: number; interested: number };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpsertWorkshopRequest {
+  slug: string;
+  title: string;
+  short_description: string | null;
+  description: string | null;
+  status: WorkshopStatus;
+  workshop_date: string | null;
+  location: string | null;
+  capacity: number | null;
+  image_s3_key: string | null;
+  is_paid: boolean;
+  price_cents: number | null;
+  currency: string;
+}
+
+export interface AdminWorkshopSignup {
+  id: string;
+  workshop_id: string;
+  user_id: string;
+  kind: WorkshopSignupKind;
+  payment_status: WorkshopPaymentStatus;
+  amount_cents: number | null;
+  currency: string | null;
+  stripe_checkout_session_id: string | null;
+  paid_at: string | null;
+  cancelled_at: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  created_at: string;
+}
+
+export interface WorkshopImageUploadIntent {
+  imageId: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  s3Key: string;
+  expiresInSeconds: number;
+}
+
+export async function listAdminWorkshops(accessToken: string): Promise<AdminWorkshop[]> {
+  const response = await requestJson<{ items: AdminWorkshop[] }>(
+    `${getAdminApiBaseUrl()}/admin/workshops`,
+    accessToken
+  );
+  return response.items;
+}
+
+export async function getAdminWorkshop(accessToken: string, workshopId: string): Promise<AdminWorkshop> {
+  return requestJson<AdminWorkshop>(
+    `${getAdminApiBaseUrl()}/admin/workshops/${workshopId}`,
+    accessToken
+  );
+}
+
+export async function createWorkshop(
+  accessToken: string,
+  payload: UpsertWorkshopRequest
+): Promise<AdminWorkshop> {
+  return requestJson<AdminWorkshop>(`${getAdminApiBaseUrl()}/admin/workshops`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateWorkshop(
+  accessToken: string,
+  workshopId: string,
+  payload: UpsertWorkshopRequest
+): Promise<AdminWorkshop> {
+  return requestJson<AdminWorkshop>(
+    `${getAdminApiBaseUrl()}/admin/workshops/${workshopId}`,
+    accessToken,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function deleteWorkshop(accessToken: string, workshopId: string): Promise<void> {
+  await requestJson(
+    `${getAdminApiBaseUrl()}/admin/workshops/${workshopId}`,
+    accessToken,
+    { method: 'DELETE' }
+  );
+}
+
+export async function listAdminWorkshopSignups(
+  accessToken: string,
+  workshopId: string
+): Promise<AdminWorkshopSignup[]> {
+  const response = await requestJson<{ items: AdminWorkshopSignup[] }>(
+    `${getAdminApiBaseUrl()}/admin/workshops/${workshopId}/signups`,
+    accessToken
+  );
+  return response.items;
+}
+
+export async function uploadWorkshopImage(
+  accessToken: string,
+  file: File
+): Promise<{ s3Key: string }> {
+  const intent = await requestJson<WorkshopImageUploadIntent>(
+    `${getAdminApiBaseUrl()}/admin/workshops/image-upload-intent`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify({ contentType: file.type, contentLength: file.size }),
+    }
+  );
+
+  const upload = await fetch(intent.uploadUrl, {
+    method: intent.method,
+    headers: intent.headers,
+    body: file,
+  });
+
+  if (!upload.ok) {
+    throw new Error('Unable to upload workshop image.');
+  }
+
+  return { s3Key: intent.s3Key };
+}
