@@ -133,7 +133,14 @@ export function WorkshopsPage({ onNavigate, authSession }: WorkshopsPageProps) {
     fetch(`${webApiBase}/workshops`, { headers })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`Unable to load workshops (${response.status})`);
+          // Surface the server's actual error string instead of a bare
+          // status code so a "relation does not exist" / "missing
+          // configuration" / etc. shows up inline on the page.
+          const body = await response.json().catch(() => null);
+          const detail = body?.error
+            ? `${body.error} (${response.status})`
+            : `Unable to load workshops (${response.status})`;
+          throw new Error(detail);
         }
         return response.json();
       })
