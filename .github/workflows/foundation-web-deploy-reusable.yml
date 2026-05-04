@@ -77,6 +77,9 @@ on:
       frontend-bucket:
         description: Foundation Web frontend bucket
         value: ${{ jobs.deploy.outputs.frontend-bucket }}
+      source-maps-bucket:
+        description: Foundation Web CloudWatch RUM source maps bucket
+        value: ${{ jobs.deploy.outputs.source-maps-bucket }}
       cloudfront-distribution-id:
         description: Foundation Web CloudFront distribution ID
         value: ${{ jobs.deploy.outputs.cloudfront-distribution-id }}
@@ -105,6 +108,7 @@ jobs:
       web-app-url: ${{ steps.stack-outputs.outputs.web-app-url }}
       frontend-url: ${{ steps.stack-outputs.outputs.frontend-url }}
       frontend-bucket: ${{ steps.stack-outputs.outputs.frontend-bucket }}
+      source-maps-bucket: ${{ steps.stack-outputs.outputs.source-maps-bucket }}
       cloudfront-distribution-id: ${{ steps.stack-outputs.outputs.cloudfront-distribution-id }}
       web-api-url: ${{ steps.web-api-stack.outputs.api-url }}
       ci-admin-username: ${{ steps.okra-ci-auth.outputs.username }}
@@ -388,10 +392,34 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='WebFrontendBucketName'].OutputValue" \
             --output text)
 
+          SOURCE_MAPS_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebSourceMapsBucketName'].OutputValue" \
+            --output text)
+
           CLOUDFRONT_DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
             --stack-name "${{ inputs.foundation_web_stack_name }}" \
             --region "${{ inputs.aws_region }}" \
             --query "Stacks[0].Outputs[?OutputKey=='WebFrontendDistributionId'].OutputValue" \
+            --output text)
+
+          RUM_APP_MONITOR_ID=$(aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebRumAppMonitorId'].OutputValue" \
+            --output text)
+
+          RUM_IDENTITY_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebRumIdentityPoolId'].OutputValue" \
+            --output text)
+
+          RUM_GUEST_ROLE_ARN=$(aws cloudformation describe-stacks \
+            --stack-name "${{ inputs.foundation_web_stack_name }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='WebRumGuestRoleArn'].OutputValue" \
             --output text)
 
           USER_POOL_ID=$(aws cloudformation list-exports \
@@ -412,7 +440,11 @@ jobs:
           echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
           echo "web-app-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
+          echo "source-maps-bucket=$SOURCE_MAPS_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "rum-app-monitor-id=$RUM_APP_MONITOR_ID" >> $GITHUB_OUTPUT
+          echo "rum-identity-pool-id=$RUM_IDENTITY_POOL_ID" >> $GITHUB_OUTPUT
+          echo "rum-guest-role-arn=$RUM_GUEST_ROLE_ARN" >> $GITHUB_OUTPUT
           echo "user-pool-id=$USER_POOL_ID" >> $GITHUB_OUTPUT
           echo "user-pool-client-id=$USER_POOL_CLIENT_ID" >> $GITHUB_OUTPUT
           echo "user-pool-domain=$USER_POOL_DOMAIN" >> $GITHUB_OUTPUT
@@ -541,6 +573,7 @@ jobs:
 
       - name: Build foundation web app
         env:
+          VITE_APP_ENVIRONMENT: ${{ inputs.environment_name }}
           VITE_OKRA_API_BASE: ${{ steps.okra-stack.outputs.api-url }}
           VITE_AUTH_USER_POOL_ID: ${{ steps.stack-outputs.outputs.user-pool-id }}
           VITE_AUTH_USER_POOL_CLIENT_ID: ${{ steps.stack-outputs.outputs.user-pool-client-id }}
@@ -549,6 +582,11 @@ jobs:
           VITE_ADMIN_URL: ${{ steps.admin-stack.outputs.frontend-url }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ inputs.stripe_publishable_key }}
           VITE_WEB_API_BASE: ${{ steps.web-api-stack.outputs.api-url }}
+          VITE_CLOUDWATCH_RUM_APP_MONITOR_ID: ${{ steps.stack-outputs.outputs.rum-app-monitor-id }}
+          VITE_CLOUDWATCH_RUM_GUEST_ROLE_ARN: ${{ steps.stack-outputs.outputs.rum-guest-role-arn }}
+          VITE_CLOUDWATCH_RUM_IDENTITY_POOL_ID: ${{ steps.stack-outputs.outputs.rum-identity-pool-id }}
+          VITE_CLOUDWATCH_RUM_REGION: ${{ inputs.aws_region }}
+          VITE_CLOUDWATCH_RUM_RELEASE_ID: foundation-web-${{ inputs.environment_name }}-${{ github.sha }}
         run: npm --workspace @olivias/web run build
 
       - name: Deploy frontend assets to S3
@@ -558,7 +596,8 @@ jobs:
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
-            --exclude "manifest.json"
+            --exclude "manifest.json" \
+            --exclude "*.map"
 
           aws s3 cp apps/web/dist/index.html "s3://${{ steps.stack-outputs.outputs.frontend-bucket }}/index.html" \
             --region "${{ inputs.aws_region }}" \
@@ -571,6 +610,22 @@ jobs:
               --cache-control "no-cache, no-store, must-revalidate" \
               --content-type "application/json"
           fi
+
+      - name: Upload RUM source maps
+        env:
+          SOURCE_MAPS_BUCKET: ${{ steps.stack-outputs.outputs.source-maps-bucket }}
+          RELEASE_ID: foundation-web-${{ inputs.environment_name }}-${{ github.sha }}
+        run: |
+          if [ -z "$SOURCE_MAPS_BUCKET" ] || [ "$SOURCE_MAPS_BUCKET" = "None" ]; then
+            echo "CloudWatch RUM source map bucket output is missing."
+            exit 1
+          fi
+
+          aws s3 sync apps/web/dist/ "s3://$SOURCE_MAPS_BUCKET/$RELEASE_ID/" \
+            --region "${{ inputs.aws_region }}" \
+            --delete \
+            --exclude "*" \
+            --include "*.map"
 
       - name: Invalidate CloudFront cache
         run: |

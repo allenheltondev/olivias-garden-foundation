@@ -349,6 +349,37 @@ Resources:
         - Key: Environment
           Value: !Ref EnvironmentName
 
+  WebSourceMapsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldSourceMaps
+            Status: Enabled
+            ExpirationInDays: 90
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      Tags:
+        - Key: App
+          Value: ogf-web-source-maps
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   SharedAssetsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -388,6 +419,112 @@ Resources:
       Tags:
         - Key: App
           Value: ogf-assets
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WebRumIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Sub '${AWS::StackName}-web-rum'
+      AllowUnauthenticatedIdentities: true
+
+  WebRumUnauthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref WebRumIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Policies:
+        - PolicyName: PutRumEvents
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rum:PutRumEvents
+                Resource: !Sub 'arn:${AWS::Partition}:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/${AWS::StackName}-web-rum'
+      Tags:
+        - Key: App
+          Value: ogf-web-rum
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WebRumIdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref WebRumIdentityPool
+      Roles:
+        unauthenticated: !GetAtt WebRumUnauthenticatedRole.Arn
+
+  WebRumLogDeliveryPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-web-rum-log-delivery'
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AWSLogDeliveryWrite20150319",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "delivery.logs.amazonaws.com"
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/vendedlogs/RUMService_${AWS::StackName}-web-rum*:*",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": "${AWS::AccountId}"
+                },
+                "ArnLike": {
+                  "aws:SourceArn": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+                }
+              }
+            }
+          ]
+        }
+
+  WebRumAppMonitor:
+    Type: AWS::RUM::AppMonitor
+    DependsOn:
+      - WebRumLogDeliveryPolicy
+    Properties:
+      Name: !Sub '${AWS::StackName}-web-rum'
+      Domain: !If
+        - DeployCustomDomain
+        - !Ref DomainName
+        - !GetAtt WebFrontendDistribution.DomainName
+      CwLogEnabled: true
+      AppMonitorConfiguration:
+        AllowCookies: false
+        EnableXRay: false
+        GuestRoleArn: !GetAtt WebRumUnauthenticatedRole.Arn
+        IdentityPoolId: !Ref WebRumIdentityPool
+        SessionSampleRate: 1
+        Telemetries:
+          - performance
+          - errors
+          - http
+      DeobfuscationConfiguration:
+        JavaScriptSourceMaps:
+          Status: ENABLED
+          S3Uri: !Sub 's3://${WebSourceMapsBucket}'
+      Tags:
+        - Key: App
+          Value: ogf-web-rum
         - Key: Environment
           Value: !Ref EnvironmentName
 
@@ -553,6 +690,46 @@ Resources:
               Bool:
                 aws:SecureTransport: false
 
+  WebSourceMapsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebSourceMapsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowRumSourceMapList
+            Effect: Allow
+            Principal:
+              Service: rum.amazonaws.com
+            Action:
+              - s3:ListBucket
+            Resource: !GetAtt WebSourceMapsBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/${AWS::StackName}-web-rum'
+          - Sid: AllowRumSourceMapRead
+            Effect: Allow
+            Principal:
+              Service: rum.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub '${WebSourceMapsBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:rum:${AWS::Region}:${AWS::AccountId}:appmonitor/${AWS::StackName}-web-rum'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt WebSourceMapsBucket.Arn
+              - !Sub '${WebSourceMapsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
   SharedAssetsBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -682,6 +859,26 @@ Outputs:
   WebFrontendDistributionId:
     Description: CloudFront distribution ID for the foundation web frontend.
     Value: !Ref WebFrontendDistribution
+
+  WebSourceMapsBucketName:
+    Description: Private S3 bucket that stores CloudWatch RUM JavaScript source maps.
+    Value: !Ref WebSourceMapsBucket
+
+  WebRumAppMonitorId:
+    Description: CloudWatch RUM app monitor ID for the foundation web frontend.
+    Value: !GetAtt WebRumAppMonitor.Id
+
+  WebRumAppMonitorName:
+    Description: CloudWatch RUM app monitor name for the foundation web frontend.
+    Value: !Ref WebRumAppMonitor
+
+  WebRumIdentityPoolId:
+    Description: Cognito identity pool ID used by the CloudWatch RUM web client.
+    Value: !Ref WebRumIdentityPool
+
+  WebRumGuestRoleArn:
+    Description: Unauthenticated Cognito role ARN used by the CloudWatch RUM web client.
+    Value: !GetAtt WebRumUnauthenticatedRole.Arn
 
   WebFrontendUrl:
     Description: Public URL for the foundation web frontend.
