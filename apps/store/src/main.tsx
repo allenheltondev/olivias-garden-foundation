@@ -5,7 +5,9 @@ import './styles.css';
 import App from './App';
 import { configureAmplify, getConfig } from './config/amplify';
 import { consumeSessionFragment } from './auth/sessionTransfer';
+import { initializeStoreCloudWatchRum } from './observability/cloudwatchRum';
 
+initializeStoreCloudWatchRum();
 configureAmplify();
 consumeSessionFragment(getConfig().userPoolClientId);
 
