@@ -188,8 +188,9 @@ export const seoRoutes = [
           <a href="/contact">Sign up to volunteer</a>.
         </li>
         <li>
-          <strong>Hands-on workshops &mdash; coming soon.</strong> Workshops are planned around
-          real tasks and hands-on learning rather than classroom-style theory.
+          <strong>Hands-on workshops.</strong> Workshops are built around real tasks and hands-on
+          learning rather than classroom-style theory. <a href="/workshops">See upcoming
+          workshops</a> to register, join a waitlist, or tell us you&rsquo;re interested.
         </li>
         <li>
           <strong>Help map where food is growing.</strong> Add your garden as a pin on the Okra
@@ -266,6 +267,34 @@ export const seoRoutes = [
         through <a href="/okra">The Okra Project</a>, and more structured ways to share what the
         foundation grows with the community. <a href="/get-involved">Get involved</a> or
         <a href="/donate">support the work</a>.
+      </p>
+    `,
+  },
+  {
+    path: '/workshops',
+    title: 'Workshops',
+    description:
+      "Hands-on workshops at Olivia's Garden Foundation: garden prep, animal care, food preservation, and more. Sign up or get on the waitlist for upcoming sessions.",
+    seoImage: defaultImage,
+    prerender: true,
+    sitemap: { changefreq: 'weekly', priority: 0.7 },
+    bodyFallback: `
+      <h1>Workshops at Olivia's Garden Foundation</h1>
+      <p>
+        Workshops at Olivia's Garden Foundation are built around real tasks &mdash; garden prep,
+        animal care, food preservation, and the practical skills behind growing food at home.
+        Sessions are hands-on rather than classroom-style, so you spend the time doing the work,
+        not watching it.
+      </p>
+      <p>
+        Browse upcoming workshops on the website to register, join a waitlist, or tell us
+        you&rsquo;re interested in workshops we&rsquo;re still planning. The list is loaded
+        from the foundation API, so what shows in your browser is always the current schedule.
+      </p>
+      <p>
+        If you have a workshop topic in mind that isn&rsquo;t scheduled yet,
+        <a href="/contact">contact the foundation</a> and let us know what you&rsquo;d like
+        to learn.
       </p>
     `,
   },

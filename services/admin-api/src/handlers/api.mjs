@@ -21,6 +21,15 @@ import {
 } from '../services/store-images.mjs';
 import { listActivity } from '../services/activity.mjs';
 import { getRevenueSummary } from '../services/finance.mjs';
+import {
+  createWorkshop,
+  createWorkshopImageUploadIntent,
+  deleteWorkshop,
+  getAdminWorkshop,
+  listAdminWorkshops,
+  listWorkshopSignups,
+  updateWorkshop
+} from '../services/workshops.mjs';
 
 const app = new Router();
 const logger = new Logger({ serviceName: 'admin-api', logLevel: 'DEBUG' });
@@ -134,6 +143,62 @@ app.get('/admin/activity', async ({ event }) => {
   }
 });
 
+app.get('/admin/workshops', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('GET /admin/workshops', event);
+
+  try {
+    const result = await listAdminWorkshops(event);
+    return jsonResponse(200, result, correlationId);
+  } catch (error) {
+    logger.error('GET /admin/workshops failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/admin/workshops', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('POST /admin/workshops', event);
+
+  try {
+    const payload = parseJsonBody(event);
+    const result = await createWorkshop(event, payload);
+    return jsonResponse(201, result, correlationId);
+  } catch (error) {
+    logger.error('POST /admin/workshops failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
+app.post('/admin/workshops/image-upload-intent', async ({ event }) => {
+  const correlationId = getCorrelationId(event);
+  logRouteHit('POST /admin/workshops/image-upload-intent', event);
+
+  try {
+    const payload = parseJsonBody(event);
+    const result = await createWorkshopImageUploadIntent(event, payload);
+    return jsonResponse(201, result, correlationId);
+  } catch (error) {
+    logger.error('POST /admin/workshops/image-upload-intent failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    return mapApiError(error, correlationId);
+  }
+});
+
 app.get('/admin/finance/revenue', async ({ event }) => {
   const correlationId = getCorrelationId(event);
   logRouteHit('GET /admin/finance/revenue', event);
@@ -174,6 +239,16 @@ function matchStoreProductUpdatePath(path) {
 
 function matchStoreProductImageCompletePath(path) {
   const match = path.match(/^\/admin\/store\/product-images\/([^/]+)\/complete$/);
+  return match?.[1] ?? null;
+}
+
+function matchWorkshopIdPath(path) {
+  const match = path.match(/^\/admin\/workshops\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+function matchWorkshopSignupsPath(path) {
+  const match = path.match(/^\/admin\/workshops\/([^/]+)\/signups$/);
   return match?.[1] ?? null;
 }
 
@@ -256,6 +331,47 @@ export async function handler(event, context) {
     if (archiveProductId) {
       logRouteHit(`DELETE /admin/store/products/${archiveProductId}`, normalizedEvent);
       const result = await archiveStoreProduct(normalizedEvent, archiveProductId);
+      const response = jsonResponse(200, result, correlationId);
+      logger.info('Response sent', {
+        correlationId,
+        method,
+        path: normalizedPath,
+        status: response.statusCode
+      });
+      return response;
+    }
+
+    const workshopSignupsId =
+      method === 'GET' ? matchWorkshopSignupsPath(normalizedPath) : null;
+
+    if (workshopSignupsId) {
+      logRouteHit(`GET /admin/workshops/${workshopSignupsId}/signups`, normalizedEvent);
+      const result = await listWorkshopSignups(normalizedEvent, workshopSignupsId);
+      const response = jsonResponse(200, result, correlationId);
+      logger.info('Response sent', {
+        correlationId,
+        method,
+        path: normalizedPath,
+        status: response.statusCode
+      });
+      return response;
+    }
+
+    const workshopId =
+      method === 'GET' || method === 'PUT' || method === 'DELETE'
+        ? matchWorkshopIdPath(normalizedPath)
+        : null;
+
+    if (workshopId) {
+      logRouteHit(`${method} /admin/workshops/${workshopId}`, normalizedEvent);
+      let result;
+      if (method === 'GET') {
+        result = await getAdminWorkshop(normalizedEvent, workshopId);
+      } else if (method === 'PUT') {
+        result = await updateWorkshop(normalizedEvent, parseJsonBody(normalizedEvent), workshopId);
+      } else {
+        result = await deleteWorkshop(normalizedEvent, workshopId);
+      }
       const response = jsonResponse(200, result, correlationId);
       logger.info('Response sent', {
         correlationId,

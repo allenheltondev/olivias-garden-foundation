@@ -64,15 +64,22 @@ export function mapApiError(error, correlationId) {
     || message.includes('contactName is required')
     || message.includes('message is required')
     || message.includes('tier must be one of supporter, pro, either')
+    || message.includes('workshop id must be a valid UUID')
+    || message.includes('workshop slug must be lowercase kebab-case')
+    || message.includes('Signups are not open for this workshop')
   ) {
     return errorResponse(400, message, correlationId);
   }
 
-  if (message.includes('Invalid access token')) {
+  if (message.includes('Invalid access token') || message.includes('Authentication required')) {
     return errorResponse(401, message, correlationId);
   }
 
-  if (message.includes('No uploaded avatar found')) {
+  if (
+    message.includes('No uploaded avatar found')
+    || message.includes('Workshop not found')
+    || message.includes('Workshop signup not found')
+  ) {
     return errorResponse(404, message, correlationId);
   }
 

@@ -370,18 +370,17 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
           }}>Sign up to volunteer</CtaButton>
         </Card>
 
-        <Card title="Hands-on workshops — coming soon." className="get-involved-card">
-          <p className="get-involved-card__eyebrow">Coming soon</p>
+        <Card title="Hands-on workshops." className="get-involved-card">
+          <p className="get-involved-card__eyebrow">Workshops</p>
           <p>
-            Workshops are planned, but they are not active yet. When they launch, they will be
-            built around real tasks and hands-on learning, not classroom-style theory.
+            Workshops are built around real tasks and hands-on learning, not classroom-style
+            theory. Browse upcoming sessions and register, get on a waitlist, or tell us
+            you&apos;re interested in workshops we&apos;re still planning.
           </p>
-          <CtaButton
-            variant="secondary"
-            href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Notify me when workshops open')}`}
-          >
-            Notify me when workshops open
-          </CtaButton>
+          <CtaButton href="/workshops" onClick={(event) => {
+            event?.preventDefault?.();
+            onNavigate('/workshops');
+          }}>See upcoming workshops</CtaButton>
         </Card>
 
         <Card title="Help us map where food is growing." className="get-involved-card">

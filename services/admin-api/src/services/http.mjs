@@ -77,11 +77,24 @@ export function mapApiError(error, correlationId) {
     || message.includes('each image must be an object')
     || message.includes('image id must be a valid UUID')
     || message.includes('image alt_text must')
+    || message.includes('workshop id must be a valid UUID')
+    || message.includes('title is required')
+    || message.includes('workshop_date must be an ISO 8601 string')
+    || message.includes('capacity must be a non-negative integer')
+    || message.includes('short_description must be a string')
+    || message.includes('description must be a string')
+    || message.includes('location must be a string')
+    || message.includes('image_s3_key must be a string')
+    || message.includes('price_cents must be an integer')
   ) {
     return errorResponse(400, message, correlationId);
   }
 
-  if (message.includes('Store product not found') || message.includes('Store product image not found')) {
+  if (
+    message.includes('Store product not found')
+    || message.includes('Store product image not found')
+    || message.includes('Workshop not found')
+  ) {
     return errorResponse(404, message, correlationId);
   }
 

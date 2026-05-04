@@ -17,7 +17,11 @@ test('tabbing from the top reveals a skip-to-content link targeting main content
 });
 
 test('donation amount chips expose selected state to assistive technology', async ({ page }) => {
-  await gotoAndWait(page, '/donate');
+  // /donate mounts Stripe Embedded Checkout — its iframes keep the
+  // network busy long enough that `networkidle` times out. We only
+  // assert DOM aria state here, so DOMContentLoaded + auto-waiting
+  // assertions are sufficient.
+  await gotoAndWait(page, '/donate', { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByRole('button', { name: '$25' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: '$50' })).toHaveAttribute('aria-pressed', 'false');

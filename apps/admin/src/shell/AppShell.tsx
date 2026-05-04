@@ -101,6 +101,22 @@ const navItems: AdminNavItem[] = [
       </svg>
     ),
   },
+  {
+    id: 'workshops',
+    path: '/workshops',
+    label: 'Workshops',
+    icon: (
+      // Graduation cap — workshops are the foundation's hands-on
+      // learning sessions; the "learning" archetype reads better than
+      // the calendar-style icon we used to have.
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          d="M12 3 1.5 8.5 12 14l8.5-4.45V16h2V8.5L12 3Zm-7 8.18v3.32c0 1.65 3.13 3 7 3s7-1.35 7-3v-3.32l-7 3.66-7-3.66Z"
+          fill="currentColor"
+        />
+      </svg>
+    ),
+  },
 ];
 
 const footerLinks = [
