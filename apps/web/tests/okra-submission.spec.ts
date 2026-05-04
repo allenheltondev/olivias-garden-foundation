@@ -35,7 +35,27 @@ test.describe('okra submission flow (staging)', () => {
     await expect(dialog.getByRole('button', { name: 'Submit your garden' })).toBeDisabled();
 
     await dialog.locator('input[type="file"]').setInputFiles(selectedImages);
-    await expect(dialog.getByLabel('Upload complete')).toHaveCount(selectedImages.length, { timeout: 30000 });
+
+    // Race success against the failed-thumb appearing — without this, a real
+    // upload error just times out the success assertion with an unhelpful
+    // "expected N, got M" message instead of surfacing the actual failure.
+    const failureSignal = dialog
+      .locator('.photo-uploader__thumb--failed')
+      .first()
+      .waitFor({ state: 'visible', timeout: 30000 })
+      .then(async () => {
+        const errMsg = await dialog
+          .locator('.photo-uploader__error-msg, .photo-uploader__consolidated-error')
+          .first()
+          .textContent()
+          .catch(() => null);
+        throw new Error(`Anonymous photo upload failed: ${errMsg?.trim() ?? 'no error message captured'}`);
+      });
+    const successSignal = expect(dialog.getByLabel('Upload complete'))
+      .toHaveCount(selectedImages.length, { timeout: 30000 });
+    await Promise.race([successSignal, failureSignal]);
+
+    await expect(dialog.locator('.photo-uploader__thumb--failed')).toHaveCount(0);
 
     await dialog.getByLabel('Your name (optional)').fill(contributorName);
     await dialog.getByLabel('Your garden story (optional)').fill(storyText);

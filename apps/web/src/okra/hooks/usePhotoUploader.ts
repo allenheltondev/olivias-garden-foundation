@@ -25,7 +25,7 @@ export interface UsePhotoUploaderReturn {
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE = 3 * 1024 * 1024; // 3 MB
+const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_PHOTOS = 5;
 const CONCURRENCY_LIMIT = 3;
 
@@ -39,7 +39,7 @@ export function validateFile(file: File): string | null {
     return 'Only JPEG, PNG, and WebP images are accepted';
   }
   if (file.size > MAX_SIZE) {
-    return 'File exceeds the 3 MB size limit';
+    return 'File exceeds the 10 MB size limit';
   }
   return null;
 }

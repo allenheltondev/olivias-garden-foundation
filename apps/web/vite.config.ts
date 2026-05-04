@@ -1,9 +1,22 @@
+import { randomUUID } from 'node:crypto';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
+interface MockReq {
+  method?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  on: (event: 'data' | 'end', listener: (...args: unknown[]) => void) => void;
+}
+
+interface MockRes {
+  setHeader: (name: string, value: string) => void;
+  end: (body?: string) => void;
+  statusCode?: number;
+}
+
 function mockOkraApi(): Plugin {
   const registerMocks = (middlewares: {
-    use: (path: string, handler: (_req: unknown, res: { setHeader: (name: string, value: string) => void; end: (body: string) => void; statusCode?: number }) => void) => void;
+    use: (path: string, handler: (req: MockReq, res: MockRes) => void) => void;
   }) => {
     middlewares.use('/api/okra/stats', (_req, res) => {
       res.setHeader('Content-Type', 'application/json');
@@ -68,9 +81,22 @@ function mockOkraApi(): Plugin {
       );
     });
 
-    middlewares.use('/api/photos', (_req, res) => {
+    middlewares.use('/api/mock-photo-upload', (req, res) => {
+      req.on('data', () => {});
+      req.on('end', () => {
+        res.statusCode = 200;
+        res.end();
+      });
+    });
+
+    middlewares.use('/api/photos', (req, res) => {
+      const photoId = randomUUID();
+      const hostHeader = req.headers?.host;
+      const host = Array.isArray(hostHeader) ? hostHeader[0] : (hostHeader ?? 'localhost:4174');
+      const uploadUrl = `http://${host}/api/mock-photo-upload/${photoId}`;
+      res.statusCode = 201;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ photoId: 'mock-photo-id', uploadUrl: 'https://example.com/mock-upload' }));
+      res.end(JSON.stringify({ photoId, uploadUrl, method: 'PUT', headers: {}, expiresInSeconds: 900 }));
     });
 
     middlewares.use('/api/submissions', (_req, res) => {
