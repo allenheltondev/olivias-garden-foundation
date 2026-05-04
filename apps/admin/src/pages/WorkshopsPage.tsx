@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   FormFeedback,
+  FormField,
   Input,
   SectionHeading,
   Select,
@@ -125,9 +126,12 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
     }
   };
 
+  // refresh is defined inline above and closes over session.accessToken,
+  // which is the only thing it actually uses. The repo's eslint config
+  // doesn't include react-hooks/exhaustive-deps, so we skip the
+  // suppression comment that StorePage doesn't use either.
   useEffect(() => {
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.accessToken]);
 
   const startCreate = () => {
@@ -341,22 +345,25 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
             <Select
               label="Status"
               value={form.status}
-              onChange={(event) =>
-                setForm({ ...form, status: event.target.value as WorkshopStatus })
-              }
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </Select>
-            <Input
-              label="Workshop date and time"
-              type="datetime-local"
-              value={toDatetimeLocalValue(form.workshop_date)}
-              onChange={(event) =>
-                setForm({ ...form, workshop_date: fromDatetimeLocalValue(event.target.value) })
-              }
+              onChange={(value) => setForm({ ...form, status: value as WorkshopStatus })}
+              options={STATUS_OPTIONS}
             />
+            {/*
+              The shared Input component restricts `type` to text-like
+              variants — it doesn't allow datetime-local. We use a native
+              input wrapped in FormField for the same label/error chrome.
+            */}
+            <FormField label="Workshop date and time" htmlFor="workshop-date-input">
+              <input
+                id="workshop-date-input"
+                type="datetime-local"
+                className="og-input__field"
+                value={toDatetimeLocalValue(form.workshop_date)}
+                onChange={(event) =>
+                  setForm({ ...form, workshop_date: fromDatetimeLocalValue(event.target.value) })
+                }
+              />
+            </FormField>
             <Input
               label="Location"
               value={form.location ?? ''}
@@ -413,12 +420,11 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
                   <Select
                     label="Currency"
                     value={form.currency}
-                    onChange={(event) =>
-                      setForm({ ...form, currency: event.target.value.toLowerCase() })
+                    onChange={(value) =>
+                      setForm({ ...form, currency: value.toLowerCase() })
                     }
-                  >
-                    <option value="usd">USD</option>
-                  </Select>
+                    options={[{ value: 'usd', label: 'USD' }]}
+                  />
                   {activeWorkshopId ? (
                     <p className="admin-workshops__paid-meta">
                       Stripe price IDs rotate when amount or currency changes; the
