@@ -33,6 +33,28 @@ html {
   min-height: 100dvh;
 }
 
+.skip-to-content {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top, 0px));
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(calc(-100% - 1.5rem));
+  border-radius: 999px;
+  background: var(--site-branch);
+  color: var(--site-paper-strong);
+  box-shadow: 0 12px 26px rgba(38, 23, 15, 0.24);
+  font-weight: 800;
+  padding: 0.7rem 1rem;
+  text-decoration: none;
+  transition: transform 160ms ease;
+}
+
+.skip-to-content:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--site-gold);
+  outline-offset: 3px;
+}
+
 /* ── Login page backdrop (web-app-specific background image) ───────── */
 
 .og-login-page__backdrop {
@@ -134,6 +156,14 @@ html {
 .home-hero__cta:hover {
   transform: translateY(-1px);
   background: #48613a;
+}
+
+.home-hero__cta:focus-visible,
+.home-action-link:focus-visible,
+.site-cta:focus-visible {
+  outline: 3px solid var(--site-leaf);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(255, 250, 241, 0.92);
 }
 
 .page-hero__copy--overlay {
@@ -1545,6 +1575,17 @@ html {
     background-color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+}
+
+.donate-mode-toggle__button:focus-visible,
+.donate-amounts__chip:focus-visible,
+.donate-amounts__custom input:focus-visible,
+.donate-form-grid input:focus-visible,
+.donate-form-grid textarea:focus-visible,
+.donate-form-grid select:focus-visible {
+  outline: 3px solid var(--site-leaf);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(255, 250, 241, 0.92);
 }
 
 .donate-mode-toggle {

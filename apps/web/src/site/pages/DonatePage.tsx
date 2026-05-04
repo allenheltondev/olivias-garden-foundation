@@ -519,6 +519,7 @@ export function DonatePage({
                       key={amount}
                       type="button"
                       className={`donate-amounts__chip ${!customAmount && selectedAmount === amount ? 'donate-amounts__chip--active' : ''}`.trim()}
+                      aria-pressed={!customAmount && selectedAmount === amount}
                       onClick={() => {
                         setSelectedAmount(amount);
                         setCustomAmount('');

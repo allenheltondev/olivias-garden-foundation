@@ -298,7 +298,11 @@ function App() {
         avatarUrl={profileAvatarUrl}
         onLogout={handleLogout}
       />
-      <main className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`og-app-main ${pathname === '/login' ? 'og-app-main--flush' : ''}`.trim()}
+      >
         <Routes>
           <Route path="/" element={<HomePage onNavigate={navigate} />} />
           <Route

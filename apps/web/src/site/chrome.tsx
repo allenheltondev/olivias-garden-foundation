@@ -121,55 +121,58 @@ export function SiteHeader({
   ];
 
   return (
-    <SharedSiteHeader
-      brandLogoSrc={foundationOrganization.logoImage}
-      brandLogoAlt=""
-      brandEyebrow={foundationOrganization.name}
-      brandTitle="Homesteading, growing, and community"
-      brandHref="/"
-      onBrandClick={() => onNavigate('/')}
-      navItems={headerNavItems}
-      utility={(
-        <div className="og-auth-utility">
-          {authSession ? (
-            <AvatarMenu
-              initials={initials}
-              label={avatarLabel}
-              avatarUrl={avatarUrl}
-              personalLinks={[
-                { id: 'okra-submissions', label: 'My okra submissions', href: '/okra/submissions' },
-              ]}
-              appLinks={[
-                { id: 'grn', label: 'Good Roots Network', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
-                ...(authSession.user.isAdmin
-                  ? [{ id: 'admin', label: 'Admin', href: buildCrossAppUrl(adminUrl, authSession) }]
-                  : []),
-              ]}
-              onProfile={() => onNavigate('/profile')}
-              onLogout={onLogout}
-            />
-          ) : (
-            <a
-              className="og-auth-utility__login"
-              href="/login"
-              aria-disabled={!authEnabled || authBusy || undefined}
-              onClick={(event) => {
-                if (!authEnabled || authBusy) {
-                  event.preventDefault();
-                  return;
-                }
+    <>
+      <a className="skip-to-content" href="#main-content">Skip to main content</a>
+      <SharedSiteHeader
+        brandLogoSrc={foundationOrganization.logoImage}
+        brandLogoAlt=""
+        brandEyebrow={foundationOrganization.name}
+        brandTitle="Homesteading, growing, and community"
+        brandHref="/"
+        onBrandClick={() => onNavigate('/')}
+        navItems={headerNavItems}
+        utility={(
+          <div className="og-auth-utility">
+            {authSession ? (
+              <AvatarMenu
+                initials={initials}
+                label={avatarLabel}
+                avatarUrl={avatarUrl}
+                personalLinks={[
+                  { id: 'okra-submissions', label: 'My okra submissions', href: '/okra/submissions' },
+                ]}
+                appLinks={[
+                  { id: 'grn', label: 'Good Roots Network', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
+                  ...(authSession.user.isAdmin
+                    ? [{ id: 'admin', label: 'Admin', href: buildCrossAppUrl(adminUrl, authSession) }]
+                    : []),
+                ]}
+                onProfile={() => onNavigate('/profile')}
+                onLogout={onLogout}
+              />
+            ) : (
+              <a
+                className="og-auth-utility__login"
+                href="/login"
+                aria-disabled={!authEnabled || authBusy || undefined}
+                onClick={(event) => {
+                  if (!authEnabled || authBusy) {
+                    event.preventDefault();
+                    return;
+                  }
 
-                event.preventDefault();
-                onNavigate('/login');
-              }}
-            >
-              Log in
-            </a>
-          )}
-          {authError && pathname === '/login' ? <p className="og-login-page__error" role="alert">{authError}</p> : null}
-        </div>
-      )}
-    />
+                  event.preventDefault();
+                  onNavigate('/login');
+                }}
+              >
+                Log in
+              </a>
+            )}
+            {authError && pathname === '/login' ? <p className="og-login-page__error" role="alert">{authError}</p> : null}
+          </div>
+        )}
+      />
+    </>
   );
 }
 
