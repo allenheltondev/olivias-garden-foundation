@@ -160,9 +160,10 @@ export function WorkshopsPage({ onNavigate, authSession }: WorkshopsPageProps) {
   return (
     <>
       <PageHero
-        eyebrow="Workshops"
-        title="Hands-on workshops"
-        body="Workshops at Olivia's Garden are built around real tasks — garden prep, animal care, food preservation. Sign up to join an upcoming session, or tell us you're interested while we plan."
+        title="Workshops"
+        body="Hands-on sessions at Olivia's Garden — garden prep, animal care, food preservation. Sign up for an upcoming workshop, join a waitlist, or tell us you're interested in something we're still planning."
+        className="workshops-hero"
+        titleClassName="workshops-hero__title"
       />
 
       <div className="page-section workshops-list">

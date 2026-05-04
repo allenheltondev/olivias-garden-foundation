@@ -338,6 +338,16 @@ app.get('/workshops', async ({ event }) => {
       body: result
     };
   } catch (error) {
+    // Log before mapApiError so a 500 surfaces the underlying cause
+    // (typically "relation workshops does not exist" if migrations
+    // haven't been applied) in CloudWatch instead of only in the
+    // response body.
+    logger.error('GET /workshops failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return mapApiError(error, correlationId);
   }
 });
@@ -352,6 +362,12 @@ app.get('/workshops/me/signups', async ({ event }) => {
       body: result
     };
   } catch (error) {
+    logger.error('GET /workshops/me/signups failed', {
+      correlationId,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return mapApiError(error, correlationId);
   }
 });
@@ -406,6 +422,13 @@ export async function handler(event, context) {
           : await cancelMyWorkshopSignup(normalizedEvent, signupWorkshopId);
         response = jsonResponse(method === 'POST' ? 201 : 200, result, correlationId);
       } catch (error) {
+        logger.error(`${method} /workshops/:id/signup failed`, {
+          correlationId,
+          workshopId: signupWorkshopId,
+          error: error instanceof Error ? error.message : String(error),
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          stack: error instanceof Error ? error.stack : undefined
+        });
         response = mapApiError(error, correlationId);
       }
     } else {
@@ -419,6 +442,13 @@ export async function handler(event, context) {
           const result = await getPublicWorkshopBySlug(normalizedEvent, slug);
           response = jsonResponse(200, result, correlationId);
         } catch (error) {
+          logger.error('GET /workshops/:slug failed', {
+            correlationId,
+            slug,
+            error: error instanceof Error ? error.message : String(error),
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+            stack: error instanceof Error ? error.stack : undefined
+          });
           response = mapApiError(error, correlationId);
         }
       } else {

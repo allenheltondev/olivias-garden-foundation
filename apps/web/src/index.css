@@ -110,6 +110,20 @@ html {
   line-height: 0.98 !important;
 }
 
+/*
+ * The workshops list is a directory page, not a hero moment — a 6rem h1
+ * looks like a marketing splash there. Override the page-hero default
+ * to a more conservative scale matched to the rest of the page chrome.
+ */
+.workshops-hero {
+  padding-bottom: 0.5rem;
+}
+
+.workshops-hero__title {
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem) !important;
+  line-height: 1.15 !important;
+}
+
 .page-hero__body,
 .page-section__body,
 .page-section__intro,
