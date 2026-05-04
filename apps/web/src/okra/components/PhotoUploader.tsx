@@ -81,7 +81,7 @@ export function PhotoUploader({
         multiple
         disabled={inputDisabled}
         onChange={handleChange}
-        aria-label="Upload photos (JPEG, PNG, or WebP, max 3 MB each)"
+        aria-label="Upload photos (JPEG, PNG, or WebP, max 10 MB each)"
       />
 
       {rateLimitMsg && (
@@ -103,7 +103,7 @@ export function PhotoUploader({
             </svg>
             <span className="photo-uploader__empty-label">Add up to 5 photos</span>
             <span className="photo-uploader__browse-btn">Browse files</span>
-            <span className="photo-uploader__empty-hint">JPEG, PNG, or WebP · max 3 MB each</span>
+            <span className="photo-uploader__empty-hint">JPEG, PNG, or WebP · max 10 MB each</span>
           </div>
         ) : (
           <>
