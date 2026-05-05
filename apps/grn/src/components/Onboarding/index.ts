@@ -7,4 +7,4 @@ export type { OnboardingGuardProps } from './OnboardingGuard';
 export type { GrowerWizardProps } from './GrowerWizard';
 export type { GathererWizardProps } from './GathererWizard';
 export type { UserTypeSelectionProps } from './UserTypeSelection';
-export type { OnboardingStep, OnboardingFlowState } from './OnboardingFlow';
+export type { OnboardingStep, OnboardingFlowProps } from './OnboardingFlow';

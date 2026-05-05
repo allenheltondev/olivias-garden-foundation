@@ -15,12 +15,15 @@ export interface OnboardingGuardProps {
  * - Redirects to OnboardingFlow if onboarding is incomplete
  * - Renders children (main app) if onboarding is complete
  *
- * Validates Requirements 1.1, 1.2, 7.1, 7.2
+ * Owns the single useUser instance for the onboarding flow and passes
+ * `user`/`refreshUser` down so OnboardingFlow doesn't keep its own copy.
+ * Without this, refreshUser() inside the flow only updates the flow's
+ * own state — the guard's user stays stale and never advances past
+ * onboarding even after the wizard completes successfully.
  */
 export function OnboardingGuard({ children }: OnboardingGuardProps) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, refreshUser } = useUser();
 
-  // Show loading screen while fetching user data
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -32,11 +35,9 @@ export function OnboardingGuard({ children }: OnboardingGuardProps) {
     );
   }
 
-  // Redirect to OnboardingFlow if onboarding is incomplete
   if (!user?.onboardingCompleted) {
-    return <OnboardingFlow />;
+    return <OnboardingFlow user={user} refreshUser={refreshUser} />;
   }
 
-  // Render children if onboarding is complete
   return <>{children}</>;
 }
