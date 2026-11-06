@@ -1,3 +1,5 @@
+import { okraPlantingWindow } from './planting.mjs';
+
 function truncate(text, limit) {
   if (typeof text !== 'string') return null;
   const normalized = text.trim();
@@ -96,7 +98,7 @@ function renderOkraSubmissionCreated(detail) {
   };
 }
 
-function renderSeedRequestCreated(detail) {
+function renderSeedRequestCreated(detail, context = {}) {
   const lines = ['*:clipboard: New okra seed request*'];
   lines.push(`Name: ${detail.name ?? 'Unknown'}`);
   lines.push(`Email: ${detail.email ?? 'Unknown'}`);
@@ -105,6 +107,11 @@ function renderSeedRequestCreated(detail) {
     const addressLine = [a.line1, a.line2].filter(Boolean).join(', ');
     lines.push('Fulfillment: Mail');
     lines.push(`Address: ${addressLine}, ${a.city}, ${a.region} ${a.postalCode}, ${a.country}`);
+    if (context.hardinessZone) {
+      lines.push(`Hardiness zone: ${context.hardinessZone}`);
+      const window = okraPlantingWindow(context.hardinessZone);
+      if (window) lines.push(`Clemson Spineless okra planting: ${window}`);
+    }
   } else {
     lines.push('Fulfillment: In-person exchange');
     if (detail.visitDetails?.approximateDate) lines.push(`Visiting: ${detail.visitDetails.approximateDate}`);
@@ -312,10 +319,10 @@ const renderers = new Map([
   ['grn.api-access|api-access.denied', renderApiAccessDecided(false)]
 ]);
 
-export function renderEvent(source, detailType, detail) {
+export function renderEvent(source, detailType, detail, context = {}) {
   const renderer = renderers.get(`${source}|${detailType}`);
   if (!renderer) return null;
-  return renderer(detail ?? {});
+  return renderer(detail ?? {}, context);
 }
 
 export function isContactEvent(source) {

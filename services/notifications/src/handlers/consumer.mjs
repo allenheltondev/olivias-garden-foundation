@@ -1,6 +1,7 @@
 import { putActivityEvent } from '../services/event-store.mjs';
 import { renderEvent, isContactEvent } from '../services/renderers.mjs';
 import { postToSlack } from '../services/slack.mjs';
+import { lookupHardinessZone } from '../services/planting.mjs';
 
 function resolveCorrelationId(event) {
   return event?.detail?.correlationId ?? event?.id ?? 'unknown';
@@ -43,7 +44,13 @@ export async function handler(event) {
     return;
   }
 
-  const rendered = renderEvent(source, detailType, detail);
+  // Slack-only enrichment; never persisted with the activity event.
+  const context = {};
+  if (source === 'okra.seed-requests' && detail.fulfillmentMethod === 'mail') {
+    context.hardinessZone = await lookupHardinessZone(detail.shippingAddress);
+  }
+
+  const rendered = renderEvent(source, detailType, detail, context);
   if (!rendered) {
     console.warn(JSON.stringify({
       level: 'warn',

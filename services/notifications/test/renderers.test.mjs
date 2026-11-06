@@ -61,6 +61,21 @@ describe('renderEvent', () => {
     expect(result.slack.text).not.toContain('cog-123');
   });
 
+  it('adds hardiness zone and okra planting window to mailed seed requests when known', () => {
+    const detail = {
+      name: 'Olivia',
+      email: 'olivia@example.com',
+      fulfillmentMethod: 'mail',
+      shippingAddress: { line1: '100 Garden Ln', city: 'Austin', region: 'TX', postalCode: '73301', country: 'US' }
+    };
+    const withZone = renderEvent('okra.seed-requests', 'seed-request.created', detail, { hardinessZone: '9a' });
+    expect(withZone.slack.text).toContain('Hardiness zone: 9a');
+    expect(withZone.slack.text).toContain('Clemson Spineless okra planting: March to May');
+
+    const withoutZone = renderEvent('okra.seed-requests', 'seed-request.created', detail, { hardinessZone: null });
+    expect(withoutZone.slack.text).not.toContain('Hardiness zone');
+  });
+
   it('renders donations with mode-specific labels and money formatting', () => {
     const oneTime = renderEvent('ogf.donations', 'donation.completed', {
       mode: 'one_time',
