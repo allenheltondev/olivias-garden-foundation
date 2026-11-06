@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn curated_tip_catalog_loads_with_required_metadata() {
         let catalog = curated_tip_catalog();
-        assert!(!catalog.is_empty());
+        assert_ne!(catalog, []);
         assert!(catalog.iter().all(|tip| !tip.targeting.seasons.is_empty()));
         assert!(catalog
             .iter()
@@ -386,7 +386,7 @@ mod tests {
             3,
         );
 
-        assert!(!tips.is_empty());
+        assert_ne!(tips, [] as [GardeningTip; 0]);
         assert!(tips
             .iter()
             .all(|tip| tip.level == ExperienceLevel::Beginner));

@@ -407,7 +407,7 @@ mod get_me_tests {
         let tips = response["curatedTips"]
             .as_array()
             .unwrap_or_else(|| panic!("curatedTips must be an array"));
-        assert!(!tips.is_empty());
+        assert_ne!(tips.as_slice(), [] as [serde_json::Value; 0]);
 
         // Each tip must have the expected fields
         for tip in tips {
