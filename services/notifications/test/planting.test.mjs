@@ -3,15 +3,16 @@ import { lookupHardinessZone, okraPlantingWindow } from '../src/services/plantin
 
 describe('okraPlantingWindow', () => {
   it('maps zones, with or without a subzone letter', () => {
-    expect(okraPlantingWindow('7b')).toBe('mid May to late June');
-    expect(okraPlantingWindow('10a')).toBe('early March to early June');
-    expect(okraPlantingWindow('4')).toContain('start indoors');
+    expect(okraPlantingWindow('7b')).toBe('early May to early June');
+    expect(okraPlantingWindow('10a')).toBe('February to April');
+    expect(okraPlantingWindow('4')).toBe('late May to mid June');
   });
 
   it('returns null for unknown or missing zones', () => {
     expect(okraPlantingWindow(null)).toBeNull();
     expect(okraPlantingWindow('abc')).toBeNull();
     expect(okraPlantingWindow('1a')).toBeNull();
+    expect(okraPlantingWindow('12b')).toBe('any time the weather is warm');
   });
 });
 

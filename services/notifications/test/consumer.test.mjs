@@ -114,7 +114,7 @@ describe('consumer handler', () => {
     const slackCall = fetchMock.mock.calls.find(([url]) => url === 'https://hooks.slack.test/general');
     const body = JSON.parse(slackCall[1].body);
     expect(body.text).toContain('Hardiness zone: 8b');
-    expect(body.text).toContain('Clemson Spineless okra planting: late April to early July');
+    expect(body.text).toContain('Clemson Spineless okra planting: early April to early June');
     // The enrichment is Slack-only and is not stored with the activity event.
     expect(JSON.stringify(ddbSendMock.mock.calls[0][0].input.Item)).not.toContain('8b');
 

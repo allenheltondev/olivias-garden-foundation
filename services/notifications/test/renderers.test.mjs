@@ -70,7 +70,7 @@ describe('renderEvent', () => {
     };
     const withZone = renderEvent('okra.seed-requests', 'seed-request.created', detail, { hardinessZone: '9a' });
     expect(withZone.slack.text).toContain('Hardiness zone: 9a');
-    expect(withZone.slack.text).toContain('Clemson Spineless okra planting: mid April to late June');
+    expect(withZone.slack.text).toContain('Clemson Spineless okra planting: March to May');
 
     const withoutZone = renderEvent('okra.seed-requests', 'seed-request.created', detail, { hardinessZone: null });
     expect(withoutZone.slack.text).not.toContain('Hardiness zone');

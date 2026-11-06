@@ -1,19 +1,19 @@
-// Planting guidance for Clemson Spineless okra, keyed by USDA hardiness zone.
-// Windows are for direct sowing once soil is reliably warm (65F+) and frost has
-// passed. They are broad starting points; zone describes winter cold, not exact
-// local frost dates.
+// Spring outdoor planting windows for Clemson Spineless okra, keyed by USDA
+// hardiness zone. Approximate only: zone describes winter cold, not local frost
+// dates or soil temperature (okra wants soil of 70F+, 2-3 weeks after last frost).
+const WARM_WEATHER = 'any time the weather is warm';
 const OKRA_WINDOWS_BY_ZONE = new Map([
-  [3, 'start indoors in late April, transplant in early June'],
-  [4, 'start indoors in late April, transplant in early June'],
-  [5, 'late May to mid June'],
-  [6, 'mid May to late June'],
-  [7, 'mid May to late June'],
-  [8, 'late April to early July'],
-  [9, 'mid April to late June'],
-  [10, 'early March to early June'],
-  [11, 'early March to early June'],
-  [12, 'early March to early June'],
-  [13, 'early March to early June']
+  [3, 'late May to mid June'],
+  [4, 'late May to mid June'],
+  [5, 'mid May to mid June'],
+  [6, 'early May to early June'],
+  [7, 'mid April to late May'],
+  [8, 'early April to early June'],
+  [9, 'March to May'],
+  [10, 'February to April'],
+  [11, WARM_WEATHER],
+  [12, WARM_WEATHER],
+  [13, WARM_WEATHER]
 ]);
 
 export function okraPlantingWindow(zone) {
