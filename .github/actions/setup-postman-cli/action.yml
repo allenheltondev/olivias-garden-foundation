@@ -1,10 +1,10 @@
 name: Setup Postman CLI
-description: Install and authenticate the Postman CLI.
+description: Install the Postman CLI.
 
-inputs:
-  api-key:
-    description: Postman API key used for CLI authentication.
-    required: true
+# No `postman login`: every collection CI runs is a local folder under
+# postman/collections, which the CLI runs without an account. Login is only
+# needed for cloud collections referenced by ID, and Postman API keys are no
+# longer available on non-Enterprise plans.
 
 runs:
   using: composite
@@ -12,7 +12,3 @@ runs:
     - name: Install Postman CLI
       shell: bash
       run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-    - name: Login to Postman CLI
-      shell: bash
-      run: postman login --with-api-key "${{ inputs.api-key }}"

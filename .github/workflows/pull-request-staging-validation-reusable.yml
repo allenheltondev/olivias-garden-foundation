@@ -43,8 +43,6 @@ on:
         required: true
       database_url_staging:
         required: true
-      postman_api_key:
-        required: true
       stripe_secret_key_staging:
         required: false
       foundation_signup_slack_webhook_url_staging:
@@ -1244,8 +1242,6 @@ jobs:
 
       - name: Setup Postman CLI
         uses: ./.github/actions/setup-postman-cli
-        with:
-          api-key: ${{ secrets.postman_api_key }}
 
       - name: Run public catalog smoke collection
         run: |
@@ -1325,8 +1321,6 @@ jobs:
 
       - name: Setup Postman CLI
         uses: ./.github/actions/setup-postman-cli
-        with:
-          api-key: ${{ secrets.postman_api_key }}
 
       - name: Run contract Postman suite
         if: matrix.suite.id == 'contract'
