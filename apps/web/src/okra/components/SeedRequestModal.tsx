@@ -34,7 +34,7 @@ interface FormState {
   visitDate: string;
   visitNotes: string;
   message: string;
-  /** Opt-in to a public "seeds sent" map pin. Always starts unchecked. */
+  /** Opt-in to showing the first name on the "seeds sent" pin. Starts unchecked. */
   showOnMap: boolean;
 }
 
@@ -406,9 +406,10 @@ export function SeedRequestModal({
                         disabled={isSubmitting}
                       />
                       <span>
-                        Add a &ldquo;seeds sent&rdquo; pin to the public okra map once we mail your seeds. It
-                        shows only your first name, your city, and the month we mailed them &mdash; never your
-                        street address or last name.
+                        Show my first name on the map. Once we mail your seeds, we add a &ldquo;seeds
+                        sent&rdquo; pin to the public okra map at your city with the month we mailed them
+                        &mdash; never your street address or last name. Leave this unchecked and the pin
+                        stays anonymous.
                       </span>
                     </label>
                   </div>

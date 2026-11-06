@@ -925,6 +925,7 @@ describe('seed request lifecycle', () => {
       fulfillmentMethod: 'mail',
       shippingAddress: { line1: '123 Okra Lane', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US' },
       showOnMap: true,
+      mapDisclosure: 'anonymous-pin-v2',
       statusVersion: 0,
       ...overrides,
     };
@@ -1033,15 +1034,32 @@ describe('seed request lifecycle', () => {
     expect(JSON.stringify(insert![1])).not.toMatch(/Gardener|Okra Lane|78701|jane@example.com/);
   });
 
-  it('never publishes a pin without explicit consent', async () => {
-    for (const consent of [false, undefined]) {
-      store.set(REQ_ID, mailRequest({ showOnMap: consent, requestStatus: 'open' }));
+  it('shows an anonymous pin when the requester did not opt in to their name', async () => {
+    const legacy = mailRequest({ showOnMap: undefined, requestStatus: 'open', statusVersion: 0 });
+    delete (legacy as any).mapDisclosure;
+    for (const request of [mailRequest({ showOnMap: false, requestStatus: 'open', statusVersion: 0 }), legacy]) {
+      store.set(REQ_ID, request);
       pinWrites = [];
+      mockClient.query.mockClear();
       const { statusCode, body } = await call(statusEvent({ status: 'handled', map_location: { lat: 30.2, lng: -97.7 } }));
       expect(statusCode).toBe(200);
-      expect(body.mapPin).toBeNull();
-      expect(pinWrites).toEqual([]);
+      expect(body.mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+      expect(pinWrites).toEqual([{ op: 'show', requestId: REQ_ID, version: 1 }]);
+      const insert = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('source_version, visible'));
+      // params: request_id, first_name, locality, ...
+      expect(insert![1][1]).toBeNull();
+      expect(JSON.stringify(insert![1])).not.toMatch(/Jane|Gardener/);
     }
+  });
+
+  it('never pins a request that declined under the opt-in-only form', async () => {
+    const declined = mailRequest({ showOnMap: false, requestStatus: 'open' });
+    delete (declined as any).mapDisclosure;
+    store.set(REQ_ID, declined);
+    const { statusCode, body } = await call(statusEvent({ status: 'handled', map_location: { lat: 30.2, lng: -97.7 } }));
+    expect(statusCode).toBe(200);
+    expect(body.mapPin).toBeNull();
+    expect(pinWrites).toEqual([]);
   });
 
   it('skips the pin for in-person requests and when no location is sent', async () => {
@@ -1208,12 +1226,74 @@ describe('seed request lifecycle', () => {
     expect(body.error.code).toBe('INTERNAL_ERROR');
   });
 
+  // ── add a done request to the map ──
+
+  function addPinEvent(body: any) {
+    return makeRestApiEvent(`/requests/${REQ_ID}/map-pin`, 'POST', { pathParameters: { id: REQ_ID }, body });
+  }
+
+  it('adds a legacy done request to the map at a newer version, dated by when it was handled', async () => {
+    const legacy = mailRequest({ requestStatus: 'handled', handledAt: '2026-03-10T15:00:00.000Z', showOnMap: undefined });
+    delete (legacy as any).statusVersion;
+    delete (legacy as any).mapDisclosure;
+    store.set(REQ_ID, legacy);
+
+    const { statusCode, body } = await call(addPinEvent({ map_location: { lat: 30.26721, lng: -97.74309 } }));
+
+    expect(statusCode).toBe(200);
+    expect(body).toEqual({ id: REQ_ID, mapPin: { locality: 'Austin, TX', country: 'US' } });
+    expect(store.get(REQ_ID)).toMatchObject({ requestStatus: 'handled', statusVersion: 1 });
+    expect(pinWrites).toEqual([{ op: 'show', requestId: REQ_ID, version: 1 }]);
+    expect(packetsSent).toBe(0);
+    const insert = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('source_version, visible'));
+    expect(insert![1][1]).toBeNull(); // anonymous: no consent recorded
+    expect(insert![1][6]).toBe('2026-03-10T15:00:00.000Z');
+  });
+
+  it('refuses to add pins for open, cancelled, or in-person requests', async () => {
+    store.set(REQ_ID, mailRequest({ requestStatus: 'open' }));
+    expect((await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }))).statusCode).toBe(409);
+    store.set(REQ_ID, mailRequest({ requestStatus: 'cancelled' }));
+    expect((await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }))).statusCode).toBe(409);
+    store.set(REQ_ID, mailRequest({ requestStatus: 'handled', fulfillmentMethod: 'in_person', shippingAddress: null }));
+    expect((await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }))).statusCode).toBe(409);
+    const declined = mailRequest({ requestStatus: 'handled', showOnMap: false });
+    delete (declined as any).mapDisclosure;
+    store.set(REQ_ID, declined);
+    const res = await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }));
+    expect(res.statusCode).toBe(409);
+    expect(res.body.error.message).toMatch(/told they would not get a map pin/);
+    expect(pinWrites).toEqual([]);
+  });
+
+  it('requires a valid map_location and an existing request', async () => {
+    expect((await call(addPinEvent({}))).body.error.code).toBe('INVALID_MAP_LOCATION');
+    expect((await call(addPinEvent({ map_location: { lat: 200, lng: 0 } }))).body.error.code).toBe('INVALID_MAP_LOCATION');
+    expect((await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }))).statusCode).toBe(404);
+  });
+
+  it('returns 500 when the pin store is down while adding', async () => {
+    store.set(REQ_ID, mailRequest({ requestStatus: 'handled', statusVersion: 1 }));
+    pinStoreDown = true;
+    const { statusCode, body } = await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }));
+    expect(statusCode).toBe(500);
+    expect(body.error.code).toBe('INTERNAL_ERROR');
+  });
+
   // ── listing + reconciliation ──
+
+  it('keeps an anonymous pin on a done request that did not opt in to a name', async () => {
+    scanResponses = [{ Items: [{ requestId: 'anon', createdAt: '2026-01-01T00:00:00Z', requestStatus: 'handled', fulfillmentMethod: 'mail', statusVersion: 1 }] }];
+    queryResponses['FROM seed_shipment_pins'] = { rows: [{ request_id: 'anon', locality: 'Austin, TX', country: 'US' }] };
+    const { body } = await call(makeRestApiEvent('/requests', 'GET', { queryStringParameters: { status: 'handled' } }));
+    expect(body.data[0].mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+    expect(pinWrites).toEqual([]);
+  });
 
   it('lists handled requests newest first with their pin, following Scan pages', async () => {
     scanResponses = [
       {
-        Items: [{ requestId: 'a', createdAt: '2026-01-01T00:00:00Z', handledAt: '2026-03-01T00:00:00Z', requestStatus: 'handled', showOnMap: true, statusVersion: 1 }],
+        Items: [{ requestId: 'a', createdAt: '2026-01-01T00:00:00Z', handledAt: '2026-03-01T00:00:00Z', requestStatus: 'handled', fulfillmentMethod: 'mail', showOnMap: true, statusVersion: 1 }],
         LastEvaluatedKey: { requestId: 'a' },
       },
       { Items: [{ requestId: 'b', createdAt: '2026-02-01T00:00:00Z', handledAt: '2026-04-01T00:00:00Z', requestStatus: 'handled', statusVersion: 1 }] },
@@ -1226,7 +1306,7 @@ describe('seed request lifecycle', () => {
     expect(body.total).toBe(2);
     expect(body.data.map((r: any) => r.id)).toEqual(['b', 'a']);
     expect(body.data[0]).toMatchObject({ mapPin: null, showOnMap: false });
-    expect(body.data[1]).toMatchObject({ mapPin: { locality: 'Austin, TX', country: 'US' }, showOnMap: true });
+    expect(body.data[1]).toMatchObject({ mapPin: { locality: 'Austin, TX', country: 'US' }, showOnMap: true, pinVisibility: 'named' });
     expect(pinWrites).toEqual([]);
   });
 
@@ -1238,6 +1318,14 @@ describe('seed request lifecycle', () => {
 
     expect(body.data[0].mapPin).toBeNull();
     expect(pinWrites).toEqual([{ op: 'hide', requestId: 'stale', version: 2 }]);
+  });
+
+  it('reconciles a pin on a done request that declined under the opt-in-only form', async () => {
+    scanResponses = [{ Items: [{ requestId: 'declined', createdAt: '2026-01-01T00:00:00Z', requestStatus: 'handled', fulfillmentMethod: 'mail', showOnMap: false, statusVersion: 3 }] }];
+    queryResponses['FROM seed_shipment_pins'] = { rows: [{ request_id: 'declined', locality: 'Austin, TX', country: 'US' }] };
+    const { body } = await call(makeRestApiEvent('/requests', 'GET', { queryStringParameters: { status: 'handled' } }));
+    expect(body.data[0]).toMatchObject({ mapPin: null, pinVisibility: 'none' });
+    expect(pinWrites).toEqual([{ op: 'hide', requestId: 'declined', version: 3 }]);
   });
 
   it('still lists requests when the pin store is down (pin status left unknown)', async () => {

@@ -809,6 +809,71 @@ async function run() {
     }
   }
 
+  // --- Anonymous pin + "Add to map" scenario ---
+  // A mailed request that did NOT opt in to showing a name: marked done with
+  // no location (like a legacy request), then added via POST /map-pin. The
+  // public pin must carry no name; undo must remove it. Ends cancelled.
+  console.log('\n=== Anonymous Seed Pin Scenario ===');
+  try {
+    const anonRes = await publicApi.request('/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+      body: JSON.stringify({
+        name: `Anonpin [${runPrefix}] Grower`,
+        email: `seed-anon+${runPrefix}@okra-test.local`,
+        fulfillmentMethod: 'mail',
+        shippingAddress: { line1: '2 Integration Way', city: 'McKinney', region: 'TX', postalCode: '75069', country: 'US' }
+      })
+    });
+    reporter.assert('seed-anon-pin', anonRes.status === 201, `mail POST /requests without opt-in returns 201 (got ${anonRes.status})`, anonRes.json);
+    const anonId = anonRes.json?.requestId;
+
+    if (anonId) {
+      const publicPinId = `seeds-${crypto.createHash('sha256').update(String(anonId)).digest('hex').slice(0, 16)}`;
+      const findPin = async () => {
+        const res = await publicApi.request('/okra/seed-shipments');
+        return Array.isArray(res.json?.data) ? res.json.data.find((p) => p.id === publicPinId) ?? null : null;
+      };
+      const transition = (body) => adminApi.request(`/requests/${anonId}/statuses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const doneRes = await transition({ status: 'handled' });
+      reporter.assert('seed-anon-pin', doneRes.status === 200 && doneRes.json?.mapPin === null,
+        `done without a location creates no pin (got ${doneRes.status}, ${JSON.stringify(doneRes.json?.mapPin)})`, doneRes.json);
+
+      const addRes = await adminApi.request(`/requests/${anonId}/map-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ map_location: { lat: 33.1972, lng: -96.6398 } })
+      });
+      reporter.assert('seed-anon-pin', addRes.status === 200 && addRes.json?.mapPin?.locality === 'McKinney, TX',
+        `POST /admin/requests/:id/map-pin adds the pin (got ${addRes.status}, ${JSON.stringify(addRes.json?.mapPin)})`, addRes.json);
+
+      const shown = await poll({ fn: findPin, until: (pin) => !!pin, intervalMs: 2000, timeoutMs: 30000, label: 'anonymous seed pin visible' });
+      reporter.assert('seed-anon-pin', shown.result?.first_name === null,
+        `anonymous pin has no first name (got ${shown.result?.first_name})`, shown.result);
+      reporter.assert('seed-anon-pin', !JSON.stringify(shown.result).includes('Anonpin') && !JSON.stringify(shown.result).includes('Integration Way'),
+        'anonymous pin carries no name or street', shown.result);
+
+      const undoRes = await transition({ status: 'open' });
+      reporter.assert('seed-anon-pin', undoRes.status === 200 && undoRes.json?.mapPinRemoved === true,
+        `undo hides the anonymous pin (got ${undoRes.status}, ${undoRes.json?.mapPinRemoved})`, undoRes.json);
+      await poll({ fn: findPin, until: (p) => p === null, intervalMs: 2000, timeoutMs: 30000, label: 'anonymous pin hidden after undo' });
+      reporter.pass('seed-anon-pin', 'anonymous pin no longer public after undo');
+
+      await transition({ status: 'cancelled', review_notes: 'integration-cleanup' });
+    }
+  } catch (err) {
+    if (err instanceof PollTimeoutError) {
+      reporter.fail('seed-anon-pin', `Poll timeout: ${err.message}`, err.lastResult);
+    } else {
+      reporter.fail('seed-anon-pin', `Anonymous seed pin scenario error: ${err.message}`);
+    }
+  }
+
   // --- Admin listing checks (Task 3.6) ---
   console.log('\n=== Admin Listing Checks ===');
   {

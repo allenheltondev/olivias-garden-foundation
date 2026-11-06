@@ -21,6 +21,7 @@ function makeRequest(overrides: Partial<SeedRequestQueueItem> = {}): SeedRequest
     createdAt: '2026-10-01T00:00:00.000Z',
     requestStatus: 'open',
     showOnMap: true,
+    pinVisibility: 'named',
     ...overrides,
   };
 }
@@ -42,9 +43,10 @@ describe('buildSeedPinQueries', () => {
     }
   });
 
-  it('looks nothing up for requesters who did not opt in', () => {
-    expect(buildSeedPinQueries(makeRequest({ showOnMap: false }))).toEqual([]);
-    expect(buildSeedPinQueries(makeRequest({ showOnMap: undefined }))).toEqual([]);
+  it('geocodes anonymous-pin requests, but nothing for requests that may not have a pin', () => {
+    expect(buildSeedPinQueries(makeRequest({ showOnMap: false, pinVisibility: 'anonymous' }))).toHaveLength(2);
+    expect(buildSeedPinQueries(makeRequest({ showOnMap: false, pinVisibility: 'none' }))).toEqual([]);
+    expect(buildSeedPinQueries(makeRequest({ pinVisibility: undefined }))).toEqual([]);
   });
 
   it('returns nothing for in-person requests or missing country', () => {

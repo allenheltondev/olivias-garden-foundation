@@ -6,7 +6,8 @@ import { fuzzCoordinates } from './privacy-fuzzing.mjs';
  * have mailed seeds. Seed requests hold full names and street addresses, so
  * this module is the single place that decides what is safe to publish:
  *
- *   - first name only (never the last name or email)
+ *   - first name only, and only when the requester opted in to showing it
+ *     (never the last name or email); otherwise the pin is anonymous
  *   - city + region and country (never street lines or postal code)
  *   - coordinates rounded to 2 decimals (~1 km) on write, then fuzzed
  *     deterministically within city radius on read
@@ -57,23 +58,56 @@ export function parseMapLocation(raw) {
 }
 
 /**
+ * Version of the map notice shown on the seed request form when the request
+ * was made. Stored on new mailed requests so later policy changes can't
+ * reinterpret what someone agreed to.
+ *   v2 (current): "an anonymous pin goes up at your city; check to add your
+ *                 first name".
+ *   (no version, showOnMap stored): the opt-in-only form, where leaving the
+ *                 box unchecked meant no pin at all.
+ *   (no version, no showOnMap): requests from before any map notice.
+ */
+export const MAP_DISCLOSURE_VERSION = 'anonymous-pin-v2';
+
+/**
+ * What kind of public pin a mailed request may have:
+ *   'named'     - opted in to showing their first name
+ *   'anonymous' - city/region, country and month only
+ *   'none'      - must not appear on the map
+ *
+ * Requests made under the opt-in-only form that left the box unchecked were
+ * told they'd get no pin, so they stay 'none'. Requests from before any map
+ * notice may have anonymous pins (decided by the foundation).
+ */
+export function pinVisibility(seedRequest) {
+  if (!seedRequest || seedRequest.fulfillmentMethod !== 'mail') return 'none';
+  if (seedRequest.showOnMap === true) return 'named';
+  if (seedRequest.mapDisclosure === MAP_DISCLOSURE_VERSION) return 'anonymous';
+  if (seedRequest.showOnMap === undefined) return 'anonymous';
+  return 'none';
+}
+
+/**
  * Build the public-safe pin row for a seed request at a given status
  * version, or null when the request must not produce a pin:
  *   - it isn't handled (the caller passes the state it just committed)
- *   - it's an in-person exchange
- *   - the requester didn't explicitly opt in (`showOnMap === true`)
+ *   - pinVisibility() says 'none' (in-person, or declined under the
+ *     opt-in-only form)
  *   - no location was found
+ *
+ * The pin carries a first name only for 'named'; otherwise it's anonymous:
+ * city/region, country and month only.
  */
 export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt, sourceVersion) {
   if (!seedRequest || !mapLocation) return null;
   if (seedRequest.requestStatus !== 'handled') return null;
-  if (seedRequest.fulfillmentMethod !== 'mail') return null;
-  if (seedRequest.showOnMap !== true) return null;
+  const visibility = pinVisibility(seedRequest);
+  if (visibility === 'none') return null;
   if (!Number.isInteger(sourceVersion) || sourceVersion < 1) return null;
 
   return {
     requestId: String(seedRequest.requestId),
-    firstName: getFirstName(seedRequest.name),
+    firstName: visibility === 'named' ? getFirstName(seedRequest.name) : null,
     locality: getPublicLocality(seedRequest.shippingAddress),
     country: seedRequest.shippingAddress?.country ?? null,
     displayLat: roundCoordinate(mapLocation.lat),

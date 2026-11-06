@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  MAP_DISCLOSURE_VERSION,
   buildSeedShipmentPin,
+  pinVisibility,
   getFirstName,
   getPublicLocality,
   parseMapLocation,
@@ -89,9 +91,22 @@ describe('buildSeedShipmentPin', () => {
   });
 
   it.each([
-    ['no explicit opt-in', { ...handled, showOnMap: undefined }],
-    ['opted out', { ...handled, showOnMap: false }],
-    ['truthy but not true', { ...handled, showOnMap: 'yes' }],
+    ['made under the current notice and not opted in', { ...handled, showOnMap: false, mapDisclosure: MAP_DISCLOSURE_VERSION }],
+    ['from before any map notice', { ...handled, showOnMap: undefined }],
+  ])('is anonymous (no first name) when %s', (_label, request) => {
+    const pin = buildSeedShipmentPin(request, { lat: 30.26721, lng: -97.74309 }, at, 2);
+    expect(pin).toMatchObject({ firstName: null, locality: 'Austin, TX', country: 'US', displayLat: 30.27, sourceVersion: 2 });
+    expect(JSON.stringify(pin)).not.toMatch(/Jane|Gardener|Okra Lane|78701|jane@example.com/);
+  });
+
+  it('never publishes a request that declined under the opt-in-only form', () => {
+    // showOnMap stored as false with no disclosure version: they were told
+    // leaving the box unchecked meant no pin at all.
+    expect(buildSeedShipmentPin({ ...handled, showOnMap: false }, { lat: 1, lng: 1 }, at, 1)).toBeNull();
+    expect(buildSeedShipmentPin({ ...handled, showOnMap: 'yes' }, { lat: 1, lng: 1 }, at, 1)).toBeNull();
+  });
+
+  it.each([
     ['not handled', { ...handled, requestStatus: 'open' }],
     ['in-person', { ...handled, fulfillmentMethod: 'in_person' }],
   ])('returns null when %s', (_label, request) => {
@@ -105,3 +120,19 @@ describe('buildSeedShipmentPin', () => {
     expect(buildSeedShipmentPin(handled, { lat: 1, lng: 1 }, at, undefined)).toBeNull();
   });
 });
+
+describe('pinVisibility', () => {
+  const mail = { fulfillmentMethod: 'mail' };
+  it.each([
+    ['opted in to their name', { ...mail, showOnMap: true }, 'named'],
+    ['opted in under the current notice', { ...mail, showOnMap: true, mapDisclosure: MAP_DISCLOSURE_VERSION }, 'named'],
+    ['current notice, not opted in', { ...mail, showOnMap: false, mapDisclosure: MAP_DISCLOSURE_VERSION }, 'anonymous'],
+    ['legacy, before any notice', { ...mail }, 'anonymous'],
+    ['declined under the opt-in-only form', { ...mail, showOnMap: false }, 'none'],
+    ['in-person', { fulfillmentMethod: 'in_person', showOnMap: true }, 'none'],
+    ['missing', null, 'none'],
+  ])('%s → %s', (_label, request, expected) => {
+    expect(pinVisibility(request)).toBe(expected);
+  });
+});
+

@@ -26,11 +26,11 @@ test.describe('okra seed request flow (staging)', () => {
     await dialog.getByLabel('Postal code', { exact: true }).fill('75069');
     await dialog.getByLabel('Country').selectOption('US');
 
-    // The public map pin is opt-in: it must start unchecked and say exactly
-    // what would be shown. This run leaves it off so staging gets no pin.
-    const mapConsent = dialog.getByRole('checkbox', { name: /seeds sent.*pin to the public okra map/i });
+    // Showing a name on the public map is opt-in: it must start unchecked and
+    // say what the pin shows either way.
+    const mapConsent = dialog.getByRole('checkbox', { name: /show my first name on the map/i });
     await expect(mapConsent).not.toBeChecked();
-    await expect(dialog).toContainText('only your first name, your city, and the month');
+    await expect(dialog).toContainText('never your street address or last name');
     await dialog
       .getByLabel('Message')
       .fill(`Please send seeds for the staging Playwright run ${runId}.`);

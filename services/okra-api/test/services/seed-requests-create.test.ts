@@ -106,9 +106,9 @@ describe('createSeedRequest map consent', () => {
     return mockSend.mock.calls[0][0].input.TransactItems[0].Put.Item;
   }
 
-  it('defaults to no map pin and starts at version 0', async () => {
+  it('defaults to an anonymous pin, records the map notice version, and starts at version 0', async () => {
     await createSeedRequest(mailPayload, null);
-    expect(storedItem()).toMatchObject({ showOnMap: false, statusVersion: 0 });
+    expect(storedItem()).toMatchObject({ showOnMap: false, mapDisclosure: 'anonymous-pin-v2', statusVersion: 0 });
     expect(storedItem()).not.toHaveProperty('showOnMapConsentedAt');
   });
 
@@ -122,6 +122,7 @@ describe('createSeedRequest map consent', () => {
   it('ignores the opt-in for in-person requests', async () => {
     await createSeedRequest({ name: 'Sam', email: 'sam@example.com', fulfillmentMethod: 'in_person', showOnMap: true }, null);
     expect(storedItem().showOnMap).toBe(false);
+    expect(storedItem()).not.toHaveProperty('mapDisclosure');
   });
 });
 
