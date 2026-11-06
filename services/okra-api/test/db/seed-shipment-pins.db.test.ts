@@ -3,7 +3,8 @@
  * ordering guarantees live in the ON CONFLICT ... WHERE clauses and can't be
  * meaningfully mocked.
  *
- * Needs OKRA_TEST_DATABASE_URL (CI sets it on the Okra Backend Tests job).
+ * Needs OKRA_TEST_DATABASE_URL. The PR Okra Backend Tests job sets it, plus
+ * OKRA_TEST_REQUIRE_DB=true so a missing database fails rather than skips.
  * Each run uses its own schema and drops it afterwards.
  */
 import { readFile } from 'node:fs/promises';
@@ -46,10 +47,12 @@ function pin(requestId: string, sourceVersion: number) {
   };
 }
 
-// Locally these skip without a database; in CI a skip would hide the only
-// real check of the projection's ordering, so fail instead.
-it.runIf(Boolean(process.env.CI) && !DATABASE_URL)('has OKRA_TEST_DATABASE_URL in CI', () => {
-  throw new Error('OKRA_TEST_DATABASE_URL must be set in CI so the seed pin projection runs against Postgres');
+// Locally (and in workflows without a Postgres service, like the production
+// deploy) these skip without a database. The PR check job provides one and
+// sets OKRA_TEST_REQUIRE_DB=true, so a missing URL there fails instead of
+// silently skipping the only real check of the projection's ordering.
+it.runIf(process.env.OKRA_TEST_REQUIRE_DB === 'true' && !DATABASE_URL)('has OKRA_TEST_DATABASE_URL when required', () => {
+  throw new Error('OKRA_TEST_DATABASE_URL must be set when OKRA_TEST_REQUIRE_DB=true');
 });
 
 describe.skipIf(!DATABASE_URL)('seed_shipment_pins projection (real Postgres)', () => {
