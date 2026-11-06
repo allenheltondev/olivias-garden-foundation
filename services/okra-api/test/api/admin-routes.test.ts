@@ -866,7 +866,7 @@ describe('seed request admin queue', () => {
   it('returns INVALID_STATUS for unsupported status value', async () => {
     const { statusCode, body } = parseRes(
       await handler(makeRestApiEvent('/requests', 'GET', {
-        queryStringParameters: { status: 'handled' },
+        queryStringParameters: { status: 'shipped' },
       }))
     );
 
@@ -884,7 +884,8 @@ describe('seed request admin queue', () => {
       expect(command.input.TransactItems[1].Update.Key).toEqual({
         requestId: 'stats#seed-packets-sent',
       });
-      expect(command.input.TransactItems[1].Update.UpdateExpression).toContain('ADD #count :one');
+      expect(command.input.TransactItems[1].Update.UpdateExpression).toContain('ADD #count :delta');
+      expect(command.input.TransactItems[1].Update.ExpressionAttributeValues[':delta']).toBe(1);
       return Promise.resolve({});
     });
 
@@ -962,7 +963,10 @@ describe('seed request admin queue', () => {
     mockDynamoSend
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({
-        Item: { requestId: '33333333-3333-3333-3333-333333333333', name: 'Sam', fulfillmentMethod: 'in_person' },
+        Item: {
+          requestId: '33333333-3333-3333-3333-333333333333', createdAt: '2026-10-01T00:00:00.000Z',
+          name: 'Sam', fulfillmentMethod: 'in_person',
+        },
       });
 
     const { statusCode, body } = parseRes(await handler(
@@ -981,7 +985,8 @@ describe('seed request admin queue', () => {
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({
         Item: {
-          requestId: '33333333-3333-3333-3333-333333333333', name: 'Jane', fulfillmentMethod: 'mail',
+          requestId: '33333333-3333-3333-3333-333333333333', createdAt: '2026-10-01T00:00:00.000Z',
+          name: 'Jane', fulfillmentMethod: 'mail',
           shippingAddress: { city: 'Austin', region: 'TX', country: 'US' },
         },
       });
@@ -1025,5 +1030,189 @@ describe('seed request admin queue', () => {
 
     expect(statusCode).toBe(400);
     expect(body.error.code).toBe('INVALID_ACTION');
+  });
+});
+
+// ─── Seed request lifecycle: done list, cancel, undo/reopen, pin removal ────
+
+describe('seed request lifecycle', () => {
+  const REQ_ID = '44444444-4444-4444-4444-444444444444';
+
+  function statusEvent(body: any) {
+    return makeRestApiEvent(`/requests/${REQ_ID}/statuses`, 'POST', {
+      pathParameters: { id: REQ_ID },
+      body,
+    });
+  }
+
+  function mockGetItem(item: any) {
+    mockDynamoSend.mockImplementation((command: any) => {
+      if (command?._type === 'GetCommand') return Promise.resolve({ Item: item });
+      return Promise.resolve({});
+    });
+  }
+
+  it('lists handled requests newest-handled first, with their map pin', async () => {
+    scanResponses = [
+      {
+        Items: [
+          { requestId: 'a', createdAt: '2026-01-01T00:00:00Z', handledAt: '2026-03-01T00:00:00Z', requestStatus: 'handled', name: 'A' },
+        ],
+        LastEvaluatedKey: { requestId: 'a' },
+      },
+      {
+        Items: [
+          { requestId: 'b', createdAt: '2026-02-01T00:00:00Z', handledAt: '2026-04-01T00:00:00Z', requestStatus: 'handled', name: 'B' },
+        ],
+      },
+    ];
+    queryResponses['FROM seed_shipment_pins'] = {
+      rows: [{ request_id: 'a', locality: 'Austin, TX', country: 'US' }],
+    };
+
+    const { statusCode, body } = parseRes(await handler(makeRestApiEvent('/requests', 'GET', {
+      queryStringParameters: { status: 'handled' },
+    })));
+
+    expect(statusCode).toBe(200);
+    // Follows Scan pagination
+    expect(body.total).toBe(2);
+    expect(body.data.map((r: any) => r.id)).toEqual(['b', 'a']);
+    expect(body.data[0].mapPin).toBeNull();
+    expect(body.data[1].mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+    expect(body.data[1].handledAt).toBe('2026-03-01T00:00:00Z');
+
+    const scanCall = mockDynamoSend.mock.calls.find(([c]) => c._type === 'ScanCommand');
+    expect(scanCall![0].input.ExpressionAttributeValues).toEqual({ ':status': 'handled' });
+  });
+
+  it('lists cancelled requests', async () => {
+    scanResponses = [{
+      Items: [{ requestId: 'c', createdAt: '2026-01-01T00:00:00Z', cancelledAt: '2026-01-02T00:00:00Z', requestStatus: 'cancelled', reviewNotes: 'duplicate' }],
+    }];
+    const { statusCode, body } = parseRes(await handler(makeRestApiEvent('/requests', 'GET', {
+      queryStringParameters: { status: 'cancelled' },
+    })));
+    expect(statusCode).toBe(200);
+    expect(body.data[0]).toMatchObject({ id: 'c', requestStatus: 'cancelled', reviewNotes: 'duplicate' });
+  });
+
+  it('still lists requests when the pin store is down (mapPin left unknown)', async () => {
+    scanResponses = [{ Items: [{ requestId: 'a', createdAt: '2026-01-01T00:00:00Z', requestStatus: 'handled' }] }];
+    queryResponses['FROM seed_shipment_pins'] = () => { throw new Error('db down'); };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { statusCode, body } = parseRes(await handler(makeRestApiEvent('/requests', 'GET', {
+      queryStringParameters: { status: 'handled' },
+    })));
+
+    expect(statusCode).toBe(200);
+    expect(body.data[0]).not.toHaveProperty('mapPin');
+    errorSpy.mockRestore();
+  });
+
+  it('cancels an open request without counting a packet', async () => {
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'cancelled', review_notes: ' duplicate ' })));
+
+    expect(statusCode).toBe(200);
+    expect(body).toMatchObject({ id: REQ_ID, requestStatus: 'cancelled', reviewNotes: 'duplicate' });
+    const tx = mockDynamoSend.mock.calls.find(([c]) => c._type === 'TransactWriteCommand')![0];
+    expect(tx.input.TransactItems).toHaveLength(1);
+    expect(tx.input.TransactItems[0].Update.ConditionExpression).toContain('#status = :open');
+    expect(mockClient.query).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when cancelling a request that is no longer open', async () => {
+    mockDynamoSend.mockImplementation(() => {
+      const err = new Error('cancelled');
+      err.name = 'TransactionCanceledException';
+      return Promise.reject(err);
+    });
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'cancelled' })));
+    expect(statusCode).toBe(409);
+    expect(body.error.code).toBe('INVALID_STATE');
+  });
+
+  it('undoes a handled request: reopens, un-counts the packet, removes the pin', async () => {
+    mockGetItem({ requestId: REQ_ID, createdAt: '2026-01-01T00:00:00Z', requestStatus: 'handled', handledAt: '2026-01-05T00:00:00Z' });
+    queryResponses['DELETE FROM seed_shipment_pins'] = { rows: [], rowCount: 1 };
+
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'open' })));
+
+    expect(statusCode).toBe(200);
+    expect(body).toMatchObject({ id: REQ_ID, requestStatus: 'open', previousStatus: 'handled', mapPinRemoved: true });
+
+    const tx = mockDynamoSend.mock.calls.find(([c]) => c._type === 'TransactWriteCommand')![0];
+    const [requestUpdate, counter] = tx.input.TransactItems;
+    expect(requestUpdate.Update.ConditionExpression).toBe('#status = :from');
+    expect(requestUpdate.Update.ExpressionAttributeValues[':from']).toBe('handled');
+    expect(requestUpdate.Update.UpdateExpression).toContain('REMOVE #handledAt, #handledBy');
+    expect(counter.Update.Key).toEqual({ requestId: 'stats#seed-packets-sent' });
+    expect(counter.Update.ExpressionAttributeValues[':delta']).toBe(-1);
+
+    const del = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('DELETE FROM seed_shipment_pins'));
+    expect(del![1]).toEqual([REQ_ID]);
+  });
+
+  it('reopens a cancelled request without touching the packet counter', async () => {
+    mockGetItem({ requestId: REQ_ID, createdAt: '2026-01-01T00:00:00Z', requestStatus: 'cancelled' });
+
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'open' })));
+
+    expect(statusCode).toBe(200);
+    expect(body.previousStatus).toBe('cancelled');
+    expect(body.mapPinRemoved).toBe(false);
+    const tx = mockDynamoSend.mock.calls.find(([c]) => c._type === 'TransactWriteCommand')![0];
+    expect(tx.input.TransactItems).toHaveLength(1);
+    expect(tx.input.TransactItems[0].Update.UpdateExpression).toContain('REMOVE #cancelledAt, #cancelledBy');
+  });
+
+  it('returns 409 when reopening a request that is already open', async () => {
+    mockGetItem({ requestId: REQ_ID, createdAt: '2026-01-01T00:00:00Z' });
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'open' })));
+    expect(statusCode).toBe(409);
+    expect(body.error.code).toBe('INVALID_STATE');
+  });
+
+  it('returns 404 when reopening a missing request', async () => {
+    mockGetItem(undefined);
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'open' })));
+    expect(statusCode).toBe(404);
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('rejects overly long review notes', async () => {
+    const { statusCode, body } = parseRes(await handler(statusEvent({ status: 'cancelled', review_notes: 'x'.repeat(1001) })));
+    expect(statusCode).toBe(400);
+    expect(body.error.code).toBe('INVALID_REVIEW_NOTES');
+    expect(mockDynamoSend).not.toHaveBeenCalled();
+  });
+
+  it('removes only the map pin, idempotently', async () => {
+    queryResponses['DELETE FROM seed_shipment_pins'] = { rows: [], rowCount: 1 };
+    let res = parseRes(await handler(makeRestApiEvent(`/requests/${REQ_ID}/map-pin`, 'DELETE', {
+      pathParameters: { id: REQ_ID },
+    })));
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: REQ_ID, mapPinRemoved: true });
+    expect(mockDynamoSend).not.toHaveBeenCalled();
+
+    queryResponses['DELETE FROM seed_shipment_pins'] = { rows: [], rowCount: 0 };
+    res = parseRes(await handler(makeRestApiEvent(`/requests/${REQ_ID}/map-pin`, 'DELETE', {
+      pathParameters: { id: REQ_ID },
+    })));
+    expect(res.statusCode).toBe(200);
+    expect(res.body.mapPinRemoved).toBe(false);
+  });
+
+  it('returns 500 when the pin store is down on removal', async () => {
+    queryResponses['DELETE FROM seed_shipment_pins'] = () => { throw new Error('db down'); };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { statusCode, body } = parseRes(await handler(makeRestApiEvent(`/requests/${REQ_ID}/map-pin`, 'DELETE', {
+      pathParameters: { id: REQ_ID },
+    })));
+    expect(statusCode).toBe(500);
+    expect(body.error.code).toBe('INTERNAL_ERROR');
+    errorSpy.mockRestore();
   });
 });

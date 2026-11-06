@@ -113,3 +113,28 @@ export async function listSeedShipmentPins(client) {
     };
   });
 }
+
+/** Idempotent: returns true if a pin was removed, false if there was none. */
+export async function deleteSeedShipmentPin(client, requestId) {
+  const result = await client.query(
+    'DELETE FROM seed_shipment_pins WHERE request_id = $1',
+    [String(requestId)]
+  );
+  return (result?.rowCount ?? 0) > 0;
+}
+
+/** Admin-only lookup: request_id → { locality, country } for the given ids. */
+export async function getSeedShipmentPinsByRequestId(client, requestIds) {
+  const map = new Map();
+  if (!requestIds || requestIds.length === 0) return map;
+  const res = await client.query(
+    `SELECT request_id, locality, country
+       FROM seed_shipment_pins
+      WHERE request_id = ANY($1)`,
+    [requestIds.map(String)]
+  );
+  for (const row of res.rows) {
+    map.set(row.request_id, { locality: row.locality ?? null, country: row.country ?? null });
+  }
+  return map;
+}

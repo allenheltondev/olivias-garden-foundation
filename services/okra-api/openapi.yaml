@@ -472,9 +472,12 @@ paths:
             type: string
             enum:
               - open
+              - handled
+              - cancelled
           description: >-
-            Filter seed requests by status. Required. Currently only `open`
-            is supported.
+            Filter seed requests by status. Required. `open` is sorted by
+            createdAt, `handled` by handledAt, and `cancelled` by cancelledAt,
+            newest first.
       responses:
         '200':
           description: Seed requests matching the status filter
@@ -499,7 +502,13 @@ paths:
   /admin/requests/{id}/statuses:
     post:
       operationId: transitionSeedRequestStatus
-      summary: Mark a seed request as handled
+      summary: Move a seed request between open, handled, and cancelled
+      description: >-
+        `handled` (from open) counts a packet sent and, for mailed requests
+        with map_location, adds a public map pin. `cancelled` (from open)
+        closes the request without counting a packet. `open` (from handled
+        or cancelled) reopens it; undoing a handled request un-counts the
+        packet and removes its map pin.
       tags:
         - admin
       parameters:
@@ -522,8 +531,11 @@ paths:
                   type: string
                   enum:
                     - handled
+                    - cancelled
+                    - open
                 review_notes:
                   type: string
+                  maxLength: 1000
                 map_location:
                   type: object
                   description: >
@@ -542,7 +554,7 @@ paths:
                       maximum: 180
       responses:
         '200':
-          description: Seed request marked handled
+          description: Seed request transitioned
           content:
             application/json:
               schema:
@@ -560,7 +572,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Seed request already handled
+          description: Seed request is not in a state that allows this transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/requests/{id}/map-pin:
+    delete:
+      operationId: deleteSeedRequestMapPin
+      summary: Remove a seed request's "seeds sent" pin from the public map
+      description: Leaves the request itself unchanged. Idempotent.
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pin removed (or there was none)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, mapPinRemoved]
+                properties:
+                  id:
+                    type: string
+                  mapPinRemoved:
+                    type: boolean
+        '500':
+          description: Pin store unavailable
           content:
             application/json:
               schema:
@@ -890,7 +935,31 @@ components:
           nullable: true
         requestStatus:
           type: string
-          enum: [open, handled]
+          enum: [open, handled, cancelled]
+        handledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewNotes:
+          type: string
+          nullable: true
+        mapPin:
+          type: object
+          nullable: true
+          description: >-
+            Public "seeds sent" pin for this request, or null when there is
+            none. Omitted when pin status could not be loaded.
+          properties:
+            locality:
+              type: string
+              nullable: true
+            country:
+              type: string
+              nullable: true
 
     SeedRequestStatusResponse:
       type: object
@@ -902,7 +971,23 @@ components:
           type: string
         requestStatus:
           type: string
-          enum: [handled]
+          enum: [open, handled, cancelled]
+        previousStatus:
+          type: string
+          enum: [handled, cancelled]
+          description: Only on reopen
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        reopenedAt:
+          type: string
+          format: date-time
+          nullable: true
+        mapPinRemoved:
+          type: boolean
+          nullable: true
+          description: Only on reopen; null if pin removal failed
         handledAt:
           type: string
           format: date-time

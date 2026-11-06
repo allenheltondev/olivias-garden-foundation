@@ -2126,3 +2126,11 @@ body {
 .admin-testimonial-row .admin-impact-row__actions {
   justify-content: flex-end;
 }
+
+/* Status tabs shared by queue pages (API access, seed requests) */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}

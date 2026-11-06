@@ -290,6 +290,10 @@ async function run() {
       const res = await noAuthAdmin.request(`/requests/${dummyId}/statuses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'handled' }) });
       reporter.assert('auth-boundary', res.status === 401, `POST /admin/requests/:id/statuses without auth returns 401 (got ${res.status})`, res.json);
     }
+    {
+      const res = await noAuthAdmin.request(`/requests/${dummyId}/map-pin`, { method: 'DELETE' });
+      reporter.assert('auth-boundary', res.status === 401, `DELETE /admin/requests/:id/map-pin without auth returns 401 (got ${res.status})`, res.json);
+    }
   }
 
   // --- Approval Scenario (Task 3.4) ---
@@ -685,6 +689,55 @@ async function run() {
         label: `admin review queue clearing seed request ${adminSeedRequestId}`
       });
       reporter.pass('admin-seed-request', `Handled seed request ${adminSeedRequestId} no longer in review queue (${goneResult.attempts} attempts, ${goneResult.elapsedMs}ms)`);
+
+      // --- Lifecycle: done list → undo → cancel → reopen → cancel ---
+      // Ends cancelled so integration runs don't inflate the packets-sent count.
+      const transition = (body) => adminApi.request(`/requests/${adminSeedRequestId}/statuses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const waitForListing = (status) => poll({
+        fn: () => adminApi.request(`/requests?status=${status}&limit=100`),
+        until: (res) => Array.isArray(res.json?.data) && res.json.data.some((item) => item.id === adminSeedRequestId),
+        intervalMs: 2000,
+        timeoutMs: 30000,
+        label: `seed request ${adminSeedRequestId} in ${status} listing`
+      });
+
+      const doneListing = await waitForListing('handled');
+      const doneItem = doneListing.result.json.data.find((item) => item.id === adminSeedRequestId);
+      reporter.assert('admin-seed-request', doneItem?.requestStatus === 'handled', 'handled request appears in status=handled listing', doneItem);
+      reporter.assert('admin-seed-request', doneItem?.mapPin === null, `in-person handled request has mapPin=null (got ${JSON.stringify(doneItem?.mapPin)})`, doneItem);
+
+      const undoRes = await transition({ status: 'open' });
+      reporter.assert('admin-seed-request', undoRes.status === 200, `undo (status=open) returns 200 (got ${undoRes.status})`, undoRes.json);
+      reporter.assert('admin-seed-request', undoRes.json?.previousStatus === 'handled', `undo reports previousStatus=handled (got ${undoRes.json?.previousStatus})`, undoRes.json);
+      reporter.assert('admin-seed-request', undoRes.json?.mapPinRemoved === false, `undo of in-person request reports mapPinRemoved=false (got ${undoRes.json?.mapPinRemoved})`, undoRes.json);
+
+      const reopenAgainRes = await transition({ status: 'open' });
+      reporter.assert('admin-seed-request', reopenAgainRes.status === 409, `reopening an open request returns 409 (got ${reopenAgainRes.status})`, reopenAgainRes.json);
+
+      const cancelRes = await transition({ status: 'cancelled', review_notes: 'integration-cancelled' });
+      reporter.assert('admin-seed-request', cancelRes.status === 200, `cancel returns 200 (got ${cancelRes.status})`, cancelRes.json);
+      reporter.assert('admin-seed-request', cancelRes.json?.requestStatus === 'cancelled', `cancel response requestStatus=cancelled (got ${cancelRes.json?.requestStatus})`, cancelRes.json);
+
+      const handleCancelledRes = await transition({ status: 'handled' });
+      reporter.assert('admin-seed-request', handleCancelledRes.status === 409, `marking a cancelled request handled returns 409 (got ${handleCancelledRes.status})`, handleCancelledRes.json);
+
+      await waitForListing('cancelled');
+      reporter.pass('admin-seed-request', 'cancelled request appears in status=cancelled listing');
+
+      const reopenRes = await transition({ status: 'open' });
+      reporter.assert('admin-seed-request', reopenRes.status === 200 && reopenRes.json?.previousStatus === 'cancelled',
+        `reopen of cancelled request returns 200 with previousStatus=cancelled (got ${reopenRes.status}, ${reopenRes.json?.previousStatus})`, reopenRes.json);
+
+      const finalCancelRes = await transition({ status: 'cancelled', review_notes: 'integration-cleanup' });
+      reporter.assert('admin-seed-request', finalCancelRes.status === 200, `final cancel returns 200 (got ${finalCancelRes.status})`, finalCancelRes.json);
+
+      const pinDeleteRes = await adminApi.request(`/requests/${adminSeedRequestId}/map-pin`, { method: 'DELETE' });
+      reporter.assert('admin-seed-request', pinDeleteRes.status === 200 && pinDeleteRes.json?.mapPinRemoved === false,
+        `DELETE /admin/requests/:id/map-pin is idempotent when there is no pin (got ${pinDeleteRes.status}, ${pinDeleteRes.json?.mapPinRemoved})`, pinDeleteRes.json);
     }
   } catch (err) {
     if (err instanceof PollTimeoutError) {
