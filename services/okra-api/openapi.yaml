@@ -126,7 +126,9 @@ paths:
                     their public "seeds sent" map pin. Every mailed request
                     gets a pin once handled; without this it is anonymous
                     (city/region, country and month only). Only honoured for
-                    mail fulfillment; omitted means no.
+                    mail fulfillment; omitted means no. New mailed requests
+                    also record which map notice they were made under, so the
+                    meaning of an unchecked box can't change after the fact.
       responses:
         '201':
           description: Seed request recorded
@@ -661,7 +663,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Request is not a done mailed request, or changed concurrently
+          description: >-
+            Request is not done, may not have a pin (in-person, or declined
+            under the opt-in-only form), or changed concurrently
           content:
             application/json:
               schema:
@@ -1049,6 +1053,15 @@ components:
         showOnMap:
           type: boolean
           description: The requester opted in to their first name appearing on their map pin.
+        pinVisibility:
+          type: string
+          enum: [named, anonymous, none]
+          description: >-
+            What public pin the request may have, based on the map notice it
+            was made under. `none` covers in-person requests and requests made
+            under the opt-in-only form that left the box unchecked (they were
+            told no pin would be shown). Requests from before any map notice
+            may have anonymous pins.
         statusVersion:
           type: integer
           description: >-

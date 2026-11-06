@@ -29,7 +29,7 @@ const STATUS_TABS: { id: SeedRequestStatus; label: string }[] = [
 const TAB_COPY: Record<SeedRequestStatus, { title: string; body: string; empty: string }> = {
   open: {
     title: 'Open seed requests',
-    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map at their city, with a first name only if the sender opted in.',
+    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map at their city, with a first name only if the sender opted in. Requests made when the form said unchecked meant no pin stay off the map.',
     empty: 'No open seed requests right now.',
   },
   handled: {
@@ -165,7 +165,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
       const who = firstName(request.name);
       if (result?.mapPin) {
         const where = result.mapPin.locality ? ` near ${result.mapPin.locality}` : '';
-        const kind = request.showOnMap === true ? `pin for ${who}` : 'anonymous pin';
+        const kind = request.pinVisibility === 'named' ? `pin for ${who}` : 'anonymous pin';
         return {
           tone: 'success',
           message: `Marked done. A "seeds sent" ${kind}${where} will show on the okra map shortly.`,

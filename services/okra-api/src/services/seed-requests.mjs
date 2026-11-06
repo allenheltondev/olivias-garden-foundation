@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { MAP_DISCLOSURE_VERSION } from './seed-shipment-pins.mjs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
@@ -154,6 +155,8 @@ export async function createSeedRequest(payload, contributor) {
     ...(payload.fulfillmentMethod === 'mail' && payload.showOnMap === true
       ? { showOnMapConsentedAt: createdAt }
       : {}),
+    // Which map notice this request was made under (see pinVisibility).
+    ...(payload.fulfillmentMethod === 'mail' ? { mapDisclosure: MAP_DISCLOSURE_VERSION } : {}),
     statusVersion: 0,
     ...(contributor?.sub ? { contributorCognitoSub: contributor.sub } : {}),
     expiresAt: Math.floor(now.getTime() / 1000) + 60 * 60 * 24 * 365 * 5

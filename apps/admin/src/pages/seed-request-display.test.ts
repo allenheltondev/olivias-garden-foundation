@@ -14,6 +14,7 @@ function makeRequest(overrides: Partial<SeedRequestQueueItem> = {}): SeedRequest
     createdAt: '2026-10-01T00:00:00.000Z',
     requestStatus: 'handled',
     showOnMap: true,
+    pinVisibility: 'named',
     ...overrides,
   };
 }
@@ -35,7 +36,7 @@ describe('describePlannedPin', () => {
   });
 
   it('previews an anonymous pin when the requester did not opt in to their name', () => {
-    expect(describePlannedPin(makeRequest({ requestStatus: 'open', showOnMap: false }))).toBe(
+    expect(describePlannedPin(makeRequest({ requestStatus: 'open', showOnMap: false, pinVisibility: 'anonymous' }))).toBe(
       'Will show as an anonymous pin in Austin, TX. No street address or last name.',
     );
   });
@@ -58,26 +59,31 @@ describe('describeCurrentPin', () => {
 });
 
 describe('wantsMapPin', () => {
-  it('is any mailed request with an address, opted in or not', () => {
+  it('follows the API verdict for mailed requests', () => {
     expect(wantsMapPin(makeRequest())).toBe(true);
-    expect(wantsMapPin(makeRequest({ showOnMap: false }))).toBe(true);
-    expect(wantsMapPin(makeRequest({ showOnMap: undefined }))).toBe(true);
+    expect(wantsMapPin(makeRequest({ showOnMap: false, pinVisibility: 'anonymous' }))).toBe(true);
+    expect(wantsMapPin(makeRequest({ showOnMap: false, pinVisibility: 'none' }))).toBe(false);
+    expect(wantsMapPin(makeRequest({ pinVisibility: undefined }))).toBe(false);
     expect(wantsMapPin(makeRequest({ fulfillmentMethod: 'in_person' }))).toBe(false);
     expect(wantsMapPin(makeRequest({ shippingAddress: null }))).toBe(false);
   });
 
-  it('describes a done anonymous pin without the name', () => {
-    expect(describeCurrentPin(makeRequest({ showOnMap: false, mapPin: { locality: 'Austin, TX', country: 'US' } }))).toBe(
+  it('describes anonymous and declined requests', () => {
+    expect(describeCurrentPin(makeRequest({ pinVisibility: 'anonymous', mapPin: { locality: 'Austin, TX', country: 'US' } }))).toBe(
       'On the map as an anonymous pin in Austin, TX.',
     );
-    expect(describeCurrentPin(makeRequest({ showOnMap: false, mapPin: null }))).toBe('Not on the map.');
+    expect(describeCurrentPin(makeRequest({ pinVisibility: 'anonymous', mapPin: null }))).toBe('Not on the map.');
+    expect(describePlannedPin(makeRequest({ requestStatus: 'open', pinVisibility: 'none' }))).toBe(
+      'No map pin \u2014 they were told they wouldn\u2019t get one.',
+    );
   });
 });
 
 describe('canAddToMap', () => {
-  it('offers Add to map only for done mailed requests known to have no pin', () => {
+  it('offers Add to map only for done requests allowed a pin and known to have none', () => {
     expect(canAddToMap(makeRequest({ mapPin: null }))).toBe(true);
-    expect(canAddToMap(makeRequest({ mapPin: null, showOnMap: undefined }))).toBe(true);
+    expect(canAddToMap(makeRequest({ mapPin: null, pinVisibility: 'anonymous' }))).toBe(true);
+    expect(canAddToMap(makeRequest({ mapPin: null, pinVisibility: 'none' }))).toBe(false);
     expect(canAddToMap(makeRequest({ mapPin: { locality: 'Austin, TX', country: 'US' } }))).toBe(false);
     expect(canAddToMap(makeRequest({ mapPin: undefined }))).toBe(false);
     expect(canAddToMap(makeRequest({ mapPin: null, requestStatus: 'open' }))).toBe(false);

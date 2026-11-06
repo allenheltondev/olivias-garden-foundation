@@ -4,6 +4,7 @@ import { createDbClient } from '../../scripts/db-client.mjs';
 import {
   buildSeedShipmentPin,
   getSeedShipmentPinsByRequestId,
+  pinVisibility,
   hideSeedShipmentPin,
   upsertSeedShipmentPin,
 } from './seed-shipment-pins.mjs';
@@ -96,6 +97,7 @@ function toQueueItem(item) {
     cancelledAt: item.cancelledAt ?? null,
     reviewNotes: item.reviewNotes ?? null,
     showOnMap: item.showOnMap === true,
+    pinVisibility: pinVisibility(item),
     statusVersion: versionOf(item),
   };
 }
@@ -141,8 +143,8 @@ async function withPinStore(fn) {
 
 /**
  * Adds `mapPin` ({ locality, country } or null) to each item, and reconciles
- * as it goes: a visible pin on a request that isn't handled is hidden at the
- * request's current version. That cleans up a pin left behind
+ * as it goes: a visible pin on a request that isn't handled, or that may not
+ * have a pin at all, is hidden at the request's current version. That cleans up a pin left behind
  * if a hide failed after an undo.
  *
  * If the pin store is unreachable, items come back with `mapPin` undefined so
@@ -156,7 +158,7 @@ export async function attachMapPins(items) {
       const out = [];
       for (const item of items) {
         const pin = pins.get(item.id) ?? null;
-        const shouldBeVisible = item.requestStatus === 'handled';
+        const shouldBeVisible = item.requestStatus === 'handled' && item.pinVisibility !== 'none';
         if (pin && !shouldBeVisible) {
           await hideSeedShipmentPin(client, item.id, item.statusVersion);
           log('warn', 'Reconciled stale seed shipment pin', {
@@ -425,8 +427,13 @@ export async function reopenSeedRequest(requestId, cognitoSub, reviewNotes) {
 export async function addSeedRequestMapPin(requestId, mapLocation) {
   const current = await requireSeedRequest(requestId);
   requireStatus(current, ['handled'], 'Only done requests can be added to the map');
-  if (current.fulfillmentMethod !== 'mail') {
-    throw new SeedRequestTransitionError('INVALID_STATE', 'In-person exchanges are not shown on the map');
+  if (pinVisibility(current) === 'none') {
+    throw new SeedRequestTransitionError(
+      'INVALID_STATE',
+      current.fulfillmentMethod === 'mail'
+        ? 'This requester was told they would not get a map pin'
+        : 'In-person exchanges are not shown on the map'
+    );
   }
 
   const { nextVersion, update } = versionedRequestUpdate(requestId, current, {

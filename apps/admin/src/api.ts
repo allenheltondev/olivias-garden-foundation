@@ -102,6 +102,11 @@ export interface SeedRequestQueueItem {
   /** The requester opted in to their first name appearing on their map pin. */
   showOnMap?: boolean;
   /**
+   * What public pin this request may have, decided by the API from what the
+   * requester was told: 'named', 'anonymous', or 'none'.
+   */
+  pinVisibility?: SeedRequestPinVisibility;
+  /**
    * Public "seeds sent" pin: an object when one is on the map, null when
    * there is none, undefined when the server couldn't check.
    */
@@ -109,6 +114,8 @@ export interface SeedRequestQueueItem {
 }
 
 export type SeedRequestStatus = 'open' | 'handled' | 'cancelled';
+
+export type SeedRequestPinVisibility = 'named' | 'anonymous' | 'none';
 
 export interface SeedRequestMapPin {
   locality: string | null;
