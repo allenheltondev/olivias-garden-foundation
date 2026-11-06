@@ -133,9 +133,14 @@ test.describe('donation flow', () => {
       60000,
     )).fill('75069');
 
+    // Stripe only sometimes offers Link's "save my information" opt-in, and
+    // it no longer appears in the staging checkout. It exists only to be
+    // opted out of, so uncheck it when present and carry on when it isn't.
     const saveInfoCheckbox = checkout.getByRole('checkbox', { name: /Save my information for faster checkout/i });
-    await expect(saveInfoCheckbox).toBeVisible({ timeout: 30000 });
-    if (await saveInfoCheckbox.isChecked()) {
+    const hasSaveInfo = await saveInfoCheckbox
+      .waitFor({ state: 'visible', timeout: 5000 })
+      .then(() => true, () => false);
+    if (hasSaveInfo && (await saveInfoCheckbox.isChecked())) {
       await saveInfoCheckbox.uncheck();
     }
 
