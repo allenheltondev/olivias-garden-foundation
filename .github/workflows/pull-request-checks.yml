@@ -644,6 +644,7 @@ jobs:
         working-directory: services/okra-api
     env:
       OKRA_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/okra_ci
+      OKRA_TEST_REQUIRE_DB: 'true'
 
     steps:
       - name: Checkout code
