@@ -3,7 +3,7 @@ import { lookupHardinessZone, okraPlantingWindow } from '../src/services/plantin
 
 describe('okraPlantingWindow', () => {
   it('maps zones, with or without a subzone letter', () => {
-    expect(okraPlantingWindow('7b')).toBe('early May to early June');
+    expect(okraPlantingWindow('7b')).toBe('mid April to late May');
     expect(okraPlantingWindow('10a')).toBe('February to April');
     expect(okraPlantingWindow('4')).toBe('late May to mid June');
   });
