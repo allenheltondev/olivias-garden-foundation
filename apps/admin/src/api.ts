@@ -383,12 +383,26 @@ export async function listSeedRequestQueue(
   };
 }
 
+export interface MarkSeedRequestHandledResponse {
+  id: string;
+  requestStatus: 'handled';
+  handledAt: string | null;
+  reviewNotes: string | null;
+  /** Public "seeds sent" map pin, or null when none was created. */
+  mapPin?: { locality: string | null; country: string | null } | null;
+}
+
 export async function markSeedRequestHandled(
   accessToken: string,
   requestId: string,
-  payload: { status: 'handled'; review_notes?: string }
-): Promise<void> {
-  await requestJson(
+  payload: {
+    status: 'handled';
+    review_notes?: string;
+    /** City-level location for the public "seeds sent" map pin. */
+    map_location?: { lat: number; lng: number };
+  }
+): Promise<MarkSeedRequestHandledResponse> {
+  return requestJson<MarkSeedRequestHandledResponse>(
     `${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`,
     accessToken,
     {

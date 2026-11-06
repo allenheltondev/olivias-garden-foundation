@@ -10,7 +10,7 @@ export function okraApiUrl(path: string) {
   return `${trimmedBase}${normalizedPath}`;
 }
 
-export function okraMapUrl(path: '' | '/stats' = '') {
+export function okraMapUrl(path: '' | '/stats' | '/seed-shipments' = '') {
   return `${trimmedBase}${publicMapPrefix}${path}`;
 }
 

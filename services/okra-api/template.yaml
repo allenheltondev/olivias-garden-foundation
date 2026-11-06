@@ -275,6 +275,7 @@ Resources:
               Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default'
             - Effect: Allow
               Action:
+                - dynamodb:GetItem
                 - dynamodb:Scan
                 - dynamodb:UpdateItem
                 - dynamodb:TransactWriteItems

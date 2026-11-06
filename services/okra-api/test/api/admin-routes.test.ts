@@ -48,6 +48,7 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
   DynamoDBDocumentClient: {
     from: vi.fn(() => ({ send: mockDynamoSend })),
   },
+  GetCommand: vi.fn((input: any) => ({ input, _type: 'GetCommand' })),
   ScanCommand: vi.fn((input: any) => ({ input, _type: 'ScanCommand' })),
   TransactWriteCommand: vi.fn((input: any) => ({ input, _type: 'TransactWriteCommand' })),
 }));
@@ -898,6 +899,120 @@ describe('seed request admin queue', () => {
     expect(body.requestStatus).toBe('handled');
     expect(body.handledByCognitoSub).toBe('admin-cognito-sub-1');
     expect(body.reviewNotes).toBe('Handled in admin dashboard.');
+  });
+
+  it('does not create a map pin when no map_location is sent', async () => {
+    mockDynamoSend.mockResolvedValueOnce({});
+
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'handled' },
+      })
+    ));
+
+    expect(statusCode).toBe(200);
+    expect(body.mapPin).toBeNull();
+    expect(mockDynamoSend).toHaveBeenCalledTimes(1);
+    const pinInserts = mockClient.query.mock.calls.filter(([sql]) => String(sql).includes('seed_shipment_pins'));
+    expect(pinInserts).toHaveLength(0);
+  });
+
+  it('creates a privacy-safe map pin for a mailed request', async () => {
+    mockDynamoSend
+      .mockResolvedValueOnce({})
+      .mockImplementationOnce((command: any) => {
+        expect(command._type).toBe('GetCommand');
+        return Promise.resolve({
+          Item: {
+            requestId: '33333333-3333-3333-3333-333333333333',
+            createdAt: '2026-10-01T00:00:00.000Z',
+            name: 'Jane Gardener',
+            email: 'jane@example.com',
+            fulfillmentMethod: 'mail',
+            shippingAddress: {
+              line1: '123 Okra Lane', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US',
+            },
+          },
+        });
+      });
+    queryResponses['INSERT INTO seed_shipment_pins'] = { rows: [], rowCount: 1 };
+
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'handled', map_location: { lat: 30.26721, lng: -97.74309 } },
+      })
+    ));
+
+    expect(statusCode).toBe(200);
+    expect(body.mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+
+    const insert = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO seed_shipment_pins'));
+    expect(insert).toBeDefined();
+    expect(String(insert![0])).toContain('ON CONFLICT (request_id) DO NOTHING');
+    const params = insert![1] as any[];
+    expect(params).toEqual([
+      '33333333-3333-3333-3333-333333333333', 'Jane', 'Austin, TX', 'US', 30.27, -97.74, body.handledAt,
+    ]);
+    expect(JSON.stringify(params)).not.toMatch(/Gardener|Okra Lane|78701|jane@example.com/);
+  });
+
+  it('skips the pin for in-person requests even with a map_location', async () => {
+    mockDynamoSend
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        Item: { requestId: '33333333-3333-3333-3333-333333333333', name: 'Sam', fulfillmentMethod: 'in_person' },
+      });
+
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'handled', map_location: { lat: 30.2, lng: -97.7 } },
+      })
+    ));
+
+    expect(statusCode).toBe(200);
+    expect(body.mapPin).toBeNull();
+  });
+
+  it('still marks the request handled when the pin write fails', async () => {
+    mockDynamoSend
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        Item: {
+          requestId: '33333333-3333-3333-3333-333333333333', name: 'Jane', fulfillmentMethod: 'mail',
+          shippingAddress: { city: 'Austin', region: 'TX', country: 'US' },
+        },
+      });
+    queryResponses['INSERT INTO seed_shipment_pins'] = () => { throw new Error('db down'); };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'handled', map_location: { lat: 30.2, lng: -97.7 } },
+      })
+    ));
+
+    expect(statusCode).toBe(200);
+    expect(body.requestStatus).toBe('handled');
+    expect(body.mapPin).toBeNull();
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('rejects an invalid map_location before changing state', async () => {
+    const { statusCode, body } = parseRes(await handler(
+      makeRestApiEvent('/requests/33333333-3333-3333-3333-333333333333/statuses', 'POST', {
+        pathParameters: { id: '33333333-3333-3333-3333-333333333333' },
+        body: { status: 'handled', map_location: { lat: 200, lng: 0 } },
+      })
+    ));
+
+    expect(statusCode).toBe(400);
+    expect(body.error.code).toBe('INVALID_MAP_LOCATION');
+    expect(mockDynamoSend).not.toHaveBeenCalled();
   });
 
   it('returns INVALID_ACTION for unsupported seed request action', async () => {

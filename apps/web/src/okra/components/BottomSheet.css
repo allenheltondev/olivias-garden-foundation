@@ -240,3 +240,19 @@
 .bottom-sheet-read-more:hover {
   text-decoration: underline;
 }
+
+/* Seeds-sent pins: shorter art strip and a soil-brown accent */
+.bottom-sheet-placeholder--seeds {
+  aspect-ratio: 8 / 3;
+  color: #8a5a2b;
+}
+
+.bottom-sheet-placeholder--seeds svg {
+  opacity: 1;
+}
+
+.bottom-sheet-locality {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-neutral-600, #57534e);
+}

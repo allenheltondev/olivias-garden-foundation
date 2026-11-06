@@ -2,12 +2,17 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { createDbClient } from '../../scripts/db-client.mjs';
 import { isUuid } from '../services/photos.mjs';
 import { encodeCursor, decodeCursor, errorResponse } from '../services/pagination.mjs';
 import { resolveCountry } from '../services/reverse-geocoder.mjs';
 import { getAdminStats } from '../services/admin-stats.mjs';
+import {
+  buildSeedShipmentPin,
+  insertSeedShipmentPin,
+  parseMapLocation,
+} from '../services/seed-shipment-pins.mjs';
 
 const s3 = new S3Client({});
 const eventBridge = new EventBridgeClient({});
@@ -63,6 +68,48 @@ async function listOpenSeedRequests() {
       createdAt: item.createdAt ?? null,
       requestStatus: item.requestStatus ?? 'open',
     }));
+}
+
+async function getSeedRequest(requestId) {
+  const result = await dynamo.send(new GetCommand({
+    TableName: getSeedRequestsTableName(),
+    Key: { requestId },
+  }));
+  return result.Item ?? null;
+}
+
+/**
+ * Put a public-safe pin on the okra map for a mailed seed request. Runs after
+ * the DynamoDB state change succeeds; a failure here is logged and reported
+ * as `mapPin: null` instead of failing the handled transition, because the
+ * seeds really did go out.
+ */
+async function recordSeedShipmentPin(requestId, mapLocation, sentAt) {
+  if (!mapLocation) return null;
+
+  let client;
+  try {
+    const seedRequest = await getSeedRequest(requestId);
+    const pin = buildSeedShipmentPin(seedRequest, mapLocation, sentAt);
+    if (!pin) return null;
+
+    client = await createDbClient();
+    await client.connect();
+    await insertSeedShipmentPin(client, pin);
+    return { locality: pin.locality, country: pin.country };
+  } catch (err) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'Failed to record seed shipment map pin',
+      error: err instanceof Error ? err.message : String(err),
+      errorName: err instanceof Error ? err.name : 'UnknownError',
+      endpoint: 'POST /admin/requests/:id/statuses',
+      requestId,
+    }));
+    return null;
+  } finally {
+    if (client) await client.end();
+  }
 }
 
 async function markSeedRequestHandled(requestId, cognitoSub, reviewNotes) {
@@ -227,10 +274,15 @@ export function registerAdminRoutes(app) {
   app.post('/requests/:id/statuses', async (ctx) => {
     const requestId = ctx.params.id;
     const body = JSON.parse(ctx.event.body || '{}');
-    const { status, review_notes } = body;
+    const { status, review_notes, map_location } = body;
 
     if (!status || !VALID_REQUEST_ACTIONS.includes(status)) {
       return errorResponse(400, 'INVALID_ACTION', 'status must be one of: handled');
+    }
+
+    const mapLocationResult = parseMapLocation(map_location);
+    if (!mapLocationResult.ok) {
+      return errorResponse(400, 'INVALID_MAP_LOCATION', mapLocationResult.message);
     }
 
     const cognitoSub = ctx.event.requestContext?.authorizer?.sub;
@@ -244,12 +296,15 @@ export function registerAdminRoutes(app) {
         return errorResponse(404, 'NOT_FOUND', 'Seed request not found');
       }
 
+      const mapPin = await recordSeedShipmentPin(requestId, mapLocationResult.value, updated.handledAt);
+
       return {
         id: updated.requestId,
         requestStatus: updated.requestStatus,
         handledAt: updated.handledAt,
         handledByCognitoSub: updated.handledByCognitoSub,
         reviewNotes: updated.reviewNotes ?? null,
+        mapPin,
       };
     } catch (err) {
       if (err?.name === 'ConditionalCheckFailedException' || err?.name === 'TransactionCanceledException') {

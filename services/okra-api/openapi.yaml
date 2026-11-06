@@ -325,6 +325,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/OkraStats'
 
+  /okra/seed-shipments:
+    get:
+      operationId: getOkraSeedShipments
+      summary: Get map pins for places okra seeds have been mailed
+      description: >
+        Public-safe projection of handled mail seed requests. Only the
+        recipient's first name and city/region are returned; street address,
+        postal code, last name, and email are never exposed. Coordinates are
+        stored at ~1 km precision and fuzzed within a city-sized radius.
+      tags:
+        - map
+      responses:
+        '200':
+          description: All seed shipment pins
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: "public, max-age=300, stale-while-revalidate=60"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total_count
+                  - data
+                properties:
+                  total_count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SeedShipmentPin'
+
   /admin/submissions:
     get:
       operationId: listAdminSubmissions
@@ -490,6 +524,22 @@ paths:
                     - handled
                 review_notes:
                   type: string
+                map_location:
+                  type: object
+                  description: >
+                    Optional approximate (city-level) location used to put a
+                    "seeds sent" pin on the public map. Ignored for in-person
+                    requests.
+                  required: [lat, lng]
+                  properties:
+                    lat:
+                      type: number
+                      minimum: -90
+                      maximum: 90
+                    lng:
+                      type: number
+                      minimum: -180
+                      maximum: 180
       responses:
         '200':
           description: Seed request marked handled
@@ -546,6 +596,36 @@ components:
           items:
             type: string
             format: uri
+
+    SeedShipmentPin:
+      type: object
+      required:
+        - id
+        - display_lat
+        - display_lng
+      properties:
+        id:
+          type: string
+        display_lat:
+          type: number
+          format: double
+        display_lng:
+          type: number
+          format: double
+        first_name:
+          type: string
+          nullable: true
+        locality:
+          type: string
+          nullable: true
+          description: City and region, e.g. "Austin, TX"
+        country:
+          type: string
+          nullable: true
+        sent_month:
+          type: string
+          nullable: true
+          description: Year and month the seeds were sent (YYYY-MM)
 
     OkraStats:
       type: object
@@ -833,4 +913,15 @@ components:
         reviewNotes:
           type: string
           nullable: true
+        mapPin:
+          type: object
+          nullable: true
+          description: Public pin created for this request, or null when none was created
+          properties:
+            locality:
+              type: string
+              nullable: true
+            country:
+              type: string
+              nullable: true
 

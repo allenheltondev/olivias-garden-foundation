@@ -6,12 +6,26 @@ import {
   type SeedRequestQueueItem,
 } from '../api';
 import type { AdminSession } from '../auth/session';
+import { findSeedPinLocation } from '../services/seed-pin-geocoder';
 
 export interface SeedRequestsPageProps {
   session: AdminSession;
 }
 
 const PAGE_SIZE = 10;
+
+function firstName(name: string | null): string {
+  return name?.trim().split(/\s+/)[0] || 'this grower';
+}
+
+function describeMapPin(request: SeedRequestQueueItem): string {
+  if (request.fulfillmentMethod !== 'mail' || !request.shippingAddress) {
+    return 'No map pin for in-person exchanges.';
+  }
+  const { city, region } = request.shippingAddress;
+  const where = [city, region].filter(Boolean).join(', ') || 'their city';
+  return `Shows as ${firstName(request.name)} in ${where}. No street address or last name.`;
+}
 
 function formatAddress(request: SeedRequestQueueItem): string {
   if (request.fulfillmentMethod !== 'mail' || !request.shippingAddress) {
@@ -30,6 +44,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'info'; message: string } | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -75,10 +90,30 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const handleMarkDone = async (request: SeedRequestQueueItem) => {
     setBusyId(request.id);
     setError(null);
+    setNotice(null);
     try {
-      await markSeedRequestHandled(session.accessToken, request.id, {
+      // City-level only — see seed-pin-geocoder for what is (and isn't) sent.
+      const mapLocation =
+        request.fulfillmentMethod === 'mail' ? await findSeedPinLocation(request) : null;
+      const result = await markSeedRequestHandled(session.accessToken, request.id, {
         status: 'handled',
+        ...(mapLocation ? { map_location: mapLocation } : {}),
       });
+      const who = firstName(request.name);
+      if (result?.mapPin) {
+        const where = result.mapPin.locality ? ` near ${result.mapPin.locality}` : '';
+        setNotice({
+          tone: 'success',
+          message: `Marked done. A "seeds sent" pin for ${who}${where} will show on the okra map shortly.`,
+        });
+      } else if (request.fulfillmentMethod === 'mail') {
+        setNotice({
+          tone: 'info',
+          message: `Marked done, but we couldn't place a map pin for ${who}'s city.`,
+        });
+      } else {
+        setNotice({ tone: 'success', message: 'Marked done.' });
+      }
       // Refetch the current page so the list stays correctly paginated
       // and total reflects the server's post-update view.
       const newTotal = Math.max(0, total - 1);
@@ -102,7 +137,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
         <SectionHeading
           eyebrow="Seed requests"
           title={`Open requests (${total})`}
-          body="Mark a request as done once the seeds are on their way or picked up."
+          body="Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map with first name and city only."
         />
         <Button
           className="admin-refresh-action"
@@ -117,6 +152,10 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
 
       {error ? (
         <FormFeedback tone="error" className="admin-load-error">{error}</FormFeedback>
+      ) : null}
+
+      {notice ? (
+        <FormFeedback tone={notice.tone} className="admin-load-error">{notice.message}</FormFeedback>
       ) : null}
 
       {loading && requests.length === 0 ? (
@@ -160,6 +199,10 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                       <dd>{request.message}</dd>
                     </div>
                   ) : null}
+                  <div>
+                    <dt>Okra map</dt>
+                    <dd>{describeMapPin(request)}</dd>
+                  </div>
                 </dl>
                 <div className="admin-request-card__actions">
                   <Button

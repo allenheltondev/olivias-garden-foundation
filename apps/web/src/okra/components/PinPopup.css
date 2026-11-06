@@ -225,3 +225,19 @@
 .pin-popup-read-more:hover {
   text-decoration: underline;
 }
+
+/* Seeds-sent pins: shorter art strip and a soil-brown accent */
+.pin-popup-placeholder--seeds {
+  aspect-ratio: 8 / 3;
+  color: #8a5a2b;
+}
+
+.pin-popup-placeholder--seeds svg {
+  opacity: 1;
+}
+
+.pin-popup-locality {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-neutral-600, #57534e);
+}
