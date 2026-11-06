@@ -41,6 +41,30 @@ test.describe('okra map seeds-sent pins', () => {
     await expect(dialog).toContainText('October 2026');
   });
 
+  test('shows an anonymous seeds-sent pin with city and month only', async ({ page }) => {
+    await page.route(/\/okra(\?.*)?$/, (route) =>
+      route.request().resourceType() === 'document'
+        ? route.continue()
+        : route.fulfill({ json: { total_count: 0, data: [] } }),
+    );
+    await page.route(/\/okra\/seed-shipments(\?.*)?$/, (route) =>
+      route.fulfill({
+        json: {
+          total_count: 1,
+          data: [{ ...SEED_PINS.data[0], id: 'seeds-anon000000000000', first_name: null }],
+        },
+      }),
+    );
+
+    await gotoAndWait(page, '/okra');
+    await page.locator('.pin-icon--seeds').first().click();
+
+    const dialog = page.getByRole('dialog', { name: 'Seeds sent here' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Austin, TX');
+    await expect(dialog).toContainText('October 2026');
+  });
+
   test('garden map still loads when the seed pin layer fails', async ({ page }) => {
     await page.route(/\/okra\/seed-shipments(\?.*)?$/, (route) => route.fulfill({ status: 500, json: {} }));
 

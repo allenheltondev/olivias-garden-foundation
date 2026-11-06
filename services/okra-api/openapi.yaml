@@ -122,11 +122,11 @@ paths:
                   type: boolean
                   default: false
                   description: >-
-                    Explicit opt-in to a public "seeds sent" map pin showing the
-                    requester's first name, city/region, and the month seeds
-                    were mailed. Only honoured for mail fulfillment. Omitted
-                    means no; requests made before this field existed are
-                    never published.
+                    Explicit opt-in to showing the requester's first name on
+                    their public "seeds sent" map pin. Every mailed request
+                    gets a pin once handled; without this it is anonymous
+                    (city/region, country and month only). Only honoured for
+                    mail fulfillment; omitted means no.
       responses:
         '201':
           description: Seed request recorded
@@ -514,8 +514,8 @@ paths:
       summary: Move a seed request between open, handled, and cancelled
       description: >-
         `handled` (from open) counts a packet sent and, for mailed requests
-        whose requester opted in (showOnMap) and with map_location, adds a
-        public map pin. Every transition is conditional on the request's
+        with map_location, adds a public map pin (showing the first name only
+        if the requester opted in via showOnMap, otherwise anonymous). Every transition is conditional on the request's
         current status and statusVersion; a concurrent change returns 409. `cancelled` (from open)
         closes the request without counting a packet. `open` (from handled
         or cancelled) reopens it; undoing a handled request un-counts the
@@ -590,6 +590,82 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /admin/requests/{id}/map-pin:
+    post:
+      operationId: addSeedRequestMapPin
+      summary: Put a done mailed request on the public map
+      description: >-
+        For requests marked done before pins existed, or whose pin was
+        removed. Bumps statusVersion so this write outranks earlier pin
+        writes. The pin's month is when the request was handled. Shows the
+        first name only if the requester opted in.
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [map_location]
+              properties:
+                map_location:
+                  type: object
+                  required: [lat, lng]
+                  description: City-level location.
+                  properties:
+                    lat:
+                      type: number
+                      minimum: -90
+                      maximum: 90
+                    lng:
+                      type: number
+                      minimum: -180
+                      maximum: 180
+      responses:
+        '200':
+          description: Pin added (mapPin null if a newer state superseded it)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, mapPin]
+                properties:
+                  id:
+                    type: string
+                  mapPin:
+                    type: object
+                    nullable: true
+                    properties:
+                      locality:
+                        type: string
+                        nullable: true
+                      country:
+                        type: string
+                        nullable: true
+        '400':
+          description: Missing or invalid map_location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Seed request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Request is not a done mailed request, or changed concurrently
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       operationId: deleteSeedRequestMapPin
       summary: Remove a seed request's "seeds sent" pin from the public map
@@ -685,6 +761,7 @@ components:
         first_name:
           type: string
           nullable: true
+          description: Null for anonymous pins (requester did not opt in to showing a name).
         locality:
           type: string
           nullable: true
@@ -971,7 +1048,7 @@ components:
           nullable: true
         showOnMap:
           type: boolean
-          description: The requester opted in to a public map pin.
+          description: The requester opted in to their first name appearing on their map pin.
         statusVersion:
           type: integer
           description: >-

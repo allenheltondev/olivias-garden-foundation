@@ -35,9 +35,9 @@ export const seedRequestSchema = {
       additionalProperties: false
     },
     message: { type: 'string', maxLength: 2000 },
-    // Explicit opt-in to a public "seeds sent" map pin (first name, city,
-    // month only). Absent means no; requests from before this field existed
-    // are therefore never published.
+    // Explicit opt-in to showing the requester's first name on their public
+    // "seeds sent" map pin. Without it the pin is anonymous (city and month
+    // only). Absent means no, so earlier requests never show a name.
     showOnMap: { type: 'boolean' }
   },
   additionalProperties: false

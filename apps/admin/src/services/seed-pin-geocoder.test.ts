@@ -42,9 +42,9 @@ describe('buildSeedPinQueries', () => {
     }
   });
 
-  it('looks nothing up for requesters who did not opt in', () => {
-    expect(buildSeedPinQueries(makeRequest({ showOnMap: false }))).toEqual([]);
-    expect(buildSeedPinQueries(makeRequest({ showOnMap: undefined }))).toEqual([]);
+  it('geocodes city-level for requesters who did not opt in to their name too', () => {
+    expect(buildSeedPinQueries(makeRequest({ showOnMap: false }))).toHaveLength(2);
+    expect(buildSeedPinQueries(makeRequest({ showOnMap: undefined }))).toHaveLength(2);
   });
 
   it('returns nothing for in-person requests or missing country', () => {

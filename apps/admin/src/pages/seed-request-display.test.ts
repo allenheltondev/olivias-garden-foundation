@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SeedRequestQueueItem } from '../api';
-import { describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
+import { canAddToMap, describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
 
 function makeRequest(overrides: Partial<SeedRequestQueueItem> = {}): SeedRequestQueueItem {
   return {
@@ -34,9 +34,9 @@ describe('describePlannedPin', () => {
     expect(text).not.toContain('Gardener');
   });
 
-  it('says no pin when the requester did not opt in', () => {
+  it('previews an anonymous pin when the requester did not opt in to their name', () => {
     expect(describePlannedPin(makeRequest({ requestStatus: 'open', showOnMap: false }))).toBe(
-      'They didn\u2019t opt in, so no map pin.',
+      'Will show as an anonymous pin in Austin, TX. No street address or last name.',
     );
   });
 
@@ -58,15 +58,29 @@ describe('describeCurrentPin', () => {
 });
 
 describe('wantsMapPin', () => {
-  it('requires mail, an address, and an explicit opt-in', () => {
+  it('is any mailed request with an address, opted in or not', () => {
     expect(wantsMapPin(makeRequest())).toBe(true);
-    expect(wantsMapPin(makeRequest({ showOnMap: false }))).toBe(false);
-    expect(wantsMapPin(makeRequest({ showOnMap: undefined }))).toBe(false);
+    expect(wantsMapPin(makeRequest({ showOnMap: false }))).toBe(true);
+    expect(wantsMapPin(makeRequest({ showOnMap: undefined }))).toBe(true);
     expect(wantsMapPin(makeRequest({ fulfillmentMethod: 'in_person' }))).toBe(false);
     expect(wantsMapPin(makeRequest({ shippingAddress: null }))).toBe(false);
   });
 
-  it('describes a handled, not-opted-in request', () => {
-    expect(describeCurrentPin(makeRequest({ showOnMap: false, mapPin: null }))).toBe('They didn\u2019t opt in, so no map pin.');
+  it('describes a done anonymous pin without the name', () => {
+    expect(describeCurrentPin(makeRequest({ showOnMap: false, mapPin: { locality: 'Austin, TX', country: 'US' } }))).toBe(
+      'On the map as an anonymous pin in Austin, TX.',
+    );
+    expect(describeCurrentPin(makeRequest({ showOnMap: false, mapPin: null }))).toBe('Not on the map.');
+  });
+});
+
+describe('canAddToMap', () => {
+  it('offers Add to map only for done mailed requests known to have no pin', () => {
+    expect(canAddToMap(makeRequest({ mapPin: null }))).toBe(true);
+    expect(canAddToMap(makeRequest({ mapPin: null, showOnMap: undefined }))).toBe(true);
+    expect(canAddToMap(makeRequest({ mapPin: { locality: 'Austin, TX', country: 'US' } }))).toBe(false);
+    expect(canAddToMap(makeRequest({ mapPin: undefined }))).toBe(false);
+    expect(canAddToMap(makeRequest({ mapPin: null, requestStatus: 'open' }))).toBe(false);
+    expect(canAddToMap(makeRequest({ mapPin: null, fulfillmentMethod: 'in_person', shippingAddress: null }))).toBe(false);
   });
 });

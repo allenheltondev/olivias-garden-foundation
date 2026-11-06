@@ -99,7 +99,7 @@ export interface SeedRequestQueueItem {
   handledAt?: string | null;
   cancelledAt?: string | null;
   reviewNotes?: string | null;
-  /** The requester explicitly opted in to a public "seeds sent" map pin. */
+  /** The requester opted in to their first name appearing on their map pin. */
   showOnMap?: boolean;
   /**
    * Public "seeds sent" pin: an object when one is on the map, null when
@@ -463,6 +463,18 @@ export async function reopenSeedRequest(
     accessToken,
     { method: 'POST', body: JSON.stringify({ status: 'open' }) }
   );
+}
+
+/** Put a done mailed request on the public map (e.g. a request from before pins). */
+export async function addSeedRequestMapPin(
+  accessToken: string,
+  requestId: string,
+  mapLocation: { lat: number; lng: number }
+): Promise<{ id: string; mapPin: SeedRequestMapPin | null }> {
+  return requestJson(`${getOkraAdminApiBaseUrl()}/requests/${requestId}/map-pin`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ map_location: mapLocation }),
+  });
 }
 
 /** Take a request's pin off the public map, leaving the request as-is. */

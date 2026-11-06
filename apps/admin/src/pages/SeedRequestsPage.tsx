@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import {
+  addSeedRequestMapPin,
   cancelSeedRequest,
   listSeedRequestQueue,
   markSeedRequestHandled,
@@ -11,7 +12,7 @@ import {
 } from '../api';
 import type { AdminSession } from '../auth/session';
 import { findSeedPinLocation } from '../services/seed-pin-geocoder';
-import { describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
+import { canAddToMap, describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
 
 export interface SeedRequestsPageProps {
   session: AdminSession;
@@ -28,7 +29,7 @@ const STATUS_TABS: { id: SeedRequestStatus; label: string }[] = [
 const TAB_COPY: Record<SeedRequestStatus, { title: string; body: string; empty: string }> = {
   open: {
     title: 'Open seed requests',
-    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests whose senders opted in get a pin on the public okra map with first name and city only.',
+    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map at their city, with a first name only if the sender opted in.',
     empty: 'No open seed requests right now.',
   },
   handled: {
@@ -156,7 +157,6 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const handleMarkDone = (request: SeedRequestQueueItem) =>
     runAction(request, async () => {
       // City-level only — see seed-pin-geocoder for what is (and isn't) sent.
-      // Only look up a location for requesters who opted in to the map.
       const mapLocation = wantsMapPin(request) ? await findSeedPinLocation(request) : null;
       const result = await markSeedRequestHandled(session.accessToken, request.id, {
         status: 'handled',
@@ -165,9 +165,10 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
       const who = firstName(request.name);
       if (result?.mapPin) {
         const where = result.mapPin.locality ? ` near ${result.mapPin.locality}` : '';
+        const kind = request.showOnMap === true ? `pin for ${who}` : 'anonymous pin';
         return {
           tone: 'success',
-          message: `Marked done. A "seeds sent" pin for ${who}${where} will show on the okra map shortly.`,
+          message: `Marked done. A "seeds sent" ${kind}${where} will show on the okra map shortly.`,
         };
       }
       if (wantsMapPin(request)) {
@@ -211,6 +212,21 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
       return { tone: 'success', message: `Reopened ${firstName(request.name)}'s request.` };
     }, 'Unable to reopen request.');
 
+  const handleAddToMap = (request: SeedRequestQueueItem) =>
+    runAction(request, async () => {
+      const mapLocation = await findSeedPinLocation(request);
+      const where = request.shippingAddress?.city ?? 'their city';
+      if (!mapLocation) {
+        return { tone: 'info', message: `Couldn't find ${where} on the map, so no pin was added.` };
+      }
+      const result = await addSeedRequestMapPin(session.accessToken, request.id, mapLocation);
+      if (!result.mapPin) {
+        return { tone: 'info', message: 'The request changed before the pin was added. Refresh and try again.' };
+      }
+      const placed = result.mapPin.locality ?? where;
+      return { tone: 'success', message: `Added a "seeds sent" pin near ${placed} to the okra map.` };
+    }, 'Unable to add to map.', false);
+
   const handleRemovePin = (request: SeedRequestQueueItem) => {
     if (!window.confirm(`Remove ${firstName(request.name)}'s "seeds sent" pin from the public okra map? The request stays as it is.`)) {
       return;
@@ -249,6 +265,11 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
           <Button variant="outline" onClick={() => void handleUndo(request)} loading={loadingThis} disabled={disabled}>
             Undo — move back to open
           </Button>
+          {canAddToMap(request) ? (
+            <Button variant="outline" onClick={() => void handleAddToMap(request)} disabled={disabled}>
+              Add to map
+            </Button>
+          ) : null}
           {removePin}
         </>
       );

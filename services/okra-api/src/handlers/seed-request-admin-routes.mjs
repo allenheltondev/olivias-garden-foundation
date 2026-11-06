@@ -2,6 +2,7 @@ import { errorResponse } from '../services/pagination.mjs';
 import { parseMapLocation } from '../services/seed-shipment-pins.mjs';
 import {
   SEED_REQUEST_STATUSES,
+  addSeedRequestMapPin,
   SeedRequestTransitionError,
   attachMapPins,
   cancelSeedRequest,
@@ -110,6 +111,38 @@ export function registerSeedRequestAdminRoutes(app, { validateLimit, validatePag
           : errorResponse(409, 'INVALID_STATE', err.message);
       }
       logError(err, 'POST /admin/requests/:id/statuses', { requestId, targetStatus: status });
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    }
+  });
+
+  // Put a done request on the public map (e.g. one handled before pins
+  // existed). Body: { map_location: { lat, lng } } at city level.
+  app.post('/requests/:id/map-pin', async (ctx) => {
+    const requestId = ctx.params.id;
+    let body;
+    try {
+      body = JSON.parse(ctx.event.body || '{}');
+    } catch {
+      return errorResponse(400, 'INVALID_BODY', 'Request body must be valid JSON');
+    }
+    const mapLocationResult = parseMapLocation(body?.map_location);
+    if (!mapLocationResult.ok) {
+      return errorResponse(400, 'INVALID_MAP_LOCATION', mapLocationResult.message);
+    }
+    if (!mapLocationResult.value) {
+      return errorResponse(400, 'INVALID_MAP_LOCATION', 'map_location is required');
+    }
+
+    try {
+      const mapPin = await addSeedRequestMapPin(requestId, mapLocationResult.value);
+      return { id: requestId, mapPin };
+    } catch (err) {
+      if (err instanceof SeedRequestTransitionError) {
+        return err.code === 'NOT_FOUND'
+          ? errorResponse(404, 'NOT_FOUND', err.message)
+          : errorResponse(409, 'INVALID_STATE', err.message);
+      }
+      logError(err, 'POST /admin/requests/:id/map-pin', { requestId });
       return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
     }
   });

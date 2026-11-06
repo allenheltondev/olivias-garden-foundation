@@ -6,7 +6,8 @@ import { fuzzCoordinates } from './privacy-fuzzing.mjs';
  * have mailed seeds. Seed requests hold full names and street addresses, so
  * this module is the single place that decides what is safe to publish:
  *
- *   - first name only (never the last name or email)
+ *   - first name only, and only when the requester opted in to showing it
+ *     (never the last name or email); otherwise the pin is anonymous
  *   - city + region and country (never street lines or postal code)
  *   - coordinates rounded to 2 decimals (~1 km) on write, then fuzzed
  *     deterministically within city radius on read
@@ -61,19 +62,21 @@ export function parseMapLocation(raw) {
  * version, or null when the request must not produce a pin:
  *   - it isn't handled (the caller passes the state it just committed)
  *   - it's an in-person exchange
- *   - the requester didn't explicitly opt in (`showOnMap === true`)
  *   - no location was found
+ *
+ * Every mailed, handled request gets a pin. It carries a first name only if
+ * the requester explicitly asked for that (`showOnMap === true`); otherwise
+ * the pin is anonymous: city/region, country and month only.
  */
 export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt, sourceVersion) {
   if (!seedRequest || !mapLocation) return null;
   if (seedRequest.requestStatus !== 'handled') return null;
   if (seedRequest.fulfillmentMethod !== 'mail') return null;
-  if (seedRequest.showOnMap !== true) return null;
   if (!Number.isInteger(sourceVersion) || sourceVersion < 1) return null;
 
   return {
     requestId: String(seedRequest.requestId),
-    firstName: getFirstName(seedRequest.name),
+    firstName: seedRequest.showOnMap === true ? getFirstName(seedRequest.name) : null,
     locality: getPublicLocality(seedRequest.shippingAddress),
     country: seedRequest.shippingAddress?.country ?? null,
     displayLat: roundCoordinate(mapLocation.lat),

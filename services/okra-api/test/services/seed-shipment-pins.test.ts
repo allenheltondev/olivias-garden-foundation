@@ -92,6 +92,13 @@ describe('buildSeedShipmentPin', () => {
     ['no explicit opt-in', { ...handled, showOnMap: undefined }],
     ['opted out', { ...handled, showOnMap: false }],
     ['truthy but not true', { ...handled, showOnMap: 'yes' }],
+  ])('is anonymous (no first name) when %s', (_label, request) => {
+    const pin = buildSeedShipmentPin(request, { lat: 30.26721, lng: -97.74309 }, at, 2);
+    expect(pin).toMatchObject({ firstName: null, locality: 'Austin, TX', country: 'US', displayLat: 30.27, sourceVersion: 2 });
+    expect(JSON.stringify(pin)).not.toMatch(/Jane|Gardener|Okra Lane|78701|jane@example.com/);
+  });
+
+  it.each([
     ['not handled', { ...handled, requestStatus: 'open' }],
     ['in-person', { ...handled, fulfillmentMethod: 'in_person' }],
   ])('returns null when %s', (_label, request) => {
