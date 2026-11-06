@@ -748,6 +748,67 @@ async function run() {
     console.error('Admin seed request scenario failed:', err.message);
   }
 
+  // --- Seed map pin scenario: consent + versioned projection end to end ---
+  // A mailed, opted-in request: done -> pin is public -> undo -> pin gone.
+  // Ends cancelled so the packets-sent count is unchanged.
+  console.log('\n=== Seed Map Pin Scenario ===');
+  try {
+    const pinKey = crypto.randomUUID();
+    const pinRes = await publicApi.request('/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pinKey },
+      body: JSON.stringify({
+        name: `Pintest [${runPrefix}] Grower`,
+        email: `seed-pin+${runPrefix}@okra-test.local`,
+        fulfillmentMethod: 'mail',
+        shippingAddress: { line1: '1 Integration Way', city: 'McKinney', region: 'TX', postalCode: '75069', country: 'US' },
+        showOnMap: true
+      })
+    });
+    reporter.assert('seed-map-pin', pinRes.status === 201, `opted-in mail POST /requests returns 201 (got ${pinRes.status})`, pinRes.json);
+    const pinRequestId = pinRes.json?.requestId;
+
+    if (pinRequestId) {
+      const publicPinId = `seeds-${crypto.createHash('sha256').update(String(pinRequestId)).digest('hex').slice(0, 16)}`;
+      const pinVisible = async () => {
+        const res = await publicApi.request('/okra/seed-shipments');
+        return Array.isArray(res.json?.data) ? res.json.data.find((p) => p.id === publicPinId) ?? null : null;
+      };
+      const transition = (body) => adminApi.request(`/requests/${pinRequestId}/statuses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const doneRes = await transition({ status: 'handled', map_location: { lat: 33.1972, lng: -96.6398 } });
+      reporter.assert('seed-map-pin', doneRes.status === 200 && doneRes.json?.mapPin?.locality === 'McKinney, TX',
+        `done returns mapPin locality McKinney, TX (got ${doneRes.status}, ${JSON.stringify(doneRes.json?.mapPin)})`, doneRes.json);
+
+      // Poll briefly in case anything in front of the API caches the response.
+      const shown = await poll({ fn: pinVisible, until: (pin) => !!pin, intervalMs: 2000, timeoutMs: 30000, label: 'seed pin visible' });
+      const pin = shown.result;
+      reporter.assert('seed-map-pin', pin?.first_name === 'Pintest',
+        `public pin shows only a first name (got ${pin?.first_name})`, pin);
+      reporter.assert('seed-map-pin', pin && !JSON.stringify(pin).includes('Integration Way') && !JSON.stringify(pin).includes('75069') && !JSON.stringify(pin).includes(pinRequestId),
+        'public pin carries no street, postal code, or internal id', pin);
+
+      const undoRes = await transition({ status: 'open' });
+      reporter.assert('seed-map-pin', undoRes.status === 200 && undoRes.json?.mapPinRemoved === true,
+        `undo hides the pin (got ${undoRes.status}, mapPinRemoved=${undoRes.json?.mapPinRemoved})`, undoRes.json);
+      await poll({ fn: pinVisible, until: (p) => p === null, intervalMs: 2000, timeoutMs: 30000, label: 'seed pin hidden after undo' });
+      reporter.pass('seed-map-pin', 'pin no longer public after undo');
+
+      const cleanup = await transition({ status: 'cancelled', review_notes: 'integration-cleanup' });
+      reporter.assert('seed-map-pin', cleanup.status === 200, `cleanup cancel returns 200 (got ${cleanup.status})`, cleanup.json);
+    }
+  } catch (err) {
+    if (err instanceof PollTimeoutError) {
+      reporter.fail('seed-map-pin', `Poll timeout: ${err.message}`, err.lastResult);
+    } else {
+      reporter.fail('seed-map-pin', `Seed map pin scenario error: ${err.message}`);
+    }
+  }
+
   // --- Admin listing checks (Task 3.6) ---
   console.log('\n=== Admin Listing Checks ===');
   {

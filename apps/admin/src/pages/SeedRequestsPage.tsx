@@ -11,7 +11,7 @@ import {
 } from '../api';
 import type { AdminSession } from '../auth/session';
 import { findSeedPinLocation } from '../services/seed-pin-geocoder';
-import { describeCurrentPin, describePlannedPin, firstName } from './seed-request-display';
+import { describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
 
 export interface SeedRequestsPageProps {
   session: AdminSession;
@@ -28,7 +28,7 @@ const STATUS_TABS: { id: SeedRequestStatus; label: string }[] = [
 const TAB_COPY: Record<SeedRequestStatus, { title: string; body: string; empty: string }> = {
   open: {
     title: 'Open seed requests',
-    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map with first name and city only.',
+    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests whose senders opted in get a pin on the public okra map with first name and city only.',
     empty: 'No open seed requests right now.',
   },
   handled: {
@@ -156,8 +156,8 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const handleMarkDone = (request: SeedRequestQueueItem) =>
     runAction(request, async () => {
       // City-level only — see seed-pin-geocoder for what is (and isn't) sent.
-      const mapLocation =
-        request.fulfillmentMethod === 'mail' ? await findSeedPinLocation(request) : null;
+      // Only look up a location for requesters who opted in to the map.
+      const mapLocation = wantsMapPin(request) ? await findSeedPinLocation(request) : null;
       const result = await markSeedRequestHandled(session.accessToken, request.id, {
         status: 'handled',
         ...(mapLocation ? { map_location: mapLocation } : {}),
@@ -170,7 +170,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
           message: `Marked done. A "seeds sent" pin for ${who}${where} will show on the okra map shortly.`,
         };
       }
-      if (request.fulfillmentMethod === 'mail') {
+      if (wantsMapPin(request)) {
         return { tone: 'info', message: `Marked done, but we couldn't place a map pin for ${who}'s city.` };
       }
       return { tone: 'success', message: 'Marked done.' };

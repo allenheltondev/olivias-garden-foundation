@@ -67,8 +67,11 @@ describe('parseMapLocation', () => {
 });
 
 describe('buildSeedShipmentPin', () => {
+  const handled = { ...mailRequest, requestStatus: 'handled', showOnMap: true };
+  const at = '2026-11-01T00:00:00.000Z';
+
   it('never carries last name, street, postal code, or email', () => {
-    const pin = buildSeedShipmentPin(mailRequest, { lat: 30.26721, lng: -97.74309 }, '2026-11-01T00:00:00.000Z');
+    const pin = buildSeedShipmentPin(handled, { lat: 30.26721, lng: -97.74309 }, at, 3);
     expect(pin).toEqual({
       requestId: 'req-1',
       firstName: 'Jane',
@@ -76,7 +79,8 @@ describe('buildSeedShipmentPin', () => {
       country: 'US',
       displayLat: 30.27,
       displayLng: -97.74,
-      sentAt: '2026-11-01T00:00:00.000Z',
+      sentAt: at,
+      sourceVersion: 3,
     });
     const serialized = JSON.stringify(pin);
     for (const secret of ['Gardener', 'Okra Lane', 'Apt 4', '78701', 'jane@example.com']) {
@@ -84,9 +88,20 @@ describe('buildSeedShipmentPin', () => {
     }
   });
 
-  it('skips in-person exchanges and requests without a location', () => {
-    expect(buildSeedShipmentPin({ ...mailRequest, fulfillmentMethod: 'in_person' }, { lat: 1, lng: 1 }, 'x')).toBeNull();
-    expect(buildSeedShipmentPin(mailRequest, null, 'x')).toBeNull();
-    expect(buildSeedShipmentPin(null, { lat: 1, lng: 1 }, 'x')).toBeNull();
+  it.each([
+    ['no explicit opt-in', { ...handled, showOnMap: undefined }],
+    ['opted out', { ...handled, showOnMap: false }],
+    ['truthy but not true', { ...handled, showOnMap: 'yes' }],
+    ['not handled', { ...handled, requestStatus: 'open' }],
+    ['in-person', { ...handled, fulfillmentMethod: 'in_person' }],
+  ])('returns null when %s', (_label, request) => {
+    expect(buildSeedShipmentPin(request, { lat: 1, lng: 1 }, at, 1)).toBeNull();
+  });
+
+  it('returns null without a location, request, or valid version', () => {
+    expect(buildSeedShipmentPin(handled, null, at, 1)).toBeNull();
+    expect(buildSeedShipmentPin(null, { lat: 1, lng: 1 }, at, 1)).toBeNull();
+    expect(buildSeedShipmentPin(handled, { lat: 1, lng: 1 }, at, 0)).toBeNull();
+    expect(buildSeedShipmentPin(handled, { lat: 1, lng: 1 }, at, undefined)).toBeNull();
   });
 });

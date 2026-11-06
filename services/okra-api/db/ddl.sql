@@ -226,17 +226,22 @@ create trigger trg_submission_edits_updated_at
 before update on submission_edits
 for each row execute function touch_updated_at();
 
--- public-safe pins for mailed seed packets (see migration 009)
+-- public-safe pins for mailed seed packets (see migrations 009, 010)
 create table if not exists seed_shipment_pins (
   request_id text primary key,
   first_name text,
   locality text,
   country text,
-  display_lat double precision not null check (display_lat between -90 and 90),
-  display_lng double precision not null check (display_lng between -180 and 180),
+  display_lat double precision check (display_lat between -90 and 90),
+  display_lng double precision check (display_lng between -180 and 180),
   sent_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  source_version bigint not null default 0,
+  visible boolean not null default true,
+  constraint seed_shipment_pins_visible_has_coords
+    check (not visible or (display_lat is not null and display_lng is not null))
 );
 
-create index if not exists idx_seed_shipment_pins_sent_at
-  on seed_shipment_pins(sent_at desc);
+create index if not exists idx_seed_shipment_pins_visible_sent_at
+  on seed_shipment_pins(sent_at desc)
+  where visible;

@@ -99,6 +99,8 @@ export interface SeedRequestQueueItem {
   handledAt?: string | null;
   cancelledAt?: string | null;
   reviewNotes?: string | null;
+  /** The requester explicitly opted in to a public "seeds sent" map pin. */
+  showOnMap?: boolean;
   /**
    * Public "seeds sent" pin: an object when one is on the map, null when
    * there is none, undefined when the server couldn't check.

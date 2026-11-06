@@ -7,7 +7,7 @@ import {
   cancelSeedRequest,
   listSeedRequests,
   markSeedRequestHandled,
-  removeSeedShipmentPin,
+  removeSeedRequestMapPin,
   reopenSeedRequest,
 } from '../services/seed-request-admin.mjs';
 
@@ -118,10 +118,20 @@ export function registerSeedRequestAdminRoutes(app, { validateLimit, validatePag
   // request itself. Idempotent: removing a pin that isn't there is a 200.
   app.delete('/requests/:id/map-pin', async (ctx) => {
     const requestId = ctx.params.id;
-    const removed = await removeSeedShipmentPin(requestId, 'DELETE /admin/requests/:id/map-pin');
-    if (removed === null) {
-      return errorResponse(500, 'INTERNAL_ERROR', 'Could not remove the map pin — try again');
+    try {
+      const removed = await removeSeedRequestMapPin(requestId);
+      if (removed === null) {
+        return errorResponse(500, 'INTERNAL_ERROR', 'Could not remove the map pin — try again');
+      }
+      return { id: requestId, mapPinRemoved: removed };
+    } catch (err) {
+      if (err instanceof SeedRequestTransitionError) {
+        return err.code === 'NOT_FOUND'
+          ? errorResponse(404, 'NOT_FOUND', err.message)
+          : errorResponse(409, 'INVALID_STATE', err.message);
+      }
+      logError(err, 'DELETE /admin/requests/:id/map-pin', { requestId });
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
     }
-    return { id: requestId, mapPinRemoved: removed };
   });
 }

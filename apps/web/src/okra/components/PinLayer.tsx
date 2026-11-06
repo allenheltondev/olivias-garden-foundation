@@ -152,6 +152,11 @@ export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const markersRef = useRef<Map<string, { marker: L.Marker; pin: PinData }>>(new Map());
+  // The map's own maxZoom before we ever capped it (usually undefined, which
+  // lets Leaflet fall back to the tile layer's limit). Pins can arrive in
+  // stages — gardens first, then seed pins — so the cap must be lifted again
+  // when the count crosses into clustering territory.
+  const baseMaxZoomRef = useRef<number | undefined | null>(null);
 
   // Build / rebuild markers when pins change
   useEffect(() => {
@@ -162,9 +167,18 @@ export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
     }
     markersRef.current.clear();
 
-    if (pins.length === 0) return;
-
     const config = getClusteringConfig(pins.length);
+
+    if (baseMaxZoomRef.current === null) {
+      baseMaxZoomRef.current = map.options.maxZoom;
+    }
+    const targetMaxZoom = config.maxZoom ?? baseMaxZoomRef.current;
+    if (map.options.maxZoom !== targetMaxZoom) {
+      // Leaflet accepts undefined here to mean "use the layers' max zoom".
+      map.setMaxZoom(targetMaxZoom as number);
+    }
+
+    if (pins.length === 0) return;
 
     const markers: L.Marker[] = [];
     for (const pin of pins) {
@@ -192,14 +206,10 @@ export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
       map.addLayer(group);
       clusterGroupRef.current = group;
     } else {
-      // No clustering — add markers directly, enforce maxZoom if set
+      // No clustering — add markers directly (maxZoom handled above)
       const group = L.layerGroup(markers);
       map.addLayer(group);
       clusterGroupRef.current = group as unknown as L.MarkerClusterGroup;
-
-      if (config.maxZoom !== null) {
-        map.setMaxZoom(config.maxZoom);
-      }
     }
 
     const currentMarkers = markersRef.current;

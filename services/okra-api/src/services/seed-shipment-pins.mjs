@@ -57,12 +57,19 @@ export function parseMapLocation(raw) {
 }
 
 /**
- * Build the public-safe pin row for a handled seed request, or null when the
- * request should not produce a pin (in-person exchange, or no location).
+ * Build the public-safe pin row for a seed request at a given status
+ * version, or null when the request must not produce a pin:
+ *   - it isn't handled (the caller passes the state it just committed)
+ *   - it's an in-person exchange
+ *   - the requester didn't explicitly opt in (`showOnMap === true`)
+ *   - no location was found
  */
-export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt) {
+export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt, sourceVersion) {
   if (!seedRequest || !mapLocation) return null;
+  if (seedRequest.requestStatus !== 'handled') return null;
   if (seedRequest.fulfillmentMethod !== 'mail') return null;
+  if (seedRequest.showOnMap !== true) return null;
+  if (!Number.isInteger(sourceVersion) || sourceVersion < 1) return null;
 
   return {
     requestId: String(seedRequest.requestId),
@@ -71,28 +78,74 @@ export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt) {
     country: seedRequest.shippingAddress?.country ?? null,
     displayLat: roundCoordinate(mapLocation.lat),
     displayLng: roundCoordinate(mapLocation.lng),
-    sentAt
+    sentAt,
+    sourceVersion
   };
 }
 
 /**
- * Idempotent: replaying the same handled transition keeps the first pin.
+ * Show a pin, but only if no newer version (including a removal) has
+ * already been written. Returns true when this write took effect.
  */
-export async function insertSeedShipmentPin(client, pin) {
+export async function upsertSeedShipmentPin(client, pin) {
   const result = await client.query(
     `INSERT INTO seed_shipment_pins
-       (request_id, first_name, locality, country, display_lat, display_lng, sent_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (request_id) DO NOTHING`,
-    [pin.requestId, pin.firstName, pin.locality, pin.country, pin.displayLat, pin.displayLng, pin.sentAt]
+       (request_id, first_name, locality, country, display_lat, display_lng, sent_at, source_version, visible)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+     ON CONFLICT (request_id) DO UPDATE SET
+       first_name = EXCLUDED.first_name,
+       locality = EXCLUDED.locality,
+       country = EXCLUDED.country,
+       display_lat = EXCLUDED.display_lat,
+       display_lng = EXCLUDED.display_lng,
+       sent_at = EXCLUDED.sent_at,
+       source_version = EXCLUDED.source_version,
+       visible = true
+     WHERE seed_shipment_pins.source_version < EXCLUDED.source_version`,
+    [pin.requestId, pin.firstName, pin.locality, pin.country, pin.displayLat, pin.displayLng, pin.sentAt, pin.sourceVersion]
   );
   return (result?.rowCount ?? 0) > 0;
+}
+
+/**
+ * Hide a request's pin as of `sourceVersion`. Writes a tombstone (public
+ * fields cleared) so a stale, lower-versioned insert arriving later is
+ * rejected. Ties go to the removal: a pin and a removal can only share a
+ * version for rows written before versioning existed.
+ *
+ * Returns true if a visible pin was hidden, false otherwise.
+ */
+export async function hideSeedShipmentPin(client, requestId, sourceVersion) {
+  const result = await client.query(
+    // `prev` reads the statement's snapshot, i.e. the row before this write.
+    // (FOR UPDATE here would make Postgres skip the row this same statement
+    // updates and return NULL.) Ordering is enforced by the version check
+    // below, not by this read; it only feeds the returned flag.
+    `WITH prev AS MATERIALIZED (
+       SELECT visible FROM seed_shipment_pins WHERE request_id = $1
+     )
+     INSERT INTO seed_shipment_pins (request_id, source_version, visible)
+     VALUES ($1, $2, false)
+     ON CONFLICT (request_id) DO UPDATE SET
+       first_name = NULL,
+       locality = NULL,
+       country = NULL,
+       display_lat = NULL,
+       display_lng = NULL,
+       source_version = EXCLUDED.source_version,
+       visible = false
+     WHERE seed_shipment_pins.source_version <= EXCLUDED.source_version
+     RETURNING (SELECT visible FROM prev) AS was_visible`,
+    [String(requestId), sourceVersion]
+  );
+  return result?.rows?.[0]?.was_visible === true;
 }
 
 export async function listSeedShipmentPins(client) {
   const res = await client.query(
     `SELECT request_id, first_name, locality, country, display_lat, display_lng, sent_at
        FROM seed_shipment_pins
+      WHERE visible
       ORDER BY sent_at DESC, request_id DESC`
   );
 
@@ -114,23 +167,15 @@ export async function listSeedShipmentPins(client) {
   });
 }
 
-/** Idempotent: returns true if a pin was removed, false if there was none. */
-export async function deleteSeedShipmentPin(client, requestId) {
-  const result = await client.query(
-    'DELETE FROM seed_shipment_pins WHERE request_id = $1',
-    [String(requestId)]
-  );
-  return (result?.rowCount ?? 0) > 0;
-}
-
-/** Admin-only lookup: request_id → { locality, country } for the given ids. */
+/** Admin-only lookup: request_id → { locality, country } for visible pins. */
 export async function getSeedShipmentPinsByRequestId(client, requestIds) {
   const map = new Map();
   if (!requestIds || requestIds.length === 0) return map;
   const res = await client.query(
     `SELECT request_id, locality, country
        FROM seed_shipment_pins
-      WHERE request_id = ANY($1)`,
+      WHERE request_id = ANY($1)
+        AND visible`,
     [requestIds.map(String)]
   );
   for (const row of res.rows) {

@@ -4,7 +4,8 @@ import type { SeedRequestQueueItem } from '../api';
  * Finds an approximate, city-level location for a mailed seed request so the
  * public okra map can show a "seeds sent" pin.
  *
- * Privacy: only city, region, postal code, and country are ever sent to the
+ * Privacy: nothing is looked up unless the requester opted in to the map,
+ * and then only city, region, postal code, and country are sent to the
  * geocoder. Street lines, names, and emails never leave the admin app.
  */
 
@@ -25,6 +26,7 @@ function clean(value: string | undefined): string | null {
 /** Ordered structured queries, most to least specific — all city-level or coarser. */
 export function buildSeedPinQueries(request: SeedRequestQueueItem): URLSearchParams[] {
   if (request.fulfillmentMethod !== 'mail' || !request.shippingAddress) return [];
+  if (request.showOnMap !== true) return [];
 
   const address = request.shippingAddress;
   const city = clean(address.city);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SeedRequestQueueItem } from '../api';
-import { describeCurrentPin, describePlannedPin, firstName } from './seed-request-display';
+import { describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
 
 function makeRequest(overrides: Partial<SeedRequestQueueItem> = {}): SeedRequestQueueItem {
   return {
@@ -13,6 +13,7 @@ function makeRequest(overrides: Partial<SeedRequestQueueItem> = {}): SeedRequest
     message: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     requestStatus: 'handled',
+    showOnMap: true,
     ...overrides,
   };
 }
@@ -33,6 +34,12 @@ describe('describePlannedPin', () => {
     expect(text).not.toContain('Gardener');
   });
 
+  it('says no pin when the requester did not opt in', () => {
+    expect(describePlannedPin(makeRequest({ requestStatus: 'open', showOnMap: false }))).toBe(
+      'They didn\u2019t opt in, so no map pin.',
+    );
+  });
+
   it('explains in-person requests get no pin', () => {
     expect(describePlannedPin(makeRequest({ fulfillmentMethod: 'in_person', shippingAddress: null }))).toBe(
       'No map pin for in-person exchanges.',
@@ -47,5 +54,19 @@ describe('describeCurrentPin', () => {
     );
     expect(describeCurrentPin(makeRequest({ mapPin: null }))).toBe('Not on the map.');
     expect(describeCurrentPin(makeRequest({ mapPin: undefined }))).toBe('Couldn’t check the map pin right now.');
+  });
+});
+
+describe('wantsMapPin', () => {
+  it('requires mail, an address, and an explicit opt-in', () => {
+    expect(wantsMapPin(makeRequest())).toBe(true);
+    expect(wantsMapPin(makeRequest({ showOnMap: false }))).toBe(false);
+    expect(wantsMapPin(makeRequest({ showOnMap: undefined }))).toBe(false);
+    expect(wantsMapPin(makeRequest({ fulfillmentMethod: 'in_person' }))).toBe(false);
+    expect(wantsMapPin(makeRequest({ shippingAddress: null }))).toBe(false);
+  });
+
+  it('describes a handled, not-opted-in request', () => {
+    expect(describeCurrentPin(makeRequest({ showOnMap: false, mapPin: null }))).toBe('They didn\u2019t opt in, so no map pin.');
   });
 });

@@ -20,6 +20,7 @@ function makeRequest(overrides: Partial<SeedRequestQueueItem> = {}): SeedRequest
     message: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     requestStatus: 'open',
+    showOnMap: true,
     ...overrides,
   };
 }
@@ -39,6 +40,11 @@ describe('buildSeedPinQueries', () => {
     for (const secret of ['Okra Lane', 'Apt 4', 'Jane', 'Gardener', 'jane@example.com']) {
       expect(serialized).not.toContain(secret);
     }
+  });
+
+  it('looks nothing up for requesters who did not opt in', () => {
+    expect(buildSeedPinQueries(makeRequest({ showOnMap: false }))).toEqual([]);
+    expect(buildSeedPinQueries(makeRequest({ showOnMap: undefined }))).toEqual([]);
   });
 
   it('returns nothing for in-person requests or missing country', () => {

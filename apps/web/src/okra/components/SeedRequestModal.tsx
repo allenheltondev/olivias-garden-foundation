@@ -34,6 +34,8 @@ interface FormState {
   visitDate: string;
   visitNotes: string;
   message: string;
+  /** Opt-in to a public "seeds sent" map pin. Always starts unchecked. */
+  showOnMap: boolean;
 }
 
 function initialState(authSession: AuthSession | null | undefined): FormState {
@@ -50,6 +52,7 @@ function initialState(authSession: AuthSession | null | undefined): FormState {
     visitDate: '',
     visitNotes: '',
     message: '',
+    showOnMap: false,
   };
 }
 
@@ -170,6 +173,7 @@ export function SeedRequestModal({
         postalCode: form.postalCode.trim(),
         country: form.country,
       };
+      body.showOnMap = form.showOnMap;
     } else {
       const visit: Record<string, string> = {};
       if (form.visitDate.trim()) visit.approximateDate = form.visitDate.trim();
@@ -393,6 +397,19 @@ export function SeedRequestModal({
                         <option value="US">United States</option>
                         <option value="CA">Canada</option>
                       </select>
+                    </label>
+                    <label className="seed-request__consent seed-request__field--wide">
+                      <input
+                        type="checkbox"
+                        checked={form.showOnMap}
+                        onChange={(e) => update('showOnMap', e.target.checked)}
+                        disabled={isSubmitting}
+                      />
+                      <span>
+                        Add a &ldquo;seeds sent&rdquo; pin to the public okra map once we mail your seeds. It
+                        shows only your first name, your city, and the month we mailed them &mdash; never your
+                        street address or last name.
+                      </span>
                     </label>
                   </div>
                 ) : (

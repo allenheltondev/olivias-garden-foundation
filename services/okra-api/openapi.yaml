@@ -118,6 +118,15 @@ paths:
                 message:
                   type: string
                   maxLength: 2000
+                showOnMap:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Explicit opt-in to a public "seeds sent" map pin showing the
+                    requester's first name, city/region, and the month seeds
+                    were mailed. Only honoured for mail fulfillment. Omitted
+                    means no; requests made before this field existed are
+                    never published.
       responses:
         '201':
           description: Seed request recorded
@@ -505,7 +514,9 @@ paths:
       summary: Move a seed request between open, handled, and cancelled
       description: >-
         `handled` (from open) counts a packet sent and, for mailed requests
-        with map_location, adds a public map pin. `cancelled` (from open)
+        whose requester opted in (showOnMap) and with map_location, adds a
+        public map pin. Every transition is conditional on the request's
+        current status and statusVersion; a concurrent change returns 409. `cancelled` (from open)
         closes the request without counting a packet. `open` (from handled
         or cancelled) reopens it; undoing a handled request un-counts the
         packet and removes its map pin.
@@ -582,7 +593,9 @@ paths:
     delete:
       operationId: deleteSeedRequestMapPin
       summary: Remove a seed request's "seeds sent" pin from the public map
-      description: Leaves the request itself unchanged. Idempotent.
+      description: >-
+        Leaves the request's status unchanged but bumps its statusVersion so
+        the removal outranks any earlier pin write. Idempotent.
       tags:
         - admin
       parameters:
@@ -592,6 +605,18 @@ paths:
           schema:
             type: string
       responses:
+        '404':
+          description: Seed request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request changed concurrently; retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '200':
           description: Pin removed (or there was none)
           content:
@@ -944,6 +969,14 @@ components:
           type: string
           format: date-time
           nullable: true
+        showOnMap:
+          type: boolean
+          description: The requester opted in to a public map pin.
+        statusVersion:
+          type: integer
+          description: >-
+            Incremented on every admin change to the request. Pin writes on
+            the public map carry this version so the newest state wins.
         reviewNotes:
           type: string
           nullable: true

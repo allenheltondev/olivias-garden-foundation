@@ -18,13 +18,19 @@ test.describe('okra seed request flow (staging)', () => {
     const submitButton = dialog.getByRole('button', { name: 'Send my request' });
     await expect(submitButton).toBeDisabled();
 
-    await dialog.getByLabel('Name').fill(`Playwright Seed Request ${runId}`);
-    await dialog.getByLabel('Email').fill(`playwright-seeds-${runId}@example.com`);
-    await dialog.getByLabel('Street address').fill('123 Garden Row');
-    await dialog.getByLabel('City').fill('McKinney');
-    await dialog.getByLabel('State / province').fill('TX');
-    await dialog.getByLabel('Postal code').fill('75069');
+    await dialog.getByLabel('Name', { exact: true }).fill(`Playwright Seed Request ${runId}`);
+    await dialog.getByLabel('Email', { exact: true }).fill(`playwright-seeds-${runId}@example.com`);
+    await dialog.getByLabel('Street address', { exact: true }).fill('123 Garden Row');
+    await dialog.getByLabel('City', { exact: true }).fill('McKinney');
+    await dialog.getByLabel('State / province', { exact: true }).fill('TX');
+    await dialog.getByLabel('Postal code', { exact: true }).fill('75069');
     await dialog.getByLabel('Country').selectOption('US');
+
+    // The public map pin is opt-in: it must start unchecked and say exactly
+    // what would be shown. This run leaves it off so staging gets no pin.
+    const mapConsent = dialog.getByRole('checkbox', { name: /seeds sent.*pin to the public okra map/i });
+    await expect(mapConsent).not.toBeChecked();
+    await expect(dialog).toContainText('only your first name, your city, and the month');
     await dialog
       .getByLabel('Message')
       .fill(`Please send seeds for the staging Playwright run ${runId}.`);
