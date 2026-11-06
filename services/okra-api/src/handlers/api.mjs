@@ -40,6 +40,7 @@ import {
   publishSubmissionEditSubmittedEvent
 } from '../services/submission-notifications.mjs';
 import { getUserActivity } from '../services/user-activity.mjs';
+import { listSeedShipmentPins } from '../services/seed-shipment-pins.mjs';
 
 const seedRequestIdempotencyPersistence = new DynamoDBPersistenceLayer({
   tableName: process.env.SEED_REQUESTS_TABLE_NAME ?? '',
@@ -564,6 +565,37 @@ app.get('/stats', async () => {
       message: err instanceof Error ? err.message : String(err),
       errorName: err instanceof Error ? err.name : 'UnknownError',
       endpoint: 'GET /okra/stats'
+    }));
+    return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+  } finally {
+    await client.end();
+  }
+});
+
+// Public-safe pins for places we've mailed seeds to. Only first names and
+// city/region are stored for these, and coordinates are fuzzed to city radius.
+app.get('/seed-shipments', async () => {
+  const client = await createDbClient();
+  await client.connect();
+  try {
+    const data = await listSeedShipmentPins(client);
+    return new Response(
+      JSON.stringify({ total_count: data.length, data }),
+      {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'cache-control': 'public, max-age=300, stale-while-revalidate=60',
+          ...corsHeaders
+        }
+      }
+    );
+  } catch (err) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: err instanceof Error ? err.message : String(err),
+      errorName: err instanceof Error ? err.name : 'UnknownError',
+      endpoint: 'GET /okra/seed-shipments'
     }));
     return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
   } finally {

@@ -1,19 +1,15 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { createDbClient } from '../../scripts/db-client.mjs';
 import { isUuid } from '../services/photos.mjs';
 import { encodeCursor, decodeCursor, errorResponse } from '../services/pagination.mjs';
 import { resolveCountry } from '../services/reverse-geocoder.mjs';
 import { getAdminStats } from '../services/admin-stats.mjs';
+import { registerSeedRequestAdminRoutes } from './seed-request-admin-routes.mjs';
 
 const s3 = new S3Client({});
 const eventBridge = new EventBridgeClient({});
-const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
-  marshallOptions: { removeUndefinedValues: true },
-});
 
 export async function presignPhotoUrl(bucket, key, expiresIn = 900) {
   return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn });
@@ -22,103 +18,6 @@ export async function presignPhotoUrl(bucket, key, expiresIn = 900) {
 const VALID_STATUSES = ['pending_review', 'approved', 'denied'];
 const VALID_ACTIONS = ['approved', 'denied'];
 const VALID_DENIAL_REASONS = ['spam', 'invalid_location', 'inappropriate', 'other'];
-const VALID_REQUEST_ACTIONS = ['handled'];
-const VALID_REQUEST_STATUSES = ['open'];
-const SEED_PACKETS_SENT_COUNTER_KEY = 'stats#seed-packets-sent';
-
-function getSeedRequestsTableName() {
-  const tableName = process.env.SEED_REQUESTS_TABLE_NAME;
-  if (!tableName) {
-    throw new Error('SEED_REQUESTS_TABLE_NAME is not configured');
-  }
-  return tableName;
-}
-
-async function listOpenSeedRequests() {
-  const result = await dynamo.send(new ScanCommand({
-    TableName: getSeedRequestsTableName(),
-    FilterExpression: 'attribute_exists(createdAt) AND (attribute_not_exists(#status) OR #status = :open)',
-    ExpressionAttributeNames: {
-      '#status': 'requestStatus',
-    },
-    ExpressionAttributeValues: {
-      ':open': 'open',
-    },
-  }));
-
-  return (result.Items ?? [])
-    .filter((item) => {
-      const requestId = String(item.requestId ?? '');
-      return !requestId.startsWith('stats#') && !requestId.startsWith('ratelimit#');
-    })
-    .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
-    .map((item) => ({
-      id: item.requestId,
-      name: item.name ?? null,
-      email: item.email ?? null,
-      fulfillmentMethod: item.fulfillmentMethod ?? null,
-      shippingAddress: item.shippingAddress ?? null,
-      visitDetails: item.visitDetails ?? null,
-      message: item.message ?? null,
-      createdAt: item.createdAt ?? null,
-      requestStatus: item.requestStatus ?? 'open',
-    }));
-}
-
-async function markSeedRequestHandled(requestId, cognitoSub, reviewNotes) {
-  const handledAt = new Date().toISOString();
-
-  await dynamo.send(new TransactWriteCommand({
-    TransactItems: [
-      {
-        Update: {
-          TableName: getSeedRequestsTableName(),
-          Key: { requestId },
-          UpdateExpression: 'SET #status = :handled, #handledAt = :handledAt, #handledBy = :handledBy, #notes = :notes',
-          ConditionExpression: 'attribute_exists(requestId) AND attribute_exists(createdAt) AND (attribute_not_exists(#status) OR #status = :open)',
-          ExpressionAttributeNames: {
-            '#status': 'requestStatus',
-            '#handledAt': 'handledAt',
-            '#handledBy': 'handledByCognitoSub',
-            '#notes': 'reviewNotes',
-          },
-          ExpressionAttributeValues: {
-            ':handled': 'handled',
-            ':handledAt': handledAt,
-            ':handledBy': cognitoSub,
-            ':notes': reviewNotes ?? null,
-            ':open': 'open',
-          },
-        },
-      },
-      {
-        Update: {
-          TableName: getSeedRequestsTableName(),
-          Key: { requestId: SEED_PACKETS_SENT_COUNTER_KEY },
-          UpdateExpression: 'ADD #count :one SET #entityType = if_not_exists(#entityType, :entityType), #updatedAt = :updatedAt',
-          ExpressionAttributeNames: {
-            '#count': 'count',
-            '#entityType': 'entityType',
-            '#updatedAt': 'updatedAt',
-          },
-          ExpressionAttributeValues: {
-            ':one': 1,
-            ':entityType': 'seed_packet_stats',
-            ':updatedAt': handledAt,
-          },
-        },
-      },
-    ],
-  }));
-
-  return {
-    requestId,
-    requestStatus: 'handled',
-    handledAt,
-    handledByCognitoSub: cognitoSub,
-    reviewNotes: reviewNotes ?? null,
-  };
-}
 
 /**
  * Validate and parse the `limit` query parameter (regex-based).
@@ -187,85 +86,7 @@ async function resolveAdminUserId(client, authorizer) {
 }
 
 export function registerAdminRoutes(app) {
-  app.get('/requests', async (ctx) => {
-    const params = ctx.event?.queryStringParameters || {};
-    const status = params.status;
-
-    if (!status || !VALID_REQUEST_STATUSES.includes(status)) {
-      return errorResponse(
-        400,
-        'INVALID_STATUS',
-        `status query parameter is required. Must be one of: ${VALID_REQUEST_STATUSES.join(', ')}`
-      );
-    }
-
-    const limitResult = validateLimit(params.limit);
-    if (!limitResult.valid) return limitResult.response;
-    const limit = limitResult.value;
-
-    const pageResult = validatePage(params.page);
-    if (!pageResult.valid) return pageResult.response;
-    const page = pageResult.value;
-
-    try {
-      const all = await listOpenSeedRequests();
-      const total = all.length;
-      const start = (page - 1) * limit;
-      const data = all.slice(start, start + limit);
-      return { data, total, page, limit };
-    } catch (err) {
-      console.error(JSON.stringify({
-        level: 'error',
-        message: err instanceof Error ? err.message : String(err),
-        errorName: err instanceof Error ? err.name : 'UnknownError',
-        endpoint: 'GET /admin/requests',
-      }));
-      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
-    }
-  });
-
-  app.post('/requests/:id/statuses', async (ctx) => {
-    const requestId = ctx.params.id;
-    const body = JSON.parse(ctx.event.body || '{}');
-    const { status, review_notes } = body;
-
-    if (!status || !VALID_REQUEST_ACTIONS.includes(status)) {
-      return errorResponse(400, 'INVALID_ACTION', 'status must be one of: handled');
-    }
-
-    const cognitoSub = ctx.event.requestContext?.authorizer?.sub;
-    if (!cognitoSub) {
-      return errorResponse(403, 'FORBIDDEN', 'Admin user not found');
-    }
-
-    try {
-      const updated = await markSeedRequestHandled(requestId, cognitoSub, review_notes);
-      if (!updated) {
-        return errorResponse(404, 'NOT_FOUND', 'Seed request not found');
-      }
-
-      return {
-        id: updated.requestId,
-        requestStatus: updated.requestStatus,
-        handledAt: updated.handledAt,
-        handledByCognitoSub: updated.handledByCognitoSub,
-        reviewNotes: updated.reviewNotes ?? null,
-      };
-    } catch (err) {
-      if (err?.name === 'ConditionalCheckFailedException' || err?.name === 'TransactionCanceledException') {
-        return errorResponse(409, 'INVALID_STATE', 'Seed request is already handled or missing');
-      }
-
-      console.error(JSON.stringify({
-        level: 'error',
-        message: err instanceof Error ? err.message : String(err),
-        errorName: err instanceof Error ? err.name : 'UnknownError',
-        endpoint: 'POST /admin/requests/:id/statuses',
-        requestId,
-      }));
-      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
-    }
-  });
+  registerSeedRequestAdminRoutes(app, { validateLimit, validatePage });
 
   // ─── GET /submissions ───────────────────────────────────────────
   // Canonical REST listing. Omit `status` to return every submission. Pass

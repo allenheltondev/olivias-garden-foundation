@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { PinData } from './PinLayer';
+import { isSeedPin, type PinData } from './PinLayer';
+import { SeedPacketArt, SeedPinDetails, getSeedPinTitle } from './SeedPinDetails';
 import { getContributorDisplayName, getPhotoAltText } from './PinPopup';
 import './BottomSheet.css';
 
@@ -161,6 +162,8 @@ export function BottomSheet({ pin, onClose }: BottomSheetProps) {
   const displayName = getContributorDisplayName(pin.contributor_name);
   const hasStory = pin.story_text != null && pin.story_text.trim() !== '';
   const hasPhotos = pin.photo_urls.length > 0;
+  const seedPin = isSeedPin(pin);
+  const dialogLabel = seedPin ? getSeedPinTitle(pin) : `Garden by ${displayName}`;
 
   // Animate in on mount
   useEffect(() => {
@@ -230,7 +233,7 @@ export function BottomSheet({ pin, onClose }: BottomSheetProps) {
         className={sheetClasses}
         style={sheetStyle}
         role="dialog"
-        aria-label={`Garden by ${displayName}`}
+        aria-label={dialogLabel}
       >
         <div
           className="bottom-sheet-handle"
@@ -243,35 +246,44 @@ export function BottomSheet({ pin, onClose }: BottomSheetProps) {
         </div>
 
         <div className="bottom-sheet-content">
-          {hasPhotos ? (
-            <BottomSheetGallery photos={pin.photo_urls} contributorName={pin.contributor_name} />
+          {seedPin ? (
+            <>
+              <SeedPacketArt classPrefix="bottom-sheet" />
+              <SeedPinDetails pin={pin} classPrefix="bottom-sheet" />
+            </>
           ) : (
-            <PhotoPlaceholder />
+            <>
+              {hasPhotos ? (
+                <BottomSheetGallery photos={pin.photo_urls} contributorName={pin.contributor_name} />
+              ) : (
+                <PhotoPlaceholder />
+              )}
+
+              <div className="bottom-sheet-body">
+                <p className="bottom-sheet-contributor">{displayName}</p>
+                {pin.edited ? <p className="bottom-sheet-edited">edited</p> : null}
+
+                {hasStory && (
+                  <>
+                    <p
+                      className={`bottom-sheet-story ${
+                        expanded ? 'bottom-sheet-story--expanded' : 'bottom-sheet-story--truncated'
+                      }`}
+                    >
+                      {pin.story_text}
+                    </p>
+                    <button
+                      className="bottom-sheet-read-more"
+                      onClick={() => setExpanded(!expanded)}
+                      aria-expanded={expanded}
+                    >
+                      {expanded ? 'Show less' : 'Read more'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
           )}
-
-          <div className="bottom-sheet-body">
-            <p className="bottom-sheet-contributor">{displayName}</p>
-            {pin.edited ? <p className="bottom-sheet-edited">edited</p> : null}
-
-            {hasStory && (
-              <>
-                <p
-                  className={`bottom-sheet-story ${
-                    expanded ? 'bottom-sheet-story--expanded' : 'bottom-sheet-story--truncated'
-                  }`}
-                >
-                  {pin.story_text}
-                </p>
-                <button
-                  className="bottom-sheet-read-more"
-                  onClick={() => setExpanded(!expanded)}
-                  aria-expanded={expanded}
-                >
-                  {expanded ? 'Show less' : 'Read more'}
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </>

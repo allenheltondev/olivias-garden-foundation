@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import L from 'leaflet';
 import { MapShell } from './MapShell';
 import { type StatsData } from './StatsBar';
@@ -10,6 +10,32 @@ import './MapView.css';
 
 export type { PinData } from './PinLayer';
 export type { StatsData } from './StatsBar';
+
+interface SeedShipmentApiPin {
+  id: string;
+  display_lat: number;
+  display_lng: number;
+  first_name: string | null;
+  locality: string | null;
+  country: string | null;
+  sent_month: string | null;
+}
+
+/** Adapt a public seed-shipment pin to the shared map pin shape. */
+export function toSeedPin(row: SeedShipmentApiPin): PinData {
+  return {
+    id: row.id,
+    kind: 'seeds',
+    display_lat: row.display_lat,
+    display_lng: row.display_lng,
+    contributor_name: row.first_name,
+    story_text: null,
+    country: row.country,
+    photo_urls: [],
+    locality: row.locality,
+    sent_month: row.sent_month,
+  };
+}
 
 export function computeViewportBounds(pins: PinData[]): L.LatLngBounds | null {
   if (pins.length < 3) return null;
@@ -63,9 +89,15 @@ export function MapView({
   onOpenSubmission,
 }: MapViewProps) {
   const [pins, setPins] = useState<PinData[] | null>(null);
+  const [seedPins, setSeedPins] = useState<PinData[]>([]);
   const [pinError, setPinError] = useState<Error | null>(null);
   const [pinsLoading, setPinsLoading] = useState(true);
   const [selectedPin, setSelectedPin] = useState<PinData | null>(null);
+
+  const allPins = useMemo(
+    () => (pins === null ? null : [...pins, ...seedPins]),
+    [pins, seedPins],
+  );
 
   const mapRef = useRef<L.Map | null>(null);
   const isMobile = useIsMobile();
@@ -91,6 +123,16 @@ export function MapView({
         setPinsLoading(false);
       });
 
+    // Seed pins are a nice-to-have layer; if they fail the garden map still works.
+    const seedPromise = fetch(okraMapUrl('/seed-shipments'))
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Failed to load seed pins: ${res.status}`);
+        const body = await res.json();
+        return Array.isArray(body?.data) ? (body.data as SeedShipmentApiPin[]).map(toSeedPin) : [];
+      })
+      .then((data) => setSeedPins(data))
+      .catch(() => setSeedPins([]));
+
     const statsPromise = fetch(okraMapUrl('/stats'))
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to load stats: ${res.status}`);
@@ -103,7 +145,7 @@ export function MapView({
         /* stats error is non-fatal */
       });
 
-    await Promise.allSettled([pinPromise, statsPromise]);
+    await Promise.allSettled([pinPromise, seedPromise, statsPromise]);
   }, [onPinsLoaded, onStatsLoaded]);
 
   useEffect(() => {
@@ -116,25 +158,25 @@ export function MapView({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        if (!pins || pins.length === 0) {
+        if (!allPins || allPins.length === 0) {
           map.setView([position.coords.latitude, position.coords.longitude], 6, { animate: true });
         }
       },
       () => {},
       { timeout: 5000, maximumAge: 300000 },
     );
-  }, [pins]);
+  }, [allPins]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !pins || pins.length === 0) return;
+    if (!map || !allPins || allPins.length === 0) return;
 
-    const bounds = computeViewportBounds(pins);
+    const bounds = computeViewportBounds(allPins);
     if (bounds) {
       map.flyToBounds(bounds, { duration: 0.4, padding: [30, 30] });
       window.requestAnimationFrame(() => map.invalidateSize());
     }
-  }, [pins]);
+  }, [allPins]);
 
   useEffect(() => {
     if (!externalSelectedPin) return;
@@ -161,9 +203,10 @@ export function MapView({
   }, [onPinSelected]);
 
   const showError = pinError !== null && !pinsLoading;
-  const showEmpty = !pinsLoading && !pinError && pins !== null && pins.length === 0;
+  const showEmpty = !pinsLoading && !pinError && allPins !== null && allPins.length === 0;
   const showLoading = pinsLoading && !pinError;
-  const showPins = !pinsLoading && !pinError && pins !== null && pins.length > 0;
+  const showPins = !pinsLoading && !pinError && allPins !== null && allPins.length > 0;
+  const showLegend = showPins && seedPins.length > 0;
 
   return (
     <div className="map-view">
@@ -174,9 +217,22 @@ export function MapView({
       <div className="map-view__container">
         <MapShell ref={mapRef}>
           {showPins ? (
-            <PinLayer pins={pins ?? []} activePinId={selectedPin?.id ?? null} onPinClick={handlePinClick} />
+            <PinLayer pins={allPins ?? []} activePinId={selectedPin?.id ?? null} onPinClick={handlePinClick} />
           ) : null}
         </MapShell>
+
+        {showLegend ? (
+          <ul className="map-view__legend" aria-label="Map key">
+            <li>
+              <span className="map-view__legend-swatch map-view__legend-swatch--garden" aria-hidden="true" />
+              Okra gardens
+            </li>
+            <li>
+              <span className="map-view__legend-swatch map-view__legend-swatch--seeds" aria-hidden="true" />
+              Seeds sent
+            </li>
+          </ul>
+        ) : null}
 
         {selectedPin && !isMobile ? <PinPopup pin={selectedPin} onClose={handleClosePopup} /> : null}
 

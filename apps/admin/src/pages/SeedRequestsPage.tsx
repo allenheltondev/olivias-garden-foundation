@@ -1,17 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
 import {
+  cancelSeedRequest,
   listSeedRequestQueue,
   markSeedRequestHandled,
+  removeSeedRequestMapPin,
+  reopenSeedRequest,
   type SeedRequestQueueItem,
+  type SeedRequestStatus,
 } from '../api';
 import type { AdminSession } from '../auth/session';
+import { findSeedPinLocation } from '../services/seed-pin-geocoder';
+import { describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
 
 export interface SeedRequestsPageProps {
   session: AdminSession;
 }
 
 const PAGE_SIZE = 10;
+
+const STATUS_TABS: { id: SeedRequestStatus; label: string }[] = [
+  { id: 'open', label: 'Open' },
+  { id: 'handled', label: 'Done' },
+  { id: 'cancelled', label: 'Cancelled' },
+];
+
+const TAB_COPY: Record<SeedRequestStatus, { title: string; body: string; empty: string }> = {
+  open: {
+    title: 'Open seed requests',
+    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests whose senders opted in get a pin on the public okra map with first name and city only.',
+    empty: 'No open seed requests right now.',
+  },
+  handled: {
+    title: 'Done seed requests',
+    body: 'Requests you’ve sent seeds for. Undo moves a request back to open, takes it out of the packets-sent count, and removes its map pin.',
+    empty: 'No requests have been marked done yet.',
+  },
+  cancelled: {
+    title: 'Cancelled seed requests',
+    body: 'Requests closed without sending seeds. Reopen one to put it back in the open queue.',
+    empty: 'No cancelled requests.',
+  },
+};
+
+type Notice = { tone: 'success' | 'info'; message: string };
 
 function formatAddress(request: SeedRequestQueueItem): string {
   if (request.fulfillmentMethod !== 'mail' || !request.shippingAddress) {
@@ -23,106 +55,253 @@ function formatAddress(request: SeedRequestQueueItem): string {
   return [street, locality, a.country].filter(Boolean).join(' · ') || 'Mail — address incomplete';
 }
 
+function formatDate(value: string | null | undefined): string {
+  return value ? new Date(value).toLocaleString() : '—';
+}
+
+function statusDate(request: SeedRequestQueueItem, status: SeedRequestStatus): string {
+  if (status === 'handled') return `Done ${formatDate(request.handledAt)}`;
+  if (status === 'cancelled') return `Cancelled ${formatDate(request.cancelledAt)}`;
+  return formatDate(request.createdAt);
+}
+
 export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
+  const [status, setStatus] = useState<SeedRequestStatus>('open');
   const [requests, setRequests] = useState<SeedRequestQueueItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const copy = TAB_COPY[status];
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    listSeedRequestQueue(session.accessToken, { page, limit: PAGE_SIZE })
-      .then((next) => {
-        if (!active) return;
+  const load = useCallback(
+    async (targetStatus: SeedRequestStatus, targetPage: number, isActive: () => boolean = () => true) => {
+      setLoading(true);
+      try {
+        const next = await listSeedRequestQueue(session.accessToken, {
+          status: targetStatus,
+          page: targetPage,
+          limit: PAGE_SIZE,
+        });
+        if (!isActive()) return;
         setRequests(next.data);
         setTotal(next.total);
         setError(null);
-      })
-      .catch((err: Error) => {
-        if (!active) return;
-        setError(err.message || 'Unable to load seed requests.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      } catch (err) {
+        if (!isActive()) return;
+        setError(err instanceof Error ? err.message : 'Unable to load seed requests.');
+      } finally {
+        if (isActive()) setLoading(false);
+      }
+    },
+    [session.accessToken],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void load(status, page, () => active);
     return () => {
       active = false;
     };
-  }, [session.accessToken, page]);
+  }, [load, status, page]);
 
-  const load = async (targetPage = page) => {
-    setLoading(true);
-    try {
-      const next = await listSeedRequestQueue(session.accessToken, {
-        page: targetPage,
-        limit: PAGE_SIZE,
-      });
-      setRequests(next.data);
-      setTotal(next.total);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load seed requests.');
-    } finally {
-      setLoading(false);
+  const switchTab = (next: SeedRequestStatus) => {
+    if (next === status) return;
+    setRequests([]);
+    setTotal(0);
+    setNotice(null);
+    setError(null);
+    setStatus(next);
+    setPage(1);
+  };
+
+  /** After an item leaves this tab, refetch (stepping back a page if it emptied). */
+  const refreshAfterRemoval = async () => {
+    const newTotal = Math.max(0, total - 1);
+    const nextPage = Math.min(page, Math.max(1, Math.ceil(newTotal / PAGE_SIZE)));
+    if (nextPage !== page) {
+      setPage(nextPage);
+    } else {
+      await load(status, nextPage);
     }
   };
 
-  const handleMarkDone = async (request: SeedRequestQueueItem) => {
+  const runAction = async (
+    request: SeedRequestQueueItem,
+    action: () => Promise<Notice>,
+    fallbackError: string,
+    leavesTab = true,
+  ) => {
     setBusyId(request.id);
     setError(null);
+    setNotice(null);
     try {
-      await markSeedRequestHandled(session.accessToken, request.id, {
-        status: 'handled',
-      });
-      // Refetch the current page so the list stays correctly paginated
-      // and total reflects the server's post-update view.
-      const newTotal = Math.max(0, total - 1);
-      const newPageCount = Math.max(1, Math.ceil(newTotal / PAGE_SIZE));
-      const nextPage = Math.min(page, newPageCount);
-      if (nextPage !== page) {
-        setPage(nextPage);
+      setNotice(await action());
+      if (leavesTab) {
+        await refreshAfterRemoval();
       } else {
-        await load(nextPage);
+        await load(status, page);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to mark request as done.');
+      setError(err instanceof Error ? err.message : fallbackError);
     } finally {
       setBusyId(null);
     }
   };
 
+  const handleMarkDone = (request: SeedRequestQueueItem) =>
+    runAction(request, async () => {
+      // City-level only — see seed-pin-geocoder for what is (and isn't) sent.
+      // Only look up a location for requesters who opted in to the map.
+      const mapLocation = wantsMapPin(request) ? await findSeedPinLocation(request) : null;
+      const result = await markSeedRequestHandled(session.accessToken, request.id, {
+        status: 'handled',
+        ...(mapLocation ? { map_location: mapLocation } : {}),
+      });
+      const who = firstName(request.name);
+      if (result?.mapPin) {
+        const where = result.mapPin.locality ? ` near ${result.mapPin.locality}` : '';
+        return {
+          tone: 'success',
+          message: `Marked done. A "seeds sent" pin for ${who}${where} will show on the okra map shortly.`,
+        };
+      }
+      if (wantsMapPin(request)) {
+        return { tone: 'info', message: `Marked done, but we couldn't place a map pin for ${who}'s city.` };
+      }
+      return { tone: 'success', message: 'Marked done.' };
+    }, 'Unable to mark request as done.');
+
+  const handleCancel = (request: SeedRequestQueueItem) => {
+    const reason = window.prompt(
+      `Cancel ${firstName(request.name)}'s request without sending seeds?\n\nOptional reason (e.g. duplicate, spam, can't ship there):`,
+      '',
+    );
+    if (reason === null) return;
+    return runAction(request, async () => {
+      await cancelSeedRequest(session.accessToken, request.id, reason.trim() || undefined);
+      return { tone: 'success', message: `Cancelled ${firstName(request.name)}'s request. You can reopen it from the Cancelled tab.` };
+    }, 'Unable to cancel request.');
+  };
+
+  const handleUndo = (request: SeedRequestQueueItem) => {
+    const pinNote = request.mapPin ? ' and remove its pin from the okra map' : '';
+    if (!window.confirm(`Move ${firstName(request.name)}'s request back to open? This takes it out of the seed packets sent count${pinNote}.`)) {
+      return;
+    }
+    return runAction(request, async () => {
+      const result = await reopenSeedRequest(session.accessToken, request.id);
+      if (result.mapPinRemoved === null) {
+        return {
+          tone: 'info',
+          message: 'Moved back to open, but the map pin couldn’t be removed. Use "Remove map pin" on the Open tab to try again.',
+        };
+      }
+      return { tone: 'success', message: `Moved ${firstName(request.name)}'s request back to open.` };
+    }, 'Unable to undo.');
+  };
+
+  const handleReopen = (request: SeedRequestQueueItem) =>
+    runAction(request, async () => {
+      await reopenSeedRequest(session.accessToken, request.id);
+      return { tone: 'success', message: `Reopened ${firstName(request.name)}'s request.` };
+    }, 'Unable to reopen request.');
+
+  const handleRemovePin = (request: SeedRequestQueueItem) => {
+    if (!window.confirm(`Remove ${firstName(request.name)}'s "seeds sent" pin from the public okra map? The request stays as it is.`)) {
+      return;
+    }
+    return runAction(request, async () => {
+      await removeSeedRequestMapPin(session.accessToken, request.id);
+      return { tone: 'success', message: 'Map pin removed.' };
+    }, 'Unable to remove map pin.', false);
+  };
+
+  const renderActions = (request: SeedRequestQueueItem) => {
+    const disabled = busyId !== null;
+    const loadingThis = busyId === request.id;
+    const removePin = request.mapPin ? (
+      <Button variant="outline" onClick={() => void handleRemovePin(request)} disabled={disabled}>
+        Remove map pin
+      </Button>
+    ) : null;
+
+    if (status === 'open') {
+      return (
+        <>
+          <Button onClick={() => void handleMarkDone(request)} loading={loadingThis} disabled={disabled}>
+            Mark as done
+          </Button>
+          <Button variant="ghost" onClick={() => void handleCancel(request)} disabled={disabled}>
+            Cancel request
+          </Button>
+          {removePin}
+        </>
+      );
+    }
+    if (status === 'handled') {
+      return (
+        <>
+          <Button variant="outline" onClick={() => void handleUndo(request)} loading={loadingThis} disabled={disabled}>
+            Undo — move back to open
+          </Button>
+          {removePin}
+        </>
+      );
+    }
+    return (
+      <Button variant="outline" onClick={() => void handleReopen(request)} loading={loadingThis} disabled={disabled}>
+        Reopen
+      </Button>
+    );
+  };
+
   return (
     <section className="admin-section">
       <div className="admin-section__header">
-        <SectionHeading
-          eyebrow="Seed requests"
-          title={`Open requests (${total})`}
-          body="Mark a request as done once the seeds are on their way or picked up."
-        />
+        <SectionHeading title={`${copy.title} (${total})`} body={copy.body} />
         <Button
           className="admin-refresh-action"
           variant="outline"
           size="sm"
-          onClick={() => void load(page)}
+          onClick={() => void load(status, page)}
           disabled={loading}
         >
           Refresh
         </Button>
       </div>
 
+      <div className="admin-tabs" role="tablist" aria-label="Seed request status">
+        {STATUS_TABS.map((tab) => (
+          <Button
+            key={tab.id}
+            variant={tab.id === status ? 'primary' : 'ghost'}
+            size="sm"
+            role="tab"
+            aria-selected={tab.id === status}
+            onClick={() => switchTab(tab.id)}
+          >
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+
       {error ? (
         <FormFeedback tone="error" className="admin-load-error">{error}</FormFeedback>
+      ) : null}
+
+      {notice ? (
+        <FormFeedback tone={notice.tone} className="admin-load-error">{notice.message}</FormFeedback>
       ) : null}
 
       {loading && requests.length === 0 ? (
         <Card><p>Loading seed requests…</p></Card>
       ) : requests.length === 0 ? (
-        <Card><p>No open seed requests right now.</p></Card>
+        <Card><p>{copy.empty}</p></Card>
       ) : (
         <>
           <div className="admin-stack">
@@ -133,7 +312,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                     <h3>{request.name || 'Unknown contributor'}</h3>
                     <p>{request.email || 'No email provided'}</p>
                   </div>
-                  <span>{request.createdAt ? new Date(request.createdAt).toLocaleString() : '—'}</span>
+                  <span>{statusDate(request, status)}</span>
                 </div>
                 <dl className="admin-request-card__details">
                   <div>
@@ -160,16 +339,28 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                       <dd>{request.message}</dd>
                     </div>
                   ) : null}
+                  {status !== 'open' ? (
+                    <div>
+                      <dt>Requested</dt>
+                      <dd>{formatDate(request.createdAt)}</dd>
+                    </div>
+                  ) : null}
+                  {request.reviewNotes ? (
+                    <div>
+                      <dt>{status === 'cancelled' ? 'Reason' : 'Notes'}</dt>
+                      <dd>{request.reviewNotes}</dd>
+                    </div>
+                  ) : null}
+                  {status !== 'cancelled' ? (
+                    <div>
+                      <dt>Okra map</dt>
+                      <dd>
+                        {status === 'open' && !request.mapPin ? describePlannedPin(request) : describeCurrentPin(request)}
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
-                <div className="admin-request-card__actions">
-                  <Button
-                    onClick={() => void handleMarkDone(request)}
-                    loading={busyId === request.id}
-                    disabled={busyId !== null}
-                  >
-                    Mark as done
-                  </Button>
-                </div>
+                <div className="admin-request-card__actions">{renderActions(request)}</div>
               </Card>
             ))}
           </div>

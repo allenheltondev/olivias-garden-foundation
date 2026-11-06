@@ -1,0 +1,41 @@
+$kind: http-request
+name: Get Seed Shipment Pins
+description: Retrieve public "seeds sent" map pins. Only first name and city/region are exposed.
+method: GET
+url: '{{okraBaseUrl}}/okra/seed-shipments'
+order: 200
+headers:
+  - key: X-Correlation-Id
+    value: postman-okra-seed-shipments
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("GET /okra/seed-shipments returns 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response has seed shipment pin list schema", function () {
+          const body = pm.response.json();
+          pm.expect(body).to.have.property("total_count").that.is.a("number");
+          pm.expect(body).to.have.property("data").that.is.an("array");
+          pm.expect(body.total_count).to.equal(body.data.length);
+      });
+
+      pm.test("Pins expose only public-safe fields", function () {
+          const allowed = ["id", "display_lat", "display_lng", "first_name", "locality", "country", "sent_month"];
+          pm.response.json().data.forEach(function (pin) {
+              Object.keys(pin).forEach(function (key) {
+                  pm.expect(allowed, "unexpected field " + key).to.include(key);
+              });
+              pm.expect(pin.id).to.match(/^seeds-[0-9a-f]{16}$/);
+              pm.expect(pin.display_lat).to.be.a("number").within(-90, 90);
+              pm.expect(pin.display_lng).to.be.a("number").within(-180, 180);
+              if (pin.first_name !== null) {
+                  pm.expect(pin.first_name).to.not.match(/\s/);
+              }
+              if (pin.sent_month !== null) {
+                  pm.expect(pin.sent_month).to.match(/^\d{4}-\d{2}$/);
+              }
+          });
+      });

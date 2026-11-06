@@ -6,6 +6,12 @@ import './PinLayer.css';
 
 export interface PinData {
   id: string;
+  /**
+   * `garden` pins come from approved okra submissions. `seeds` pins mark
+   * places we've mailed seeds to — first name and city/region only.
+   * Missing means `garden` for backward compatibility.
+   */
+  kind?: 'garden' | 'seeds';
   display_lat: number;
   display_lng: number;
   contributor_name: string | null;
@@ -14,6 +20,14 @@ export interface PinData {
   photo_urls: string[];
   edited?: boolean;
   edited_at?: string | null;
+  /** Seed pins only: "City, Region" */
+  locality?: string | null;
+  /** Seed pins only: YYYY-MM */
+  sent_month?: string | null;
+}
+
+export function isSeedPin(pin: PinData): boolean {
+  return pin.kind === 'seeds';
 }
 
 export interface PinLayerProps {
@@ -34,6 +48,36 @@ const ACTIVE_PIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" heigh
   <path d="M14 8c-1.5 0-3 1.2-3 3.5 0 2.5 1.5 5 3 7 1.5-2 3-4.5 3-7C17 9.2 15.5 8 14 8z" fill="#fff" opacity="0.9"/>
   <path d="M14 12v6M12 14c1-1 3-1 4 0" stroke="#d8a741" stroke-width="1.2" fill="none" stroke-linecap="round"/>
 </svg>`;
+
+/** Seed-packet marker in soil brown so "seeds sent" reads differently from a growing garden */
+const SEED_PIN_SVG = (fill: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+  <path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="${fill}"/>
+  <rect x="8" y="7" width="12" height="14" rx="1.5" fill="#fff" opacity="0.92"/>
+  <path d="M8 10.5h12" stroke="${fill}" stroke-width="1.2"/>
+  <ellipse cx="12" cy="15" rx="1.2" ry="1.8" fill="${fill}"/>
+  <ellipse cx="16" cy="16.5" rx="1.2" ry="1.8" fill="${fill}"/>
+</svg>`;
+
+const seedIcon = L.divIcon({
+  html: SEED_PIN_SVG('#8a5a2b'),
+  className: 'pin-icon pin-icon--seeds',
+  iconSize: [28, 36],
+  iconAnchor: [14, 36],
+  popupAnchor: [0, -36],
+});
+
+const activeSeedIcon = L.divIcon({
+  html: SEED_PIN_SVG('#d8a741'),
+  className: 'pin-icon pin-icon--seeds pin-icon--active',
+  iconSize: [34, 44],
+  iconAnchor: [17, 44],
+  popupAnchor: [0, -44],
+});
+
+function iconFor(pin: PinData, active: boolean): L.DivIcon {
+  if (isSeedPin(pin)) return active ? activeSeedIcon : seedIcon;
+  return active ? activeIcon : defaultIcon;
+}
 
 const defaultIcon = L.divIcon({
   html: PIN_SVG,
@@ -107,7 +151,12 @@ function createClusterIcon(cluster: L.MarkerCluster): L.DivIcon {
 export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
-  const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const markersRef = useRef<Map<string, { marker: L.Marker; pin: PinData }>>(new Map());
+  // The map's own maxZoom before we ever capped it (usually undefined, which
+  // lets Leaflet fall back to the tile layer's limit). Pins can arrive in
+  // stages — gardens first, then seed pins — so the cap must be lifted again
+  // when the count crosses into clustering territory.
+  const baseMaxZoomRef = useRef<number | undefined | null>(null);
 
   // Build / rebuild markers when pins change
   useEffect(() => {
@@ -118,17 +167,28 @@ export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
     }
     markersRef.current.clear();
 
-    if (pins.length === 0) return;
-
     const config = getClusteringConfig(pins.length);
+
+    if (baseMaxZoomRef.current === null) {
+      baseMaxZoomRef.current = map.options.maxZoom;
+    }
+    const targetMaxZoom = config.maxZoom ?? baseMaxZoomRef.current;
+    if (map.options.maxZoom !== targetMaxZoom) {
+      // Leaflet accepts undefined here to mean "use the layers' max zoom".
+      map.setMaxZoom(targetMaxZoom as number);
+    }
+
+    if (pins.length === 0) return;
 
     const markers: L.Marker[] = [];
     for (const pin of pins) {
       const marker = L.marker([pin.display_lat, pin.display_lng], {
-        icon: pin.id === activePinId ? activeIcon : defaultIcon,
+        icon: iconFor(pin, pin.id === activePinId),
+        title: isSeedPin(pin) ? 'Seeds sent here' : 'Okra garden',
+        alt: isSeedPin(pin) ? 'Seeds sent here' : 'Okra garden',
       });
       marker.on('click', () => onPinClick(pin));
-      markersRef.current.set(pin.id, marker);
+      markersRef.current.set(pin.id, { marker, pin });
       markers.push(marker);
     }
 
@@ -146,14 +206,10 @@ export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
       map.addLayer(group);
       clusterGroupRef.current = group;
     } else {
-      // No clustering — add markers directly, enforce maxZoom if set
+      // No clustering — add markers directly (maxZoom handled above)
       const group = L.layerGroup(markers);
       map.addLayer(group);
       clusterGroupRef.current = group as unknown as L.MarkerClusterGroup;
-
-      if (config.maxZoom !== null) {
-        map.setMaxZoom(config.maxZoom);
-      }
     }
 
     const currentMarkers = markersRef.current;
@@ -168,8 +224,8 @@ export function PinLayer({ pins, activePinId, onPinClick }: PinLayerProps) {
 
   // Update active pin icon when activePinId changes
   useEffect(() => {
-    for (const [id, marker] of markersRef.current) {
-      marker.setIcon(id === activePinId ? activeIcon : defaultIcon);
+    for (const [id, { marker, pin }] of markersRef.current) {
+      marker.setIcon(iconFor(pin, id === activePinId));
     }
   }, [activePinId, pins]);
 

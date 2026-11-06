@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { PinData } from './PinLayer';
+import { isSeedPin, type PinData } from './PinLayer';
+import { SeedPacketArt, SeedPinDetails, getSeedPinTitle } from './SeedPinDetails';
 import './PinPopup.css';
 
 export interface PinPopupProps {
@@ -147,6 +148,8 @@ export function PinPopup({ pin, onClose }: PinPopupProps) {
   const displayName = getContributorDisplayName(pin.contributor_name);
   const hasStory = pin.story_text != null && pin.story_text.trim() !== '';
   const hasPhotos = pin.photo_urls.length > 0;
+  const seedPin = isSeedPin(pin);
+  const dialogLabel = seedPin ? getSeedPinTitle(pin) : `Garden by ${displayName}`;
 
   // Focus trap + Escape to dismiss
   useEffect(() => {
@@ -214,34 +217,43 @@ export function PinPopup({ pin, onClose }: PinPopupProps) {
 
   return (
     <div className="pin-popup-overlay">
-      <div ref={popupRef} className="pin-popup-card" tabIndex={-1} role="dialog" aria-label={`Garden by ${displayName}`}>
+      <div ref={popupRef} className="pin-popup-card" tabIndex={-1} role="dialog" aria-label={dialogLabel}>
         <button className="pin-popup-close" onClick={onClose} aria-label="Close popup">&times;</button>
 
-        {hasPhotos ? (
-          <PhotoGallery photos={pin.photo_urls} contributorName={pin.contributor_name} />
+        {seedPin ? (
+          <>
+            <SeedPacketArt classPrefix="pin-popup" />
+            <SeedPinDetails pin={pin} classPrefix="pin-popup" />
+          </>
         ) : (
-          <PhotoPlaceholder />
+          <>
+            {hasPhotos ? (
+              <PhotoGallery photos={pin.photo_urls} contributorName={pin.contributor_name} />
+            ) : (
+              <PhotoPlaceholder />
+            )}
+
+            <div className="pin-popup-body">
+              <p className="pin-popup-contributor">{displayName}</p>
+              {pin.edited ? <p className="pin-popup-edited">edited</p> : null}
+
+              {hasStory && (
+                <>
+                  <p className={`pin-popup-story ${expanded ? 'pin-popup-story--expanded' : 'pin-popup-story--truncated'}`}>
+                    {pin.story_text}
+                  </p>
+                  <button
+                    className="pin-popup-read-more"
+                    onClick={() => setExpanded(!expanded)}
+                    aria-expanded={expanded}
+                  >
+                    {expanded ? 'Show less' : 'Read more'}
+                  </button>
+                </>
+              )}
+            </div>
+          </>
         )}
-
-        <div className="pin-popup-body">
-          <p className="pin-popup-contributor">{displayName}</p>
-          {pin.edited ? <p className="pin-popup-edited">edited</p> : null}
-
-          {hasStory && (
-            <>
-              <p className={`pin-popup-story ${expanded ? 'pin-popup-story--expanded' : 'pin-popup-story--truncated'}`}>
-                {pin.story_text}
-              </p>
-              <button
-                className="pin-popup-read-more"
-                onClick={() => setExpanded(!expanded)}
-                aria-expanded={expanded}
-              >
-                {expanded ? 'Show less' : 'Read more'}
-              </button>
-            </>
-          )}
-        </div>
       </div>
     </div>
   );

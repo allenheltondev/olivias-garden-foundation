@@ -151,6 +151,24 @@ describe('POST /requests', () => {
     expect(mockCreateSeedRequest).not.toHaveBeenCalled();
   });
 
+  it('accepts the showOnMap opt-in and passes it through', async () => {
+    const res = await handler(
+      makeRestApiEvent('/requests', 'POST', JSON.stringify({ ...mailPayload, showOnMap: true }), { 'Idempotency-Key': 'k-map-1' })
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(mockCreateSeedRequest.mock.calls[0][0].showOnMap).toBe(true);
+  });
+
+  it('returns 422 when showOnMap is not a boolean', async () => {
+    const res = await handler(
+      makeRestApiEvent('/requests', 'POST', JSON.stringify({ ...mailPayload, showOnMap: 'yes' }), { 'Idempotency-Key': 'k-map-2' })
+    );
+
+    expect(res.statusCode).toBe(422);
+    expect(mockCreateSeedRequest).not.toHaveBeenCalled();
+  });
+
   it('returns 422 when shipping country is outside US/CA', async () => {
     const payload = { ...mailPayload, shippingAddress: { ...mailPayload.shippingAddress, country: 'GB' } };
     const res = await handler(

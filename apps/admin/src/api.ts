@@ -95,7 +95,24 @@ export interface SeedRequestQueueItem {
   } | null;
   message: string | null;
   createdAt: string | null;
-  requestStatus: 'open' | 'handled';
+  requestStatus: SeedRequestStatus;
+  handledAt?: string | null;
+  cancelledAt?: string | null;
+  reviewNotes?: string | null;
+  /** The requester explicitly opted in to a public "seeds sent" map pin. */
+  showOnMap?: boolean;
+  /**
+   * Public "seeds sent" pin: an object when one is on the map, null when
+   * there is none, undefined when the server couldn't check.
+   */
+  mapPin?: SeedRequestMapPin | null;
+}
+
+export type SeedRequestStatus = 'open' | 'handled' | 'cancelled';
+
+export interface SeedRequestMapPin {
+  locality: string | null;
+  country: string | null;
 }
 
 export interface AdminStats {
@@ -364,11 +381,12 @@ export interface SeedRequestQueueResponse {
 
 export async function listSeedRequestQueue(
   accessToken: string,
-  options: { page?: number; limit?: number } = {}
+  options: { status?: SeedRequestStatus; page?: number; limit?: number } = {}
 ): Promise<SeedRequestQueueResponse> {
+  const status = options.status ?? 'open';
   const page = options.page ?? 1;
   const limit = options.limit ?? 20;
-  const url = `${getOkraAdminApiBaseUrl()}/requests?status=open&page=${page}&limit=${limit}`;
+  const url = `${getOkraAdminApiBaseUrl()}/requests?status=${status}&page=${page}&limit=${limit}`;
   const response = await requestJson<{
     data: SeedRequestQueueItem[];
     total?: number;
@@ -383,12 +401,26 @@ export async function listSeedRequestQueue(
   };
 }
 
+export interface MarkSeedRequestHandledResponse {
+  id: string;
+  requestStatus: 'handled';
+  handledAt: string | null;
+  reviewNotes: string | null;
+  /** Public "seeds sent" map pin, or null when none was created. */
+  mapPin?: SeedRequestMapPin | null;
+}
+
 export async function markSeedRequestHandled(
   accessToken: string,
   requestId: string,
-  payload: { status: 'handled'; review_notes?: string }
-): Promise<void> {
-  await requestJson(
+  payload: {
+    status: 'handled';
+    review_notes?: string;
+    /** City-level location for the public "seeds sent" map pin. */
+    map_location?: { lat: number; lng: number };
+  }
+): Promise<MarkSeedRequestHandledResponse> {
+  return requestJson<MarkSeedRequestHandledResponse>(
     `${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`,
     accessToken,
     {
@@ -396,6 +428,48 @@ export async function markSeedRequestHandled(
       body: JSON.stringify(payload),
     }
   );
+}
+
+/** Close an open request without sending seeds (spam, duplicate, can't ship). */
+export async function cancelSeedRequest(
+  accessToken: string,
+  requestId: string,
+  reason?: string
+): Promise<void> {
+  await requestJson(`${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ status: 'cancelled', ...(reason ? { review_notes: reason } : {}) }),
+  });
+}
+
+export interface ReopenSeedRequestResponse {
+  id: string;
+  requestStatus: 'open';
+  previousStatus: 'handled' | 'cancelled';
+  /** null when the server couldn't remove the pin. */
+  mapPinRemoved: boolean | null;
+}
+
+/**
+ * Move a done or cancelled request back to open. Undoing "done" also
+ * un-counts the packet and removes its map pin.
+ */
+export async function reopenSeedRequest(
+  accessToken: string,
+  requestId: string
+): Promise<ReopenSeedRequestResponse> {
+  return requestJson<ReopenSeedRequestResponse>(
+    `${getOkraAdminApiBaseUrl()}/requests/${requestId}/statuses`,
+    accessToken,
+    { method: 'POST', body: JSON.stringify({ status: 'open' }) }
+  );
+}
+
+/** Take a request's pin off the public map, leaving the request as-is. */
+export async function removeSeedRequestMapPin(accessToken: string, requestId: string): Promise<void> {
+  await requestJson(`${getOkraAdminApiBaseUrl()}/requests/${requestId}/map-pin`, accessToken, {
+    method: 'DELETE',
+  });
 }
 
 export async function getAdminStats(accessToken: string): Promise<AdminStats> {

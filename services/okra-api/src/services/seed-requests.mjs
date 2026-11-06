@@ -34,7 +34,11 @@ export const seedRequestSchema = {
       },
       additionalProperties: false
     },
-    message: { type: 'string', maxLength: 2000 }
+    message: { type: 'string', maxLength: 2000 },
+    // Explicit opt-in to a public "seeds sent" map pin (first name, city,
+    // month only). Absent means no; requests from before this field existed
+    // are therefore never published.
+    showOnMap: { type: 'boolean' }
   },
   additionalProperties: false
 };
@@ -146,6 +150,11 @@ export async function createSeedRequest(payload, contributor) {
     shippingAddress: payload.shippingAddress,
     visitDetails: payload.visitDetails,
     message: payload.message?.trim() || undefined,
+    showOnMap: payload.fulfillmentMethod === 'mail' && payload.showOnMap === true,
+    ...(payload.fulfillmentMethod === 'mail' && payload.showOnMap === true
+      ? { showOnMapConsentedAt: createdAt }
+      : {}),
+    statusVersion: 0,
     ...(contributor?.sub ? { contributorCognitoSub: contributor.sub } : {}),
     expiresAt: Math.floor(now.getTime() / 1000) + 60 * 60 * 24 * 365 * 5
   };

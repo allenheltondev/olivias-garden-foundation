@@ -623,9 +623,27 @@ jobs:
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.okra_backend == 'true')
     needs: [changes]
     runs-on: ubuntu-latest
+    # Real Postgres for test/db/*: the seed pin projection's ordering
+    # guarantees live in SQL and can't be meaningfully mocked.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: okra_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: services/okra-api
+    env:
+      OKRA_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/okra_ci
 
     steps:
       - name: Checkout code

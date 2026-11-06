@@ -71,12 +71,12 @@ test.describe('okra admin moderation workflows (staging)', () => {
     await page.getByRole('button', { name: 'Request free seeds' }).first().click();
 
     const dialog = page.getByRole('dialog', { name: 'Request free okra seeds' });
-    await dialog.getByLabel('Name').fill(requesterName);
-    await dialog.getByLabel('Email').fill(`playwright-admin-seeds-${runId}@example.com`);
-    await dialog.getByLabel('Street address').fill('123 Garden Row');
-    await dialog.getByLabel('City').fill('McKinney');
-    await dialog.getByLabel('State / province').fill('TX');
-    await dialog.getByLabel('Postal code').fill('75069');
+    await dialog.getByLabel('Name', { exact: true }).fill(requesterName);
+    await dialog.getByLabel('Email', { exact: true }).fill(`playwright-admin-seeds-${runId}@example.com`);
+    await dialog.getByLabel('Street address', { exact: true }).fill('123 Garden Row');
+    await dialog.getByLabel('City', { exact: true }).fill('McKinney');
+    await dialog.getByLabel('State / province', { exact: true }).fill('TX');
+    await dialog.getByLabel('Postal code', { exact: true }).fill('75069');
     await dialog.getByLabel('Country').selectOption('US');
     await dialog.getByLabel('Message').fill(requestMessage);
     await dialog.getByRole('button', { name: 'Send my request' }).click();

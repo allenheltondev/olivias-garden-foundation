@@ -94,6 +94,37 @@ describe('createSeedRequest', () => {
   });
 });
 
+describe('createSeedRequest map consent', () => {
+  const mailPayload = {
+    name: 'Olivia Helton',
+    email: 'olivia@example.com',
+    fulfillmentMethod: 'mail',
+    shippingAddress: { line1: '100 Garden Lane', city: 'Austin', region: 'TX', postalCode: '73301', country: 'US' }
+  };
+
+  function storedItem() {
+    return mockSend.mock.calls[0][0].input.TransactItems[0].Put.Item;
+  }
+
+  it('defaults to no map pin and starts at version 0', async () => {
+    await createSeedRequest(mailPayload, null);
+    expect(storedItem()).toMatchObject({ showOnMap: false, statusVersion: 0 });
+    expect(storedItem()).not.toHaveProperty('showOnMapConsentedAt');
+  });
+
+  it('records an explicit opt-in with when it was given', async () => {
+    await createSeedRequest({ ...mailPayload, showOnMap: true }, null);
+    const item = storedItem();
+    expect(item.showOnMap).toBe(true);
+    expect(item.showOnMapConsentedAt).toBe(item.createdAt);
+  });
+
+  it('ignores the opt-in for in-person requests', async () => {
+    await createSeedRequest({ name: 'Sam', email: 'sam@example.com', fulfillmentMethod: 'in_person', showOnMap: true }, null);
+    expect(storedItem().showOnMap).toBe(false);
+  });
+});
+
 describe('publishSeedRequestCreatedEvent', () => {
   it('emits an EventBridge event without contributor identifiers', async () => {
     await publishSeedRequestCreatedEvent(

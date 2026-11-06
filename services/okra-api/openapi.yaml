@@ -118,6 +118,15 @@ paths:
                 message:
                   type: string
                   maxLength: 2000
+                showOnMap:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Explicit opt-in to a public "seeds sent" map pin showing the
+                    requester's first name, city/region, and the month seeds
+                    were mailed. Only honoured for mail fulfillment. Omitted
+                    means no; requests made before this field existed are
+                    never published.
       responses:
         '201':
           description: Seed request recorded
@@ -325,6 +334,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/OkraStats'
 
+  /okra/seed-shipments:
+    get:
+      operationId: getOkraSeedShipments
+      summary: Get map pins for places okra seeds have been mailed
+      description: >
+        Public-safe projection of handled mail seed requests. Only the
+        recipient's first name and city/region are returned; street address,
+        postal code, last name, and email are never exposed. Coordinates are
+        stored at ~1 km precision and fuzzed within a city-sized radius.
+      tags:
+        - map
+      responses:
+        '200':
+          description: All seed shipment pins
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: "public, max-age=300, stale-while-revalidate=60"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total_count
+                  - data
+                properties:
+                  total_count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SeedShipmentPin'
+
   /admin/submissions:
     get:
       operationId: listAdminSubmissions
@@ -438,9 +481,12 @@ paths:
             type: string
             enum:
               - open
+              - handled
+              - cancelled
           description: >-
-            Filter seed requests by status. Required. Currently only `open`
-            is supported.
+            Filter seed requests by status. Required. `open` is sorted by
+            createdAt, `handled` by handledAt, and `cancelled` by cancelledAt,
+            newest first.
       responses:
         '200':
           description: Seed requests matching the status filter
@@ -465,7 +511,15 @@ paths:
   /admin/requests/{id}/statuses:
     post:
       operationId: transitionSeedRequestStatus
-      summary: Mark a seed request as handled
+      summary: Move a seed request between open, handled, and cancelled
+      description: >-
+        `handled` (from open) counts a packet sent and, for mailed requests
+        whose requester opted in (showOnMap) and with map_location, adds a
+        public map pin. Every transition is conditional on the request's
+        current status and statusVersion; a concurrent change returns 409. `cancelled` (from open)
+        closes the request without counting a packet. `open` (from handled
+        or cancelled) reopens it; undoing a handled request un-counts the
+        packet and removes its map pin.
       tags:
         - admin
       parameters:
@@ -488,11 +542,30 @@ paths:
                   type: string
                   enum:
                     - handled
+                    - cancelled
+                    - open
                 review_notes:
                   type: string
+                  maxLength: 1000
+                map_location:
+                  type: object
+                  description: >
+                    Optional approximate (city-level) location used to put a
+                    "seeds sent" pin on the public map. Ignored for in-person
+                    requests.
+                  required: [lat, lng]
+                  properties:
+                    lat:
+                      type: number
+                      minimum: -90
+                      maximum: 90
+                    lng:
+                      type: number
+                      minimum: -180
+                      maximum: 180
       responses:
         '200':
-          description: Seed request marked handled
+          description: Seed request transitioned
           content:
             application/json:
               schema:
@@ -510,7 +583,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Seed request already handled
+          description: Seed request is not in a state that allows this transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/requests/{id}/map-pin:
+    delete:
+      operationId: deleteSeedRequestMapPin
+      summary: Remove a seed request's "seeds sent" pin from the public map
+      description: >-
+        Leaves the request's status unchanged but bumps its statusVersion so
+        the removal outranks any earlier pin write. Idempotent.
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '404':
+          description: Seed request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request changed concurrently; retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '200':
+          description: Pin removed (or there was none)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, mapPinRemoved]
+                properties:
+                  id:
+                    type: string
+                  mapPinRemoved:
+                    type: boolean
+        '500':
+          description: Pin store unavailable
           content:
             application/json:
               schema:
@@ -546,6 +666,36 @@ components:
           items:
             type: string
             format: uri
+
+    SeedShipmentPin:
+      type: object
+      required:
+        - id
+        - display_lat
+        - display_lng
+      properties:
+        id:
+          type: string
+        display_lat:
+          type: number
+          format: double
+        display_lng:
+          type: number
+          format: double
+        first_name:
+          type: string
+          nullable: true
+        locality:
+          type: string
+          nullable: true
+          description: City and region, e.g. "Austin, TX"
+        country:
+          type: string
+          nullable: true
+        sent_month:
+          type: string
+          nullable: true
+          description: Year and month the seeds were sent (YYYY-MM)
 
     OkraStats:
       type: object
@@ -810,7 +960,39 @@ components:
           nullable: true
         requestStatus:
           type: string
-          enum: [open, handled]
+          enum: [open, handled, cancelled]
+        handledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        showOnMap:
+          type: boolean
+          description: The requester opted in to a public map pin.
+        statusVersion:
+          type: integer
+          description: >-
+            Incremented on every admin change to the request. Pin writes on
+            the public map carry this version so the newest state wins.
+        reviewNotes:
+          type: string
+          nullable: true
+        mapPin:
+          type: object
+          nullable: true
+          description: >-
+            Public "seeds sent" pin for this request, or null when there is
+            none. Omitted when pin status could not be loaded.
+          properties:
+            locality:
+              type: string
+              nullable: true
+            country:
+              type: string
+              nullable: true
 
     SeedRequestStatusResponse:
       type: object
@@ -822,7 +1004,23 @@ components:
           type: string
         requestStatus:
           type: string
-          enum: [handled]
+          enum: [open, handled, cancelled]
+        previousStatus:
+          type: string
+          enum: [handled, cancelled]
+          description: Only on reopen
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        reopenedAt:
+          type: string
+          format: date-time
+          nullable: true
+        mapPinRemoved:
+          type: boolean
+          nullable: true
+          description: Only on reopen; null if pin removal failed
         handledAt:
           type: string
           format: date-time
@@ -833,4 +1031,15 @@ components:
         reviewNotes:
           type: string
           nullable: true
+        mapPin:
+          type: object
+          nullable: true
+          description: Public pin created for this request, or null when none was created
+          properties:
+            locality:
+              type: string
+              nullable: true
+            country:
+              type: string
+              nullable: true
 
