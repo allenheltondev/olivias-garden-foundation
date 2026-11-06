@@ -90,6 +90,44 @@ describe('consumer handler', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://hooks.slack.test/contact');
   });
 
+  it('enriches mailed seed requests in Slack with hardiness zone and okra window, and still posts if the lookup fails', async () => {
+    ddbSendMock.mockResolvedValue({});
+    const seedEvent = {
+      id: 'seed-1',
+      source: 'okra.seed-requests',
+      'detail-type': 'seed-request.created',
+      time: '2026-04-27T15:00:00Z',
+      detail: {
+        name: 'Olivia',
+        email: 'olivia@example.com',
+        fulfillmentMethod: 'mail',
+        shippingAddress: { line1: '1 Main', city: 'Austin', region: 'TX', postalCode: '73301', country: 'US' }
+      }
+    };
+
+    fetchMock.mockImplementation(async (url) => (
+      String(url).startsWith('https://phzmapi.org/')
+        ? { ok: true, json: async () => ({ zone: '8b' }) }
+        : { ok: true }
+    ));
+    await handler(seedEvent);
+    const slackCall = fetchMock.mock.calls.find(([url]) => url === 'https://hooks.slack.test/general');
+    const body = JSON.parse(slackCall[1].body);
+    expect(body.text).toContain('Hardiness zone: 8b');
+    expect(body.text).toContain('Clemson Spineless okra planting: early April to early June');
+    // The enrichment is Slack-only and is not stored with the activity event.
+    expect(JSON.stringify(ddbSendMock.mock.calls[0][0].input.Item)).not.toContain('8b');
+
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async (url) => {
+      if (String(url).startsWith('https://phzmapi.org/')) throw new Error('down');
+      return { ok: true };
+    });
+    await handler({ ...seedEvent, id: 'seed-2' });
+    const fallback = fetchMock.mock.calls.find(([url]) => url === 'https://hooks.slack.test/general');
+    expect(JSON.parse(fallback[1].body).text).not.toContain('Hardiness zone');
+  });
+
   it('skips DDB write and Slack for events with no registered renderer', async () => {
     await handler({
       id: 'evt-noop',
