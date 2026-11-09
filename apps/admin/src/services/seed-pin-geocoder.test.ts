@@ -113,6 +113,7 @@ describe('findSeedPinLocation', () => {
     await expect(findSeedPinLocation(makeRequest(), fetcher)).resolves.toEqual({
       lat: 30.2672,
       lng: -97.7431,
+      precision: 'city',
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
