@@ -94,6 +94,39 @@ describe('createSeedRequest', () => {
   });
 });
 
+describe('createSeedRequest normalization', () => {
+  it('title-cases the name and address before storing', async () => {
+    await createSeedRequest(
+      {
+        name: '  JANE   q. gardener ',
+        email: ' Jane@Example.COM ',
+        fulfillmentMethod: 'mail',
+        shippingAddress: {
+          line1: '123 okra LANE',
+          line2: 'apt 4b',
+          city: 'new braunfels',
+          region: 'tx',
+          postalCode: '78130',
+          country: 'US'
+        }
+      },
+      null
+    );
+
+    const item = mockSend.mock.calls[0][0].input.TransactItems[0].Put.Item;
+    expect(item.name).toBe('Jane Q. Gardener');
+    expect(item.email).toBe('jane@example.com');
+    expect(item.shippingAddress).toEqual({
+      line1: '123 Okra Lane',
+      line2: 'Apt 4B',
+      city: 'New Braunfels',
+      region: 'TX',
+      postalCode: '78130',
+      country: 'US'
+    });
+  });
+});
+
 describe('createSeedRequest map consent', () => {
   const mailPayload = {
     name: 'Olivia Helton',

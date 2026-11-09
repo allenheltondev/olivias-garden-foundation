@@ -121,6 +121,28 @@ describe('buildSeedShipmentPin', () => {
   });
 });
 
+describe('buildSeedShipmentPin for in-person requests', () => {
+  const inPerson = {
+    requestId: 'req-2',
+    name: 'Sam Visitor',
+    email: 'sam@example.com',
+    fulfillmentMethod: 'in_person',
+    requestStatus: 'handled',
+    pinAddress: { line1: '12 Oak St', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US' },
+  };
+
+  it('pins anonymously at the admin-set city, never exposing the street, postal code, or name', () => {
+    const pin = buildSeedShipmentPin(inPerson, { lat: 30.26721, lng: -97.74309 }, '2026-10-01T00:00:00.000Z', 1);
+    expect(pin).toMatchObject({ firstName: null, locality: 'Austin, TX', country: 'US', displayLat: 30.27, displayLng: -97.74 });
+    expect(JSON.stringify(pin)).not.toMatch(/Oak St|78701|Sam|Visitor|sam@example/);
+  });
+
+  it('does not pin without a map address', () => {
+    const { pinAddress: _pinAddress, ...bare } = inPerson;
+    expect(buildSeedShipmentPin(bare, { lat: 30.2, lng: -97.7 }, '2026-10-01T00:00:00.000Z', 1)).toBeNull();
+  });
+});
+
 describe('pinVisibility', () => {
   const mail = { fulfillmentMethod: 'mail' };
   it.each([
@@ -130,6 +152,8 @@ describe('pinVisibility', () => {
     ['legacy, before any notice', { ...mail }, 'anonymous'],
     ['declined under the opt-in-only form', { ...mail, showOnMap: false }, 'none'],
     ['in-person', { fulfillmentMethod: 'in_person', showOnMap: true }, 'none'],
+    ['in-person with an admin-set map address', { fulfillmentMethod: 'in_person', showOnMap: true, pinAddress: { city: 'Austin', country: 'US' } }, 'anonymous'],
+    ['mailed pin address is ignored', { ...mail, showOnMap: false, pinAddress: { city: 'Austin', country: 'US' } }, 'none'],
     ['missing', null, 'none'],
   ])('%s → %s', (_label, request, expected) => {
     expect(pinVisibility(request)).toBe(expected);

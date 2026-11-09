@@ -1,7 +1,9 @@
 import type { SeedRequestQueueItem } from '../api';
+import { pinAddressOf } from '../pages/seed-request-display';
 
 /**
- * Finds an approximate, city-level location for a mailed seed request so the
+ * Finds an approximate, city-level location for a seed request (the mailing
+ * address, or the admin-set map address of an in-person exchange) so the
  * public okra map can show a "seeds sent" pin.
  *
  * Privacy: nothing is looked up for requests that may not have a pin, and
@@ -25,10 +27,10 @@ function clean(value: string | undefined): string | null {
 
 /** Ordered structured queries, most to least specific — all city-level or coarser. */
 export function buildSeedPinQueries(request: SeedRequestQueueItem): URLSearchParams[] {
-  if (request.fulfillmentMethod !== 'mail' || !request.shippingAddress) return [];
+  const address = pinAddressOf(request);
+  if (!address) return [];
   if ((request.pinVisibility ?? 'none') === 'none') return [];
 
-  const address = request.shippingAddress;
   const city = clean(address.city);
   const region = clean(address.region);
   const postalCode = clean(address.postalCode);

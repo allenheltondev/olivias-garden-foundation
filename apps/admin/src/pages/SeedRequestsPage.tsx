@@ -7,12 +7,22 @@ import {
   markSeedRequestHandled,
   removeSeedRequestMapPin,
   reopenSeedRequest,
+  setSeedRequestPinAddress,
+  type SeedRequestAddress,
   type SeedRequestQueueItem,
   type SeedRequestStatus,
 } from '../api';
 import type { AdminSession } from '../auth/session';
 import { findSeedPinLocation } from '../services/seed-pin-geocoder';
-import { canAddToMap, describeCurrentPin, describePlannedPin, firstName, wantsMapPin } from './seed-request-display';
+import { PinAddressForm } from './PinAddressForm';
+import {
+  canAddToMap,
+  describeCurrentPin,
+  describePlannedPin,
+  firstName,
+  formatPinAddress,
+  wantsMapPin,
+} from './seed-request-display';
 
 export interface SeedRequestsPageProps {
   session: AdminSession;
@@ -29,7 +39,7 @@ const STATUS_TABS: { id: SeedRequestStatus; label: string }[] = [
 const TAB_COPY: Record<SeedRequestStatus, { title: string; body: string; empty: string }> = {
   open: {
     title: 'Open seed requests',
-    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map at their city, with a first name only if the sender opted in. Requests made when the form said unchecked meant no pin stay off the map.',
+    body: 'Mark a request as done once the seeds are on their way or picked up. Mailed requests get a pin on the public okra map at their city, with a first name only if the sender opted in. Requests made when the form said unchecked meant no pin stay off the map. In-person exchanges only get an anonymous pin once you set a map address on their row.',
     empty: 'No open seed requests right now.',
   },
   handled: {
@@ -75,6 +85,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const copy = TAB_COPY[status];
@@ -116,6 +127,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
     setTotal(0);
     setNotice(null);
     setError(null);
+    setEditingAddressId(null);
     setStatus(next);
     setPage(1);
   };
@@ -227,6 +239,38 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
       return { tone: 'success', message: `Added a "seeds sent" pin near ${placed} to the okra map.` };
     }, 'Unable to add to map.', false);
 
+  const handleSavePinAddress = (request: SeedRequestQueueItem, address: SeedRequestAddress) =>
+    runAction(request, async () => {
+      const saved = await setSeedRequestPinAddress(session.accessToken, request.id, address);
+      setEditingAddressId(null);
+      if (request.requestStatus !== 'handled') {
+        return { tone: 'success', message: 'Map address saved. The pin goes up when you mark this request as done.' };
+      }
+      // Already done: place the pin now, from the saved address.
+      const located = { ...request, pinAddress: saved.pinAddress, pinVisibility: 'anonymous' as const };
+      const mapLocation = await findSeedPinLocation(located);
+      const where = saved.pinAddress?.city ?? 'that city';
+      if (!mapLocation) {
+        return { tone: 'info', message: `Map address saved, but we couldn't find ${where} on the map, so no pin was added.` };
+      }
+      const result = await addSeedRequestMapPin(session.accessToken, request.id, mapLocation);
+      if (!result.mapPin) {
+        return { tone: 'info', message: 'Map address saved, but the request changed before the pin was added. Refresh and try again.' };
+      }
+      return { tone: 'success', message: `Added an anonymous "seeds sent" pin near ${result.mapPin.locality ?? where} to the okra map.` };
+    }, 'Unable to save the map address.', false);
+
+  const handleClearPinAddress = (request: SeedRequestQueueItem) => {
+    if (!window.confirm(`Clear the map address for ${firstName(request.name)}${request.mapPin ? ' and remove its pin from the okra map' : ''}?`)) {
+      return;
+    }
+    return runAction(request, async () => {
+      await setSeedRequestPinAddress(session.accessToken, request.id, null);
+      setEditingAddressId(null);
+      return { tone: 'success', message: 'Map address cleared.' };
+    }, 'Unable to clear the map address.', false);
+  };
+
   const handleRemovePin = (request: SeedRequestQueueItem) => {
     if (!window.confirm(`Remove ${firstName(request.name)}'s "seeds sent" pin from the public okra map? The request stays as it is.`)) {
       return;
@@ -240,6 +284,15 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const renderActions = (request: SeedRequestQueueItem) => {
     const disabled = busyId !== null;
     const loadingThis = busyId === request.id;
+    const setAddress = request.fulfillmentMethod === 'in_person' && status !== 'cancelled' ? (
+      <Button
+        variant="outline"
+        onClick={() => setEditingAddressId(editingAddressId === request.id ? null : request.id)}
+        disabled={disabled}
+      >
+        {request.pinAddress ? 'Edit map address' : 'Set map address'}
+      </Button>
+    ) : null;
     const removePin = request.mapPin ? (
       <Button variant="outline" onClick={() => void handleRemovePin(request)} disabled={disabled}>
         Remove map pin
@@ -255,6 +308,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
           <Button variant="ghost" onClick={() => void handleCancel(request)} disabled={disabled}>
             Cancel request
           </Button>
+          {setAddress}
           {removePin}
         </>
       );
@@ -270,6 +324,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
               Add to map
             </Button>
           ) : null}
+          {setAddress}
           {removePin}
         </>
       );
@@ -372,6 +427,12 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                       <dd>{request.reviewNotes}</dd>
                     </div>
                   ) : null}
+                  {request.fulfillmentMethod === 'in_person' && request.pinAddress ? (
+                    <div>
+                      <dt>Map address (private)</dt>
+                      <dd>{formatPinAddress(request.pinAddress)}</dd>
+                    </div>
+                  ) : null}
                   {status !== 'cancelled' ? (
                     <div>
                       <dt>Okra map</dt>
@@ -382,6 +443,15 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                   ) : null}
                 </dl>
                 <div className="admin-request-card__actions">{renderActions(request)}</div>
+                {editingAddressId === request.id ? (
+                  <PinAddressForm
+                    initial={request.pinAddress ?? null}
+                    busy={busyId === request.id}
+                    onSave={(address) => void handleSavePinAddress(request, address)}
+                    onClear={() => void handleClearPinAddress(request)}
+                    onCancel={() => setEditingAddressId(null)}
+                  />
+                ) : null}
               </Card>
             ))}
           </div>

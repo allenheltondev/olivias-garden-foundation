@@ -1,5 +1,6 @@
 import { errorResponse } from '../services/pagination.mjs';
 import { parseMapLocation } from '../services/seed-shipment-pins.mjs';
+import { normalizeAddress } from '../services/normalize-text.mjs';
 import {
   SEED_REQUEST_STATUSES,
   addSeedRequestMapPin,
@@ -10,6 +11,7 @@ import {
   markSeedRequestHandled,
   removeSeedRequestMapPin,
   reopenSeedRequest,
+  setSeedRequestPinAddress,
 } from '../services/seed-request-admin.mjs';
 
 const TRANSITION_TARGETS = ['handled', 'cancelled', 'open'];
@@ -32,6 +34,35 @@ function parseReviewNotes(raw) {
   }
   const trimmed = raw.trim();
   return { ok: true, value: trimmed || null };
+}
+
+const PIN_ADDRESS_LIMITS = { line1: 200, line2: 200, city: 120, region: 120, postalCode: 20 };
+
+/**
+ * Validate an in-person map address: `null` clears it, otherwise city and a
+ * two-letter country are required. Returns { ok, value } / { ok: false, message }.
+ */
+function parsePinAddress(raw) {
+  if (raw === null) return { ok: true, value: null };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, message: 'address must be an object, or null to clear it' };
+  }
+  const address = {};
+  for (const [field, max] of Object.entries(PIN_ADDRESS_LIMITS)) {
+    const value = raw[field];
+    if (value === undefined || value === null || value === '') continue;
+    if (typeof value !== 'string' || value.length > max) {
+      return { ok: false, message: `address.${field} must be a string of at most ${max} characters` };
+    }
+    if (value.trim()) address[field] = value.trim();
+  }
+  if (!address.city) return { ok: false, message: 'address.city is required' };
+  const country = typeof raw.country === 'string' ? raw.country.trim().toUpperCase() : '';
+  if (!/^[A-Z]{2}$/.test(country)) {
+    return { ok: false, message: 'address.country must be a two-letter country code' };
+  }
+  address.country = country;
+  return { ok: true, value: normalizeAddress(address) };
 }
 
 export function registerSeedRequestAdminRoutes(app, { validateLimit, validatePage }) {
@@ -143,6 +174,38 @@ export function registerSeedRequestAdminRoutes(app, { validateLimit, validatePag
           : errorResponse(409, 'INVALID_STATE', err.message);
       }
       logError(err, 'POST /admin/requests/:id/map-pin', { requestId });
+      return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
+    }
+  });
+
+  // Record where an in-person exchange happened so it can get an obscured
+  // map pin. Body: { address: { city, region?, country, ... } } or { address: null }.
+  app.put('/requests/:id/pin-address', async (ctx) => {
+    const requestId = ctx.params.id;
+    let body;
+    try {
+      body = JSON.parse(ctx.event.body || '{}');
+    } catch {
+      return errorResponse(400, 'INVALID_BODY', 'Request body must be valid JSON');
+    }
+    if (body?.address === undefined) {
+      return errorResponse(400, 'INVALID_ADDRESS', 'address is required (use null to clear it)');
+    }
+    const addressResult = parsePinAddress(body.address);
+    if (!addressResult.ok) {
+      return errorResponse(400, 'INVALID_ADDRESS', addressResult.message);
+    }
+
+    try {
+      const result = await setSeedRequestPinAddress(requestId, addressResult.value);
+      return { id: requestId, ...result };
+    } catch (err) {
+      if (err instanceof SeedRequestTransitionError) {
+        return err.code === 'NOT_FOUND'
+          ? errorResponse(404, 'NOT_FOUND', err.message)
+          : errorResponse(409, 'INVALID_STATE', err.message);
+      }
+      logError(err, 'PUT /admin/requests/:id/pin-address', { requestId });
       return errorResponse(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
     }
   });

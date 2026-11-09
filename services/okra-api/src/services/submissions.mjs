@@ -1,3 +1,5 @@
+import { normalizeAddressText, normalizeName } from './normalize-text.mjs';
+
 export const VALID_PRIVACY_MODES = new Set(['exact', 'nearby', 'neighborhood', 'city']);
 
 const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$';
@@ -65,6 +67,17 @@ function firstDefinedValue(...values) {
   return undefined;
 }
 
+/**
+ * Title-case the contributor's name and the typed location so they're stored
+ * consistently, whatever capitalization the form sent.
+ */
+export function normalizeSubmissionPayload(payload) {
+  const out = { ...payload };
+  if (typeof out.contributorName === 'string') out.contributorName = normalizeName(out.contributorName);
+  if (typeof out.rawLocationText === 'string') out.rawLocationText = normalizeAddressText(out.rawLocationText);
+  return out;
+}
+
 export function enrichSubmissionPayload(payload, contributor) {
   if (!contributor) {
     return payload;
@@ -72,7 +85,7 @@ export function enrichSubmissionPayload(payload, contributor) {
 
   return {
     ...payload,
-    contributorName: firstDefinedValue(payload.contributorName, contributor.name, contributor.email),
+    contributorName: firstDefinedValue(payload.contributorName, normalizeName(contributor.name), contributor.email),
     contributorEmail: firstDefinedValue(payload.contributorEmail, contributor.email),
     contributorCognitoSub: firstDefinedValue(payload.contributorCognitoSub, contributor.sub)
   };

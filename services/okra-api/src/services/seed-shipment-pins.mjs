@@ -21,6 +21,19 @@ export function getFirstName(fullName) {
   return first ? first.slice(0, 60) : null;
 }
 
+/**
+ * The address a request's pin is placed from. Mailed requests use the address
+ * they gave us. In-person requests have none, so an admin can record where the
+ * exchange happened (`pinAddress`); it is private and only ever reduces to a
+ * city-level pin, like any other.
+ */
+export function pinAddressOf(seedRequest) {
+  if (!seedRequest) return null;
+  if (seedRequest.fulfillmentMethod === 'mail') return seedRequest.shippingAddress ?? null;
+  if (seedRequest.fulfillmentMethod === 'in_person') return seedRequest.pinAddress ?? null;
+  return null;
+}
+
 export function getPublicLocality(shippingAddress) {
   if (!shippingAddress || typeof shippingAddress !== 'object') return null;
   const parts = [shippingAddress.city, shippingAddress.region]
@@ -75,12 +88,18 @@ export const MAP_DISCLOSURE_VERSION = 'anonymous-pin-v2';
  *   'anonymous' - city/region, country and month only
  *   'none'      - must not appear on the map
  *
+ * In-person requests are 'anonymous' only once an admin sets a map address.
+ *
  * Requests made under the opt-in-only form that left the box unchecked were
  * told they'd get no pin, so they stay 'none'. Requests from before any map
  * notice may have anonymous pins (decided by the foundation).
  */
 export function pinVisibility(seedRequest) {
-  if (!seedRequest || seedRequest.fulfillmentMethod !== 'mail') return 'none';
+  if (!seedRequest) return 'none';
+  // In-person exchanges were never told about the map. They get an anonymous
+  // pin only when an admin has deliberately set a map address, never a name.
+  if (seedRequest.fulfillmentMethod === 'in_person') return seedRequest.pinAddress ? 'anonymous' : 'none';
+  if (seedRequest.fulfillmentMethod !== 'mail') return 'none';
   if (seedRequest.showOnMap === true) return 'named';
   if (seedRequest.mapDisclosure === MAP_DISCLOSURE_VERSION) return 'anonymous';
   if (seedRequest.showOnMap === undefined) return 'anonymous';
@@ -108,8 +127,8 @@ export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt, sourceVer
   return {
     requestId: String(seedRequest.requestId),
     firstName: visibility === 'named' ? getFirstName(seedRequest.name) : null,
-    locality: getPublicLocality(seedRequest.shippingAddress),
-    country: seedRequest.shippingAddress?.country ?? null,
+    locality: getPublicLocality(pinAddressOf(seedRequest)),
+    country: pinAddressOf(seedRequest)?.country ?? null,
     displayLat: roundCoordinate(mapLocation.lat),
     displayLng: roundCoordinate(mapLocation.lng),
     sentAt,

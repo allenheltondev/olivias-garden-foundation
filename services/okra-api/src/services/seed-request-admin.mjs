@@ -8,6 +8,7 @@ import {
   hideSeedShipmentPin,
   upsertSeedShipmentPin,
 } from './seed-shipment-pins.mjs';
+import { normalizeAddress } from './normalize-text.mjs';
 
 /**
  * Admin-side seed request lifecycle:
@@ -89,6 +90,8 @@ function toQueueItem(item) {
     email: item.email ?? null,
     fulfillmentMethod: item.fulfillmentMethod ?? null,
     shippingAddress: item.shippingAddress ?? null,
+    // Admin-set, private place for an in-person exchange's map pin.
+    pinAddress: item.pinAddress ?? null,
     visitDetails: item.visitDetails ?? null,
     message: item.message ?? null,
     createdAt: item.createdAt ?? null,
@@ -432,7 +435,7 @@ export async function addSeedRequestMapPin(requestId, mapLocation) {
       'INVALID_STATE',
       current.fulfillmentMethod === 'mail'
         ? 'This requester was told they would not get a map pin'
-        : 'In-person exchanges are not shown on the map'
+        : 'Set a map address for this in-person exchange before adding it to the map'
     );
   }
 
@@ -454,6 +457,63 @@ export async function addSeedRequestMapPin(requestId, mapLocation) {
     throw new Error('Could not write the map pin');
   }
   return written ? { locality: pin.locality, country: pin.country } : null;
+}
+
+const PIN_ADDRESS_FIELDS = ['line1', 'line2', 'city', 'region', 'postalCode', 'country'];
+
+/**
+ * Record (or, with null, clear) where an in-person exchange happened so it can
+ * get an obscured "seeds sent" pin. The address is private: it stays on the
+ * request and only ever reduces to city/region on the public map.
+ *
+ * Clearing the address hides any existing pin at the new version.
+ * Returns { pinAddress, mapPinRemoved } (`mapPinRemoved` null if the pin store
+ * failed or there was nothing to hide).
+ */
+export async function setSeedRequestPinAddress(requestId, rawAddress) {
+  const current = await requireSeedRequest(requestId);
+  if (current.fulfillmentMethod !== 'in_person') {
+    throw new SeedRequestTransitionError(
+      'INVALID_STATE',
+      'Only in-person requests take a map address; mailed requests use their shipping address'
+    );
+  }
+  if (statusOf(current) === 'cancelled') {
+    throw new SeedRequestTransitionError('INVALID_STATE', 'Cancelled requests can’t be put on the map');
+  }
+
+  const address = rawAddress ? normalizeAddress(rawAddress) : null;
+  const clearing = address === null;
+  const { nextVersion, update } = versionedRequestUpdate(requestId, current, clearing
+    ? {
+        set: ['#updatedAt = :updatedAt'],
+        remove: ['#pinAddress'],
+        names: { '#pinAddress': 'pinAddress', '#updatedAt': 'pinAddressUpdatedAt' },
+        values: { ':updatedAt': new Date().toISOString() },
+      }
+    : {
+        set: ['#pinAddress = :pinAddress', '#updatedAt = :updatedAt'],
+        names: { '#pinAddress': 'pinAddress', '#updatedAt': 'pinAddressUpdatedAt' },
+        values: {
+          ':pinAddress': Object.fromEntries(
+            PIN_ADDRESS_FIELDS.filter((field) => address[field]).map((field) => [field, address[field]])
+          ),
+          ':updatedAt': new Date().toISOString(),
+        },
+      });
+  await runTransition([update]);
+
+  // A pin derived from the old address must not outlive it. Changing the
+  // address leaves the pin to be re-added with "Add to map". Open requests
+  // have no visible pin, so there is nothing to hide.
+  const mapPinRemoved = statusOf(current) === 'handled'
+    ? await projectPin(
+        (client) => hideSeedShipmentPin(client, requestId, nextVersion),
+        { endpoint: 'PUT /admin/requests/:id/pin-address', requestId, statusVersion: nextVersion, op: 'hide' }
+      )
+    : null;
+
+  return { pinAddress: clearing ? null : { ...address }, mapPinRemoved };
 }
 
 /**

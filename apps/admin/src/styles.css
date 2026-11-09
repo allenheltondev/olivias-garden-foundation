@@ -577,6 +577,31 @@ body {
   flex-wrap: wrap;
 }
 
+.admin-pin-address {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(79, 56, 37, 0.15);
+}
+
+.admin-pin-address__hint {
+  margin: 0;
+  color: rgba(79, 56, 37, 0.72);
+  font-size: 0.9rem;
+}
+
+.admin-pin-address__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.admin-pin-address__error {
+  margin: 0;
+  color: var(--og-color-error, #b3261e);
+  font-size: 0.9rem;
+}
+
 .admin-submission-card__edit-note {
   border-left: 3px solid var(--og-color-moss);
   padding: 0.55rem 0.75rem;

@@ -57,6 +57,35 @@ describe('buildSeedPinQueries', () => {
   });
 });
 
+describe('buildSeedPinQueries for in-person requests', () => {
+  const inPerson = (overrides: Partial<SeedRequestQueueItem> = {}) =>
+    makeRequest({
+      fulfillmentMethod: 'in_person',
+      shippingAddress: null,
+      showOnMap: false,
+      pinVisibility: 'anonymous',
+      pinAddress: { line1: '12 Oak St', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US' },
+      ...overrides,
+    });
+
+  it('geocodes the admin-set map address at city level, never the street or name', () => {
+    const queries = buildSeedPinQueries(inPerson()).map((q) => Object.fromEntries(q));
+    expect(queries).toEqual([
+      { city: 'Austin', state: 'TX', country: 'US', format: 'json', limit: '1' },
+      { postalcode: '78701', country: 'US', format: 'json', limit: '1' },
+    ]);
+    const serialized = JSON.stringify(queries);
+    for (const secret of ['Oak St', 'Jane', 'Gardener', 'jane@example.com']) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+
+  it('does nothing without a map address', () => {
+    expect(buildSeedPinQueries(inPerson({ pinAddress: null }))).toEqual([]);
+    expect(buildSeedPinQueries(inPerson({ pinAddress: undefined }))).toEqual([]);
+  });
+});
+
 describe('findSeedPinLocation', () => {
   it('returns the first usable result', async () => {
     const fetcher = vi.fn().mockResolvedValue(jsonResponse([{ lat: '30.2672', lon: '-97.7431' }]));

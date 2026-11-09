@@ -958,7 +958,10 @@ describe('seed request lifecycle', () => {
       }
       const item = store.get(u.Key.requestId);
       const nextStatus = vals[':handled'] ?? vals[':cancelled'] ?? vals[':open'] ?? item.requestStatus;
-      store.set(u.Key.requestId, { ...item, requestStatus: nextStatus, statusVersion: vals[':nextVersion'] });
+      const next = { ...item, requestStatus: nextStatus, statusVersion: vals[':nextVersion'] };
+      if (vals[':pinAddress']) next.pinAddress = vals[':pinAddress'];
+      if (String(u.UpdateExpression).includes('REMOVE #pinAddress')) delete next.pinAddress;
+      store.set(u.Key.requestId, next);
     }
   }
 
@@ -1278,6 +1281,90 @@ describe('seed request lifecycle', () => {
     const { statusCode, body } = await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }));
     expect(statusCode).toBe(500);
     expect(body.error.code).toBe('INTERNAL_ERROR');
+  });
+
+  // ── in-person map address ──
+
+  function inPersonRequest(overrides: Record<string, any> = {}) {
+    const request = mailRequest({ fulfillmentMethod: 'in_person', shippingAddress: undefined, ...overrides });
+    delete request.showOnMap;
+    delete request.mapDisclosure;
+    return request;
+  }
+
+  function pinAddressEvent(body: any) {
+    return makeRestApiEvent(`/requests/${REQ_ID}/pin-address`, 'PUT', { pathParameters: { id: REQ_ID }, body });
+  }
+
+  it('saves a normalized map address on an open in-person request without touching the map', async () => {
+    store.set(REQ_ID, inPersonRequest());
+
+    const { statusCode, body } = await call(pinAddressEvent({
+      address: { line1: '12 oak st', city: 'AUSTIN', region: 'tx', postalCode: '78701', country: 'us' },
+    }));
+
+    expect(statusCode).toBe(200);
+    expect(body.pinAddress).toEqual({ line1: '12 Oak St', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US' });
+    expect(store.get(REQ_ID)).toMatchObject({
+      statusVersion: 1,
+      pinAddress: { line1: '12 Oak St', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US' },
+    });
+    expect(pinWrites).toEqual([]);
+  });
+
+  it('puts an in-person request with a map address on the map as an anonymous pin when marked done', async () => {
+    store.set(REQ_ID, inPersonRequest({ pinAddress: { city: 'Austin', region: 'TX', country: 'US', line1: '12 Oak St' } }));
+
+    const { statusCode, body } = await call(statusEvent({ status: 'handled', map_location: { lat: 30.26721, lng: -97.74309 } }));
+
+    expect(statusCode).toBe(200);
+    expect(body.mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+    expect(pinWrites).toEqual([{ op: 'show', requestId: REQ_ID, version: 1 }]);
+    const insert = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('source_version, visible'));
+    expect(insert![1][1]).toBeNull(); // never a name for in-person exchanges
+    expect(JSON.stringify(insert![1])).not.toMatch(/Jane|Gardener|Oak St/);
+  });
+
+  it('adds a done in-person request to the map once it has a map address', async () => {
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 1, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } }));
+
+    const { statusCode, body } = await call(addPinEvent({ map_location: { lat: 30.2, lng: -97.7 } }));
+
+    expect(statusCode).toBe(200);
+    expect(body.mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+    expect(pinWrites).toEqual([{ op: 'show', requestId: REQ_ID, version: 2 }]);
+  });
+
+  it('hides a done request\'s pin when its map address is cleared or changed', async () => {
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 1, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } }));
+
+    const cleared = await call(pinAddressEvent({ address: null }));
+
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.body).toMatchObject({ pinAddress: null, mapPinRemoved: true });
+    expect(store.get(REQ_ID).pinAddress).toBeUndefined();
+    expect(pinWrites).toEqual([{ op: 'hide', requestId: REQ_ID, version: 2 }]);
+  });
+
+  it('rejects map addresses for mailed requests, cancelled requests, and bad input', async () => {
+    store.set(REQ_ID, mailRequest());
+    expect((await call(pinAddressEvent({ address: { city: 'Austin', country: 'US' } }))).statusCode).toBe(409);
+
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'cancelled' }));
+    expect((await call(pinAddressEvent({ address: { city: 'Austin', country: 'US' } }))).statusCode).toBe(409);
+
+    store.set(REQ_ID, inPersonRequest());
+    for (const address of [{ country: 'US' }, { city: 'Austin' }, { city: 'Austin', country: 'USA' }, 'Austin', { city: 5, country: 'US' }]) {
+      const res = await call(pinAddressEvent({ address }));
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error.code).toBe('INVALID_ADDRESS');
+    }
+    expect((await call(pinAddressEvent({}))).body.error.code).toBe('INVALID_ADDRESS');
+    expect(store.get(REQ_ID).statusVersion).toBe(0);
+  });
+
+  it('returns 404 setting a map address on a missing request', async () => {
+    expect((await call(pinAddressEvent({ address: { city: 'Austin', country: 'US' } }))).statusCode).toBe(404);
   });
 
   // ── listing + reconciliation ──
