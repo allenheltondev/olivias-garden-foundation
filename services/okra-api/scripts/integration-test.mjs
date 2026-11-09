@@ -6,6 +6,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname } from 'node:path';
 import { createDbClient } from './db-client.mjs';
+import { normalizeName } from '../src/services/normalize-text.mjs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
@@ -74,6 +75,10 @@ async function run() {
   // 2. Generate Run_Prefix and print it
   const runPrefix = `ci-${crypto.randomUUID().slice(0, 8)}`;
   console.log(`\nRun_Prefix: ${runPrefix}\n`);
+  // The API title-cases names on write ("[ci-ab12cd34]" becomes "[ci-Ab12cd34]"), so
+  // every name this script sends or looks for uses the normalized form. (It
+  // still starts with "[ci-", which is what the cleanup scans match on.)
+  const namePrefix = normalizeName(`[${runPrefix}]`);
 
   // 3. Use pre-generated admin token
   const adminToken = process.env.ADMIN_TOKEN;
@@ -331,7 +336,7 @@ async function run() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         photoIds: approvalPhotoIds,
-        contributorName: `[${runPrefix}] Approval Test Grower`,
+        contributorName: `${namePrefix} Approval Test Grower`,
         contributorEmail: 'approval-test@okra-test.local',
         rawLocationText: 'Integration Test Location',
         displayLat: 33.749,
@@ -428,7 +433,7 @@ async function run() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         photoIds: denialPhotoIds,
-        contributorName: `[${runPrefix}] Denial Test Grower`,
+        contributorName: `${namePrefix} Denial Test Grower`,
         contributorEmail: 'denial-test@okra-test.local',
         rawLocationText: 'Integration Test Location',
         displayLat: 34.052,
@@ -494,7 +499,7 @@ async function run() {
   try {
     const idempotencyKey = crypto.randomUUID();
     const mailPayload = {
-      name: `[${runPrefix}] Seed Request Tester`,
+      name: `${namePrefix} Seed Request Tester`,
       email: `seed-request+${runPrefix}@okra-test.local`,
       fulfillmentMethod: 'mail',
       shippingAddress: {
@@ -550,7 +555,7 @@ async function run() {
     // 5. In-person exchange → 201 (no shipping address required)
     {
       const inPersonPayload = {
-        name: `[${runPrefix}] In-Person Tester`,
+        name: `${namePrefix} In-Person Tester`,
         email: `seed-request-inperson+${runPrefix}@okra-test.local`,
         fulfillmentMethod: 'in_person',
         visitDetails: { approximateDate: 'next spring', notes: 'Integration run' }
@@ -604,7 +609,7 @@ async function run() {
   console.log('\n=== Admin Seed Request Scenario ===');
   try {
     const adminSeedKey = crypto.randomUUID();
-    const taggedName = `[${runPrefix}] Admin Queue Tester`;
+    const taggedName = `${namePrefix} Admin Queue Tester`;
     const createRes = await publicApi.request('/requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': adminSeedKey },
@@ -758,7 +763,7 @@ async function run() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pinKey },
       body: JSON.stringify({
-        name: `Pintest [${runPrefix}] Grower`,
+        name: `Pintest ${namePrefix} Grower`,
         email: `seed-pin+${runPrefix}@okra-test.local`,
         fulfillmentMethod: 'mail',
         shippingAddress: { line1: '1 Integration Way', city: 'McKinney', region: 'TX', postalCode: '75069', country: 'US' },
@@ -819,7 +824,7 @@ async function run() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
       body: JSON.stringify({
-        name: `Anonpin [${runPrefix}] Grower`,
+        name: `Anonpin ${namePrefix} Grower`,
         email: `seed-anon+${runPrefix}@okra-test.local`,
         fulfillmentMethod: 'mail',
         shippingAddress: { line1: '2 Integration Way', city: 'McKinney', region: 'TX', postalCode: '75069', country: 'US' }
