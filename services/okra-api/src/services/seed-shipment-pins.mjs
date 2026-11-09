@@ -246,19 +246,30 @@ export async function listSeedShipmentPins(client) {
   });
 }
 
-/** Admin-only lookup: request_id → { locality, country } for visible pins. */
+/**
+ * Admin-only lookup: request_id → { locality, country, sourceVersion } for
+ * visible pins. `sourceVersion` is the request version the pin was written
+ * from, so callers can spot a pin that outlived a later change to its request.
+ */
 export async function getSeedShipmentPinsByRequestId(client, requestIds) {
   const map = new Map();
   if (!requestIds || requestIds.length === 0) return map;
   const res = await client.query(
-    `SELECT request_id, locality, country
+    `SELECT request_id, locality, country, source_version
        FROM seed_shipment_pins
       WHERE request_id = ANY($1)
         AND visible`,
     [requestIds.map(String)]
   );
   for (const row of res.rows) {
-    map.set(row.request_id, { locality: row.locality ?? null, country: row.country ?? null });
+    const sourceVersion = row.source_version === undefined || row.source_version === null
+      ? null
+      : Number(row.source_version);
+    map.set(row.request_id, {
+      locality: row.locality ?? null,
+      country: row.country ?? null,
+      sourceVersion: Number.isFinite(sourceVersion) ? sourceVersion : null,
+    });
   }
   return map;
 }

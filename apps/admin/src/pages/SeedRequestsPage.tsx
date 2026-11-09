@@ -241,23 +241,40 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
 
   const handleSavePinAddress = (request: SeedRequestQueueItem, address: SeedRequestAddress) =>
     runAction(request, async () => {
+      // Step 1: save the address. If this throws nothing changed, and runAction shows the error.
       const saved = await setSeedRequestPinAddress(session.accessToken, request.id, address);
       setEditingAddressId(null);
+
+      // From here the address is committed. Anything that goes wrong must say so, and
+      // return a notice (not throw) so runAction reloads the row instead of leaving the
+      // old address and pin on screen.
+      const staleNote = saved.mapPinRemoved === null && request.mapPin
+        ? ' The previous pin couldn’t be taken off the map just now; it will be removed the next time this list loads.'
+        : '';
       if (request.requestStatus !== 'handled') {
         return { tone: 'success', message: 'Map address saved. The pin goes up when you mark this request as done.' };
       }
-      // Already done: place the pin now, from the saved address.
-      const located = { ...request, pinAddress: saved.pinAddress, pinVisibility: 'anonymous' as const };
-      const mapLocation = await findSeedPinLocation(located);
+
+      // Step 2 (already done): place the pin now, from the saved address.
       const where = saved.pinAddress?.city ?? 'that city';
-      if (!mapLocation) {
-        return { tone: 'info', message: `Map address saved, but we couldn't find ${where} on the map, so no pin was added.` };
+      try {
+        const located = { ...request, pinAddress: saved.pinAddress, pinVisibility: 'anonymous' as const };
+        const mapLocation = await findSeedPinLocation(located);
+        if (!mapLocation) {
+          return { tone: 'info', message: `Map address saved, but we couldn't find ${where} on the map, so no pin was added.${staleNote}` };
+        }
+        const result = await addSeedRequestMapPin(session.accessToken, request.id, mapLocation);
+        if (!result.mapPin) {
+          return { tone: 'info', message: `Map address saved, but the request changed before the pin was added. Refresh and try again.${staleNote}` };
+        }
+        return { tone: 'success', message: `Added an anonymous "seeds sent" pin near ${result.mapPin.locality ?? where} to the okra map.` };
+      } catch (err) {
+        const reason = err instanceof Error && err.message ? ` (${err.message})` : '';
+        return {
+          tone: 'info',
+          message: `Map address saved, but placing the pin failed${reason}. Use "Add to map" to try again.${staleNote}`,
+        };
       }
-      const result = await addSeedRequestMapPin(session.accessToken, request.id, mapLocation);
-      if (!result.mapPin) {
-        return { tone: 'info', message: 'Map address saved, but the request changed before the pin was added. Refresh and try again.' };
-      }
-      return { tone: 'success', message: `Added an anonymous "seeds sent" pin near ${result.mapPin.locality ?? where} to the okra map.` };
     }, 'Unable to save the map address.', false);
 
   const handleClearPinAddress = (request: SeedRequestQueueItem) => {
@@ -265,8 +282,14 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
       return;
     }
     return runAction(request, async () => {
-      await setSeedRequestPinAddress(session.accessToken, request.id, null);
+      const cleared = await setSeedRequestPinAddress(session.accessToken, request.id, null);
       setEditingAddressId(null);
+      if (cleared.mapPinRemoved === null && request.mapPin) {
+        return {
+          tone: 'info',
+          message: 'Map address cleared, but its pin couldn’t be taken off the map just now. It will be removed the next time this list loads.',
+        };
+      }
       return { tone: 'success', message: 'Map address cleared.' };
     }, 'Unable to clear the map address.', false);
   };

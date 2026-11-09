@@ -136,7 +136,17 @@ describe.skipIf(!DATABASE_URL)('seed_shipment_pins projection (real Postgres)', 
     expect(await upsertSeedShipmentPin(client, pin('r3', 3))).toBe(true);
 
     const pins = await getSeedShipmentPinsByRequestId(client, ['r3']);
-    expect(pins.get('r3')).toEqual({ locality: 'Austin, TX', country: 'US' });
+    expect(pins.get('r3')).toEqual({ locality: 'Austin, TX', country: 'US', sourceVersion: 3 });
+  });
+
+  it('hiding an outdated pin at its own version still lets a newer pin write land', async () => {
+    await upsertSeedShipmentPin(client, pin('r6', 1));
+    // The admin list found this pin behind its request and hid it at the pin's own version.
+    expect(await hideSeedShipmentPin(client, 'r6', 1)).toBe(true);
+    expect(await getSeedShipmentPinsByRequestId(client, ['r6'])).toEqual(new Map());
+    // The pin write for the request's newer version, in flight meanwhile, is not blocked.
+    expect(await upsertSeedShipmentPin(client, pin('r6', 2))).toBe(true);
+    expect((await getSeedShipmentPinsByRequestId(client, ['r6'])).get('r6')).toMatchObject({ sourceVersion: 2 });
   });
 
   it('replaying the same version is a no-op', async () => {

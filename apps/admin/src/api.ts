@@ -494,7 +494,11 @@ export async function addSeedRequestMapPin(
 export interface SetSeedRequestPinAddressResponse {
   id: string;
   pinAddress: SeedRequestAddress | null;
-  /** Whether a visible pin was hidden; null if not applicable or the pin store failed. */
+  /**
+   * Whether a visible pin was hidden (false when there was none). null means
+   * the pin store failed: the address is saved and the outdated pin is hidden
+   * the next time the list loads.
+   */
   mapPinRemoved: boolean | null;
 }
 

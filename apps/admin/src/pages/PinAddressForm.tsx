@@ -48,8 +48,10 @@ export function PinAddressForm({ initial, busy, onSave, onClear, onCancel }: Pin
   return (
     <form className="admin-pin-address" onSubmit={submit} aria-label="Map address">
       <p className="admin-pin-address__hint">
-        The public pin shows only the city and state, with no name. Add a street and it sits within roughly half a
-        kilometre of that address; leave the street blank for a city-level pin. The full address stays private here.
+        The public map shows only the city and state, with no name. Add a street and the pin sits within roughly half
+        a kilometre of that address; leave it blank for a city-level pin. The address is never published, but to find
+        the spot, a street you enter is sent to OpenStreetMap&rsquo;s Nominatim geocoder (without it, only the city,
+        state, and postal code are sent).
       </p>
       <div className="admin-pin-address__grid">
         <Input label="Street" value={line1} onChange={(e) => setLine1(e.target.value)} autoComplete="off" />

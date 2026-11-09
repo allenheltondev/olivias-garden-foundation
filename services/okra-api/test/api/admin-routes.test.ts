@@ -1361,6 +1361,49 @@ describe('seed request lifecycle', () => {
     expect(pinWrites).toEqual([{ op: 'hide', requestId: REQ_ID, version: 2 }]);
   });
 
+  it('reports a failed pin removal, then hides the outdated pin the next time the list loads', async () => {
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 1, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } }));
+
+    // Postgres is down while the address changes: DynamoDB commits, the hide fails.
+    pinStoreDown = true;
+    const saved = await call(pinAddressEvent({ address: { city: 'Dallas', region: 'TX', country: 'US' } }));
+    expect(saved.statusCode).toBe(200);
+    expect(saved.body).toMatchObject({ pinAddress: { city: 'Dallas' }, mapPinRemoved: null });
+    expect(store.get(REQ_ID)).toMatchObject({ statusVersion: 2, pinAddress: { city: 'Dallas' } });
+    expect(pinWrites).toEqual([]);
+
+    // Postgres is back, but the old Austin pin (written at version 1) is still public.
+    pinStoreDown = false;
+    scanResponses = [{ Items: [structuredClone(store.get(REQ_ID))] }];
+    queryResponses['FROM seed_shipment_pins'] = {
+      rows: [{ request_id: REQ_ID, locality: 'Austin, TX', country: 'US', source_version: '1' }],
+    };
+    const listed = await call(makeRestApiEvent('/requests', 'GET', { queryStringParameters: { status: 'handled' } }));
+
+    expect(listed.body.data[0].mapPin).toBeNull();
+    // Hidden at the pin's own version, so a pin for version 2 can still be written afterwards.
+    expect(pinWrites).toEqual([{ op: 'hide', requestId: REQ_ID, version: 1 }]);
+    expect(JSON.stringify(listed.body)).not.toContain('source');
+  });
+
+  it('keeps a pin that is current with its request, and never leaks the pin version', async () => {
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 2, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } }));
+    scanResponses = [{ Items: [structuredClone(store.get(REQ_ID))] }];
+    queryResponses['FROM seed_shipment_pins'] = {
+      rows: [{ request_id: REQ_ID, locality: 'Austin, TX', country: 'US', source_version: '2' }],
+    };
+    const listed = await call(makeRestApiEvent('/requests', 'GET', { queryStringParameters: { status: 'handled' } }));
+
+    expect(listed.body.data[0].mapPin).toEqual({ locality: 'Austin, TX', country: 'US' });
+    expect(pinWrites).toEqual([]);
+  });
+
+  it('says there was nothing to hide when the address of an open request changes', async () => {
+    store.set(REQ_ID, inPersonRequest());
+    const { body } = await call(pinAddressEvent({ address: { city: 'Austin', country: 'US' } }));
+    expect(body.mapPinRemoved).toBe(false);
+  });
+
   it('rejects map addresses for mailed requests, cancelled requests, and bad input', async () => {
     store.set(REQ_ID, mailRequest());
     expect((await call(pinAddressEvent({ address: { city: 'Austin', country: 'US' } }))).statusCode).toBe(409);

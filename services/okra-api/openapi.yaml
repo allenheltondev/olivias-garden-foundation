@@ -663,8 +663,10 @@ paths:
                     type: boolean
                     nullable: true
                     description: >-
-                      Whether a visible pin was hidden; null for a request that
-                      isn't done yet or if the pin store failed.
+                      Whether a visible pin was hidden (false when there was
+                      none, e.g. the request isn't done yet). null means the
+                      pin store failed: the address is saved, and the outdated
+                      pin is hidden the next time the request list loads.
         '400':
           description: Missing or invalid address
           content:
