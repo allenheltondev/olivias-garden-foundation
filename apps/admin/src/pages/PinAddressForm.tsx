@@ -48,8 +48,8 @@ export function PinAddressForm({ initial, busy, onSave, onClear, onCancel }: Pin
   return (
     <form className="admin-pin-address" onSubmit={submit} aria-label="Map address">
       <p className="admin-pin-address__hint">
-        The pin shows only the city and state, at an approximate spot, with no name. The full address stays private
-        here.
+        The public pin shows only the city and state, with no name. Add a street and it sits within roughly half a
+        kilometre of that address; leave the street blank for a city-level pin. The full address stays private here.
       </p>
       <div className="admin-pin-address__grid">
         <Input label="Street" value={line1} onChange={(e) => setLine1(e.target.value)} autoComplete="off" />

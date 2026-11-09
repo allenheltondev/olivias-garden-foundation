@@ -10,10 +10,18 @@ import { fuzzCoordinates } from './privacy-fuzzing.mjs';
  *     (never the last name or email); otherwise the pin is anonymous
  *   - city + region and country (never street lines or postal code)
  *   - coordinates rounded to 2 decimals (~1 km) on write, then fuzzed
- *     deterministically within city radius on read
+ *     deterministically within city radius on read. In-person exchanges with
+ *     an admin-entered street address are the one exception: 3 decimals
+ *     (~100 m) and a ~500 m fuzz radius, so the pin sits near the place.
  */
 
-const STORED_COORDINATE_DECIMALS = 2;
+// Pin precision: how close the public pin sits to the real place.
+//   city   - rounded to ~1 km, fuzzed within city radius (the default, and the
+//            only option for mailed requests, whose notice promised a city pin)
+//   nearby - rounded to ~100 m, fuzzed within ~500 m; only for in-person
+//            exchanges an admin gave a street address for
+export const PIN_PRECISIONS = ['city', 'nearby'];
+const STORED_COORDINATE_DECIMALS = { city: 2, nearby: 3 };
 
 export function getFirstName(fullName) {
   if (typeof fullName !== 'string') return null;
@@ -42,8 +50,15 @@ export function getPublicLocality(shippingAddress) {
   return parts.length > 0 ? parts.join(', ').slice(0, 200) : null;
 }
 
-function roundCoordinate(value) {
-  const factor = 10 ** STORED_COORDINATE_DECIMALS;
+/** The closest a request's pin may sit: street-level admin addresses only. */
+export function maxPinPrecision(seedRequest) {
+  return seedRequest?.fulfillmentMethod === 'in_person' && seedRequest.pinAddress?.line1
+    ? 'nearby'
+    : 'city';
+}
+
+function roundCoordinate(value, precision) {
+  const factor = 10 ** STORED_COORDINATE_DECIMALS[precision];
   const rounded = Math.round(value * factor) / factor;
   return Object.is(rounded, -0) ? 0 : rounded;
 }
@@ -67,7 +82,11 @@ export function parseMapLocation(raw) {
   if (lat === 0 && lng === 0) {
     return { ok: false, message: 'map_location cannot be 0,0' };
   }
-  return { ok: true, value: { lat, lng } };
+  const { precision } = raw;
+  if (precision !== undefined && !PIN_PRECISIONS.includes(precision)) {
+    return { ok: false, message: 'map_location.precision must be "city" or "nearby"' };
+  }
+  return { ok: true, value: { lat, lng, ...(precision ? { precision } : {}) } };
 }
 
 /**
@@ -124,13 +143,19 @@ export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt, sourceVer
   if (visibility === 'none') return null;
   if (!Number.isInteger(sourceVersion) || sourceVersion < 1) return null;
 
+  // Never closer than the request allows, whatever the client asked for.
+  const precision = mapLocation.precision === 'nearby' && maxPinPrecision(seedRequest) === 'nearby'
+    ? 'nearby'
+    : 'city';
+
   return {
     requestId: String(seedRequest.requestId),
     firstName: visibility === 'named' ? getFirstName(seedRequest.name) : null,
     locality: getPublicLocality(pinAddressOf(seedRequest)),
     country: pinAddressOf(seedRequest)?.country ?? null,
-    displayLat: roundCoordinate(mapLocation.lat),
-    displayLng: roundCoordinate(mapLocation.lng),
+    displayLat: roundCoordinate(mapLocation.lat, precision),
+    displayLng: roundCoordinate(mapLocation.lng, precision),
+    precision,
     sentAt,
     sourceVersion
   };
@@ -143,8 +168,8 @@ export function buildSeedShipmentPin(seedRequest, mapLocation, sentAt, sourceVer
 export async function upsertSeedShipmentPin(client, pin) {
   const result = await client.query(
     `INSERT INTO seed_shipment_pins
-       (request_id, first_name, locality, country, display_lat, display_lng, sent_at, source_version, visible)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+       (request_id, first_name, locality, country, display_lat, display_lng, sent_at, source_version, visible, precision)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
      ON CONFLICT (request_id) DO UPDATE SET
        first_name = EXCLUDED.first_name,
        locality = EXCLUDED.locality,
@@ -153,9 +178,10 @@ export async function upsertSeedShipmentPin(client, pin) {
        display_lng = EXCLUDED.display_lng,
        sent_at = EXCLUDED.sent_at,
        source_version = EXCLUDED.source_version,
-       visible = true
+       visible = true,
+       precision = EXCLUDED.precision
      WHERE seed_shipment_pins.source_version < EXCLUDED.source_version`,
-    [pin.requestId, pin.firstName, pin.locality, pin.country, pin.displayLat, pin.displayLng, pin.sentAt, pin.sourceVersion]
+    [pin.requestId, pin.firstName, pin.locality, pin.country, pin.displayLat, pin.displayLng, pin.sentAt, pin.sourceVersion, pin.precision]
   );
   return (result?.rowCount ?? 0) > 0;
 }
@@ -196,14 +222,14 @@ export async function hideSeedShipmentPin(client, requestId, sourceVersion) {
 
 export async function listSeedShipmentPins(client) {
   const res = await client.query(
-    `SELECT request_id, first_name, locality, country, display_lat, display_lng, sent_at
+    `SELECT request_id, first_name, locality, country, display_lat, display_lng, sent_at, precision
        FROM seed_shipment_pins
       WHERE visible
       ORDER BY sent_at DESC, request_id DESC`
   );
 
   return res.rows.map((row) => {
-    const fuzzed = fuzzCoordinates(row.request_id, Number(row.display_lat), Number(row.display_lng), 'city');
+    const fuzzed = fuzzCoordinates(row.request_id, Number(row.display_lat), Number(row.display_lng), row.precision === 'nearby' ? 'nearby' : 'city');
     const sentAt = row.sent_at instanceof Date ? row.sent_at.toISOString() : row.sent_at;
     return {
       // Don't leak the internal seed request id on the public map.

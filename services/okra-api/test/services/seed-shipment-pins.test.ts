@@ -55,6 +55,13 @@ describe('parseMapLocation', () => {
       value: { lat: 30.2672, lng: -97.7431 },
     });
   });
+  it('accepts an optional precision and rejects unknown ones', () => {
+    expect(parseMapLocation({ lat: 30.2, lng: -97.7, precision: 'nearby' })).toEqual({
+      ok: true,
+      value: { lat: 30.2, lng: -97.7, precision: 'nearby' },
+    });
+    expect(parseMapLocation({ lat: 30.2, lng: -97.7, precision: 'exact' }).ok).toBe(false);
+  });
   it.each([
     ['string', 'Austin'],
     ['array', [1, 2]],
@@ -81,6 +88,7 @@ describe('buildSeedShipmentPin', () => {
       country: 'US',
       displayLat: 30.27,
       displayLng: -97.74,
+      precision: 'city',
       sentAt: at,
       sourceVersion: 3,
     });
@@ -135,6 +143,22 @@ describe('buildSeedShipmentPin for in-person requests', () => {
     const pin = buildSeedShipmentPin(inPerson, { lat: 30.26721, lng: -97.74309 }, '2026-10-01T00:00:00.000Z', 1);
     expect(pin).toMatchObject({ firstName: null, locality: 'Austin, TX', country: 'US', displayLat: 30.27, displayLng: -97.74 });
     expect(JSON.stringify(pin)).not.toMatch(/Oak St|78701|Sam|Visitor|sam@example/);
+  });
+
+  it('sits close to a street address: ~100 m rounding when a street is given and nearby is asked for', () => {
+    const pin = buildSeedShipmentPin(inPerson, { lat: 30.26721, lng: -97.74309, precision: 'nearby' }, '2026-10-01T00:00:00.000Z', 1);
+    expect(pin).toMatchObject({ precision: 'nearby', displayLat: 30.267, displayLng: -97.743, locality: 'Austin, TX' });
+    expect(pin!.locality).not.toMatch(/Oak/);
+  });
+
+  it('stays city-level without a street, unless nearby was not asked for, and for mailed requests', () => {
+    const at = '2026-10-01T00:00:00.000Z';
+    const loc = { lat: 30.26721, lng: -97.74309 };
+    const noStreet = { ...inPerson, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } };
+    expect(buildSeedShipmentPin(noStreet, { ...loc, precision: 'nearby' }, at, 1)).toMatchObject({ precision: 'city', displayLat: 30.27 });
+    expect(buildSeedShipmentPin(inPerson, loc, at, 1)).toMatchObject({ precision: 'city', displayLat: 30.27 });
+    expect(buildSeedShipmentPin({ ...mailRequest, requestStatus: 'handled' }, { ...loc, precision: 'nearby' }, at, 1))
+      .toMatchObject({ precision: 'city', displayLat: 30.27 });
   });
 
   it('does not pin without a map address', () => {

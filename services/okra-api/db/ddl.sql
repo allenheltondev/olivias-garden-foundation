@@ -238,6 +238,9 @@ create table if not exists seed_shipment_pins (
   created_at timestamptz not null default now(),
   source_version bigint not null default 0,
   visible boolean not null default true,
+  precision text not null default 'city',
+  constraint seed_shipment_pins_precision_valid
+    check (precision in ('city', 'nearby')),
   constraint seed_shipment_pins_visible_has_coords
     check (not visible or (display_lat is not null and display_lng is not null))
 );

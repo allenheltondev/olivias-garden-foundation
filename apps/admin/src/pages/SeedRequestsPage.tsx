@@ -168,7 +168,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
 
   const handleMarkDone = (request: SeedRequestQueueItem) =>
     runAction(request, async () => {
-      // City-level only — see seed-pin-geocoder for what is (and isn't) sent.
+      // See seed-pin-geocoder for what is (and isn't) sent.
       const mapLocation = wantsMapPin(request) ? await findSeedPinLocation(request) : null;
       const result = await markSeedRequestHandled(session.accessToken, request.id, {
         status: 'handled',

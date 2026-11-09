@@ -1325,6 +1325,21 @@ describe('seed request lifecycle', () => {
     expect(JSON.stringify(insert![1])).not.toMatch(/Jane|Gardener|Oak St/);
   });
 
+  it('places an in-person pin near a street address, and only asks for city-level when there is none', async () => {
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 1, pinAddress: { line1: '12 Oak St', city: 'Austin', region: 'TX', country: 'US' } }));
+    await call(addPinEvent({ map_location: { lat: 30.26721, lng: -97.74309, precision: 'nearby' } }));
+    let insert = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('source_version, visible'));
+    expect(insert![1].slice(4, 6)).toEqual([30.267, -97.743]);
+    expect(insert![1][8]).toBe('nearby');
+
+    mockClient.query.mockClear();
+    store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 1, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } }));
+    await call(addPinEvent({ map_location: { lat: 30.26721, lng: -97.74309, precision: 'nearby' } }));
+    insert = mockClient.query.mock.calls.find(([sql]) => String(sql).includes('source_version, visible'));
+    expect(insert![1].slice(4, 6)).toEqual([30.27, -97.74]);
+    expect(insert![1][8]).toBe('city');
+  });
+
   it('adds a done in-person request to the map once it has a map address', async () => {
     store.set(REQ_ID, inPersonRequest({ requestStatus: 'handled', statusVersion: 1, pinAddress: { city: 'Austin', region: 'TX', country: 'US' } }));
 

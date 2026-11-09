@@ -430,8 +430,8 @@ export async function markSeedRequestHandled(
   payload: {
     status: 'handled';
     review_notes?: string;
-    /** City-level location for the public "seeds sent" map pin. */
-    map_location?: { lat: number; lng: number };
+    /** Location for the public "seeds sent" map pin. */
+    map_location?: { lat: number; lng: number; precision?: 'city' | 'nearby' };
   }
 ): Promise<MarkSeedRequestHandledResponse> {
   return requestJson<MarkSeedRequestHandledResponse>(
@@ -483,7 +483,7 @@ export async function reopenSeedRequest(
 export async function addSeedRequestMapPin(
   accessToken: string,
   requestId: string,
-  mapLocation: { lat: number; lng: number }
+  mapLocation: { lat: number; lng: number; precision?: 'city' | 'nearby' }
 ): Promise<{ id: string; mapPin: SeedRequestMapPin | null }> {
   return requestJson(`${getOkraAdminApiBaseUrl()}/requests/${requestId}/map-pin`, accessToken, {
     method: 'POST',
