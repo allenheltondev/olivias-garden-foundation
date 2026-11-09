@@ -19,6 +19,7 @@ import {
 } from '../services/photos.mjs';
 import { enqueuePhotoProcessing } from '../services/photo-processing-queue.mjs';
 import { resolveOptionalContributor } from '../services/auth.mjs';
+import { normalizeName } from '../services/normalize-text.mjs';
 import {
   deleteContributorSubmission,
   enrichSubmissionPayload,
@@ -26,6 +27,7 @@ import {
   listContributorSubmissions,
   submissionEditSchema,
   submissionSchema,
+  normalizeSubmissionPayload,
   submitContributorSubmissionEdit
 } from '../services/submissions.mjs';
 import {
@@ -247,6 +249,8 @@ app.post('/submissions', async ({ req, event }) => {
     throw error;
   }
 
+  payload = normalizeSubmissionPayload(payload);
+
   const authResult = await resolveOptionalContributor(event);
   if (!authResult.ok) {
     return authResult;
@@ -269,7 +273,7 @@ app.post('/submissions', async ({ req, event }) => {
         id: created.id,
         status: created.status,
         createdAt: created.created_at,
-        contributorName: payload.contributorName ?? authResult.contributor?.name ?? null,
+        contributorName: payload.contributorName ?? normalizeName(authResult.contributor?.name) ?? null,
         contributorEmail: payload.contributorEmail ?? authResult.contributor?.email ?? null,
         storyText: payload.storyText ?? null,
         rawLocationText: payload.rawLocationText,
@@ -699,6 +703,8 @@ app.patch('/me/submissions/:id', async ({ req, event, params }) => {
     }
     throw error;
   }
+
+  payload = normalizeSubmissionPayload(payload);
 
   let client;
   try {

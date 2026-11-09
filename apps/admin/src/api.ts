@@ -76,19 +76,26 @@ export interface OkraSubmission {
   current_display_lng?: number | null;
 }
 
+export interface SeedRequestAddress {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 export interface SeedRequestQueueItem {
   id: string;
   name: string | null;
   email: string | null;
   fulfillmentMethod: 'mail' | 'in_person' | null;
-  shippingAddress: {
-    line1?: string;
-    line2?: string;
-    city?: string;
-    region?: string;
-    postalCode?: string;
-    country?: string;
-  } | null;
+  shippingAddress: SeedRequestAddress | null;
+  /**
+   * Where an in-person exchange happened, set by an admin so it can get an
+   * obscured map pin. Private: only its city and region are ever published.
+   */
+  pinAddress?: SeedRequestAddress | null;
   visitDetails: {
     approximateDate?: string;
     notes?: string;
@@ -423,8 +430,8 @@ export async function markSeedRequestHandled(
   payload: {
     status: 'handled';
     review_notes?: string;
-    /** City-level location for the public "seeds sent" map pin. */
-    map_location?: { lat: number; lng: number };
+    /** Location for the public "seeds sent" map pin. */
+    map_location?: { lat: number; lng: number; precision?: 'city' | 'nearby' };
   }
 ): Promise<MarkSeedRequestHandledResponse> {
   return requestJson<MarkSeedRequestHandledResponse>(
@@ -476,11 +483,37 @@ export async function reopenSeedRequest(
 export async function addSeedRequestMapPin(
   accessToken: string,
   requestId: string,
-  mapLocation: { lat: number; lng: number }
+  mapLocation: { lat: number; lng: number; precision?: 'city' | 'nearby' }
 ): Promise<{ id: string; mapPin: SeedRequestMapPin | null }> {
   return requestJson(`${getOkraAdminApiBaseUrl()}/requests/${requestId}/map-pin`, accessToken, {
     method: 'POST',
     body: JSON.stringify({ map_location: mapLocation }),
+  });
+}
+
+export interface SetSeedRequestPinAddressResponse {
+  id: string;
+  pinAddress: SeedRequestAddress | null;
+  /**
+   * Whether a visible pin was hidden (false when there was none). null means
+   * the pin store failed: the address is saved and the outdated pin is hidden
+   * the next time the list loads.
+   */
+  mapPinRemoved: boolean | null;
+}
+
+/**
+ * Set (or, with null, clear) the address an in-person exchange's map pin is
+ * placed from. Changing or clearing it hides any existing pin.
+ */
+export async function setSeedRequestPinAddress(
+  accessToken: string,
+  requestId: string,
+  address: SeedRequestAddress | null
+): Promise<SetSeedRequestPinAddressResponse> {
+  return requestJson(`${getOkraAdminApiBaseUrl()}/requests/${requestId}/pin-address`, accessToken, {
+    method: 'PUT',
+    body: JSON.stringify({ address }),
   });
 }
 

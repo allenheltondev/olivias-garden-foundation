@@ -591,6 +591,101 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /admin/requests/{id}/pin-address:
+    put:
+      operationId: setSeedRequestPinAddress
+      summary: Set (or clear) the map address of an in-person seed request
+      description: >-
+        In-person requests have no shipping address, so they never get a map
+        pin on their own. An admin can record where the exchange happened; the
+        full address stays private on the request and the public pin only ever
+        shows the city and region, anonymously (never a name), at an obscured
+        location. Fields are title-cased (state codes upper-cased) before they
+        are stored. Changing or clearing the address hides any existing pin at
+        the new statusVersion; use the map-pin endpoint to place it again.
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [address]
+              properties:
+                address:
+                  type: object
+                  nullable: true
+                  description: The address, or null to clear it.
+                  required: [city, country]
+                  properties:
+                    line1:
+                      type: string
+                      maxLength: 200
+                    line2:
+                      type: string
+                      maxLength: 200
+                    city:
+                      type: string
+                      maxLength: 120
+                    region:
+                      type: string
+                      maxLength: 120
+                    postalCode:
+                      type: string
+                      maxLength: 20
+                    country:
+                      type: string
+                      description: Two-letter country code.
+                      example: US
+      responses:
+        '200':
+          description: Address saved (or cleared)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, pinAddress, mapPinRemoved]
+                properties:
+                  id:
+                    type: string
+                  pinAddress:
+                    type: object
+                    nullable: true
+                    description: The normalized address as stored.
+                  mapPinRemoved:
+                    type: boolean
+                    nullable: true
+                    description: >-
+                      Whether a visible pin was hidden (false when there was
+                      none, e.g. the request isn't done yet). null means the
+                      pin store failed: the address is saved, and the outdated
+                      pin is hidden the next time the request list loads.
+        '400':
+          description: Missing or invalid address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Seed request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Not an in-person request, cancelled, or changed concurrently
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /admin/requests/{id}/map-pin:
     post:
       operationId: addSeedRequestMapPin
@@ -664,8 +759,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: >-
-            Request is not done, may not have a pin (in-person, or declined
-            under the opt-in-only form), or changed concurrently
+            Request is not done, may not have a pin (an in-person request with
+            no map address, or declined under the opt-in-only form), or
+            changed concurrently
           content:
             application/json:
               schema:
@@ -1061,7 +1157,14 @@ components:
             was made under. `none` covers in-person requests and requests made
             under the opt-in-only form that left the box unchecked (they were
             told no pin would be shown). Requests from before any map notice
-            may have anonymous pins.
+            may have anonymous pins. In-person requests are `anonymous` once
+            an admin sets a `pinAddress`, otherwise `none`.
+        pinAddress:
+          type: object
+          nullable: true
+          description: >-
+            Admin-set, private address for an in-person exchange's map pin.
+            Only city and region are ever published.
         statusVersion:
           type: integer
           description: >-

@@ -2,10 +2,36 @@ import { describe, expect, it, vi } from 'vitest';
 import { validate } from '@aws-lambda-powertools/validation';
 import { SchemaValidationError } from '@aws-lambda-powertools/validation/errors';
 import {
+  enrichSubmissionPayload,
   insertPendingSubmissionWithPhotos,
+  normalizeSubmissionPayload,
   submissionSchema,
   submitContributorSubmissionEdit
 } from '../../src/services/submissions.mjs';
+
+describe('submission payload normalization', () => {
+  it('title-cases the contributor name and typed location, leaving other fields alone', () => {
+    const out = normalizeSubmissionPayload({
+      contributorName: 'JANE gardener',
+      rawLocationText: 'downtown austin, tx',
+      storyText: 'grown from SEED',
+      displayLat: 30.2
+    });
+    expect(out).toEqual({
+      contributorName: 'Jane Gardener',
+      rawLocationText: 'Downtown Austin, TX',
+      storyText: 'grown from SEED',
+      displayLat: 30.2
+    });
+  });
+
+  it('normalizes a signed-in name but never rewrites the email fallback', () => {
+    expect(enrichSubmissionPayload({}, { name: 'JANE GARDENER', email: 'Jane@Example.com', sub: 's' }).contributorName)
+      .toBe('Jane Gardener');
+    expect(enrichSubmissionPayload({}, { email: 'Jane@Example.com', sub: 's' }).contributorName)
+      .toBe('Jane@Example.com');
+  });
+});
 
 describe('submission payload validation', () => {
   it('accepts valid payload', () => {

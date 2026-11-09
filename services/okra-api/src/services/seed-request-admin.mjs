@@ -8,6 +8,7 @@ import {
   hideSeedShipmentPin,
   upsertSeedShipmentPin,
 } from './seed-shipment-pins.mjs';
+import { normalizeAddress } from './normalize-text.mjs';
 
 /**
  * Admin-side seed request lifecycle:
@@ -89,6 +90,8 @@ function toQueueItem(item) {
     email: item.email ?? null,
     fulfillmentMethod: item.fulfillmentMethod ?? null,
     shippingAddress: item.shippingAddress ?? null,
+    // Admin-set, private place for an in-person exchange's map pin.
+    pinAddress: item.pinAddress ?? null,
     visitDetails: item.visitDetails ?? null,
     message: item.message ?? null,
     createdAt: item.createdAt ?? null,
@@ -143,9 +146,16 @@ async function withPinStore(fn) {
 
 /**
  * Adds `mapPin` ({ locality, country } or null) to each item, and reconciles
- * as it goes: a visible pin on a request that isn't handled, or that may not
- * have a pin at all, is hidden at the request's current version. That cleans up a pin left behind
- * if a hide failed after an undo.
+ * as it goes. A visible pin is hidden when:
+ *   - the request isn't handled, or may not have a pin at all; or
+ *   - it is older than the request. Every pin write carries the request
+ *     version it came from, and every change that invalidates a pin (undo,
+ *     removal, a new in-person address) bumps that version. So a pin whose
+ *     version is behind the request's belongs to a state that no longer
+ *     holds, e.g. its hide failed after the address changed.
+ *
+ * The stale-pin hide is written at the pin's own version, so it can't block a
+ * newer pin write that is still in flight (a hide ties go to the hide).
  *
  * If the pin store is unreachable, items come back with `mapPin` undefined so
  * the UI can say "unknown" rather than wrongly claiming there is no pin.
@@ -157,19 +167,23 @@ export async function attachMapPins(items) {
       const pins = await getSeedShipmentPinsByRequestId(client, items.map((item) => item.id));
       const out = [];
       for (const item of items) {
-        const pin = pins.get(item.id) ?? null;
+        const found = pins.get(item.id) ?? null;
         const shouldBeVisible = item.requestStatus === 'handled' && item.pinVisibility !== 'none';
-        if (pin && !shouldBeVisible) {
-          await hideSeedShipmentPin(client, item.id, item.statusVersion);
+        const outdated = found !== null
+          && Number.isInteger(found.sourceVersion)
+          && found.sourceVersion < item.statusVersion;
+        if (found && (!shouldBeVisible || outdated)) {
+          await hideSeedShipmentPin(client, item.id, shouldBeVisible ? found.sourceVersion : item.statusVersion);
           log('warn', 'Reconciled stale seed shipment pin', {
             endpoint: 'GET /admin/requests',
             requestId: item.id,
             requestStatus: item.requestStatus,
             statusVersion: item.statusVersion,
+            pinVersion: found.sourceVersion,
           });
           out.push({ ...item, mapPin: null });
         } else {
-          out.push({ ...item, mapPin: pin });
+          out.push({ ...item, mapPin: found && { locality: found.locality, country: found.country } });
         }
       }
       return out;
@@ -432,7 +446,7 @@ export async function addSeedRequestMapPin(requestId, mapLocation) {
       'INVALID_STATE',
       current.fulfillmentMethod === 'mail'
         ? 'This requester was told they would not get a map pin'
-        : 'In-person exchanges are not shown on the map'
+        : 'Set a map address for this in-person exchange before adding it to the map'
     );
   }
 
@@ -454,6 +468,66 @@ export async function addSeedRequestMapPin(requestId, mapLocation) {
     throw new Error('Could not write the map pin');
   }
   return written ? { locality: pin.locality, country: pin.country } : null;
+}
+
+const PIN_ADDRESS_FIELDS = ['line1', 'line2', 'city', 'region', 'postalCode', 'country'];
+
+/**
+ * Record (or, with null, clear) where an in-person exchange happened so it can
+ * get an obscured "seeds sent" pin. The address is private: it stays on the
+ * request and only ever reduces to city/region on the public map.
+ *
+ * Clearing the address hides any existing pin at the new version.
+ * Returns { pinAddress, mapPinRemoved }: `mapPinRemoved` is true/false for
+ * whether a visible pin was hidden, or null if the pin store failed.
+ */
+export async function setSeedRequestPinAddress(requestId, rawAddress) {
+  const current = await requireSeedRequest(requestId);
+  if (current.fulfillmentMethod !== 'in_person') {
+    throw new SeedRequestTransitionError(
+      'INVALID_STATE',
+      'Only in-person requests take a map address; mailed requests use their shipping address'
+    );
+  }
+  if (statusOf(current) === 'cancelled') {
+    throw new SeedRequestTransitionError('INVALID_STATE', 'Cancelled requests can’t be put on the map');
+  }
+
+  const address = rawAddress ? normalizeAddress(rawAddress) : null;
+  const clearing = address === null;
+  const { nextVersion, update } = versionedRequestUpdate(requestId, current, clearing
+    ? {
+        set: ['#updatedAt = :updatedAt'],
+        remove: ['#pinAddress'],
+        names: { '#pinAddress': 'pinAddress', '#updatedAt': 'pinAddressUpdatedAt' },
+        values: { ':updatedAt': new Date().toISOString() },
+      }
+    : {
+        set: ['#pinAddress = :pinAddress', '#updatedAt = :updatedAt'],
+        names: { '#pinAddress': 'pinAddress', '#updatedAt': 'pinAddressUpdatedAt' },
+        values: {
+          ':pinAddress': Object.fromEntries(
+            PIN_ADDRESS_FIELDS.filter((field) => address[field]).map((field) => [field, address[field]])
+          ),
+          ':updatedAt': new Date().toISOString(),
+        },
+      });
+  await runTransition([update]);
+
+  // A pin derived from the old address must not outlive it. Changing the
+  // address leaves the pin to be re-added with "Add to map". Open requests
+  // have no visible pin, so there is nothing to hide (false). If the hide
+  // fails (null) the request has already changed; the admin list hides the
+  // now-outdated pin the next time it loads (see attachMapPins), and the
+  // caller is told so it can say so.
+  const mapPinRemoved = statusOf(current) === 'handled'
+    ? await projectPin(
+        (client) => hideSeedShipmentPin(client, requestId, nextVersion),
+        { endpoint: 'PUT /admin/requests/:id/pin-address', requestId, statusVersion: nextVersion, op: 'hide' }
+      )
+    : false;
+
+  return { pinAddress: clearing ? null : { ...address }, mapPinRemoved };
 }
 
 /**

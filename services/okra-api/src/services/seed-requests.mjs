@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { MAP_DISCLOSURE_VERSION } from './seed-shipment-pins.mjs';
+import { normalizeAddress, normalizeName } from './normalize-text.mjs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
@@ -145,10 +146,10 @@ export async function createSeedRequest(payload, contributor) {
   const item = {
     requestId,
     createdAt,
-    name: payload.name.trim(),
+    name: normalizeName(payload.name),
     email: payload.email.trim().toLowerCase(),
     fulfillmentMethod: payload.fulfillmentMethod,
-    shippingAddress: payload.shippingAddress,
+    shippingAddress: normalizeAddress(payload.shippingAddress),
     visitDetails: payload.visitDetails,
     message: payload.message?.trim() || undefined,
     showOnMap: payload.fulfillmentMethod === 'mail' && payload.showOnMap === true,
