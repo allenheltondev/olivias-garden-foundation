@@ -152,6 +152,11 @@ describe('createSeedRequest map consent', () => {
     expect(item.showOnMapConsentedAt).toBe(item.createdAt);
   });
 
+  it('stores how the requester heard about us when provided', async () => {
+    await createSeedRequest({ ...mailPayload, heardAboutUs: 'event' }, null);
+    expect(storedItem().heardAboutUs).toBe('event');
+  });
+
   it('ignores the opt-in for in-person requests', async () => {
     await createSeedRequest({ name: 'Sam', email: 'sam@example.com', fulfillmentMethod: 'in_person', showOnMap: true }, null);
     expect(storedItem().showOnMap).toBe(false);

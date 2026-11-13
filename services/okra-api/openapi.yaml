@@ -118,6 +118,10 @@ paths:
                 message:
                   type: string
                   maxLength: 2000
+                heardAboutUs:
+                  type: string
+                  enum: [search, social_media, friend_or_family, news_or_blog, event, school_or_community_group, other]
+                  description: Optional. How the requester heard about the project; included in the Slack notification.
                 showOnMap:
                   type: boolean
                   default: false

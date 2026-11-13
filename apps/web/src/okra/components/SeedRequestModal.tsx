@@ -19,6 +19,16 @@ type Country = 'US' | 'CA';
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+const HEARD_ABOUT_US_OPTIONS = [
+  { value: 'search', label: 'Online search' },
+  { value: 'social_media', label: 'Social media' },
+  { value: 'friend_or_family', label: 'Friend or family' },
+  { value: 'news_or_blog', label: 'News article or blog' },
+  { value: 'event', label: 'Event or farmers market' },
+  { value: 'school_or_community_group', label: 'School or community group' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 interface FormState {
@@ -34,6 +44,7 @@ interface FormState {
   visitDate: string;
   visitNotes: string;
   message: string;
+  heardAboutUs: string;
   /** Opt-in to showing the first name on the "seeds sent" pin. Starts unchecked. */
   showOnMap: boolean;
 }
@@ -52,6 +63,7 @@ function initialState(authSession: AuthSession | null | undefined): FormState {
     visitDate: '',
     visitNotes: '',
     message: '',
+    heardAboutUs: '',
     showOnMap: false,
   };
 }
@@ -181,6 +193,7 @@ export function SeedRequestModal({
       if (Object.keys(visit).length > 0) body.visitDetails = visit;
     }
     if (form.message.trim()) body.message = form.message.trim();
+    if (form.heardAboutUs) body.heardAboutUs = form.heardAboutUs;
 
     try {
       const headers = createOkraHeaders({
@@ -453,6 +466,20 @@ export function SeedRequestModal({
                       onChange={(e) => update('message', e.target.value)}
                       disabled={isSubmitting}
                     />
+                  </label>
+                  <label className="seed-request__field seed-request__field--wide">
+                    <span className="seed-request__label">How did you hear about us? (optional)</span>
+                    <select
+                      className="seed-request__input"
+                      value={form.heardAboutUs}
+                      onChange={(e) => update('heardAboutUs', e.target.value)}
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Select one</option>
+                      {HEARD_ABOUT_US_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </label>
                 </div>
               </section>
