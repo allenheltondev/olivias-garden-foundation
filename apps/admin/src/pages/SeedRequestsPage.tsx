@@ -14,6 +14,7 @@ import {
 } from '../api';
 import type { AdminSession } from '../auth/session';
 import { findSeedPinLocation } from '../services/seed-pin-geocoder';
+import { GrowingConditions } from './GrowingConditions';
 import { PinAddressForm } from './PinAddressForm';
 import {
   canAddToMap,
@@ -82,6 +83,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadCount, setLoadCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -102,6 +104,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
         if (!isActive()) return;
         setRequests(next.data);
         setTotal(next.total);
+        setLoadCount((n) => n + 1);
         setError(null);
       } catch (err) {
         if (!isActive()) return;
@@ -426,6 +429,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                         : request.visitDetails?.approximateDate || 'No date provided'}
                     </dd>
                   </div>
+                  <GrowingConditions request={request} refreshKey={loadCount} />
                   {request.visitDetails?.notes ? (
                     <div>
                       <dt>Visit notes</dt>
