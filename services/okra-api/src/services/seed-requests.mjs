@@ -9,6 +9,16 @@ const eventBridge = new EventBridgeClient({});
 
 export const SUPPORTED_COUNTRIES = ['US', 'CA'];
 
+export const HEARD_ABOUT_US_OPTIONS = [
+  'search',
+  'social_media',
+  'friend_or_family',
+  'news_or_blog',
+  'event',
+  'school_or_community_group',
+  'other'
+];
+
 export const seedRequestSchema = {
   type: 'object',
   required: ['name', 'email', 'fulfillmentMethod'],
@@ -37,6 +47,7 @@ export const seedRequestSchema = {
       additionalProperties: false
     },
     message: { type: 'string', maxLength: 2000 },
+    heardAboutUs: { type: 'string', enum: HEARD_ABOUT_US_OPTIONS },
     // Explicit opt-in to showing the requester's first name on their public
     // "seeds sent" map pin. Without it the pin is anonymous (city and month
     // only). Absent means no, so earlier requests never show a name.
@@ -152,6 +163,7 @@ export async function createSeedRequest(payload, contributor) {
     shippingAddress: normalizeAddress(payload.shippingAddress),
     visitDetails: payload.visitDetails,
     message: payload.message?.trim() || undefined,
+    heardAboutUs: payload.heardAboutUs || undefined,
     showOnMap: payload.fulfillmentMethod === 'mail' && payload.showOnMap === true,
     ...(payload.fulfillmentMethod === 'mail' && payload.showOnMap === true
       ? { showOnMapConsentedAt: createdAt }
@@ -211,6 +223,7 @@ export async function publishSeedRequestCreatedEvent(request, correlationId) {
             shippingAddress: request.shippingAddress ?? null,
             visitDetails: request.visitDetails ?? null,
             message: request.message ?? null,
+            heardAboutUs: request.heardAboutUs ?? null,
             correlationId
           })
         }

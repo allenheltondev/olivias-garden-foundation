@@ -61,6 +61,14 @@ describe('renderEvent', () => {
     expect(result.slack.text).not.toContain('cog-123');
   });
 
+  it('includes how the requester heard about us when provided', () => {
+    const detail = { name: 'Olivia', email: 'o@example.com', fulfillmentMethod: 'in_person' };
+    const withSource = renderEvent('okra.seed-requests', 'seed-request.created', { ...detail, heardAboutUs: 'social_media' });
+    expect(withSource.slack.text).toContain('Heard about us: Social media');
+    const without = renderEvent('okra.seed-requests', 'seed-request.created', { ...detail, heardAboutUs: null });
+    expect(without.slack.text).not.toContain('Heard about us');
+  });
+
   it('adds hardiness zone and okra planting window to mailed seed requests when known', () => {
     const detail = {
       name: 'Olivia',

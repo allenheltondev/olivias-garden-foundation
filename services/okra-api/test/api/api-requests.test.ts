@@ -160,6 +160,21 @@ describe('POST /requests', () => {
     expect(mockCreateSeedRequest.mock.calls[0][0].showOnMap).toBe(true);
   });
 
+  it('accepts heardAboutUs and rejects unknown values', async () => {
+    const ok = await handler(
+      makeRestApiEvent('/requests', 'POST', JSON.stringify({ ...mailPayload, heardAboutUs: 'search' }), { 'Idempotency-Key': 'k-heard-1' })
+    );
+    expect(ok.statusCode).toBe(201);
+    expect(mockCreateSeedRequest.mock.calls.at(-1)[0].heardAboutUs).toBe('search');
+
+    mockCreateSeedRequest.mockClear();
+    const bad = await handler(
+      makeRestApiEvent('/requests', 'POST', JSON.stringify({ ...mailPayload, heardAboutUs: 'billboard' }), { 'Idempotency-Key': 'k-heard-2' })
+    );
+    expect(bad.statusCode).toBe(422);
+    expect(mockCreateSeedRequest).not.toHaveBeenCalled();
+  });
+
   it('returns 422 when showOnMap is not a boolean', async () => {
     const res = await handler(
       makeRestApiEvent('/requests', 'POST', JSON.stringify({ ...mailPayload, showOnMap: 'yes' }), { 'Idempotency-Key': 'k-map-2' })

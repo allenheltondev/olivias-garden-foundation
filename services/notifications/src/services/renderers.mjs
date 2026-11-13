@@ -98,6 +98,16 @@ function renderOkraSubmissionCreated(detail) {
   };
 }
 
+const HEARD_ABOUT_US_LABELS = {
+  search: 'Online search',
+  social_media: 'Social media',
+  friend_or_family: 'Friend or family',
+  news_or_blog: 'News article or blog',
+  event: 'Event or farmers market',
+  school_or_community_group: 'School or community group',
+  other: 'Other'
+};
+
 function renderSeedRequestCreated(detail, context = {}) {
   const lines = ['*:clipboard: New okra seed request*'];
   lines.push(`Name: ${detail.name ?? 'Unknown'}`);
@@ -116,6 +126,9 @@ function renderSeedRequestCreated(detail, context = {}) {
     lines.push('Fulfillment: In-person exchange');
     if (detail.visitDetails?.approximateDate) lines.push(`Visiting: ${detail.visitDetails.approximateDate}`);
     if (detail.visitDetails?.notes) lines.push(`Notes: ${detail.visitDetails.notes}`);
+  }
+  if (detail.heardAboutUs) {
+    lines.push(`Heard about us: ${HEARD_ABOUT_US_LABELS[detail.heardAboutUs] ?? detail.heardAboutUs}`);
   }
   if (detail.message) lines.push(`Message: ${detail.message}`);
 
