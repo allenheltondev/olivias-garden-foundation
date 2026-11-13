@@ -13,9 +13,14 @@ const api = vi.hoisted(() => ({
   setSeedRequestPinAddress: vi.fn(),
 }));
 const geocoder = vi.hoisted(() => ({ findSeedPinLocation: vi.fn() }));
+const planting = vi.hoisted(() => ({ lookupHardinessZone: vi.fn() }));
 
 vi.mock('../api', () => api);
 vi.mock('../services/seed-pin-geocoder', () => geocoder);
+vi.mock('../services/planting', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/planting')>()),
+  lookupHardinessZone: planting.lookupHardinessZone,
+}));
 
 import { SeedRequestsPage } from './SeedRequestsPage';
 
@@ -96,5 +101,58 @@ describe('saving an in-person map address', () => {
 
     expect(await screen.findByText(/Seed request changed or is missing/)).toBeTruthy();
     expect(api.addSeedRequestMapPin).not.toHaveBeenCalled();
+  });
+});
+
+describe('growing conditions', () => {
+  const mailed = (overrides: Partial<SeedRequestQueueItem> = {}) =>
+    doneInPerson({
+      fulfillmentMethod: 'mail',
+      pinAddress: null,
+      shippingAddress: { line1: '1 Oak St', city: 'Austin', region: 'TX', postalCode: '78701', country: 'US' },
+      requestStatus: 'open',
+      ...overrides,
+    });
+
+  it('shows the hardiness zone and okra growing window for a mailed US request', async () => {
+    api.listSeedRequestQueue.mockResolvedValue({ data: [mailed()], total: 1, page: 1, limit: 10 });
+    planting.lookupHardinessZone.mockResolvedValue('8b');
+
+    render(<SeedRequestsPage session={session} />);
+
+    expect(await screen.findByText('Hardiness zone')).toBeTruthy();
+    expect(screen.getByText('8b')).toBeTruthy();
+    expect(screen.getByText('Growing window')).toBeTruthy();
+    expect(screen.getByText(/early April to early June/)).toBeTruthy();
+    expect(planting.lookupHardinessZone).toHaveBeenCalledWith('78701');
+  });
+
+  it('shows nothing, and does not look anything up, for in-person or non-US requests', async () => {
+    api.listSeedRequestQueue.mockResolvedValue({
+      data: [
+        doneInPerson({ id: 'a', requestStatus: 'open' }),
+        mailed({ id: 'b', shippingAddress: { city: 'Toronto', postalCode: 'M5V 2T6', country: 'CA' } }),
+      ],
+      total: 2,
+      page: 1,
+      limit: 10,
+    });
+
+    render(<SeedRequestsPage session={session} />);
+
+    await screen.findAllByText('Fulfillment');
+    expect(screen.queryByText('Hardiness zone')).toBeNull();
+    expect(planting.lookupHardinessZone).not.toHaveBeenCalled();
+  });
+
+  it('omits the rows when the zone lookup fails', async () => {
+    api.listSeedRequestQueue.mockResolvedValue({ data: [mailed()], total: 1, page: 1, limit: 10 });
+    planting.lookupHardinessZone.mockResolvedValue(null);
+
+    render(<SeedRequestsPage session={session} />);
+
+    await screen.findByText('Fulfillment');
+    await waitFor(() => expect(planting.lookupHardinessZone).toHaveBeenCalled());
+    expect(screen.queryByText('Hardiness zone')).toBeNull();
   });
 });

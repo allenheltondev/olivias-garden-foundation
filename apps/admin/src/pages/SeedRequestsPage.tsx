@@ -14,6 +14,7 @@ import {
 } from '../api';
 import type { AdminSession } from '../auth/session';
 import { findSeedPinLocation } from '../services/seed-pin-geocoder';
+import { GrowingConditions } from './GrowingConditions';
 import { PinAddressForm } from './PinAddressForm';
 import {
   canAddToMap,
@@ -426,6 +427,7 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
                         : request.visitDetails?.approximateDate || 'No date provided'}
                     </dd>
                   </div>
+                  <GrowingConditions request={request} />
                   {request.visitDetails?.notes ? (
                     <div>
                       <dt>Visit notes</dt>
