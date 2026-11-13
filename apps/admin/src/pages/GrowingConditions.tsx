@@ -7,7 +7,14 @@ import { lookupHardinessZone, okraPlantingWindow, usZipFromAddress } from '../se
  * <dl>, matching the Slack notification. Renders nothing for in-person or
  * non-US requests, or when the zone can't be found.
  */
-export function GrowingConditions({ request }: { request: SeedRequestQueueItem }) {
+export function GrowingConditions({
+  request,
+  refreshKey = 0,
+}: {
+  request: SeedRequestQueueItem;
+  /** Changes whenever the list reloads, so a failed lookup is retried on Refresh. */
+  refreshKey?: number;
+}) {
   const zip = request.fulfillmentMethod === 'mail' ? usZipFromAddress(request.shippingAddress) : null;
   const [result, setResult] = useState<{ zip: string; zone: string | null } | null>(null);
 
@@ -20,7 +27,7 @@ export function GrowingConditions({ request }: { request: SeedRequestQueueItem }
     return () => {
       active = false;
     };
-  }, [zip]);
+  }, [zip, refreshKey]);
 
   const zone = result && result.zip === zip ? result.zone : null;
   if (!zone) return null;

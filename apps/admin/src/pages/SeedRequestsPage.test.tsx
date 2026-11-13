@@ -145,6 +145,22 @@ describe('growing conditions', () => {
     expect(planting.lookupHardinessZone).not.toHaveBeenCalled();
   });
 
+  it('retries a failed zone lookup when the list is refreshed', async () => {
+    api.listSeedRequestQueue.mockResolvedValue({ data: [mailed()], total: 1, page: 1, limit: 10 });
+    planting.lookupHardinessZone.mockResolvedValueOnce(null).mockResolvedValue('8b');
+
+    render(<SeedRequestsPage session={session} />);
+
+    await waitFor(() => expect(planting.lookupHardinessZone).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Hardiness zone')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+
+    expect(await screen.findByText('Hardiness zone')).toBeTruthy();
+    expect(screen.getByText(/early April to early June/)).toBeTruthy();
+    expect(planting.lookupHardinessZone).toHaveBeenCalledTimes(2);
+  });
+
   it('omits the rows when the zone lookup fails', async () => {
     api.listSeedRequestQueue.mockResolvedValue({ data: [mailed()], total: 1, page: 1, limit: 10 });
     planting.lookupHardinessZone.mockResolvedValue(null);
