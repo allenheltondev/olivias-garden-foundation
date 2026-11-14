@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Button, FormFeedback, Input } from '@olivias/ui';
+import { trackEvent } from '../../observability/analytics';
 import { webApiBase } from '../routes';
 import './NewsletterSignup.css';
 
@@ -79,6 +80,7 @@ export function NewsletterSignup({
         throw new Error(message);
       }
 
+      trackEvent('newsletter_signup', { source });
       setStatus('success');
       setEmail('');
     } catch (submitError) {

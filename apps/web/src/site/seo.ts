@@ -80,7 +80,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     const pageTitle = buildPageTitle(route);
     const pageUrl = absoluteUrl(pathname === '/' ? '/' : pathname);
     const pageImage = absoluteUrl(route.seoImage ?? socialShareImage);
-    const pageImageAlt = route.seoImage && route.seoImageAlt ? route.seoImageAlt : socialShareImageAlt;
+    const pageImageAlt = route.seoImageAlt ?? socialShareImageAlt;
     const robots = route.allowIndex === false
       ? 'noindex, nofollow, noarchive'
       : 'index, follow, max-image-preview:large';

@@ -201,8 +201,9 @@ export const seoRoutes = [
     path: '/about',
     title: "About Olivia's Garden",
     description:
-      "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
-    seoImage: defaultImage,
+      "Meet Olivia, the little girl who loved eating okra straight from the plant, and learn how her family is building a garden and foundation in her memory.",
+    seoImage: '/images/social/about.png',
+    seoImageAlt: "Sunset over the memorial garden's raised beds, with the headline: Olivia's Garden: the story.",
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.8 },
     bodyFallback: `
@@ -236,8 +237,9 @@ export const seoRoutes = [
     path: '/get-involved',
     title: 'Get involved',
     description:
-      "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
-    seoImage: defaultImage,
+      "Request free okra seeds, add your garden to the map, or follow along with Olivia's Garden. Share your interest in helping in person when the garden opens.",
+    seoImage: '/images/social/get-involved.png',
+    seoImageAlt: "Hands tending seedlings in a raised garden bed, with the headline: Start where you are.",
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.8 },
     bodyFallback: `
@@ -276,8 +278,9 @@ export const seoRoutes = [
     path: '/okra',
     title: 'The Okra Project',
     description:
-      "Request free okra seeds, add your garden to the Okra Project map, and join a public invitation to grow food and share the story back.",
-    seoImage: defaultImage,
+      "Request free seeds from Olivia's okra, find growers on the Okra Project map, and add your garden to a seed-sharing story growing across the country.",
+    seoImage: '/images/social/okra.png',
+    seoImageAlt: "Green okra pods beside a seed packet, with the headline: Free okra seeds from Olivia's garden.",
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.9 },
     bodyFallback: `
@@ -314,8 +317,9 @@ ${renderGuideListHtml(okraGuides)}
     path: '/impact',
     title: "What we're building",
     description:
-      "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
-    seoImage: defaultImage,
+      "See what's growing at Olivia's Garden in McKinney, Texas: seasonal vegetables, flowers, animals, and the next steps for seed sharing and hands-on learning.",
+    seoImage: '/images/social/impact.png',
+    seoImageAlt: "A basket of freshly harvested vegetables on the grass, with the headline: What we're growing.",
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.7 },
     bodyFallback: `
@@ -371,8 +375,9 @@ ${renderGuideListHtml(okraGuides)}
     path: '/donate',
     title: "Support Olivia's Garden",
     description:
-      "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
-    seoImage: defaultImage,
+      "Help Olivia's Garden grow with a one-time gift or monthly Garden Club support. Every donor receives a named marker in the memorial garden.",
+    seoImage: '/images/social/donate.png',
+    seoImageAlt: "An orange bee-shaped donor marker in the grass, with the headline: Plant something permanent.",
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.8 },
     bodyFallback: `
@@ -426,8 +431,9 @@ ${renderGuideListHtml(okraGuides)}
     path: '/good-roots',
     title: 'Good Roots Network',
     description:
-      'A garden planning app that helps you decide what to plant, design your beds, and stay on top of watering and harvest — then share your extra harvest with neighbors when you have it.',
-    seoImage: defaultImage,
+      "Plan your garden beds, choose crops, and keep up with watering and harvest reminders. Try Good Roots Network free and share extra produce with neighbors.",
+    seoImage: '/images/social/good-roots.png',
+    seoImageAlt: "The Good Roots garden bed planner in a browser frame beside a garden photo, with the headline: Plan a garden you can keep up with.",
     allowIndex: false,
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.6 },
@@ -454,11 +460,51 @@ ${renderGuideListHtml(okraGuides)}
     `,
   },
   {
+    path: '/partners',
+    title: 'Partner with us',
+    description:
+      "Partner with Olivia's Garden Foundation: sponsor free okra seeds through bulk growing or satellite seed sharing. For extension programs, colleges, nonprofits, and local businesses.",
+    seoImage: defaultImage,
+    prerender: true,
+    sitemap: { changefreq: 'monthly', priority: 0.6 },
+    bodyFallback: `
+      <h1>Partner with Olivia's Garden Foundation</h1>
+      <p>
+        Olivia's Garden Foundation is a young, family-run 501(c)(3) nonprofit in McKinney, Texas
+        (EIN ${ein}). We'd like to grow alongside organizations that share the work of helping
+        people grow their own food. We don't have any partners yet.
+      </p>
+      <h2>Who we'd love to work with</h2>
+      <ul>
+        <li><strong>Extension and Master Gardener programs</strong>, such as Texas A&amp;M AgriLife Extension and county Master Gardener associations.</li>
+        <li><strong>Colleges and universities</strong>, including agriculture, horticulture, and nutrition programs at Texas A&amp;M and other schools.</li>
+        <li><strong>Nonprofits and food access groups</strong>, such as food pantries, community gardens, and faith communities, as local sharing spots for free okra seeds.</li>
+        <li><strong>Local businesses</strong>, such as garden centers and feed stores.</li>
+      </ul>
+      <h2>Ways to sponsor</h2>
+      <ul>
+        <li><strong>Bulk growing.</strong> Grow a plot of Clemson Spineless okra from Olivia's line and save the seed, so more free packets can go out.</li>
+        <li><strong>Satellite sharing.</strong> Become a local sharing spot: we send you okra seed packets and you hand them out in your community.</li>
+      </ul>
+      <h2>Other ways to help</h2>
+      <ul>
+        <li>Share growing expertise for our guides and FAQ.</li>
+        <li>Donate seeds, tools, or supplies.</li>
+        <li>Plan future hands-on programs with us once we open the gate.</li>
+      </ul>
+      <p>
+        To start a conversation, use the form on this page or email
+        <a href="mailto:${contactEmail}?subject=Partnership">${contactEmail}</a>.
+      </p>
+    `,
+  },
+  {
     path: '/faq',
     title: 'Frequently asked questions',
     description:
-      "Answers about free okra seeds, growing Clemson Spineless okra, tax-deductible donations, Garden Club, and visiting Olivia's Garden Foundation.",
-    seoImage: defaultImage,
+      "Find answers about requesting free okra seeds, growing Clemson Spineless okra, tax-deductible gifts, Garden Club, and when the garden will open.",
+    seoImage: '/images/social/faq.png',
+    seoImageAlt: "A seedling growing from soil beside the headline: Questions? We've got answers.",
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.6 },
     bodyFallback: faqBodyFallback,

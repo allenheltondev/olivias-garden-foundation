@@ -64,7 +64,7 @@ function buildHeadFragment(route) {
   const pageUrl = absoluteUrl(route.path === '/' ? '/' : route.path);
   const canonicalUrl = route.canonicalPath ? absoluteUrl(route.canonicalPath) : pageUrl;
   const pageImage = absoluteUrl(route.seoImage ?? defaultImage);
-  const pageImageAlt = route.seoImage && route.seoImageAlt ? route.seoImageAlt : defaultImageAlt;
+  const pageImageAlt = route.seoImageAlt ?? defaultImageAlt;
   const ogType = route.ogType ?? 'website';
   const robots = route.allowIndex === false
     ? 'noindex, nofollow, noarchive'

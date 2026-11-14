@@ -4181,7 +4181,7 @@ html {
 }
 
 /* FAQ page */
-.faq-hero__title {
+.og-page-hero__title.faq-hero__title {
   font-size: clamp(2rem, 4vw, 2.75rem);
   line-height: 1.1;
 }
@@ -4265,6 +4265,109 @@ html {
   color: var(--site-leaf);
   font-weight: 600;
   text-underline-offset: 0.2em;
+}
+
+/* Get involved: paired actions */
+.get-involved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Partners page */
+.og-page-hero__title.partners-hero__title {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.partners-audiences {
+  display: grid;
+  gap: 1rem;
+}
+
+.partners-audience {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--site-border);
+  border-radius: 1rem;
+  background: var(--site-paper-strong);
+}
+
+.partners-audience h3 {
+  margin: 0;
+  color: var(--site-branch);
+  font-family: var(--site-display);
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.partners-audience p {
+  margin: 0;
+  color: var(--site-muted);
+  line-height: 1.65;
+}
+
+.partners-page .page-section {
+  margin-top: clamp(1.75rem, 3.5vw, 2.5rem);
+}
+
+.partners-sponsor-ways {
+  display: grid;
+  gap: 1rem;
+}
+
+.partners-other-ways__title {
+  margin: 1.5rem 0 0.5rem;
+  color: var(--site-branch);
+  font-family: var(--site-display);
+  font-size: 1.15rem;
+}
+
+.partners-ways {
+  max-width: 44rem;
+}
+
+.partners-contact {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.partners-contact__aside {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.partners-form__row {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.partners-form__count {
+  margin: -0.5rem 0 0;
+  color: var(--site-muted);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+@media (min-width: 760px) {
+  .partners-sponsor-ways {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partners-audiences {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partners-form__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partners-contact {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
 }
 
 /* Okra growing guides (/okra/<slug>) */
