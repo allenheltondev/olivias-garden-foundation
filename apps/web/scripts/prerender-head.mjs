@@ -139,12 +139,16 @@ function applyHead(templateHtml, route) {
   html = html.replace(/<link\s+rel="canonical"[^>]*\/?>/i, `<link rel="canonical" href="${escapeAttr(canonicalUrl)}" />`);
 
   // JSON-LD blocks (inject once, before </head>)
+  const extraJsonLdScripts = (route.extraJsonLd ?? [])
+    .map(({ id, data }) => `    <script type="application/ld+json" data-seo-id="${escapeAttr(id)}">${JSON.stringify(data)}</script>\n`)
+    .join('');
   const jsonLdScripts =
     `    <script type="application/ld+json" data-seo-id="organization">${jsonLdOrg}</script>\n` +
-    `    <script type="application/ld+json" data-seo-id="webpage">${jsonLdPage}</script>\n  `;
+    `    <script type="application/ld+json" data-seo-id="webpage">${jsonLdPage}</script>\n` +
+    `${extraJsonLdScripts}  `;
 
   // Remove any previous prerender JSON-LD so reruns are idempotent.
-  html = html.replace(/\s*<script type="application\/ld\+json" data-seo-id="(organization|webpage)">[\s\S]*?<\/script>/g, '');
+  html = html.replace(/\s*<script type="application\/ld\+json" data-seo-id="[^"]*">[\s\S]*?<\/script>/g, '');
   html = html.replace('</head>', `${jsonLdScripts}</head>`);
 
   return html;
