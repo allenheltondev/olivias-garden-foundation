@@ -747,6 +747,10 @@ Resources:
         EventBusArn: !GetAtt EventBus.Arn
 
 Outputs:
+  ApiFunctionArn:
+    Description: ARN of the Good Roots Network API function; the operator MCP server (services/mcp-api) invokes it directly
+    Value: !GetAtt ApiFunction.Arn
+
   ApiUrl:
     Description: API Gateway endpoint URL
     Value: !If

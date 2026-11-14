@@ -1,0 +1,20 @@
+$kind: collection
+name: Operator MCP
+description: |-
+  The operator MCP server (services/mcp-api, docs/mcp-server.md): JSON-RPC over
+  Streamable HTTP at https://api.<domain>/mcp.
+
+  The Auth folder needs no key and runs on every staging validation: it pins
+  that the endpoint refuses every request without a live key, the same way.
+  The Tools folder runs only when `mcpKey` is set to a live staging key
+  (npm run mcp:keys -w services/mcp-api -- create --env staging ...).
+variables:
+  - key: mcpUrl
+    value: 'https://api.example.com/mcp'
+    description: The MCP endpoint (McpServerUrl output of the ogf-mcp-<env> stack)
+  - key: mcpKey
+    value: ''
+    description: Optional live ogfmcp_ key; without one the Tools folder is skipped
+  - key: protocolVersion
+    value: '2026-07-28'
+    description: MCP protocol revision the server serves
