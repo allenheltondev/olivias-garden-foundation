@@ -1627,6 +1627,7 @@ img {
   background: rgba(255, 252, 246, 0.96);
   color: var(--og-color-soil);
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .og-auth-utility__login:hover,

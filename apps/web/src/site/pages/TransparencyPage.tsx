@@ -21,7 +21,6 @@ export function TransparencyPage() {
   return (
     <LegalDocument
       title="Transparency"
-      eyebrow="About the organization"
       effectiveDate="May 11, 2026"
       intro={(
         <p>

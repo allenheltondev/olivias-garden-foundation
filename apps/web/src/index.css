@@ -1087,7 +1087,6 @@ html {
   box-shadow: 0 14px 30px rgba(38, 23, 15, 0.06);
 }
 
-.about-prose-hero__eyebrow,
 .about-prose-block__eyebrow {
   margin: 0;
   color: var(--site-leaf);
@@ -1992,7 +1991,6 @@ html {
     border-radius: 1.1rem;
   }
 
-  .about-prose-hero__eyebrow,
   .about-prose-block__eyebrow {
     font-size: 0.72rem;
     letter-spacing: 0.12em;
@@ -2210,7 +2208,7 @@ html {
   }
 
   .home-action-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .page-hero--background {
@@ -2236,6 +2234,10 @@ html {
 }
 
 @media (min-width: 1040px) {
+  .home-action-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .card-grid--four {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -3376,16 +3378,6 @@ html {
   gap: 0.6rem;
 }
 
-.legal-document__eyebrow {
-  margin: 0;
-  font-family: var(--site-display);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--legal-eyebrow);
-}
-
 .legal-document__title {
   margin: 0;
   font-family: 'Iowan Old Style', 'Palatino Linotype', 'Palatino', 'Georgia', 'Times New Roman', serif;
@@ -4068,5 +4060,30 @@ html {
 @media (max-width: 760px) {
   .impact-story {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Between the mobile menu breakpoint and wide desktop, the brand copy pushes
+   the primary nav onto a second row. Drop the tagline (and, on the narrowest
+   desktop widths, the brand text, leaving the logo, which keeps its
+   "Go to home" label) and tighten link spacing to keep the nav on one line. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .og-site-header__title {
+    display: none;
+  }
+
+  .og-site-header__eyebrow {
+    letter-spacing: 0.08em;
+  }
+
+  .og-site-header__nav .og-site-header__link {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+}
+
+@media (min-width: 800px) and (max-width: 979px) {
+  .og-site-header__brand-copy {
+    display: none;
   }
 }

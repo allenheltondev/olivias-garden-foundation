@@ -72,6 +72,10 @@
     align-items: stretch;
   }
 
+  .newsletter-signup__field {
+    flex: 0 0 auto;
+  }
+
   .newsletter-signup__controls .site-cta {
     width: 100%;
   }

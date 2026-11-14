@@ -243,7 +243,7 @@ export function SiteFooter({
     <SharedSiteFooter
       meta={(
         <>
-          {foundationOrganization.name} is a 501(c)(3) nonprofit organization, EIN {foundationOrganization.ein}. Donations are tax-deductible. ©2026{' '}
+          {foundationOrganization.name} is a 501(c)(3) nonprofit organization, EIN {foundationOrganization.ein}. Donations are tax-deductible. ©{new Date().getFullYear()}{' '}
           <a href={candidProfileUrl} target="_blank" rel="noreferrer" className="og-site-footer__link og-site-footer__link--meta">
             {foundationOrganization.name}
           </a>
@@ -331,13 +331,11 @@ export function CtaButton({
 
 export function LegalDocument({
   title,
-  eyebrow = 'Legal',
   effectiveDate,
   intro,
   children,
 }: {
   title: string;
-  eyebrow?: string;
   effectiveDate: string;
   intro?: ReactNode;
   children: ReactNode;
@@ -345,7 +343,6 @@ export function LegalDocument({
   return (
     <article className="legal-document">
       <header className="legal-document__header">
-        <p className="legal-document__eyebrow">{eyebrow}</p>
         <h1 className="legal-document__title">{title}</h1>
         <p className="legal-document__effective">
           <span className="legal-document__effective-label">Effective date</span>

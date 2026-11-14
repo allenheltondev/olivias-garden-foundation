@@ -12,7 +12,7 @@ test.describe('foundation disclosures', () => {
       `Olivia's Garden Foundation is a 501(c)(3) nonprofit organization, EIN ${FOUNDATION_EIN}.`,
     );
     await expect(footer).toContainText('Donations are tax-deductible.');
-    await expect(footer).toContainText("©2026 Olivia's Garden Foundation. All rights reserved.");
+    await expect(footer).toContainText(`©${new Date().getFullYear()} Olivia's Garden Foundation. All rights reserved.`);
   });
 
   test('donate page surfaces the EIN and tax-deductible language near the gift action', async ({ page }) => {
