@@ -27,10 +27,52 @@ stack_output() {
   printf '%s' "$value"
 }
 
-ADMIN_ARN=$(stack_output "$ADMIN_STACK_NAME" ApiFunctionArn)
-OKRA_ARN=$(stack_output "$OKRA_STACK_NAME" AdminApiFunctionArn)
-STORE_ARN=$(stack_output "$STORE_STACK_NAME" ApiFunctionArn)
-GRN_ARN=$(stack_output "$GRN_STACK_NAME" ApiFunctionArn)
+# A service function's ARN: its stack's `<LogicalId>Arn` output, or, when that
+# output is absent, the function the stack's <LogicalId> resource names.
+#
+# The fallback matters on shared staging stacks: other workflows (e.g. the
+# foundation web PR preview, which deploys ogf-okra-staging) redeploy them from
+# branches that predate the output, which removes it. The resource itself is
+# there whichever template deployed last.
+function_arn() {
+  local stack="$1" logical_id="$2" value name
+  value=$(aws cloudformation describe-stacks \
+    --stack-name "$stack" \
+    --region "$AWS_REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='${logical_id}Arn'].OutputValue | [0]" \
+    --output text)
+  if [ -n "$value" ] && [ "$value" != "None" ]; then
+    printf '%s' "$value"
+    return
+  fi
+  name=$(aws cloudformation describe-stack-resource \
+    --stack-name "$stack" \
+    --logical-resource-id "$logical_id" \
+    --region "$AWS_REGION" \
+    --query "StackResourceDetail.PhysicalResourceId" \
+    --output text)
+  if [ -z "$name" ] || [ "$name" = "None" ]; then
+    echo "Stack $stack has no ${logical_id}Arn output or $logical_id resource; deploy it first." >&2
+    exit 1
+  fi
+  echo "Stack $stack has no ${logical_id}Arn output; using its $logical_id resource ($name)." >&2
+  aws lambda get-function-configuration \
+    --function-name "$name" \
+    --region "$AWS_REGION" \
+    --query FunctionArn \
+    --output text
+}
+
+ADMIN_ARN=$(function_arn "$ADMIN_STACK_NAME" ApiFunction)
+OKRA_ARN=$(function_arn "$OKRA_STACK_NAME" AdminApiFunction)
+STORE_ARN=$(function_arn "$STORE_STACK_NAME" ApiFunction)
+GRN_ARN=$(function_arn "$GRN_STACK_NAME" ApiFunction)
+for arn in "$ADMIN_ARN" "$OKRA_ARN" "$STORE_ARN" "$GRN_ARN"; do
+  if [[ "$arn" != arn:*:lambda:*:function:* ]]; then
+    echo "Could not resolve a service function ARN (got: ${arn:-nothing})." >&2
+    exit 1
+  fi
+done
 
 PARAM_OVERRIDES=(
   "EnvironmentName=$ENVIRONMENT"
