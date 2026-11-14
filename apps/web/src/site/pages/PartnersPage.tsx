@@ -8,6 +8,15 @@ import { webApiBase } from '../routes';
 const CONTACT_EMAIL = foundationOrganization.contactEmail;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// The contact API caps `message` at 4,000 characters, and the organization and
+// type are folded into it as a short header (at most ~280 characters with
+// these limits). Keeping the note itself to 3,500 leaves headroom. Name and
+// email match the API's own field limits.
+const ORG_NAME_MAX = 200;
+const CONTACT_NAME_MAX = 200;
+const EMAIL_MAX = 320;
+const MESSAGE_MAX = 3500;
+
 const PARTNER_TYPE_OPTIONS = [
   { value: 'extension', label: 'Extension or Master Gardener program' },
   { value: 'college', label: 'College or university' },
@@ -133,6 +142,7 @@ function PartnerInquiryForm() {
           value={orgName}
           onChange={(event) => { clearFeedback(); setOrgName(event.target.value); }}
           required
+          maxLength={ORG_NAME_MAX}
           autoComplete="organization"
         />
         <Select
@@ -149,6 +159,7 @@ function PartnerInquiryForm() {
           value={contactName}
           onChange={(event) => { clearFeedback(); setContactName(event.target.value); }}
           required
+          maxLength={CONTACT_NAME_MAX}
           autoComplete="name"
         />
         <Input
@@ -157,6 +168,7 @@ function PartnerInquiryForm() {
           value={email}
           onChange={(event) => { clearFeedback(); setEmail(event.target.value); }}
           required
+          maxLength={EMAIL_MAX}
           autoComplete="email"
         />
       </div>
@@ -164,9 +176,14 @@ function PartnerInquiryForm() {
         label="What do you have in mind?"
         rows={5}
         value={message}
-        onChange={(event) => { clearFeedback(); setMessage(event.target.value); }}
+        onChange={(event) => { clearFeedback(); setMessage(event.target.value.slice(0, MESSAGE_MAX)); }}
         required
+        maxLength={MESSAGE_MAX}
+        aria-describedby="partners-message-count"
       />
+      <p id="partners-message-count" className="partners-form__count" aria-live="polite">
+        {message.length.toLocaleString('en-US')} / {MESSAGE_MAX.toLocaleString('en-US')} characters
+      </p>
       <Button type="submit" disabled={!canSubmit} loading={submitting}>
         {submitting ? 'Sending...' : 'Start the conversation'}
       </Button>

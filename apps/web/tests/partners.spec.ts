@@ -47,6 +47,33 @@ test.describe('partners page', () => {
   });
 });
 
+test.describe('partners page limits', () => {
+  test('keeps the longest possible inquiry within the API message limit', async ({ page }) => {
+    let submitted: Record<string, unknown> | null = null;
+    await page.route(/\/contact$/, async (route) => {
+      submitted = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({ status: 202, json: { ok: true } });
+    });
+
+    await gotoAndWait(page, '/partners');
+    await page.getByRole('textbox', { name: /^Organization/ }).fill('O'.repeat(500));
+    await page.getByLabel('Type of organization').selectOption('nonprofit');
+    await page.getByLabel('Your name').fill('N'.repeat(500));
+    await page.getByRole('textbox', { name: /^Email/ }).fill('pat@example.org');
+    await page.getByLabel('What do you have in mind?').fill('M'.repeat(5000));
+
+    await expect(page.getByRole('textbox', { name: /^Organization/ })).toHaveValue('O'.repeat(200));
+    await expect(page.getByLabel('Your name')).toHaveValue('N'.repeat(200));
+    await expect(page.getByLabel('What do you have in mind?')).toHaveValue('M'.repeat(3500));
+    await expect(page.getByText('3,500 / 3,500 characters')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Start the conversation' }).click();
+    await expect(page.getByText("Thank you. We'll read this closely")).toBeVisible();
+    expect(String(submitted?.message).length).toBeLessThanOrEqual(4000);
+    expect(String(submitted?.contactName).length).toBeLessThanOrEqual(200);
+  });
+});
+
 test.describe('partners page mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
