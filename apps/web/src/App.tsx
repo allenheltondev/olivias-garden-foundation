@@ -52,6 +52,11 @@ const OkraSubmissionsPage = lazy(async () => {
   return { default: module.OkraSubmissionsPage };
 });
 
+const PartnersPage = lazy(async () => {
+  const module = await import('./site/pages/PartnersPage');
+  return { default: module.PartnersPage };
+});
+
 const FaqPage = lazy(async () => {
   const module = await import('./site/pages/FaqPage');
   return { default: module.FaqPage };
@@ -424,6 +429,14 @@ function App() {
             }
           />
           <Route path="/contact" element={<ContactPage />} />
+          <Route
+            path="/partners"
+            element={
+              <Suspense fallback={routeFallback}>
+                <PartnersPage />
+              </Suspense>
+            }
+          />
           <Route
             path="/faq"
             element={

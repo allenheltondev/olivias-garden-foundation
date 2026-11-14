@@ -129,6 +129,15 @@ export const routes: AppRoute[] = [
     prerender: true,
   },
   {
+    path: '/partners',
+    label: 'Partner with us',
+    showInFooter: true,
+    title: 'Partner with us',
+    description: "Partner with Olivia's Garden Foundation: extension programs, colleges, nonprofits, and local businesses helping more people grow their own food.",
+    seoImage: socialShareImage,
+    prerender: true,
+  },
+  {
     path: '/faq',
     label: 'FAQ',
     showInFooter: true,
@@ -204,6 +213,7 @@ const primaryPageOrder = new Map([
   ['/get-involved', 6],
   ['/impact', 7],
   ['/faq', 8],
+  ['/partners', 9],
 ]);
 
 function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
