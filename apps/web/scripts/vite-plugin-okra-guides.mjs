@@ -15,7 +15,7 @@
 // VITE_INCLUDE_DRAFT_GUIDES=true.
 
 import { guideRouteMeta, guideSummary } from '../src/site/okra-guides/guide-core.mjs';
-import { guidesContentDir, loadOkraGuides, shouldIncludeDrafts } from './okra-guides.mjs';
+import { guidesContentDir, loadOkraGuides, readGuideFiles, shouldIncludeDrafts } from './okra-guides.mjs';
 
 const REGISTRY_ID = 'virtual:okra-guides';
 const CONTENT_PREFIX = 'virtual:okra-guide-content/';
@@ -44,7 +44,13 @@ export function okraGuidesPlugin() {
 
     load(id) {
       if (id === `\0${REGISTRY_ID}`) {
-        this.addWatchFile(contentDir);
+        // Watch each guide file, never the folder: on the dev server every
+        // watched path becomes a module dependency, and a directory can't be
+        // imported (the registry 500s and the app renders blank). Added and
+        // removed guide files are handled by configureServer's watcher below.
+        for (const { file } of readGuideFiles(contentDir)) {
+          this.addWatchFile(file);
+        }
         const guides = currentGuides();
         const loaders = guides
           .map((guide) => `  ${JSON.stringify(guide.slug)}: () => import(${JSON.stringify(`${CONTENT_PREFIX}${guide.slug}`)}),`)
