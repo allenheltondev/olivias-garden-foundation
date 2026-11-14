@@ -3,7 +3,7 @@ import type { SVGProps } from 'react';
 export type GardenIconName = 'seeds' | 'tools' | 'map' | 'basket' | 'journal' | 'bed';
 
 /** Small garden illustrations. Pair with a visible label; these are decorative. */
-export function GardenIcon({ name, className = '', ...props }: SVGProps<SVGSVGElement> & { name: GardenIconName }) {
+export function GardenIcon({ name, className = '', ...props }: Omit<SVGProps<SVGSVGElement>, 'ref'> & { name: GardenIconName }) {
   return (
     <svg {...props} className={`og-garden-icon ${className}`.trim()} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
       <circle cx="32" cy="32" r="29" fill="var(--og-icon-wash, #edf1e5)" stroke="none" />
