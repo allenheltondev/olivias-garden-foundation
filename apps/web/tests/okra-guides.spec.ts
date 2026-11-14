@@ -11,6 +11,8 @@ type GuideFile = {
   seoTitle?: string;
   socialImage?: { src: string };
   faq?: unknown[];
+  related?: string[];
+  sections?: Array<{ id: string }>;
 };
 
 // Every published guide in the content folder is checked, so new guides get
@@ -75,6 +77,91 @@ test.describe('published okra guides', () => {
       await expect(page.getByRole('link', { name: new RegExp(guide.title) })).toHaveAttribute('href', path);
     });
   }
+});
+
+test.describe('okra guide client-side navigation', () => {
+  test.skip(publishedGuides.length === 0, 'No published okra guides yet.');
+
+  const readArticleHeadlines = (page: import('@playwright/test').Page) =>
+    page.locator('script[data-seo-id="okra-guide-article"]').evaluateAll((scripts) =>
+      scripts.map((script) => (JSON.parse(script.textContent ?? '{}') as { headline?: string }).headline));
+
+  test('moving to another guide never shows the previous guide', async ({ page }) => {
+    const from = publishedGuides.find((guide) =>
+      guide.related?.some((slug) => publishedGuides.some((candidate) => candidate.slug === slug)));
+    test.skip(!from, 'No published guide links to another published guide yet.');
+    const to = publishedGuides.find((guide) => guide.slug === from!.related!.find((slug) =>
+      publishedGuides.some((candidate) => candidate.slug === slug)))!;
+
+    await gotoAndWait(page, `/okra/${from!.slug}`);
+    await expect.poll(() => readArticleHeadlines(page)).toEqual([from!.seoTitle ?? from!.title]);
+
+    // Record every DOM state during the navigation: B's heading must never
+    // appear alongside A's body sections or A's Article JSON-LD, even for one render.
+    const fromSectionIds = (from!.sections ?? [])
+      .map((section) => section.id)
+      .filter((id) => !(to.sections ?? []).some((section) => section.id === id));
+    await page.evaluate(({ toTitle, fromHeadline, fromSectionIds }) => {
+      const win = window as Window & { __staleGuideSeen?: string[] };
+      win.__staleGuideSeen = [];
+      const check = () => {
+        if (document.querySelector('h1')?.textContent?.trim() !== toTitle) return;
+        const staleSection = fromSectionIds.find((id) => document.getElementById(id));
+        if (staleSection) win.__staleGuideSeen!.push(`section #${staleSection}`);
+        const article = document.querySelector('script[data-seo-id="okra-guide-article"]');
+        if (article && (JSON.parse(article.textContent ?? '{}') as { headline?: string }).headline === fromHeadline) {
+          win.__staleGuideSeen!.push('article JSON-LD');
+        }
+      };
+      new MutationObserver(check).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+    }, { toTitle: to.title, fromHeadline: from!.seoTitle ?? from!.title, fromSectionIds });
+
+    await page.getByRole('navigation', { name: 'Related okra guides' }).getByRole('link', { name: new RegExp(to.title) }).click();
+    await expect(page).toHaveURL(new RegExp(`/okra/${to.slug}$`));
+    await expect(page.getByRole('heading', { level: 1, name: to.title })).toBeVisible();
+    await expect.poll(() => readArticleHeadlines(page)).toEqual([to.seoTitle ?? to.title]);
+    expect(await page.evaluate(() => (window as Window & { __staleGuideSeen?: string[] }).__staleGuideSeen)).toEqual([]);
+  });
+
+  test('moving from a guide to an unknown slug clears its structured data', async ({ page }) => {
+    await gotoAndWait(page, `/okra/${publishedGuides[0].slug}`);
+    await expect(page.locator('script[data-seo-id="okra-guide-article"]')).toHaveCount(1);
+
+    // Client-side navigation (BrowserRouter listens to popstate).
+    await page.evaluate(() => {
+      window.history.pushState({}, '', '/okra/not-a-real-guide');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    await expect(page.getByRole('heading', { level: 1, name: /page not found/i })).toBeVisible();
+    await expect(page.locator('script[data-seo-id^="okra-guide-"]')).toHaveCount(0);
+  });
+
+  test('links to a section on another page scroll to that section', async ({ page }) => {
+    let source: GuideFile | undefined;
+    let href: string | undefined;
+    for (const guide of publishedGuides) {
+      await gotoAndWait(page, `/okra/${guide.slug}`);
+      href = await page.locator('main a[href^="/"][href*="#"]').evaluateAll((links, currentPath) =>
+        links
+          .map((link) => link.getAttribute('href') ?? '')
+          .find((value) => value.split('#')[0] !== currentPath && value.split('#')[1]), `/okra/${guide.slug}`);
+      if (href) {
+        source = guide;
+        break;
+      }
+    }
+    test.skip(!source || !href, 'No published guide links to a section on another page yet.');
+
+    const [path, id] = href!.split('#');
+    await page.locator(`main a[href="${href}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`${path}#${id}$`));
+    // Scrolled to the section itself (allowing for the sticky header's scroll
+    // margin), not merely somewhere on the page that happens to show it.
+    await expect.poll(() => page.locator(`[id="${id}"]`).evaluate((element) => element.getBoundingClientRect().top))
+      .toBeLessThan(160);
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  });
 });
 
 test.describe('okra guides on mobile', () => {

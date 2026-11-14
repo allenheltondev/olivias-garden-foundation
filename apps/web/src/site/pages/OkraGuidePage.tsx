@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import type { AuthSession } from '../../auth/session';
 import { PageHero } from '../chrome';
@@ -24,10 +24,13 @@ const SeedRequestModal = lazy(async () => {
 
 type Navigate = (path: string) => void;
 
+// Every settled state records the slug it belongs to. React Router reuses this
+// component across /okra/:slug changes, so state from the previous guide must
+// never be shown (or published as JSON-LD) for the next URL.
 type LoadState =
   | { status: 'loading' }
-  | { status: 'ready'; guide: OkraGuide }
-  | { status: 'error' };
+  | { status: 'ready'; slug: string; guide: OkraGuide }
+  | { status: 'error'; slug: string };
 
 const TOC_MIN_SECTIONS = 3;
 
@@ -137,7 +140,9 @@ function navigateLink(onNavigate: Navigate, path: string) {
  * HTML carries the same blocks; this keeps them correct after client-side
  * navigation and removes them when leaving the guide. */
 function useGuideStructuredData(guide: OkraGuide | null) {
-  useEffect(() => {
+  // Layout effect: swap the blocks in the same commit that changes the page,
+  // so the previous guide's JSON-LD is never paired with the next guide's DOM.
+  useLayoutEffect(() => {
     if (!guide) {
       return undefined;
     }
@@ -172,20 +177,24 @@ export function OkraGuidePage({
       return undefined;
     }
     let active = true;
-    setState({ status: 'loading' });
     loadOkraGuide(summary.slug)
       .then((guide) => {
-        if (active) setState({ status: 'ready', guide });
+        if (active) setState({ status: 'ready', slug: summary.slug, guide });
       })
       .catch(() => {
-        if (active) setState({ status: 'error' });
+        if (active) setState({ status: 'error', slug: summary.slug });
       });
     return () => {
       active = false;
     };
   }, [summary, attempt]);
 
-  const guide = state.status === 'ready' ? state.guide : null;
+  // Anything not settled for the current slug (including an unknown slug,
+  // where summary is undefined) is treated as loading, never as stale data.
+  const current: LoadState = summary && state.status !== 'loading' && state.slug === summary.slug
+    ? state
+    : { status: 'loading' };
+  const guide = current.status === 'ready' ? current.guide : null;
   useGuideStructuredData(guide);
 
   if (!summary) {
@@ -204,11 +213,14 @@ export function OkraGuidePage({
   const updatedOn = summary.dateModified ?? summary.datePublished;
   let body: ReactNode;
 
-  if (state.status === 'error') {
+  if (current.status === 'error') {
     body = (
       <section className="page-section okra-guide__status" role="alert">
         <p className="page-text">This guide didn&apos;t load. Check your connection and try again.</p>
-        <button type="button" className="ok-btn ok-btn--ghost" onClick={() => setAttempt((value) => value + 1)}>
+        <button type="button" className="ok-btn ok-btn--ghost" onClick={() => {
+            setState({ status: 'loading' });
+            setAttempt((value) => value + 1);
+          }}>
           Try again
         </button>
       </section>
