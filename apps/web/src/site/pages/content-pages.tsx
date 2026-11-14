@@ -95,7 +95,7 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
 
       <Section
         title="What we do"
-        intro="We share what we learn from doing the work ourselves and staying close to what  helps people get started."
+        intro="We share what we learn from doing the work ourselves and staying close to what helps people get started."
         className="section-teach"
       >
         <div className="home-teach-grid" aria-label="Core focus areas">
@@ -216,7 +216,6 @@ export function AboutPage() {
       <section className="about-prose-hero" aria-label="About Olivia's Garden">
         <div className="about-prose-hero__copy">
           <div className="about-prose-hero__header">
-            <p className="about-prose-hero__eyebrow">In Olivia&apos;s memory</p>
             <h1>About Olivia&apos;s Garden</h1>
             <p className="about-prose-hero__dek">
               The story behind the foundation, the family, and the work being built in Olivia&apos;s memory.
@@ -386,34 +385,31 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
           }}>Request your free okra seeds</CtaButton>
         </Card>
 
-        <Card title="Come work the land." className="get-involved-card">
+        <Card title="Want to help in person?" className="get-involved-card">
           <p className="get-involved-card__eyebrow">In person</p>
           <p>
-            We run regular work days tied to garden prep, animal care, event setup,
-            whatever needs doing that week. It&apos;s real work and you&apos;ll go home tired.
+            We aren&apos;t open for visits or volunteer days yet. When we are, the work will be
+            real: garden prep, animal care, and whatever else needs doing that week. If
+            you&apos;d like to be part of it, let us know and we&apos;ll reach out when the
+            gate opens.
           </p>
-          <ul className="site-list">
-            <li>Garden work days and bed prep</li>
-            <li>Animal care for chickens, turkeys, geese, goats, bees, and guineas</li>
-            <li>Event and workshop support</li>
-          </ul>
           <CtaButton href="/contact" onClick={(event) => {
             event?.preventDefault?.();
             onNavigate('/contact');
-          }}>Sign up to volunteer</CtaButton>
+          }}>Tell us you&apos;re interested</CtaButton>
         </Card>
 
         <Card title="Hands-on workshops." className="get-involved-card">
           <p className="get-involved-card__eyebrow">Workshops</p>
           <p>
-            Workshops are built around real tasks and hands-on learning, not classroom-style
-            theory. Browse upcoming sessions and register, get on a waitlist, or tell us
-            you&apos;re interested in workshops we&apos;re still planning.
+            We&apos;re planning workshops built around real tasks and hands-on learning, not
+            classroom-style theory. Nothing is on the calendar yet. Tell us what you&apos;d
+            want to learn, and you&apos;ll hear about the first sessions before anyone else.
           </p>
           <CtaButton href="/workshops" onClick={(event) => {
             event?.preventDefault?.();
             onNavigate('/workshops');
-          }}>See upcoming workshops</CtaButton>
+          }}>See what&apos;s planned</CtaButton>
         </Card>
 
         <Card title="Help us map where food is growing." className="get-involved-card">
@@ -533,7 +529,7 @@ export function ImpactPage({ onNavigate }: { onNavigate: (path: string) => void;
 
       <Section
         title="Where we're going."
-        body="Next comes a fuller public program: workshops, stronger seed sharing through the Okra Project, and more structured ways to share what the foundation grows with the community."
+        body="Down the road comes a fuller public program: stronger seed sharing through the Okra Project, more structured ways to share what the foundation grows with the community, and, once we open the gate, hands-on workshops."
       >
         <CtaButton href="/get-involved" onClick={(event) => {
           event?.preventDefault?.();

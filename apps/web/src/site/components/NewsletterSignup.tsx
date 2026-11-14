@@ -25,7 +25,7 @@ function createCorrelationId() {
 export function NewsletterSignup({
   source,
   heading = 'Get a note when there’s something to share.',
-  description = 'Workshops, seed drops, and the occasional update from the garden. No spam, unsubscribe anytime.',
+  description = 'Seed drops, news from the garden, and the occasional update on what we are building. No spam, unsubscribe anytime.',
   buttonLabel = 'Keep me posted',
   className,
   variant = 'panel',

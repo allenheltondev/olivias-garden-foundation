@@ -51,6 +51,7 @@ export const routes: AppRoute[] = [
   {
     path: '/get-involved',
     label: 'Get Involved',
+    showInFooter: true,
     title: 'Get involved',
     description: "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
     seoImage: socialShareImage,
@@ -79,6 +80,7 @@ export const routes: AppRoute[] = [
   {
     path: '/impact',
     label: 'Impact',
+    showInFooter: true,
     title: "What we're building",
     description: "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
     seoImage: socialShareImage,
@@ -87,7 +89,6 @@ export const routes: AppRoute[] = [
   {
     path: '/workshops',
     label: 'Workshops',
-    showInNav: true,
     showInFooter: true,
     title: 'Workshops',
     description: "Hands-on workshops at Olivia's Garden Foundation: garden prep, animal care, food preservation, and more. Sign up or get on the waitlist for upcoming sessions.",
@@ -191,6 +192,8 @@ const primaryPageOrder = new Map([
   ['/donate', 3],
   ['/good-roots', 4],
   ['/about', 5],
+  ['/get-involved', 6],
+  ['/impact', 7],
 ]);
 
 function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
