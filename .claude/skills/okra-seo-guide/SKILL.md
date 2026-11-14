@@ -53,6 +53,8 @@ The build fails for a published guide without these, but get them right, not jus
 
 ### 5. Write for people
 - Plain, warm, specific language. Short paragraphs, lists for steps, and a `table` for anything regional or comparative.
+- No semicolons in prose: use two sentences instead.
+- No decorative bold. Don't bold the start of list items or random words. Let plain sentences carry the meaning.
 - No keyword stuffing, filler intros ("Okra is a popular vegetable..."), or "In conclusion" endings.
 - Follow `AGENTS.md`: no eyebrow labels, restrained headings, and human language over jargon.
 - Sensible length: as long as it takes to answer fully. Usually 800–1,800 words for a main guide, and less for a narrow one.

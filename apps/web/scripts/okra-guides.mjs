@@ -350,6 +350,19 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
 
     // Inline links
     if (Array.isArray(guide.intro) && Array.isArray(guide.sections)) {
+      // House style: no semicolons in prose, and no decorative bold.
+      const styleTexts = [
+        guide.title,
+        guide.description,
+        ...collectGuideTexts(guide),
+        ...(Array.isArray(guide.faq) ? guide.faq.map((item) => item?.question ?? '') : []),
+      ].filter((text) => typeof text === 'string');
+      if (styleTexts.some((text) => text.includes(';'))) {
+        advisory('uses a semicolon. House style is two sentences instead.');
+      }
+      if (styleTexts.some((text) => text.includes('**'))) {
+        advisory('uses **bold**. House style avoids decorative bold.');
+      }
       // Markup can't nest: a link inside **bold** renders as raw "[text](href)".
       for (const text of collectGuideTexts(guide)) {
         for (const token of parseInline(text)) {

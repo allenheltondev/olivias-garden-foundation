@@ -193,6 +193,16 @@ describe('validation', () => {
     assert.ok(errors.some((error) => /link inside bold text won't render/.test(error)), errors.join('\n'));
   });
 
+  test('semicolons and decorative bold are flagged as house-style warnings', async () => {
+    const guide = readFixture('example-related-guide');
+    guide.intro = ['Plant in spring; harvest in summer.'];
+    guide.sections[0].blocks = [{ type: 'list', items: ['**Bold start** of an item.'] }];
+    const { errors, warnings } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(warnings.some((warning) => /example-related-guide.*semicolon/.test(warning)), warnings.join('\n'));
+    assert.ok(warnings.some((warning) => /example-related-guide.*bold/.test(warning)), warnings.join('\n'));
+    assert.equal(errors.some((error) => /example-related-guide/.test(error)), false, errors.join('\n'));
+  });
+
   test('section placement only accepts "main" or "aside"', async () => {
     const guide = readFixture('example-related-guide');
     guide.sections[0].placement = 'sidebar';
