@@ -39,7 +39,7 @@ Strategy and the list of planned guides: epic #413.
   "socialImage": { "src": "/images/social/okra-guides/how-to-grow-okra.jpg", "alt": "..." },
   "datePublished": "2026-12-01",
   "dateModified": "2026-12-01",          // optional; drives sitemap <lastmod> and Article dateModified
-  "review": { "reviewedBy": "Name", "reviewedOn": "2026-12-01" },
+  "review": { "reviewedBy": "Name", "reviewedOn": "2026-12-01" },  // internal record only; never shown on the page
   "targetQueries": ["how to grow okra", "okra growing tips"],  // not rendered; documents search intent
   "related": ["when-to-plant-okra"],     // other guide slugs, shown under "Keep going"
   "order": 10,                           // sort order in guide lists (lower first)
@@ -71,7 +71,7 @@ or `mailto:`.
 The template adds these automatically, so don't write them into the content:
 the free seed call to action (it opens the seed request form in place), the
 "See where Olivia's okra is growing" link, related guide cards, the table of
-contents (3+ sections), the reviewed and updated line, and Article,
+contents (3+ sections), and Article,
 BreadcrumbList and FAQPage structured data.
 
 ## Validation

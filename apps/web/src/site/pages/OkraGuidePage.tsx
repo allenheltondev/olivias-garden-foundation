@@ -5,7 +5,6 @@ import { PageHero } from '../chrome';
 import { findOkraGuide, loadOkraGuide, okraGuides, type GuideBlock, type OkraGuide } from '../okra-guides';
 import {
   buildGuideJsonLdBlocks,
-  formatGuideDate,
   guidePath,
   isInternalHref,
   OKRA_HUB_PATH,
@@ -210,7 +209,6 @@ export function OkraGuidePage({
     .map((relatedSlug) => okraGuides.find((candidate) => candidate.slug === relatedSlug))
     .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
 
-  const updatedOn = summary.dateModified ?? summary.datePublished;
   const seedInHero = summary.seedCallToAction === 'hero';
 
   const renderSection = (section: OkraGuide['sections'][number], className: string) => (
@@ -338,12 +336,12 @@ export function OkraGuidePage({
         </aside>
 
         <div className="okra-guide__main">
-          <p className="okra-guide__meta">
-            {guide?.review
-              ? <>Reviewed by {guide.review.reviewedBy} &middot; Updated {formatGuideDate(updatedOn)}</>
-              : <>Updated {formatGuideDate(updatedOn)}</>}
-            {summary.status === 'draft' ? <> &middot; <strong>Draft: not indexed</strong></> : null}
-          </p>
+          {/* No visible reviewer or date line (foundation preference). Dates
+              still reach search engines via JSON-LD and the sitemap. Drafts
+              are labeled so a preview can't be mistaken for a live page. */}
+          {summary.status === 'draft' ? (
+            <p className="okra-guide__meta"><strong>Draft: not indexed</strong></p>
+          ) : null}
 
           {main}
 

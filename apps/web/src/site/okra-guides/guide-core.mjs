@@ -299,10 +299,6 @@ export function renderGuideFallbackHtml(guide, relatedGuides = []) {
     );
   }
 
-  if (guide.review?.reviewedOn) {
-    parts.push(`<p>Reviewed by ${escapeHtml(guide.review.reviewedBy)} on ${escapeHtml(guide.review.reviewedOn)}.</p>`);
-  }
-
   return parts.filter(Boolean).map((part) => `      ${part}`).join('\n');
 }
 

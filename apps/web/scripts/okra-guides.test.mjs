@@ -277,7 +277,8 @@ describe('structured data and fallback HTML', () => {
     assert.match(html, /<h3>Is this a real guide\?<\/h3>/);
     assert.match(html, /Request seeds and see the Okra Project map/);
     assert.match(html, /<a href="\/okra\/example-related-guide">Example related guide<\/a>/);
-    assert.match(html, /Reviewed by Fixture Reviewer on 2026-11-15/);
+    // The reviewer is an internal record only; it never appears on the page.
+    assert.doesNotMatch(html, /Fixture Reviewer|Reviewed by/);
   });
 
   test('route metadata marks drafts noindex and uses the page-specific card', () => {
