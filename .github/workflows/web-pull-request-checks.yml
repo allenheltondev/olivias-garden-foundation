@@ -105,6 +105,12 @@ jobs:
       - name: Check prerender drift (routes.ts vs seo-data.mjs)
         run: npm --workspace @olivias/web run check:prerender-drift
 
+      - name: Validate okra guides
+        run: npm --workspace @olivias/web run validate:guides
+
+      - name: Run web unit tests (okra guides, SEO data)
+        run: npm --workspace @olivias/web test
+
   web-build:
     name: Foundation Web Build
     runs-on: ubuntu-latest

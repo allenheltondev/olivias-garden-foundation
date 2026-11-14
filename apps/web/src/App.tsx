@@ -57,6 +57,11 @@ const FaqPage = lazy(async () => {
   return { default: module.FaqPage };
 });
 
+const OkraGuidePage = lazy(async () => {
+  const module = await import('./site/pages/OkraGuidePage');
+  return { default: module.OkraGuidePage };
+});
+
 const WorkshopsPage = lazy(async () => {
   const module = await import('./site/pages/WorkshopsPage');
   return { default: module.WorkshopsPage };
@@ -399,6 +404,20 @@ function App() {
                   authSession={authSession}
                   authReady={authReady}
                   onNavigate={navigate}
+                />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/okra/:slug"
+            element={
+              <Suspense fallback={routeFallback}>
+                <OkraGuidePage
+                  onNavigate={navigate}
+                  authEnabled={authConfig.enabled}
+                  authSession={authSession}
+                  onLogin={openLoginPage}
+                  onSignup={openSignupPage}
                 />
               </Suspense>
             }

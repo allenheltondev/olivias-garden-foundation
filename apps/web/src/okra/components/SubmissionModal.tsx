@@ -8,6 +8,7 @@ import { ContributorFields } from './ContributorFields';
 import { LocationInput } from './LocationInput';
 import { PrivacySelector } from './PrivacySelector';
 import { SubmitSection } from './SubmitSection';
+import '../buttons.css';
 import './SubmissionModal.css';
 
 export interface SubmissionModalProps {

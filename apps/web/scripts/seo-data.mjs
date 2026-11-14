@@ -15,6 +15,13 @@
 // placement, redirects) lives in routes.ts.
 
 import faqContent from '../src/site/faq-content.json' with { type: 'json' };
+import {
+  buildGuideJsonLdBlocks,
+  guideRouteMeta,
+  renderGuideFallbackHtml,
+  renderGuideListHtml,
+} from '../src/site/okra-guides/guide-core.mjs';
+import { loadOkraGuides } from './okra-guides.mjs';
 
 export const siteUrl = (process.env.VITE_SITE_URL ?? 'https://oliviasgarden.org').replace(/\/+$/, '');
 export const instagramUrl = 'https://instagram.com/oliviasgardentx';
@@ -31,6 +38,10 @@ export const mailingAddress = {
 };
 export const defaultImage = '/images/home/og-image.png';
 export const defaultImageAlt = "Olivia's Garden Foundation social sharing image.";
+
+// Okra growing guides (src/site/okra-guides/content/*.json). Published guides
+// always; drafts only when VITE_INCLUDE_DRAFT_GUIDES=true.
+export const okraGuides = loadOkraGuides();
 export const logoImage = '/images/icons/logo.svg';
 
 // One organization-level JSON-LD record gets injected into every prerendered
@@ -112,16 +123,32 @@ export const faqJsonLd = {
   }))),
 };
 
+/** @returns {SeoRoute} */
+function buildOkraGuideSeoRoute(guide) {
+  const related = (guide.related ?? [])
+    .map((slug) => okraGuides.find((candidate) => candidate.slug === slug))
+    .filter(Boolean);
+
+  return {
+    ...guideRouteMeta(guide),
+    sitemap: { changefreq: 'monthly', priority: 0.7, lastmod: guide.dateModified ?? guide.datePublished },
+    bodyFallback: renderGuideFallbackHtml(guide, related),
+    extraJsonLd: buildGuideJsonLdBlocks(guide, siteUrl),
+  };
+}
+
 /**
  * @typedef {Object} SeoRoute
  * @property {string} path
  * @property {string} title
  * @property {string} description
  * @property {string} [seoImage]
+ * @property {string} [seoImageAlt] - Alt text for seoImage (og:image:alt). Defaults to the site card's alt text.
+ * @property {string} [ogType] - og:type value. Defaults to "website".
  * @property {boolean} [allowIndex]
  * @property {boolean} [prerender]
  * @property {string} [canonicalPath] - When set, the canonical link points here instead of `path`. Used for redirect/alias routes.
- * @property {{ changefreq?: string, priority?: number }} [sitemap]
+ * @property {{ changefreq?: string, priority?: number, lastmod?: string }} [sitemap]
  * @property {string} [bodyFallback] - HTML injected inside a <noscript> tag in the body so non-JS crawlers see real content.
  * @property {{ id: string, data: Record<string, unknown> }[]} [extraJsonLd] - Additional page-specific JSON-LD blocks (e.g. FAQPage).
  */
@@ -275,6 +302,7 @@ export const seoRoutes = [
           Okra Project garden becomes visible.
         </li>
       </ol>
+${renderGuideListHtml(okraGuides)}
       <p>
         See related work at <a href="/good-roots">Good Roots Network</a>, learn the
         <a href="/about">story behind the foundation</a>, or <a href="/donate">support the
@@ -593,6 +621,7 @@ export const seoRoutes = [
       </p>
     `,
   },
+  ...okraGuides.map(buildOkraGuideSeoRoute),
 ];
 
 export const prerenderRoutes = seoRoutes.filter((route) => route.prerender);

@@ -1,9 +1,15 @@
+import { okraGuideRoutes } from './okra-guides';
+
 export type AppRoute = {
   path: string;
   label: string;
   title: string;
   description: string;
   seoImage?: string;
+  /** Alt text for seoImage (og:image:alt). Required whenever seoImage is page-specific. */
+  seoImageAlt?: string;
+  /** og:type; defaults to "website". */
+  ogType?: 'website' | 'article';
   allowIndex?: boolean;
   showInNav?: boolean;
   showInFooter?: boolean;
@@ -183,6 +189,8 @@ export const routes: AppRoute[] = [
     allowIndex: true,
     prerender: true,
   },
+  // Okra growing guides (/okra/<slug>), from src/site/okra-guides/content.
+  ...okraGuideRoutes,
 ];
 
 export const notFoundRoute: AppRoute = {

@@ -41,7 +41,7 @@ function ensureLink(selector: string, rel: string, href: string) {
   link.setAttribute('href', href);
 }
 
-function ensureStructuredData(id: string, payload: Record<string, unknown>) {
+export function ensureStructuredData(id: string, payload: Record<string, unknown>) {
   if (typeof document === 'undefined') {
     return;
   }
@@ -55,6 +55,14 @@ function ensureStructuredData(id: string, payload: Record<string, unknown>) {
   }
 
   script.textContent = JSON.stringify(payload);
+}
+
+export function removeStructuredData(id: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.head.querySelector(`script[data-seo-id="${id}"]`)?.remove();
 }
 
 export function absoluteUrl(path: string) {
@@ -72,6 +80,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     const pageTitle = buildPageTitle(route);
     const pageUrl = absoluteUrl(pathname === '/' ? '/' : pathname);
     const pageImage = absoluteUrl(route.seoImage ?? socialShareImage);
+    const pageImageAlt = route.seoImage && route.seoImageAlt ? route.seoImageAlt : socialShareImageAlt;
     const robots = route.allowIndex === false
       ? 'noindex, nofollow, noarchive'
       : 'index, follow, max-image-preview:large';
@@ -79,18 +88,18 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     document.title = pageTitle;
     ensureMeta('meta[name="description"]', { name: 'description' }, route.description);
     ensureMeta('meta[name="robots"]', { name: 'robots' }, robots);
-    ensureMeta('meta[property="og:type"]', { property: 'og:type' }, 'website');
+    ensureMeta('meta[property="og:type"]', { property: 'og:type' }, route.ogType ?? 'website');
     ensureMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, foundationOrganization.name);
     ensureMeta('meta[property="og:title"]', { property: 'og:title' }, pageTitle);
     ensureMeta('meta[property="og:description"]', { property: 'og:description' }, route.description);
     ensureMeta('meta[property="og:url"]', { property: 'og:url' }, pageUrl);
     ensureMeta('meta[property="og:image"]', { property: 'og:image' }, pageImage);
-    ensureMeta('meta[property="og:image:alt"]', { property: 'og:image:alt' }, socialShareImageAlt);
+    ensureMeta('meta[property="og:image:alt"]', { property: 'og:image:alt' }, pageImageAlt);
     ensureMeta('meta[name="twitter:card"]', { name: 'twitter:card' }, 'summary_large_image');
     ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title' }, pageTitle);
     ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description' }, route.description);
     ensureMeta('meta[name="twitter:image"]', { name: 'twitter:image' }, pageImage);
-    ensureMeta('meta[name="twitter:image:alt"]', { name: 'twitter:image:alt' }, socialShareImageAlt);
+    ensureMeta('meta[name="twitter:image:alt"]', { name: 'twitter:image:alt' }, pageImageAlt);
     ensureLink('link[rel="canonical"]', 'canonical', pageUrl);
 
     ensureStructuredData('organization', {
