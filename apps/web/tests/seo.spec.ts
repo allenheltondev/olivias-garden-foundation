@@ -1,6 +1,33 @@
 import { expect, test } from '@playwright/test';
 import { gotoAndWait, mainPaths, readInternalLinks, readMetaContent } from './test-helpers';
 
+const socialCards = ['okra', 'donate', 'about', 'faq', 'good-roots', 'get-involved', 'impact'];
+
+for (const name of socialCards) {
+  test(`${name} exposes its social card to crawlers and the live app`, async ({ page, request }) => {
+    const imagePath = `/images/social/${name}.png`;
+    const response = await request.get(`/${name}`);
+    expect(response.ok()).toBeTruthy();
+    const html = await response.text();
+    // Inspect the original response: share crawlers do not execute React.
+    expect(html).toMatch(new RegExp(`<meta property="og:image" content="https?://[^" ]+${imagePath}"`));
+    expect(html).toMatch(new RegExp(`<meta name="twitter:image" content="https?://[^" ]+${imagePath}"`));
+
+    const image = await request.get(imagePath);
+    expect(image.ok()).toBeTruthy();
+    expect(image.headers()['content-type']).toContain('image/png');
+
+    await gotoAndWait(page, `/${name}`, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`${imagePath}$`));
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', new RegExp(`${imagePath}$`));
+
+    // Navigation must also restore the default card on pages without a custom one.
+    await page.getByRole('banner').getByRole('link', { name: 'Go to home', exact: true }).click();
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/images\/home\/og-image\.png$/);
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', /\/images\/home\/og-image\.png$/);
+  });
+}
+
 test('homepage and donate page expose core metadata', async ({ page }) => {
   await gotoAndWait(page, '/');
   await expect(page).toHaveTitle(/Olivia's Garden Foundation/i);
@@ -36,7 +63,7 @@ test('homepage and donate page expose core metadata', async ({ page }) => {
   await expect(page).toHaveTitle(/Support Olivia's Garden/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/donate$/);
   expect(await readMetaContent(page, 'meta[name="description"]')).toBeTruthy();
-  expect(await readMetaContent(page, 'meta[name="twitter:image"]')).toContain('/images/home/og-image.png');
+  expect(await readMetaContent(page, 'meta[name="twitter:image"]')).toContain('/images/social/donate.png');
   expect(await readMetaContent(page, 'meta[name="twitter:image:alt"]')).toBeTruthy();
 });
 

@@ -8,6 +8,7 @@
     "build": "npm run check:prerender-drift && tsc -b && vite build && npm run prerender:head && npm run sitemap:generate",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test": "node --test scripts/social-cards.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "images:generate": "node ./scripts/generate-responsive-images.mjs",

@@ -45,7 +45,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: "About Olivia's Garden",
     description: "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/about.png',
     prerender: true,
   },
   {
@@ -54,7 +54,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'Get involved',
     description: "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/get-involved.png',
     prerender: true,
   },
   {
@@ -64,7 +64,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'The Okra Project',
     description: 'Explore the Okra Project map, request seeds, and follow a public invitation to grow food and share the story back.',
-    seoImage: socialShareImage,
+    seoImage: '/images/social/okra.png',
     prerender: true,
   },
   {
@@ -73,7 +73,7 @@ export const routes: AppRoute[] = [
     showInNav: true,
     title: 'Good Roots Network',
     description: 'A garden planning app that helps you decide what to plant, design your beds, and stay on top of watering and harvest — then share your extra harvest with neighbors when you have it.',
-    seoImage: socialShareImage,
+    seoImage: '/images/social/good-roots.png',
     allowIndex: false,
     prerender: true,
   },
@@ -83,7 +83,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: "What we're building",
     description: "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/impact.png',
     prerender: true,
   },
   {
@@ -102,7 +102,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: "Support Olivia's Garden",
     description: "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/donate.png',
     prerender: true,
   },
   {
@@ -134,7 +134,7 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'Frequently asked questions',
     description: "Answers about free okra seeds, growing Clemson Spineless okra, tax-deductible donations, Garden Club, and visiting Olivia's Garden Foundation.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/faq.png',
     prerender: true,
   },
   {

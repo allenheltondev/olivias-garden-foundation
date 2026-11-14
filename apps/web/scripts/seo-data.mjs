@@ -175,7 +175,7 @@ export const seoRoutes = [
     title: "About Olivia's Garden",
     description:
       "Read Olivia's story, the foundation's mission, and the family-led work behind practical food-growing education in McKinney, Texas.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/about.png',
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.8 },
     bodyFallback: `
@@ -210,7 +210,7 @@ export const seoRoutes = [
     title: 'Get involved',
     description:
       "Find ways to support Olivia's Garden Foundation through volunteering, seed sharing, workshops, and community participation.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/get-involved.png',
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.8 },
     bodyFallback: `
@@ -250,7 +250,7 @@ export const seoRoutes = [
     title: 'The Okra Project',
     description:
       "Request free okra seeds, add your garden to the Okra Project map, and join a public invitation to grow food and share the story back.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/okra.png',
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.9 },
     bodyFallback: `
@@ -287,7 +287,7 @@ export const seoRoutes = [
     title: "What we're building",
     description:
       "See what Olivia's Garden Foundation is growing now, from garden beds and animals to the next phase of community programs.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/impact.png',
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.7 },
     bodyFallback: `
@@ -344,7 +344,7 @@ export const seoRoutes = [
     title: "Support Olivia's Garden",
     description:
       "Donate to Olivia's Garden Foundation through one-time gifts or Garden Club recurring support, with a permanent named garden marker for every donor.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/donate.png',
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.8 },
     bodyFallback: `
@@ -399,7 +399,7 @@ export const seoRoutes = [
     title: 'Good Roots Network',
     description:
       'A garden planning app that helps you decide what to plant, design your beds, and stay on top of watering and harvest — then share your extra harvest with neighbors when you have it.',
-    seoImage: defaultImage,
+    seoImage: '/images/social/good-roots.png',
     allowIndex: false,
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.6 },
@@ -430,7 +430,7 @@ export const seoRoutes = [
     title: 'Frequently asked questions',
     description:
       "Answers about free okra seeds, growing Clemson Spineless okra, tax-deductible donations, Garden Club, and visiting Olivia's Garden Foundation.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/faq.png',
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.6 },
     bodyFallback: faqBodyFallback,
