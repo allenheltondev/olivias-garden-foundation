@@ -72,6 +72,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     const pageTitle = buildPageTitle(route);
     const pageUrl = absoluteUrl(pathname === '/' ? '/' : pathname);
     const pageImage = absoluteUrl(route.seoImage ?? socialShareImage);
+    const pageImageAlt = route.seoImageAlt ?? socialShareImageAlt;
     const robots = route.allowIndex === false
       ? 'noindex, nofollow, noarchive'
       : 'index, follow, max-image-preview:large';
@@ -85,12 +86,12 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     ensureMeta('meta[property="og:description"]', { property: 'og:description' }, route.description);
     ensureMeta('meta[property="og:url"]', { property: 'og:url' }, pageUrl);
     ensureMeta('meta[property="og:image"]', { property: 'og:image' }, pageImage);
-    ensureMeta('meta[property="og:image:alt"]', { property: 'og:image:alt' }, socialShareImageAlt);
+    ensureMeta('meta[property="og:image:alt"]', { property: 'og:image:alt' }, pageImageAlt);
     ensureMeta('meta[name="twitter:card"]', { name: 'twitter:card' }, 'summary_large_image');
     ensureMeta('meta[name="twitter:title"]', { name: 'twitter:title' }, pageTitle);
     ensureMeta('meta[name="twitter:description"]', { name: 'twitter:description' }, route.description);
     ensureMeta('meta[name="twitter:image"]', { name: 'twitter:image' }, pageImage);
-    ensureMeta('meta[name="twitter:image:alt"]', { name: 'twitter:image:alt' }, socialShareImageAlt);
+    ensureMeta('meta[name="twitter:image:alt"]', { name: 'twitter:image:alt' }, pageImageAlt);
     ensureLink('link[rel="canonical"]', 'canonical', pageUrl);
 
     ensureStructuredData('organization', {

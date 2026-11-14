@@ -122,11 +122,11 @@ function applyHead(templateHtml, route) {
   replaceMeta('property="og:title"', pageTitle);
   replaceMeta('property="og:description"', desc);
   replaceMeta('property="og:image"', pageImage);
-  replaceMeta('property="og:image:alt"', defaultImageAlt);
+  replaceMeta('property="og:image:alt"', route.seoImageAlt ?? defaultImageAlt);
   replaceMeta('name="twitter:title"', pageTitle);
   replaceMeta('name="twitter:description"', desc);
   replaceMeta('name="twitter:image"', pageImage);
-  replaceMeta('name="twitter:image:alt"', defaultImageAlt);
+  replaceMeta('name="twitter:image:alt"', route.seoImageAlt ?? defaultImageAlt);
 
   // og:url is not in the base template; inject it.
   if (/property="og:url"/i.test(html)) {

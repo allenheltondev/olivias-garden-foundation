@@ -18,6 +18,12 @@ for (const name of cards) {
     const image = `/images/social/${name}.png`;
     assert.equal(routes.find((route) => route.path === `/${name}`)?.seoImage, image);
     assert.equal(seoRoutes.find((route) => route.path === `/${name}`)?.seoImage, image);
+    const client = routes.find((route) => route.path === `/${name}`);
+    const prerender = seoRoutes.find((route) => route.path === `/${name}`);
+    assert.equal(client.description, prerender.description);
+    assert.equal(client.seoImageAlt, prerender.seoImageAlt);
+    assert.ok(client.seoImageAlt?.length > 50, 'Describe the actual card artwork');
+    assert.ok(!client.seoImageAlt.includes('social sharing image'), 'Avoid generic image descriptions');
     const file = new URL(`../public${image}`, import.meta.url);
     const metadata = await sharp(fileURLToPath(file)).metadata();
     assert.equal(metadata.format, 'png');
@@ -26,6 +32,12 @@ for (const name of cards) {
     assert.ok((await stat(file)).size < 1_000_000, 'Social card should be under 1 MB');
   });
 }
+
+test('each featured page has a distinct summary and image description', () => {
+  const featured = routes.filter((route) => cards.includes(route.path.slice(1)));
+  assert.equal(new Set(featured.map((route) => route.description)).size, cards.length);
+  assert.equal(new Set(featured.map((route) => route.seoImageAlt)).size, cards.length);
+});
 
 test('home and secondary pages keep the default logo card', () => {
   assert.equal(socialShareImage, '/images/home/og-image.png');

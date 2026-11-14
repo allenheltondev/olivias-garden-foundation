@@ -2,7 +2,7 @@
 
 Seven page-specific cards for issue #412 live in `apps/web/public/images/social/`.
 Home, workshops, contact, transparency, and legal pages retain the default logo card.
-Both `src/site/routes.ts` and `scripts/seo-data.mjs` select the page images.
+Both `src/site/routes.ts` and `scripts/seo-data.mjs` select the page images, page-specific summaries, and artwork descriptions. Standard, Open Graph, and Twitter description tags use the page summary; both image alt tags describe the actual card artwork.
 
 ## Asset specifications
 

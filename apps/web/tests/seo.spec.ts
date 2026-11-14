@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { gotoAndWait, mainPaths, readInternalLinks, readMetaContent } from './test-helpers';
+import { seoRoutes, defaultImageAlt } from '../scripts/seo-data.mjs';
 
 const socialCards = ['okra', 'donate', 'about', 'faq', 'good-roots', 'get-involved', 'impact'];
 
@@ -13,6 +14,20 @@ for (const name of socialCards) {
     expect(html).toMatch(new RegExp(`<meta property="og:image" content="https?://[^" ]+${imagePath}"`));
     expect(html).toMatch(new RegExp(`<meta name="twitter:image" content="https?://[^" ]+${imagePath}"`));
 
+    const route = seoRoutes.find((entry: { path: string }) => entry.path === `/${name}`)!;
+    const descriptions = [
+      ['name', 'description', route.description],
+      ['property', 'og:description', route.description],
+      ['name', 'twitter:description', route.description],
+      ['property', 'og:image:alt', route.seoImageAlt],
+      ['name', 'twitter:image:alt', route.seoImageAlt],
+    ];
+    for (const [attribute, tag, content] of descriptions) {
+      const escaped = content.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+      const match = html.match(new RegExp(`<meta\\s+${attribute}="${tag}"\\s+content="([^"]*)"`));
+      expect(match?.[1], `Crawler ${tag} for /${name}`).toBe(escaped);
+    }
+
     const image = await request.get(imagePath);
     expect(image.ok()).toBeTruthy();
     expect(image.headers()['content-type']).toContain('image/png');
@@ -20,11 +35,16 @@ for (const name of socialCards) {
     await gotoAndWait(page, `/${name}`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', new RegExp(`${imagePath}$`));
     await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', new RegExp(`${imagePath}$`));
+    for (const [attribute, tag, content] of descriptions) {
+      await expect(page.locator(`meta[${attribute}="${tag}"]`)).toHaveAttribute('content', content);
+    }
 
     // Navigation must also restore the default card on pages without a custom one.
     await page.getByRole('banner').getByRole('link', { name: 'Go to home', exact: true }).click();
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/images\/home\/og-image\.png$/);
     await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', /\/images\/home\/og-image\.png$/);
+    await expect(page.locator('meta[property="og:image:alt"]')).toHaveAttribute('content', defaultImageAlt);
+    await expect(page.locator('meta[name="twitter:image:alt"]')).toHaveAttribute('content', defaultImageAlt);
   });
 }
 
