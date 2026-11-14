@@ -1,6 +1,6 @@
 {
   "slug": "free-okra-seeds",
-  "status": "draft",
+  "status": "published",
   "title": "Free okra seeds",
   "seoTitle": "Free Okra Seeds by Mail",
   "description": "Request a free packet of 10 Clemson Spineless okra seeds from Olivia's Garden Foundation, mailed in the US and Canada. No account needed.",
@@ -14,6 +14,11 @@
     "alt": "Free okra seeds from Olivia's garden, with a hand-labeled Clemson Spineless okra seed packet and fresh pods."
   },
   "datePublished": "2026-11-14",
+  "dateModified": "2026-11-14",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-14"
+  },
   "targetQueries": [
     "free okra seeds",
     "free okra seeds by mail",
