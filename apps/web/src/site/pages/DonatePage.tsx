@@ -503,7 +503,22 @@ export function DonatePage({
           </div>
         ) : null}
 
-        {checkoutStatus?.status === 'complete' ? (
+        {checkoutStatus?.status === 'complete' && checkoutStatus.paymentStatus !== 'paid' && checkoutStatus.paymentStatus !== 'no_payment_required' ? (
+          <div className="donate-status-card donate-status-card--neutral">
+            <p className="donate-status-card__eyebrow">Payment processing</p>
+            <h3>Thank you. Your payment is still processing.</h3>
+            <p>
+              Some payment methods, like bank transfers, take a few business days to clear. If you
+              have questions about your gift, email{' '}
+              <a href={`mailto:${foundationOrganization.contactEmail}`}>{foundationOrganization.contactEmail}</a>.
+            </p>
+            <div className="donate-status-card__actions">
+              <Button className="site-cta" variant="secondary" onClick={resetCheckoutExperience}>Back to donation options</Button>
+            </div>
+          </div>
+        ) : null}
+
+        {checkoutStatus?.status === 'complete' && (checkoutStatus.paymentStatus === 'paid' || checkoutStatus.paymentStatus === 'no_payment_required') ? (
           <div className="donate-status-card donate-status-card--success">
             <p className="donate-status-card__eyebrow">Donation complete</p>
             <h3>Your gift is in.</h3>

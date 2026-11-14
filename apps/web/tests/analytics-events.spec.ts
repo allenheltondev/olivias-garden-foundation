@@ -96,11 +96,12 @@ test.describe('analytics key events', () => {
       expect(await gaEvents(secondTab, 'donation_completed')).toEqual([]);
     });
 
-    test('a complete but unpaid session does not count as a donation', async ({ page }) => {
+    test('a complete but unpaid session shows a processing message and does not count as a donation', async ({ page }) => {
       await mockSessionStatus(page, 'unpaid');
 
       await gotoAndWait(page, `/donate?session_id=${sessionId}`, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByText('Your gift is in.')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Thank you. Your payment is still processing.' })).toBeVisible();
+      await expect(page.getByText('Your gift is in.')).toHaveCount(0);
       expect(await gaEvents(page, 'donation_completed')).toEqual([]);
     });
   });
