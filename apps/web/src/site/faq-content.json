@@ -1,0 +1,130 @@
+{
+  "sections": [
+    {
+      "id": "okra-seeds",
+      "title": "Free okra seeds",
+      "items": [
+        {
+          "id": "are-seeds-free",
+          "question": "Are the okra seeds really free?",
+          "answer": "Yes. Requesting seeds is free. Olivia loved okra more than anything else in the garden, and sending seeds out is how we share that love with as many people as we can.",
+          "link": { "href": "/okra", "label": "Request your seeds" }
+        },
+        {
+          "id": "what-do-i-get",
+          "question": "What do I get when I request seeds?",
+          "answer": "Each request gets a single packet of 10 Clemson Spineless okra seeds."
+        },
+        {
+          "id": "where-do-you-ship",
+          "question": "Where can you mail seeds?",
+          "answer": "We can mail seeds to addresses in the United States and Canada."
+        },
+        {
+          "id": "in-person-pickup",
+          "question": "I live near McKinney. Can I pick my seeds up instead?",
+          "answer": "Yes. Choose in-person pickup when you request your seeds. If you're in the McKinney area, we'll be in touch by email to arrange it."
+        },
+        {
+          "id": "okra-map",
+          "question": "What is the Okra Project map?",
+          "answer": "It's a public map of people growing food. Once your okra is in the ground, add a pin and a photo so others can see where Olivia's okra is growing.",
+          "link": { "href": "/okra", "label": "View the map" }
+        }
+      ]
+    },
+    {
+      "id": "growing-okra",
+      "title": "Growing your okra",
+      "items": [
+        {
+          "id": "how-to-plant",
+          "question": "How should I plant the seeds?",
+          "answer": "Plant them directly in the soil where you want them to grow. Okra doesn't transplant well, so skip starting them in pots. Clemson Spineless loves sun and heat, so give it the sunniest spot you have."
+        },
+        {
+          "id": "come-back-next-year",
+          "question": "Will my okra come back next year?",
+          "answer": "Okra is an annual, but it will reseed itself. Leave a few pods on the plant to mature until they turn brown and dry. The seeds fall out on their own and can come up again next season."
+        }
+      ]
+    },
+    {
+      "id": "donations",
+      "title": "Donations",
+      "items": [
+        {
+          "id": "tax-deductible",
+          "question": "Are donations tax-deductible?",
+          "answer": "Yes. Olivia's Garden Foundation is an IRS-recognized 501(c)(3) public charity (EIN 33-3101032). Donations are tax-deductible to the extent permitted by law.",
+          "link": { "href": "/transparency", "label": "See organization details" }
+        },
+        {
+          "id": "garden-marker",
+          "question": "What is the garden marker?",
+          "answer": "Every donor gets a named acrylic marker placed in the memorial garden, no matter the size of the gift. This year's marker is a bee. The animal changes each year."
+        },
+        {
+          "id": "garden-club",
+          "question": "What is Garden Club?",
+          "answer": "Garden Club is monthly recurring support. Members get a named garden marker and a free t-shirt when they sign up, and can cancel anytime from their profile.",
+          "link": { "href": "/donate", "label": "Join Garden Club" }
+        },
+        {
+          "id": "refunds",
+          "question": "What if I made a mistake with my donation?",
+          "answer": "One-time donations made in error, such as a wrong amount or a duplicate gift, can be refunded within 7 days. Email us and we'll respond within 5 business days.",
+          "link": { "href": "/refunds", "label": "Read the refund policy" }
+        },
+        {
+          "id": "other-ways-to-give",
+          "question": "Can I give another way?",
+          "answer": "Yes. We accept gifts through donor-advised funds, stock, employer matching programs, mailed checks, and in-kind donations of seeds, tools, and supplies.",
+          "link": { "href": "/donate", "label": "See other ways to give" }
+        }
+      ]
+    },
+    {
+      "id": "visiting-and-helping",
+      "title": "Visiting and helping",
+      "items": [
+        {
+          "id": "can-i-visit",
+          "question": "Can I visit the garden or volunteer?",
+          "answer": "Not yet. We aren't open for visits or volunteer days right now. If you'd like to help in person when we are, let us know and we'll reach out.",
+          "link": { "href": "/contact", "label": "Tell us you're interested" }
+        },
+        {
+          "id": "workshops",
+          "question": "Do you offer workshops?",
+          "answer": "Not at the moment. We're planning hands-on workshops for the future. Tell us what you'd like to learn, and sign up for our email updates to hear when sessions are announced.",
+          "link": { "href": "/contact", "label": "Suggest a workshop topic" }
+        }
+      ]
+    },
+    {
+      "id": "good-roots-network",
+      "title": "Good Roots Network",
+      "items": [
+        {
+          "id": "what-is-grn",
+          "question": "What is the Good Roots Network?",
+          "answer": "It's a free garden planning app from the foundation. It helps you decide what to plant, lay out your beds, and keep up with watering and harvest, and it makes it easy to share extra harvest with neighbors.",
+          "link": { "href": "/good-roots", "label": "Learn about the Good Roots Network" }
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "Getting in touch",
+      "items": [
+        {
+          "id": "how-to-reach-us",
+          "question": "How do I reach you?",
+          "answer": "Email allen@oliviasgarden.org or use the contact form. We read everything and try to reply within a few days.",
+          "link": { "href": "/contact", "label": "Contact us" }
+        }
+      ]
+    }
+  ]
+}

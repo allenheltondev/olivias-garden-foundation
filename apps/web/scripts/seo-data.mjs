@@ -14,6 +14,8 @@
 // renders. Fields here are SEO-only; runtime UI metadata (labels, nav
 // placement, redirects) lives in routes.ts.
 
+import faqContent from '../src/site/faq-content.json' with { type: 'json' };
+
 export const siteUrl = (process.env.VITE_SITE_URL ?? 'https://oliviasgarden.org').replace(/\/+$/, '');
 export const instagramUrl = 'https://instagram.com/oliviasgardentx';
 export const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
@@ -85,6 +87,31 @@ export const organizationJsonLd = {
   sameAs: [instagramUrl, facebookUrl],
 };
 
+// FAQ content lives in src/site/faq-content.json so the React page, the
+// prerendered <noscript> fallback, and the FAQPage JSON-LD all come from one
+// source and can't drift apart.
+const escapeHtml = (value) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;');
+
+const faqBodyFallback = `
+      <h1>Frequently asked questions</h1>
+${faqContent.sections.map((section) => `      <h2>${escapeHtml(section.title)}</h2>
+${section.items.map((item) => `      <h3>${escapeHtml(item.question)}</h3>
+      <p>${escapeHtml(item.answer)}${item.link ? ` <a href="${item.link.href}">${escapeHtml(item.link.label)}</a>` : ''}</p>`).join('\n')}`).join('\n')}
+    `;
+
+export const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqContent.sections.flatMap((section) => section.items.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+  }))),
+};
+
 /**
  * @typedef {Object} SeoRoute
  * @property {string} path
@@ -96,6 +123,7 @@ export const organizationJsonLd = {
  * @property {string} [canonicalPath] - When set, the canonical link points here instead of `path`. Used for redirect/alias routes.
  * @property {{ changefreq?: string, priority?: number }} [sitemap]
  * @property {string} [bodyFallback] - HTML injected inside a <noscript> tag in the body so non-JS crawlers see real content.
+ * @property {{ id: string, data: Record<string, unknown> }[]} [extraJsonLd] - Additional page-specific JSON-LD blocks (e.g. FAQPage).
  */
 
 /** @type {SeoRoute[]} */
@@ -135,7 +163,7 @@ export const seoRoutes = [
       <ul>
         <li><a href="/okra">The Okra Project</a> &mdash; request free okra seeds from Olivia's own seed line, and add your garden to the project map.</li>
         <li><a href="/good-roots">Good Roots Network</a> &mdash; a garden planning app for deciding what to plant, designing your beds, and staying on top of the season, with neighbor-to-neighbor food sharing built in.</li>
-        <li><a href="/get-involved">Get involved</a> &mdash; volunteer at work days, request seeds, or join workshops as they launch.</li>
+        <li><a href="/get-involved">Get involved</a> &mdash; request seeds, add your garden to the map, or tell us you&rsquo;d like to help in person once we open.</li>
         <li><a href="/donate">Donate</a> &mdash; one-time gifts and Garden Club recurring support, with a permanent named marker placed in the memorial garden for every donor.</li>
         <li><a href="/about">About Olivia's Garden</a> &mdash; the story behind the foundation and the family who runs it.</li>
         <li><a href="/contact">Contact</a> &mdash; reach the Helton family directly.</li>
@@ -197,14 +225,13 @@ export const seoRoutes = [
           through <a href="/okra">The Okra Project</a> &mdash; the easiest first step into growing food.
         </li>
         <li>
-          <strong>Come work the land.</strong> Regular volunteer work days cover garden prep,
-          animal care for chickens, turkeys, geese, goats, bees, and guineas, and event setup.
-          <a href="/contact">Sign up to volunteer</a>.
+          <strong>Help in person.</strong> We aren&rsquo;t open for visits or volunteer days yet.
+          <a href="/contact">Tell us you&rsquo;re interested</a> and we&rsquo;ll reach out when we are.
         </li>
         <li>
-          <strong>Hands-on workshops.</strong> Workshops are built around real tasks and hands-on
-          learning rather than classroom-style theory. <a href="/workshops">See upcoming
-          workshops</a> to register, join a waitlist, or tell us you&rsquo;re interested.
+          <strong>Hands-on workshops.</strong> We&rsquo;re planning workshops built around real
+          tasks rather than classroom-style theory. Nothing is scheduled yet;
+          <a href="/workshops">tell us what you&rsquo;d like to learn</a>.
         </li>
         <li>
           <strong>Help map where food is growing.</strong> Add your garden as a pin on the Okra
@@ -277,9 +304,9 @@ export const seoRoutes = [
       </p>
       <h2>Where we're going</h2>
       <p>
-        The next phase is a fuller public program: hands-on workshops, stronger seed sharing
-        through <a href="/okra">The Okra Project</a>, and more structured ways to share what the
-        foundation grows with the community. <a href="/get-involved">Get involved</a> or
+        Down the road comes a fuller public program: stronger seed sharing through
+        <a href="/okra">The Okra Project</a>, more structured ways to share what the foundation
+        grows with the community, and, once we open the gate, hands-on workshops. <a href="/get-involved">Get involved</a> or
         <a href="/donate">support the work</a>.
       </p>
     `,
@@ -399,6 +426,17 @@ export const seoRoutes = [
     `,
   },
   {
+    path: '/faq',
+    title: 'Frequently asked questions',
+    description:
+      "Answers about free okra seeds, growing Clemson Spineless okra, tax-deductible donations, Garden Club, and visiting Olivia's Garden Foundation.",
+    seoImage: defaultImage,
+    prerender: true,
+    sitemap: { changefreq: 'monthly', priority: 0.6 },
+    bodyFallback: faqBodyFallback,
+    extraJsonLd: [{ id: 'faq', data: faqJsonLd }],
+  },
+  {
     path: '/privacy',
     title: 'Privacy Policy',
     description:
@@ -501,8 +539,8 @@ export const seoRoutes = [
       <p>
         The foundation teaches individuals and families how to grow food, care for animals,
         preserve what they produce, and build practical self-sufficiency. Programs include The
-        Okra Project (free seeds and a public garden map), hands-on workshops, the Good Roots
-        Network online platform, and community volunteer workdays.
+        Okra Project (free seeds and a public garden map) and the Good Roots Network online
+        platform. Hands-on workshops and in-person volunteer days are planned for the future.
       </p>
       <h2>Non-discrimination policy</h2>
       <p>

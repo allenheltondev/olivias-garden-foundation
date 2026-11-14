@@ -129,6 +129,15 @@ export const routes: AppRoute[] = [
     prerender: true,
   },
   {
+    path: '/faq',
+    label: 'FAQ',
+    showInFooter: true,
+    title: 'Frequently asked questions',
+    description: "Answers about free okra seeds, growing Clemson Spineless okra, tax-deductible donations, Garden Club, and visiting Olivia's Garden Foundation.",
+    seoImage: socialShareImage,
+    prerender: true,
+  },
+  {
     path: '/privacy',
     label: 'Privacy Policy',
     showInLegalFooter: true,
@@ -194,6 +203,7 @@ const primaryPageOrder = new Map([
   ['/about', 5],
   ['/get-involved', 6],
   ['/impact', 7],
+  ['/faq', 8],
 ]);
 
 function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
