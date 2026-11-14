@@ -1125,6 +1125,51 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
   };
 }
 
+function AppScreenshot({
+  src,
+  alt,
+  caption,
+  path,
+  sizes,
+  width,
+  height,
+  className,
+}: {
+  src: string;
+  alt: string;
+  caption?: string;
+  path: string;
+  sizes: string;
+  width: number;
+  height: number;
+  className?: string;
+}) {
+  return (
+    <figure className={`good-roots-shot${className ? ` ${className}` : ''}`}>
+      <div className="good-roots-shot__frame">
+        <div className="good-roots-shot__bar" aria-hidden="true">
+          <span className="good-roots-shot__dots">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className="good-roots-shot__url">grn.oliviasgarden.org{path}</span>
+          <span className="good-roots-shot__badge">Sample data</span>
+        </div>
+        <ResponsiveImage
+          className="good-roots-shot__image"
+          src={src}
+          alt={alt}
+          sizes={sizes}
+          width={width}
+          height={height}
+        />
+      </div>
+      {caption ? <figcaption className="good-roots-shot__caption">{caption}</figcaption> : null}
+    </figure>
+  );
+}
+
 type TierInterestChoice = 'supporter' | 'pro' | 'either';
 
 function TierInterestForm({
@@ -1446,7 +1491,16 @@ export function GoodRootsPage({
 
       <section className="page-section good-roots-personas">
         <div className="good-roots-persona">
-          <div className="good-roots-persona__media" aria-hidden="true" />
+          <AppScreenshot
+            className="good-roots-persona__media"
+            src="/images/good-roots/app-garden-map.jpg"
+            alt="The Good Roots Network garden map showing raised beds for tomatoes, peppers, salad greens, beans, herbs, and squash laid out on a lawn."
+            caption="Your beds, laid out the way they really sit in the yard."
+            path="/garden"
+            sizes="(min-width: 960px) 34rem, 100vw"
+            width={1616}
+            height={1212}
+          />
           <div className="good-roots-persona__copy">
             <p className="page-eyebrow">Plan your season</p>
             <h2>Know what to plant, and where.</h2>
@@ -1465,7 +1519,16 @@ export function GoodRootsPage({
         </div>
 
         <div className="good-roots-persona good-roots-persona--reverse">
-          <div className="good-roots-persona__media" aria-hidden="true" />
+          <AppScreenshot
+            className="good-roots-persona__media"
+            src="/images/good-roots/app-today.jpg"
+            alt="The Today view in the Good Roots Network with a late-spring season summary, crops that are good to plant now, and reminders to water tomatoes, feed peppers, and harvest lettuce."
+            caption="Open the app and see exactly what your garden needs today."
+            path="/"
+            sizes="(min-width: 960px) 34rem, 100vw"
+            width={1600}
+            height={1200}
+          />
           <div className="good-roots-persona__copy">
             <p className="page-eyebrow">Keep it going</p>
             <h2>Stay on top of the day-to-day.</h2>
@@ -1490,7 +1553,28 @@ export function GoodRootsPage({
         intro="Every garden in the network adds to a living picture of what people nearby are planting and how it's doing. Use it to choose crops that thrive in your area, time your plantings with the seasons, and — when you want to — see where your extra harvest could do the most good."
         className="good-roots-map-section"
       >
-        <div className="good-roots-map-placeholder" aria-hidden="true" />
+        <AppScreenshot
+          className="good-roots-map-shot"
+          src="/images/good-roots/app-local-context.jpg"
+          alt="Example of local planting context in the Good Roots Network, shown with sample data: guidance that neighbors nearby are asking for tomatoes and okra while zucchini is plentiful, with lists of crops to consider planting and crops already covered."
+          caption="Illustrative example with sample data. In the app, this guidance is built from what gardens near you are actually growing and what neighbors are asking for."
+          path="/garden/plan/recommendations"
+          sizes="(min-width: 1200px) 72rem, 100vw"
+          width={1920}
+          height={653}
+        />
+        <div className="good-roots-map-cta">
+          {authSession ? (
+            <CtaButton href={buildCrossAppUrl(goodRootsNetworkUrl, authSession)}>
+              See what grows near you
+            </CtaButton>
+          ) : (
+            <CtaButton href="/login" onClick={handleInternalClick('/login')}>
+              Start your free garden plan
+            </CtaButton>
+          )}
+          <p>Free for home gardeners. Set up your first bed in a few minutes.</p>
+        </div>
       </Section>
 
       <Section id="tiers" title="Pick the plot that fits you." intro="Free is live today. Supporter and Pro tiers are on the way. Leave your email and we'll tell you the moment they open.">
