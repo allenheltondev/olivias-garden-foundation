@@ -130,33 +130,33 @@
     "good-roots/app-local-context.jpg": {
       "original": "good-roots/app-local-context.jpg",
       "width": 1920,
-      "height": 840,
+      "height": 653,
       "variants": {
         "avif": [
           {
             "width": 480,
             "path": "images/responsive/good-roots/app-local-context-480.avif",
-            "bytes": 6158
+            "bytes": 5325
           },
           {
             "width": 768,
             "path": "images/responsive/good-roots/app-local-context-768.avif",
-            "bytes": 13844
+            "bytes": 11693
           },
           {
             "width": 1280,
             "path": "images/responsive/good-roots/app-local-context-1280.avif",
-            "bytes": 28147
+            "bytes": 24168
           },
           {
             "width": 1600,
             "path": "images/responsive/good-roots/app-local-context-1600.avif",
-            "bytes": 40082
+            "bytes": 34274
           },
           {
             "width": 1920,
             "path": "images/responsive/good-roots/app-local-context-1920.avif",
-            "bytes": 47697
+            "bytes": 41953
           }
         ]
       }

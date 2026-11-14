@@ -1131,6 +1131,8 @@ function AppScreenshot({
   caption,
   path,
   sizes,
+  width,
+  height,
   className,
 }: {
   src: string;
@@ -1138,6 +1140,8 @@ function AppScreenshot({
   caption?: string;
   path: string;
   sizes: string;
+  width: number;
+  height: number;
   className?: string;
 }) {
   return (
@@ -1150,8 +1154,16 @@ function AppScreenshot({
             <span />
           </span>
           <span className="good-roots-shot__url">grn.oliviasgarden.org{path}</span>
+          <span className="good-roots-shot__badge">Sample data</span>
         </div>
-        <ResponsiveImage className="good-roots-shot__image" src={src} alt={alt} sizes={sizes} />
+        <ResponsiveImage
+          className="good-roots-shot__image"
+          src={src}
+          alt={alt}
+          sizes={sizes}
+          width={width}
+          height={height}
+        />
       </div>
       {caption ? <figcaption className="good-roots-shot__caption">{caption}</figcaption> : null}
     </figure>
@@ -1486,6 +1498,8 @@ export function GoodRootsPage({
             caption="Your beds, laid out the way they really sit in the yard."
             path="/garden"
             sizes="(min-width: 960px) 34rem, 100vw"
+            width={1616}
+            height={1212}
           />
           <div className="good-roots-persona__copy">
             <p className="page-eyebrow">Plan your season</p>
@@ -1512,6 +1526,8 @@ export function GoodRootsPage({
             caption="Open the app and see exactly what your garden needs today."
             path="/"
             sizes="(min-width: 960px) 34rem, 100vw"
+            width={1600}
+            height={1200}
           />
           <div className="good-roots-persona__copy">
             <p className="page-eyebrow">Keep it going</p>
@@ -1540,10 +1556,12 @@ export function GoodRootsPage({
         <AppScreenshot
           className="good-roots-map-shot"
           src="/images/good-roots/app-local-context.jpg"
-          alt="Local planting context in the Good Roots Network: guidance that neighbors nearby are asking for tomatoes and okra while zucchini is plentiful, with lists of crops to consider planting and crops already covered."
-          caption="Local guidance built from what gardens near you are growing and what neighbors are asking for."
+          alt="Example of local planting context in the Good Roots Network, shown with sample data: guidance that neighbors nearby are asking for tomatoes and okra while zucchini is plentiful, with lists of crops to consider planting and crops already covered."
+          caption="Illustrative example with sample data. In the app, this guidance is built from what gardens near you are actually growing and what neighbors are asking for."
           path="/garden/plan/recommendations"
           sizes="(min-width: 1200px) 72rem, 100vw"
+          width={1920}
+          height={653}
         />
         <div className="good-roots-map-cta">
           {authSession ? (
