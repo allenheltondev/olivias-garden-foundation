@@ -435,18 +435,30 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
 
       <Section
         title="Something else in mind?"
-        body="Press, partnerships, speaking requests, or something we haven't thought of yet — send a note and we'll figure it out together."
+        body="Represent an extension program, school, nonprofit, or local business? We'd love to partner. For press, speaking requests, or anything else, send a note and we'll figure it out together."
       >
-        <CtaButton
-          variant="secondary"
-          href="/contact"
-          onClick={(event) => {
-            event?.preventDefault?.();
-            onNavigate('/contact');
-          }}
-        >
-          Get in touch
-        </CtaButton>
+        <div className="get-involved-actions">
+          <CtaButton
+            variant="secondary"
+            href="/partners"
+            onClick={(event) => {
+              event?.preventDefault?.();
+              onNavigate('/partners');
+            }}
+          >
+            Partner with us
+          </CtaButton>
+          <CtaButton
+            variant="secondary"
+            href="/contact"
+            onClick={(event) => {
+              event?.preventDefault?.();
+              onNavigate('/contact');
+            }}
+          >
+            Get in touch
+          </CtaButton>
+        </div>
       </Section>
     </>
   );
