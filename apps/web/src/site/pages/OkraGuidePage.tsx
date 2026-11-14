@@ -211,10 +211,25 @@ export function OkraGuidePage({
     .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
 
   const updatedOn = summary.dateModified ?? summary.datePublished;
-  let body: ReactNode;
+  const seedInHero = summary.seedCallToAction === 'hero';
+
+  const renderSection = (section: OkraGuide['sections'][number], className: string) => (
+    <section key={section.id} id={section.id} className={className} aria-labelledby={`${section.id}-heading`}>
+      <h2 id={`${section.id}-heading`} className="okra-guide__heading">{section.title}</h2>
+      {section.blocks.map((block, index) => (
+        <GuideBlockView key={index} block={block} onNavigate={onNavigate} />
+      ))}
+    </section>
+  );
+
+  // Main column: the article. Rail (right column on desktop, near the top on
+  // phones): the photo, any `"placement": "aside"` sections as cards, the table
+  // of contents for long guides, and the seed callout unless it's in the header.
+  let main: ReactNode;
+  let railExtras: ReactNode = null;
 
   if (current.status === 'error') {
-    body = (
+    main = (
       <section className="page-section okra-guide__status" role="alert">
         <p className="page-text">This guide didn&apos;t load. Check your connection and try again.</p>
         <button type="button" className="ok-btn ok-btn--ghost" onClick={() => {
@@ -226,14 +241,17 @@ export function OkraGuidePage({
       </section>
     );
   } else if (!guide) {
-    body = (
+    main = (
       <section className="page-section okra-guide__status" aria-live="polite">
         <p className="page-text">Loading the guide...</p>
       </section>
     );
   } else {
-    const showToc = guide.sections.length >= TOC_MIN_SECTIONS;
-    body = (
+    const mainSections = guide.sections.filter((section) => section.placement !== 'aside');
+    const asideSections = guide.sections.filter((section) => section.placement === 'aside');
+    const showToc = mainSections.length >= TOC_MIN_SECTIONS;
+
+    main = (
       <>
         <div className="okra-guide__intro">
           {guide.intro.map((paragraph, index) => (
@@ -241,26 +259,7 @@ export function OkraGuidePage({
           ))}
         </div>
 
-        {showToc ? (
-          <nav className="okra-guide__toc" aria-label="In this guide">
-            <p className="okra-guide__toc-title">In this guide</p>
-            <ol className="okra-guide__toc-list">
-              {guide.sections.map((section) => (
-                <li key={section.id}><a href={`#${section.id}`}>{section.title}</a></li>
-              ))}
-              {guide.faq && guide.faq.length > 0 ? <li><a href="#faq">Common questions</a></li> : null}
-            </ol>
-          </nav>
-        ) : null}
-
-        {guide.sections.map((section) => (
-          <section key={section.id} id={section.id} className="okra-guide__section" aria-labelledby={`${section.id}-heading`}>
-            <h2 id={`${section.id}-heading`} className="okra-guide__heading">{section.title}</h2>
-            {section.blocks.map((block, index) => (
-              <GuideBlockView key={index} block={block} onNavigate={onNavigate} />
-            ))}
-          </section>
-        ))}
+        {mainSections.map((section) => renderSection(section, 'okra-guide__section'))}
 
         {guide.faq && guide.faq.length > 0 ? (
           <section id="faq" className="okra-guide__section" aria-labelledby="faq-heading">
@@ -277,6 +276,23 @@ export function OkraGuidePage({
         ) : null}
       </>
     );
+
+    railExtras = (
+      <>
+        {asideSections.map((section) => renderSection(section, 'okra-guide__rail-card'))}
+        {showToc ? (
+          <nav className="okra-guide__toc" aria-label="In this guide">
+            <p className="okra-guide__toc-title">In this guide</p>
+            <ol className="okra-guide__toc-list">
+              {mainSections.map((section) => (
+                <li key={section.id}><a href={`#${section.id}`}>{section.title}</a></li>
+              ))}
+              {guide.faq && guide.faq.length > 0 ? <li><a href="#faq">Common questions</a></li> : null}
+            </ol>
+          </nav>
+        ) : null}
+      </>
+    );
   }
 
   return (
@@ -285,74 +301,79 @@ export function OkraGuidePage({
         title={summary.title}
         titleClassName="okra-guide__title"
         body={summary.summary}
-        actions={summary.seedCallToAction === 'hero' ? (
+        actions={seedInHero ? (
           <button type="button" className="ok-btn ok-btn--primary ok-btn--lg" onClick={openSeedRequest}>
             Request free seeds
           </button>
         ) : undefined}
-        aside={(
+      />
+
+      <div className="okra-guide__layout">
+        <aside className="okra-guide__rail" aria-label="About this guide">
           <figure className="page-photo okra-guide__hero-photo">
             <ResponsiveImage
               src={summary.heroImage.src}
               alt={summary.heroImage.alt}
-              sizes="(max-width: 900px) 100vw, 28rem"
+              sizes="(max-width: 959px) 100vw, 22rem"
               loading="eager"
               fetchPriority="high"
             />
             {summary.heroImage.caption ? <figcaption>{summary.heroImage.caption}</figcaption> : null}
           </figure>
-        )}
-      />
 
-      <p className="okra-guide__meta">
-        {guide?.review
-          ? <>Reviewed by {guide.review.reviewedBy} &middot; Updated {formatGuideDate(updatedOn)}</>
-          : <>Updated {formatGuideDate(updatedOn)}</>}
-        {summary.status === 'draft' ? <> &middot; <strong>Draft: not indexed</strong></> : null}
-      </p>
+          {railExtras}
 
-      {summary.seedCallToAction === 'hero' ? null : (
-      <aside className="okra-guide__seed-cta" aria-labelledby="okra-guide-seed-cta-heading">
-        <div>
-          <h2 id="okra-guide-seed-cta-heading" className="okra-guide__seed-cta-title">Grow Olivia&apos;s okra</h2>
-          <p className="okra-guide__text">
-            We mail free Clemson Spineless okra seeds from Olivia&apos;s own seed line to anyone in the
-            United States or Canada.
+          {seedInHero ? null : (
+            <div className="okra-guide__seed-cta" role="region" aria-labelledby="okra-guide-seed-cta-heading">
+              <h2 id="okra-guide-seed-cta-heading" className="okra-guide__seed-cta-title">Grow Olivia&apos;s okra</h2>
+              <p className="okra-guide__text">
+                We mail free Clemson Spineless okra seeds from Olivia&apos;s own seed line to anyone in the
+                United States or Canada.
+              </p>
+              <button type="button" className="ok-btn ok-btn--primary" onClick={openSeedRequest}>
+                Request free seeds
+              </button>
+            </div>
+          )}
+        </aside>
+
+        <div className="okra-guide__main">
+          <p className="okra-guide__meta">
+            {guide?.review
+              ? <>Reviewed by {guide.review.reviewedBy} &middot; Updated {formatGuideDate(updatedOn)}</>
+              : <>Updated {formatGuideDate(updatedOn)}</>}
+            {summary.status === 'draft' ? <> &middot; <strong>Draft: not indexed</strong></> : null}
           </p>
-        </div>
-        <button type="button" className="ok-btn ok-btn--primary" onClick={openSeedRequest}>
-          Request free seeds
-        </button>
-      </aside>
-      )}
 
-      {body}
+          {main}
 
-      <section className="okra-guide__next" aria-labelledby="okra-guide-next-heading">
-        <h2 id="okra-guide-next-heading" className="okra-guide__heading">Keep going</h2>
-        <div className="okra-guide__next-actions">
-          <button type="button" className="ok-btn ok-btn--primary ok-btn--lg" onClick={openSeedRequest}>
-            Request free okra seeds
-          </button>
-          <a className="ok-btn ok-btn--ghost ok-btn--lg" {...navigateLink(onNavigate, OKRA_HUB_PATH)}>
-            See where Olivia&apos;s okra is growing
-          </a>
+          <section className="okra-guide__next" aria-labelledby="okra-guide-next-heading">
+            <h2 id="okra-guide-next-heading" className="okra-guide__heading">Keep going</h2>
+            <div className="okra-guide__next-actions">
+              <button type="button" className="ok-btn ok-btn--primary ok-btn--lg" onClick={openSeedRequest}>
+                Request free okra seeds
+              </button>
+              <a className="ok-btn ok-btn--ghost ok-btn--lg" {...navigateLink(onNavigate, OKRA_HUB_PATH)}>
+                See where Olivia&apos;s okra is growing
+              </a>
+            </div>
+            {related.length > 0 ? (
+              <nav aria-label="Related okra guides">
+                <ul className="okra-guide__related">
+                  {related.map((item) => (
+                    <li key={item.slug}>
+                      <a className="okra-guide__related-link" {...navigateLink(onNavigate, guidePath(item.slug))}>
+                        <span className="okra-guide__related-title">{item.title}</span>
+                        <span className="okra-guide__related-body">{item.description}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ) : null}
+          </section>
         </div>
-        {related.length > 0 ? (
-          <nav aria-label="Related okra guides">
-            <ul className="okra-guide__related">
-              {related.map((item) => (
-                <li key={item.slug}>
-                  <a className="okra-guide__related-link" {...navigateLink(onNavigate, guidePath(item.slug))}>
-                    <span className="okra-guide__related-title">{item.title}</span>
-                    <span className="okra-guide__related-body">{item.description}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
-      </section>
+      </div>
 
       {seedModalRequested ? (
         <Suspense fallback={null}>

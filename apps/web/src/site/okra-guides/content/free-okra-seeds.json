@@ -31,6 +31,7 @@
     {
       "id": "what-you-get",
       "title": "What you get",
+      "placement": "aside",
       "blocks": [
         {
           "type": "list",

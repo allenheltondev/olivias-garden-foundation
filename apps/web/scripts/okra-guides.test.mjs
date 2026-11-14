@@ -193,6 +193,15 @@ describe('validation', () => {
     assert.ok(errors.some((error) => /link inside bold text won't render/.test(error)), errors.join('\n'));
   });
 
+  test('section placement only accepts "main" or "aside"', async () => {
+    const guide = readFixture('example-related-guide');
+    guide.sections[0].placement = 'sidebar';
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /placement must be "main" or "aside"/.test(error)), errors.join('\n'));
+    guide.sections[0].placement = 'aside';
+    assert.deepEqual((await validate(readFixture('example-okra-guide'), guide)).errors, []);
+  });
+
   test('seedCallToAction only accepts "callout" or "hero"', async () => {
     const guide = readFixture('example-related-guide');
     guide.seedCallToAction = 'sidebar';

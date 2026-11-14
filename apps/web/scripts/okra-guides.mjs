@@ -206,6 +206,9 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
         if (!isNonEmptyString(section?.title)) {
           structural(`${where}.title is required.`);
         }
+        if (section?.placement !== undefined && !['main', 'aside'].includes(section.placement)) {
+          structural(`${where}.placement must be "main" or "aside".`);
+        }
         if (!Array.isArray(section?.blocks) || section.blocks.length === 0) {
           structural(`${where}.blocks must be a non-empty array.`);
           return;

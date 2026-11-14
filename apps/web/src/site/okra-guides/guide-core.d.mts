@@ -21,6 +21,8 @@ export interface GuideSection {
   id: string;
   title: string;
   blocks: GuideBlock[];
+  /** "aside" renders the section as a card in the right-hand rail (under the photo). Default "main". */
+  placement?: 'main' | 'aside';
 }
 
 export interface GuideFaqItem {
