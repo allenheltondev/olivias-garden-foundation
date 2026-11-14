@@ -12,7 +12,8 @@
 // - Routes with a `canonicalPath` (alias/redirect routes like /seeds) are
 //   skipped so we never list a non-canonical URL.
 // - `changefreq` and `priority` come from each route's `sitemap` block;
-//   reasonable defaults are applied otherwise.
+//   reasonable defaults are applied otherwise. `lastmod` is emitted when the
+//   route provides one (okra guides use their dateModified).
 
 import { writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -39,6 +40,7 @@ function buildEntry(route) {
   return [
     '  <url>',
     `    <loc>${escapeXml(loc)}</loc>`,
+    ...(route.sitemap?.lastmod ? [`    <lastmod>${escapeXml(route.sitemap.lastmod)}</lastmod>`] : []),
     `    <changefreq>${changefreq}</changefreq>`,
     `    <priority>${priority}</priority>`,
     '  </url>',

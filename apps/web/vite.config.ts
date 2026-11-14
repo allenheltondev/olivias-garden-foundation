@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { okraGuidesPlugin } from './scripts/vite-plugin-okra-guides.mjs';
 
 interface MockReq {
   method?: string;
@@ -127,7 +128,7 @@ function mockOkraApi(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), mockOkraApi()],
+  plugins: [react(), okraGuidesPlugin(), mockOkraApi()],
   build: {
     sourcemap: Boolean(process.env.VITE_CLOUDWATCH_RUM_APP_MONITOR_ID),
   },

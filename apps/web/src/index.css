@@ -4369,3 +4369,266 @@ html {
     grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   }
 }
+
+/* Okra growing guides (/okra/<slug>) */
+.okra-guide {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 1.75rem);
+  min-width: 0;
+}
+
+/* .page-hero h1 is more specific than a lone class, so match it. */
+.page-hero h1.okra-guide__title {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.okra-guide__hero-photo {
+  display: grid;
+  margin: 0;
+}
+
+.okra-guide__hero-photo img {
+  height: 22rem;
+}
+
+.okra-guide__hero-photo figcaption,
+.okra-guide__figure figcaption {
+  padding: 0.6rem 0.9rem;
+  color: var(--site-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.okra-guide__meta {
+  margin: 0;
+  color: var(--site-muted);
+  font-size: 0.92rem;
+}
+
+.okra-guide__intro,
+.okra-guide__section,
+.okra-guide__toc,
+.okra-guide__seed-cta,
+.okra-guide__next,
+.okra-guide__status {
+  max-width: 48rem;
+}
+
+.okra-guide__intro,
+.okra-guide__section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.okra-guide__section {
+  scroll-margin-top: 6rem;
+}
+
+.okra-guide__heading {
+  margin: 0;
+  color: var(--site-ink);
+  font-family: var(--site-display);
+  font-size: clamp(1.4rem, 2.4vw, 1.75rem);
+  line-height: 1.2;
+}
+
+.okra-guide__text {
+  margin: 0;
+  color: var(--site-ink);
+  line-height: 1.7;
+}
+
+.okra-guide__lede {
+  font-size: 1.05rem;
+}
+
+.okra-guide__text a,
+.okra-guide__list a,
+.okra-guide__table a,
+.okra-guide .faq-item__answer a {
+  color: var(--site-leaf);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+
+.okra-guide__list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.35rem;
+  color: var(--site-ink);
+  line-height: 1.65;
+}
+
+.okra-guide__tip {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  border-left: 4px solid var(--site-leaf);
+  border-radius: 0 0.9rem 0.9rem 0;
+  background: rgba(225, 235, 220, 0.6);
+}
+
+.okra-guide__tip-title {
+  margin: 0;
+  color: var(--site-branch);
+  font-weight: 700;
+}
+
+.okra-guide__table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.okra-guide__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.okra-guide__table caption {
+  margin-bottom: 0.5rem;
+  color: var(--site-muted);
+  text-align: left;
+}
+
+.okra-guide__table th,
+.okra-guide__table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--site-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.okra-guide__table th {
+  color: var(--site-branch);
+}
+
+.okra-guide__figure {
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--site-border);
+  border-radius: 1.25rem;
+  background: var(--site-paper-strong);
+}
+
+.okra-guide__figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.okra-guide__toc {
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--site-border);
+  border-radius: 1rem;
+  background: var(--site-paper-strong);
+}
+
+.okra-guide__toc-title {
+  margin: 0 0 0.5rem;
+  color: var(--site-branch);
+  font-weight: 700;
+}
+
+.okra-guide__toc-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.okra-guide__toc-list a {
+  color: var(--site-leaf);
+  text-underline-offset: 0.2em;
+}
+
+.okra-guide__seed-cta {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--site-border);
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(225, 235, 220, 0.9), rgba(240, 246, 236, 0.92));
+}
+
+.okra-guide__seed-cta-title {
+  margin: 0 0 0.35rem;
+  color: var(--site-branch);
+  font-family: var(--site-display);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.okra-guide__seed-cta .ok-btn {
+  justify-self: start;
+}
+
+.okra-guide__next {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--site-border);
+}
+
+.okra-guide__next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.okra-guide__next-actions .ok-btn {
+  text-decoration: none;
+}
+
+.okra-guide__related,
+.okra-guide-hub__list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.okra-guide__related-link {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--site-border);
+  border-radius: 1rem;
+  background: var(--site-paper-strong);
+  text-decoration: none;
+}
+
+.okra-guide__related-link:hover {
+  border-color: var(--site-leaf);
+}
+
+.okra-guide__related-title {
+  color: var(--site-branch);
+  font-weight: 700;
+}
+
+.okra-guide__related-body {
+  color: var(--site-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 720px) {
+  .okra-guide__seed-cta {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .okra-guide__seed-cta .ok-btn {
+    justify-self: end;
+  }
+
+  .okra-guide__related,
+  .okra-guide-hub__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

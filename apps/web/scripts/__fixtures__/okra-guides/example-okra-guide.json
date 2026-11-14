@@ -1,0 +1,66 @@
+{
+  "slug": "example-okra-guide",
+  "status": "published",
+  "title": "Example okra guide",
+  "seoTitle": "Example Okra Guide: Template Fixture",
+  "description": "A fixture guide used by tests and local previews to exercise every part of the okra guide template. Not real growing advice.",
+  "summary": "This fixture exercises every block type the okra guide template supports. It is never shipped.",
+  "heroImage": {
+    "src": "/images/okra/olivia-okra.jpg",
+    "alt": "Olivia at the kitchen table with three freshly picked okra pods.",
+    "caption": "Fixture caption for the hero photo."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/example-okra-guide.jpg",
+    "alt": "Example okra guide social card with a photo of okra pods."
+  },
+  "datePublished": "2026-11-14",
+  "dateModified": "2026-11-15",
+  "review": { "reviewedBy": "Fixture Reviewer", "reviewedOn": "2026-11-15" },
+  "targetQueries": ["example okra query"],
+  "related": ["example-related-guide"],
+  "order": 10,
+  "intro": [
+    "Intro paragraph with an [internal link](/okra) and **bold text**.",
+    "Second intro paragraph linking to the [FAQ](/faq#growing-okra)."
+  ],
+  "sections": [
+    {
+      "id": "paragraphs-and-lists",
+      "title": "Paragraphs and lists",
+      "blocks": [
+        { "type": "paragraph", "text": "A paragraph with an [external link](https://example.org/okra)." },
+        { "type": "list", "items": ["First bullet", "Second bullet with **bold**"] },
+        { "type": "list", "ordered": true, "items": ["Step one", "Step two"] }
+      ]
+    },
+    {
+      "id": "tips-and-tables",
+      "title": "Tips and tables",
+      "blocks": [
+        { "type": "tip", "title": "Fixture tip", "text": "A callout with a [link to the related guide](/okra/example-related-guide)." },
+        {
+          "type": "table",
+          "caption": "Fixture table",
+          "headers": ["Region", "Window"],
+          "rows": [["North Texas", "April to June"], ["Gulf Coast", "March to July"]]
+        }
+      ]
+    },
+    {
+      "id": "images",
+      "title": "Images",
+      "blocks": [
+        {
+          "type": "image",
+          "src": "/images/okra/olivia-okra.jpg",
+          "alt": "Close view of okra pods in a harvest basket.",
+          "caption": "Fixture figure caption."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    { "question": "Is this a real guide?", "answer": "No. It is a test fixture; see the [Okra Project](/okra)." }
+  ]
+}

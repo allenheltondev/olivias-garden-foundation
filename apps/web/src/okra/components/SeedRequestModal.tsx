@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AuthSession } from '../../auth/session';
 import { trackEvent } from '../../observability/analytics';
 import { createCorrelationId, createOkraHeaders, okraApiUrl } from '../api';
+import '../buttons.css';
 import './SubmissionModal.css';
 import './SeedRequestModal.css';
 

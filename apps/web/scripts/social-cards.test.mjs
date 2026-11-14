@@ -4,11 +4,19 @@ import { stripTypeScriptTypes } from 'node:module';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { guideRouteMeta } from '../src/site/okra-guides/guide-core.mjs';
+import { loadOkraGuides } from './okra-guides.mjs';
 import { defaultImage, seoRoutes } from './seo-data.mjs';
 
 // Load the actual client route configuration, with Vite's optional env values unset.
+// routes.ts imports okra guide routes from a Vite virtual module, which a data:
+// URL module can't resolve, so inline the same routes from the Node loader.
 const source = await readFile(new URL('../src/site/routes.ts', import.meta.url), 'utf8');
-const clientModule = stripTypeScriptTypes(source.replaceAll('import.meta.env', '({})'));
+const okraGuideImport = "import { okraGuideRoutes } from './okra-guides';";
+assert.ok(source.includes(okraGuideImport), 'routes.ts okra guide import changed; update this harness');
+const clientModule = stripTypeScriptTypes(source
+  .replaceAll('import.meta.env', '({})')
+  .replace(okraGuideImport, `const okraGuideRoutes = ${JSON.stringify(loadOkraGuides().map(guideRouteMeta))};`));
 const { routes, socialShareImage } = await import(`data:text/javascript;base64,${Buffer.from(clientModule).toString('base64')}`);
 
 const cards = ['okra', 'donate', 'about', 'faq', 'good-roots', 'get-involved', 'impact'];

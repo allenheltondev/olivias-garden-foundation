@@ -41,7 +41,7 @@ function ensureLink(selector: string, rel: string, href: string) {
   link.setAttribute('href', href);
 }
 
-function ensureStructuredData(id: string, payload: Record<string, unknown>) {
+export function ensureStructuredData(id: string, payload: Record<string, unknown>) {
   if (typeof document === 'undefined') {
     return;
   }
@@ -55,6 +55,14 @@ function ensureStructuredData(id: string, payload: Record<string, unknown>) {
   }
 
   script.textContent = JSON.stringify(payload);
+}
+
+export function removeStructuredData(id: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.head.querySelector(`script[data-seo-id="${id}"]`)?.remove();
 }
 
 export function absoluteUrl(path: string) {
@@ -80,7 +88,7 @@ export function useRouteSeo(route: AppRoute, pathname: string) {
     document.title = pageTitle;
     ensureMeta('meta[name="description"]', { name: 'description' }, route.description);
     ensureMeta('meta[name="robots"]', { name: 'robots' }, robots);
-    ensureMeta('meta[property="og:type"]', { property: 'og:type' }, 'website');
+    ensureMeta('meta[property="og:type"]', { property: 'og:type' }, route.ogType ?? 'website');
     ensureMeta('meta[property="og:site_name"]', { property: 'og:site_name' }, foundationOrganization.name);
     ensureMeta('meta[property="og:title"]', { property: 'og:title' }, pageTitle);
     ensureMeta('meta[property="og:description"]', { property: 'og:description' }, route.description);

@@ -9,6 +9,8 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { guideRouteMeta } from '../src/site/okra-guides/guide-core.mjs';
+import { loadOkraGuides } from './okra-guides.mjs';
 import { seoRoutes } from './seo-data.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +66,17 @@ function diffSets(expected, actual) {
 async function main() {
   const content = await readFile(routesTsPath, 'utf8');
   const tsRoutes = parseRoutesTs(content);
+
+  // Okra guide routes are spread into routes.ts from the guide registry
+  // (virtual:okra-guides, built from the same JSON loader), so they can't be
+  // parsed as literals. Count them on the routes.ts side only if routes.ts
+  // actually spreads them in; otherwise they show up as drift below.
+  if (/\.\.\.okraGuideRoutes\b/.test(content)) {
+    for (const guide of loadOkraGuides()) {
+      const meta = guideRouteMeta(guide);
+      tsRoutes.push({ path: meta.path, prerender: meta.prerender, allowIndex: meta.allowIndex });
+    }
+  }
 
   const tsPrerender = new Set(tsRoutes.filter((r) => r.prerender).map((r) => r.path));
   const seoPrerender = new Set(seoRoutes.filter((r) => r.prerender).map((r) => r.path));

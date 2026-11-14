@@ -1,0 +1,24 @@
+{
+  "slug": "example-related-guide",
+  "status": "published",
+  "title": "Example related guide",
+  "description": "A second fixture guide so related-guide links, ordering, and per-guide social card uniqueness can be tested.",
+  "summary": "A minimal second fixture guide.",
+  "heroImage": {
+    "src": "/images/okra/olivia-okra.jpg",
+    "alt": "Olivia at the kitchen table with three freshly picked okra pods."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/example-related-guide.jpg",
+    "alt": "Example related guide social card with a photo of okra pods."
+  },
+  "datePublished": "2026-11-14",
+  "review": { "reviewedBy": "Fixture Reviewer", "reviewedOn": "2026-11-14" },
+  "targetQueries": ["example related query"],
+  "related": ["example-okra-guide"],
+  "order": 20,
+  "intro": ["Related fixture intro."],
+  "sections": [
+    { "id": "only-section", "title": "Only section", "blocks": [{ "type": "paragraph", "text": "Body text." }] }
+  ]
+}

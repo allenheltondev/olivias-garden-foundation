@@ -11,57 +11,6 @@
   padding-bottom: 6rem; /* room for sticky mobile CTA */
 }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
-.ok-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.75rem;
-  padding: 0.7rem 1.2rem;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.ok-btn--primary {
-  color: #fffaf1;
-  background: var(--color-primary-600);
-  box-shadow: var(--og-shadow-button);
-}
-.ok-btn--primary:hover {
-  transform: translateY(-1px);
-  background: var(--color-primary-500);
-}
-.ok-btn--primary:focus-visible {
-  outline: 2px solid var(--color-accent-500);
-  outline-offset: 3px;
-}
-
-.ok-btn--ghost {
-  background: rgba(255, 252, 246, 0.96);
-  border-color: rgba(76, 52, 38, 0.16);
-  color: var(--site-branch);
-}
-.ok-btn--ghost:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 248, 235, 0.96);
-}
-
-.ok-btn--lg {
-  min-height: 3.1rem;
-  padding: 0.85rem 1.5rem;
-  font-size: 1rem;
-}
-.ok-btn--block {
-  width: 100%;
-}
-
 /* ── Hero ────────────────────────────────────────────────────── */
 .ok-hero {
   position: relative;
@@ -637,4 +586,10 @@
   .ok-hero__photo-frame:hover {
     transform: rotate(-1.8deg);
   }
+}
+
+/* ── Growing guides ─────────────────────────────────────────── */
+.ok-guides {
+  display: grid;
+  gap: 1rem;
 }

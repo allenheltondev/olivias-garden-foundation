@@ -1,0 +1,107 @@
+// Types for guide-core.mjs. Keep in sync with that file and with the guide
+// JSON format documented in ./README.md.
+
+export type GuideStatus = 'draft' | 'published';
+
+export interface GuideImage {
+  /** Path under apps/web/public, e.g. /images/okra/guides/<slug>/okra-pods.jpg */
+  src: string;
+  alt: string;
+  caption?: string;
+}
+
+export type GuideBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'list'; ordered?: boolean; items: string[] }
+  | { type: 'tip'; title?: string; text: string }
+  | { type: 'table'; caption?: string; headers: string[]; rows: string[][] }
+  | { type: 'image'; src: string; alt: string; caption?: string };
+
+export interface GuideSection {
+  id: string;
+  title: string;
+  blocks: GuideBlock[];
+}
+
+export interface GuideFaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface GuideReview {
+  reviewedBy: string;
+  reviewedOn: string;
+}
+
+export interface OkraGuide {
+  slug: string;
+  status: GuideStatus;
+  title: string;
+  seoTitle?: string;
+  description: string;
+  summary: string;
+  heroImage: GuideImage;
+  socialImage: GuideImage;
+  datePublished: string;
+  dateModified?: string;
+  review?: GuideReview;
+  targetQueries?: string[];
+  related?: string[];
+  order?: number;
+  intro: string[];
+  sections: GuideSection[];
+  faq?: GuideFaqItem[];
+}
+
+export type OkraGuideSummary = Pick<
+  OkraGuide,
+  'slug' | 'status' | 'title' | 'seoTitle' | 'description' | 'summary' | 'heroImage' | 'socialImage' | 'datePublished' | 'dateModified'
+> & { order: number };
+
+export type InlineToken =
+  | { type: 'text'; text: string }
+  | { type: 'strong'; text: string }
+  | { type: 'link'; text: string; href: string };
+
+export interface GuideRouteMeta {
+  path: string;
+  label: string;
+  title: string;
+  description: string;
+  seoImage?: string;
+  seoImageAlt?: string;
+  ogType: 'article';
+  allowIndex: boolean;
+  prerender: true;
+}
+
+export interface JsonLdBlock {
+  id: string;
+  data: Record<string, unknown>;
+}
+
+export const OKRA_HUB_PATH: string;
+export const OKRA_HUB_TITLE: string;
+export const GUIDE_PATH_PREFIX: string;
+export const ORGANIZATION_NAME: string;
+export const TITLE_SUFFIX: string;
+export const RESERVED_GUIDE_SLUGS: string[];
+
+export function guidePath(slug: string): string;
+export function parseInline(text: string): InlineToken[];
+export function stripInline(text: string): string;
+export function isInternalHref(href: string): boolean;
+export function collectGuideLinks(guide: OkraGuide): string[];
+export function guidePageTitle(guide: Pick<OkraGuide, 'title' | 'seoTitle'>): string;
+export function guideRouteMeta(guide: OkraGuideSummary | OkraGuide): GuideRouteMeta;
+export function guideSummary(guide: OkraGuide): OkraGuideSummary;
+export function sortGuides<T extends { order?: number; title: string }>(guides: T[]): T[];
+export function buildGuideArticleJsonLd(guide: OkraGuide, siteUrl: string): Record<string, unknown>;
+export function buildGuideBreadcrumbJsonLd(guide: OkraGuide, siteUrl: string): Record<string, unknown>;
+export function buildGuideFaqJsonLd(guide: OkraGuide): Record<string, unknown> | null;
+export function buildGuideJsonLdBlocks(guide: OkraGuide, siteUrl: string): JsonLdBlock[];
+export function escapeHtml(value: string): string;
+export function inlineToHtml(text: string): string;
+export function renderGuideFallbackHtml(guide: OkraGuide, relatedGuides?: Array<Pick<OkraGuide, 'slug' | 'title'>>): string;
+export function renderGuideListHtml(guides: Array<Pick<OkraGuide, 'slug' | 'title' | 'description'>>): string;
+export function formatGuideDate(isoDate: string | undefined): string;

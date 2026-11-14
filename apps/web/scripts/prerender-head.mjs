@@ -64,6 +64,8 @@ function buildHeadFragment(route) {
   const pageUrl = absoluteUrl(route.path === '/' ? '/' : route.path);
   const canonicalUrl = route.canonicalPath ? absoluteUrl(route.canonicalPath) : pageUrl;
   const pageImage = absoluteUrl(route.seoImage ?? defaultImage);
+  const pageImageAlt = route.seoImageAlt ?? defaultImageAlt;
+  const ogType = route.ogType ?? 'website';
   const robots = route.allowIndex === false
     ? 'noindex, nofollow, noarchive'
     : 'index, follow, max-image-preview:large';
@@ -89,6 +91,8 @@ function buildHeadFragment(route) {
     pageUrl,
     canonicalUrl,
     pageImage,
+    pageImageAlt,
+    ogType,
     robots,
     jsonLdOrg,
     jsonLdPage,
@@ -96,7 +100,7 @@ function buildHeadFragment(route) {
 }
 
 function applyHead(templateHtml, route) {
-  const { pageTitle, pageUrl, canonicalUrl, pageImage, robots, jsonLdOrg, jsonLdPage } = buildHeadFragment(route);
+  const { pageTitle, pageUrl, canonicalUrl, pageImage, pageImageAlt, ogType, robots, jsonLdOrg, jsonLdPage } = buildHeadFragment(route);
   const desc = route.description;
   const title = escapeAttr(pageTitle);
 
@@ -122,11 +126,12 @@ function applyHead(templateHtml, route) {
   replaceMeta('property="og:title"', pageTitle);
   replaceMeta('property="og:description"', desc);
   replaceMeta('property="og:image"', pageImage);
-  replaceMeta('property="og:image:alt"', route.seoImageAlt ?? defaultImageAlt);
+  replaceMeta('property="og:image:alt"', pageImageAlt);
+  replaceMeta('property="og:type"', ogType);
   replaceMeta('name="twitter:title"', pageTitle);
   replaceMeta('name="twitter:description"', desc);
   replaceMeta('name="twitter:image"', pageImage);
-  replaceMeta('name="twitter:image:alt"', route.seoImageAlt ?? defaultImageAlt);
+  replaceMeta('name="twitter:image:alt"', pageImageAlt);
 
   // og:url is not in the base template; inject it.
   if (/property="og:url"/i.test(html)) {

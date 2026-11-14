@@ -6,6 +6,9 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { MapView, type PinData, type StatsData } from './components/MapView';
 import { SeedRequestModal } from './components/SeedRequestModal';
 import { SubmissionModal } from './components/SubmissionModal';
+import { okraGuides } from '../site/okra-guides';
+import { guidePath } from '../site/okra-guides/guide-core.mjs';
+import './buttons.css';
 import './theme.css';
 import './OkraExperience.css';
 
@@ -278,6 +281,32 @@ export function OkraExperience({
           </aside>
         ) : null}
       </section>
+
+      {/* GROWING GUIDES (hidden until the first guide is published) */}
+      {okraGuides.length > 0 ? (
+        <section className="ok-guides" aria-labelledby="ok-guides-heading">
+          <h2 id="ok-guides-heading" className="ok-final__heading">
+            Okra growing guides
+          </h2>
+          <ul className="okra-guide-hub__list">
+            {okraGuides.map((guide) => (
+              <li key={guide.slug}>
+                <a
+                  className="okra-guide__related-link"
+                  href={guidePath(guide.slug)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onNavigate(guidePath(guide.slug));
+                  }}
+                >
+                  <span className="okra-guide__related-title">{guide.title}</span>
+                  <span className="okra-guide__related-body">{guide.description}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* FINAL CTA */}
       <section className="ok-final" aria-labelledby="ok-final-heading">
