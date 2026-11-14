@@ -429,7 +429,7 @@ export const seoRoutes = [
     path: '/partners',
     title: 'Partner with us',
     description:
-      "Partner with Olivia's Garden Foundation: extension programs, colleges, nonprofits, and local businesses helping more people grow their own food.",
+      "Partner with Olivia's Garden Foundation: sponsor free okra seeds through bulk growing or satellite seed sharing. For extension programs, colleges, nonprofits, and local businesses.",
     seoImage: defaultImage,
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.6 },
@@ -444,14 +444,17 @@ export const seoRoutes = [
       <ul>
         <li><strong>Extension and Master Gardener programs</strong>, such as Texas A&amp;M AgriLife Extension and county Master Gardener associations.</li>
         <li><strong>Colleges and universities</strong>, including agriculture, horticulture, and nutrition programs at Texas A&amp;M and other schools.</li>
-        <li><strong>Nonprofits and food access groups</strong>, such as food pantries, community gardens, and faith communities.</li>
+        <li><strong>Nonprofits and food access groups</strong>, such as food pantries, community gardens, and faith communities, as local sharing spots for free okra seeds.</li>
         <li><strong>Local businesses</strong>, such as garden centers and feed stores.</li>
       </ul>
-      <h2>Ways to partner</h2>
+      <h2>Ways to sponsor</h2>
       <ul>
-        <li>Sponsor seed packets and postage so more free okra seeds go out.</li>
+        <li><strong>Bulk growing.</strong> Grow a plot of Clemson Spineless okra from Olivia's line and save the seed, so more free packets can go out.</li>
+        <li><strong>Satellite sharing.</strong> Become a local sharing spot: we send you okra seed packets and you hand them out in your community.</li>
+      </ul>
+      <h2>Other ways to help</h2>
+      <ul>
         <li>Share growing expertise for our guides and FAQ.</li>
-        <li>Hand out seed packets at your events, pantry, or classroom.</li>
         <li>Donate seeds, tools, or supplies.</li>
         <li>Plan future hands-on programs with us once we open the gate.</li>
       </ul>

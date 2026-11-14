@@ -8,6 +8,9 @@ test.describe('partners page', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Partner with us' })).toBeVisible();
     await expect(page.locator('main')).toContainText("We don't have any partners yet.");
     await expect(page.getByRole('heading', { level: 3, name: 'Extension and Master Gardener programs' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Ways to sponsor' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Bulk growing' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Satellite sharing' })).toBeVisible();
     await expect(page.locator('footer').getByRole('link', { name: 'Partner with us' })).toBeVisible();
 
     await gotoAndWait(page, '/get-involved');

@@ -133,7 +133,7 @@ export const routes: AppRoute[] = [
     label: 'Partner with us',
     showInFooter: true,
     title: 'Partner with us',
-    description: "Partner with Olivia's Garden Foundation: extension programs, colleges, nonprofits, and local businesses helping more people grow their own food.",
+    description: "Partner with Olivia's Garden Foundation: sponsor free okra seeds through bulk growing or satellite seed sharing. For extension programs, colleges, nonprofits, and local businesses.",
     seoImage: socialShareImage,
     prerender: true,
   },

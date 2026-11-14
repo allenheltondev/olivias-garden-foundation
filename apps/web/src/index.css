@@ -4313,6 +4313,18 @@ html {
   margin-top: clamp(1.75rem, 3.5vw, 2.5rem);
 }
 
+.partners-sponsor-ways {
+  display: grid;
+  gap: 1rem;
+}
+
+.partners-other-ways__title {
+  margin: 1.5rem 0 0.5rem;
+  color: var(--site-branch);
+  font-family: var(--site-display);
+  font-size: 1.15rem;
+}
+
 .partners-ways {
   max-width: 44rem;
 }
@@ -4334,6 +4346,10 @@ html {
 }
 
 @media (min-width: 760px) {
+  .partners-sponsor-ways {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .partners-audiences {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

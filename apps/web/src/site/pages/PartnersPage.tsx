@@ -28,18 +28,27 @@ const PARTNER_AUDIENCES = [
   },
   {
     title: 'Nonprofits and food access groups',
-    body: 'Food pantries, community gardens, and faith communities can help get free okra seeds to families who would grow them, and can use the Good Roots Network to organize shared gardens.',
+    body: 'Food pantries, community gardens, and faith communities can become local sharing spots for free okra seeds, and can use the Good Roots Network to organize shared gardens.',
   },
   {
     title: 'Local businesses',
-    body: 'Garden centers, feed stores, and other local businesses can sponsor seed packets and postage, or donate supplies that keep the garden and the seed program going.',
+    body: 'Garden centers, feed stores, and other local businesses can grow okra for seed, give seed packets a home on their counter, or donate supplies that keep the garden going.',
   },
 ];
 
-const PARTNER_WAYS = [
-  'Sponsor seed packets and postage so more free okra seeds go out',
+const SPONSOR_WAYS = [
+  {
+    title: 'Bulk growing',
+    body: "Grow a plot of Clemson Spineless okra from Olivia's line and save the seed. Every plant you let go to seed becomes packets we can send out for free, so more people can grow her okra without the foundation having to grow it all.",
+  },
+  {
+    title: 'Satellite sharing',
+    body: 'Become a local sharing spot. We send you okra seed packets, and you hand them out to people in your community, at your pantry, plant sale, classroom, or front counter. It gets seeds into hands faster than the mail and saves postage.',
+  },
+];
+
+const OTHER_WAYS = [
   'Share growing expertise for our guides and FAQ',
-  'Hand out seed packets at your events, pantry, or classroom',
   'Donate seeds, tools, or supplies',
   'Plan future hands-on programs with us once we open the gate',
 ];
@@ -190,11 +199,20 @@ export function PartnersPage() {
       </Section>
 
       <Section
-        title="Ways to partner"
-        intro="There's no formal program or tier list yet. These are a few places to start, and we're open to ideas we haven't thought of."
+        title="Ways to sponsor"
+        intro="The best way to help right now is to help Olivia's okra spread. There's no formal program or tier list yet, and we're open to ideas we haven't thought of."
       >
+        <div className="partners-sponsor-ways">
+          {SPONSOR_WAYS.map((way) => (
+            <article key={way.title} className="partners-audience partners-sponsor-way">
+              <h3>{way.title}</h3>
+              <p>{way.body}</p>
+            </article>
+          ))}
+        </div>
+        <h3 className="partners-other-ways__title">Other ways to help</h3>
         <ul className="site-list partners-ways">
-          {PARTNER_WAYS.map((way) => <li key={way}>{way}</li>)}
+          {OTHER_WAYS.map((way) => <li key={way}>{way}</li>)}
         </ul>
       </Section>
 
