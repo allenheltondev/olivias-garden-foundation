@@ -269,12 +269,10 @@ export function SeedRequestModal({
           ) : (
             <>
               {authEnabled && !authSession ? (
-                <section className="submission-modal__auth">
-                  <>
-                    <p className="submission-modal__auth-eyebrow">Anonymous is fine</p>
-                    <p className="submission-modal__auth-title">
-                      No sign-in required. Log in if you&apos;d like to track this request later.
-                    </p>
+                <section className="seed-request__account">
+                  <p>No sign-in required.</p>
+                  <details>
+                    <summary>Track this request with an account</summary>
                     <div className="submission-modal__auth-actions">
                       <button type="button" className="submission-modal__auth-button" onClick={onLogin}>
                         Log in
@@ -287,7 +285,7 @@ export function SeedRequestModal({
                         Sign up
                       </button>
                     </div>
-                  </>
+                  </details>
                 </section>
               ) : null}
 

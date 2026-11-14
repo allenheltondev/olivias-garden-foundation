@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, EmptyState, FormFeedback, SectionHeading } from '@olivias/ui';
 import { createCheckoutSession, listPublicProducts } from '../api';
 import { formatMoney, isCartLineValidForProduct, useCart } from '../cart/CartContext';
 import type { StoreSession } from '../auth/session';
@@ -94,23 +94,11 @@ export function CartPage({ session }: CartPageProps) {
       <section className="store-section">
         <Link className="store-back-link" to="/">Back to store</Link>
         {pruneNotice ? <FormFeedback tone="info">{pruneNotice}</FormFeedback> : null}
-        <Card className="store-cart-empty">
-          <div className="store-cart-empty__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path
-                d="M4 7h16l-1.2 11.1a2 2 0 0 1-2 1.9H7.2a2 2 0 0 1-2-1.9L4 7Zm4 0V5a4 4 0 0 1 8 0v2"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <SectionHeading title="Your cart is empty" />
-          <p>
-            <Link to="/">Browse the store</Link> to find something you love.
-          </p>
-        </Card>
+        <EmptyState icon="basket" title="Your cart is empty" actions={(
+          <Link className="og-button og-button--primary og-button--md" to="/">Browse the store</Link>
+        )}>
+          <p>Find something you love and help keep the garden growing.</p>
+        </EmptyState>
       </section>
     );
   }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card } from '@olivias/ui';
+import { EmptyState } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
 import { CtaButton, PageHero } from '../chrome';
 import { webApiBase } from '../routes';
@@ -208,21 +208,14 @@ export function WorkshopsPage({ onNavigate, authSession }: WorkshopsPageProps) {
           </div>
         ) : null}
         {workshops !== null && upcoming.length === 0 && !error ? (
-          <Card title="No workshops scheduled yet.">
-            <p>
-              We&apos;re not running any workshops at the moment. Check back soon, or
-              <a
-                href="/contact"
-                onClick={(event) => {
-                  event.preventDefault();
-                  onNavigate('/contact');
-                }}
-              >
-                {' '}let us know what you&apos;d like to learn
-              </a>
-              .
-            </p>
-          </Card>
+          <EmptyState icon="tools" title="No workshops scheduled yet." actions={(
+            <CtaButton href="/contact" variant="secondary" onClick={(event) => {
+              event.preventDefault();
+              onNavigate('/contact');
+            }}>Suggest a workshop</CtaButton>
+          )}>
+            <p>We&apos;re planning hands-on sessions around real work in the garden. Tell us what you&apos;d like to learn and help shape the first ones.</p>
+          </EmptyState>
         ) : null}
 
         {upcoming.length > 0 ? (

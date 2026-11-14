@@ -6,7 +6,7 @@ import { trackEvent, trackEventOnce } from '../../observability/analytics';
 import { CtaButton, PageHero } from '../chrome';
 import { NewsletterSignup } from '../components/NewsletterSignup';
 import { foundationOrganization } from '../organization';
-import { buildResponsiveBackgroundImage, ResponsiveImage } from '../responsive-images';
+import { ResponsiveImage } from '../responsive-images';
 import { stripePublishableKey, webApiBase } from '../routes';
 
 type DonationMode = 'one_time' | 'recurring';
@@ -439,10 +439,12 @@ export function DonatePage({
     <>
       <PageHero
         title="Plant something permanent in Olivia's Garden."
-        body="Every gift lives somewhere you can point to. Each donor gets a named acrylic marker placed in the memorial garden — a small, visible reminder that you are part of the year this garden is holding."
+        body="Help keep seeds, tools, animal care, and hands-on learning growing. Every donor receives a permanent named marker in the memorial garden."
         className="donate-hero"
         titleClassName="donate-hero__title"
-        backgroundImage={buildResponsiveBackgroundImage('/images/home/sunset-garden.jpg')}
+        actions={checkoutStatus?.status === 'complete' ? undefined : (
+          <CtaButton href="#donate-options">Choose your gift</CtaButton>
+        )}
         aside={(
           <div className="donate-hero__aside-card">
             <p className="donate-hero__eyebrow">This year&apos;s garden marker</p>
@@ -456,45 +458,13 @@ export function DonatePage({
             </div>
             <p className="donate-hero__aside-title">A named bee joins the garden for every donor.</p>
             <p className="page-text">
-              A named acrylic bee is placed in the memorial garden for every donor. Garden Club members also
-              receive a free t-shirt when they begin their recurring support.
+              Garden Club members also receive a free t-shirt when they begin their monthly support.
             </p>
           </div>
         )}
       />
 
-      <section className="donate-story-band">
-        <div className="donate-story-band__copy">
-          <h2>A donation should feel like belonging, not just a transaction.</h2>
-          <div className="donate-story-band__body">
-            <p className="page-text">
-              Support goes into seeds, animal care, tools, educational materials, and the practical
-              work of keeping the foundation active for families who want to learn how to grow,
-              tend, and share food.
-            </p>
-            <p className="page-text">
-              We tell that story in the memorial garden itself. Every donor has a permanent acrylic
-              marker placed there in their honor, regardless of donation size. The animal changes each
-              year so the installation keeps growing while still marking a moment in the life of
-              the garden.
-            </p>
-          </div>
-        </div>
-
-        <figure className="donate-story-band__photo">
-          <ResponsiveImage
-            src="/images/about/monarchs.jpg"
-            alt="Butterflies and garden plants on the foundation grounds."
-            sizes="(max-width: 900px) 100vw, 38vw"
-          />
-          <figcaption>
-            The marker changes each year, but the idea stays the same: your gift becomes part of
-            the living story of the garden.
-          </figcaption>
-        </figure>
-      </section>
-
-      <section className="donate-checkout" id="donate-options">
+      <section className="donate-checkout" id="donate-options" aria-label="Donation options">
         {isCheckingStatus ? (
           <div className="donate-status-card donate-status-card--neutral">
             <p className="donate-status-card__eyebrow">Checking donation</p>
@@ -575,6 +545,7 @@ export function DonatePage({
 
         {checkoutStatus?.status === 'complete' ? null : (
           <div className="donate-form-card">
+            <h2 className="donate-form-card__title">Choose your gift</h2>
             {checkoutClientSecret ? (
               <div className="donate-embedded-checkout">
                 <div className="donate-embedded-checkout__header">
@@ -595,6 +566,7 @@ export function DonatePage({
                   <button
                     type="button"
                     className={`donate-mode-toggle__button ${selectedMode === 'one_time' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
+                    aria-pressed={selectedMode === 'one_time'}
                     onClick={() => setSelectedMode('one_time')}
                   >
                     One-time gift
@@ -602,6 +574,7 @@ export function DonatePage({
                   <button
                     type="button"
                     className={`donate-mode-toggle__button ${selectedMode === 'recurring' ? 'donate-mode-toggle__button--active' : ''}`.trim()}
+                    aria-pressed={selectedMode === 'recurring'}
                     onClick={() => setSelectedMode('recurring')}
                   >
                     Monthly Garden Club
@@ -785,6 +758,37 @@ export function DonatePage({
             </CtaButton>
           </div>
         </aside>
+      </section>
+
+      <section className="donate-story-band">
+        <div className="donate-story-band__copy">
+          <h2>A donation should feel like belonging, not just a transaction.</h2>
+          <div className="donate-story-band__body">
+            <p className="page-text">
+              Support goes into seeds, animal care, tools, educational materials, and the practical
+              work of keeping the foundation active for families who want to learn how to grow,
+              tend, and share food.
+            </p>
+            <p className="page-text">
+              We tell that story in the memorial garden itself. Every donor has a permanent acrylic
+              marker placed there in their honor, regardless of donation size. The animal changes each
+              year so the installation keeps growing while still marking a moment in the life of
+              the garden.
+            </p>
+          </div>
+        </div>
+
+        <figure className="donate-story-band__photo">
+          <ResponsiveImage
+            src="/images/about/monarchs.jpg"
+            alt="Butterflies and garden plants on the foundation grounds."
+            sizes="(max-width: 900px) 100vw, 38vw"
+          />
+          <figcaption>
+            The marker changes each year, but the idea stays the same: your gift becomes part of
+            the living story of the garden.
+          </figcaption>
+        </figure>
       </section>
 
       <section className="page-section donate-other-ways" aria-label="Other ways to give">

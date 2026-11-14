@@ -714,11 +714,41 @@ body {
 .og-page-hero__title {
   margin: 0;
   font-family: var(--og-font-display);
-  font-size: clamp(2.2rem, 5vw, 4.25rem);
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.12;
+  letter-spacing: normal;
   text-wrap: balance;
 }
+
+.og-garden-icon {
+  display: block;
+  width: 4rem;
+  height: 4rem;
+  flex-shrink: 0;
+  color: var(--og-color-moss);
+}
+
+.og-empty-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--og-color-border, rgba(79, 56, 37, 0.14));
+  border-radius: var(--og-radius-lg);
+  background: var(--og-color-paper, #fffaf1);
+}
+
+.og-empty-state__copy { flex: 1 1 14rem; }
+.og-empty-state h2 {
+  margin: 0 0 0.6rem;
+  font-family: var(--og-font-display);
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  line-height: 1.2;
+}
+.og-empty-state p { margin: 0; max-width: 55ch; line-height: 1.65; }
+.og-empty-state__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
 
 .og-page-hero__body {
   max-width: 46rem;

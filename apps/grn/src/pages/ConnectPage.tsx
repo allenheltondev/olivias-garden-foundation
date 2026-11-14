@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, SectionHeading } from '@olivias/ui';
+import { Button, Card, GardenIcon, SectionHeading, type GardenIconName } from '@olivias/ui';
 
 interface ConnectOption {
   id: string;
-  emoji: string;
+  icon: GardenIconName;
   title: string;
   body: string;
   cta: string;
@@ -17,7 +17,7 @@ interface ConnectOption {
 const options: ConnectOption[] = [
   {
     id: 'share',
-    emoji: '🧺',
+    icon: 'basket',
     title: 'Food to share',
     body: 'Share what is ready so a nearby neighbor can request a pickup before it goes to waste.',
     cta: 'Share food',
@@ -25,7 +25,7 @@ const options: ConnectOption[] = [
   },
   {
     id: 'find',
-    emoji: '🔍',
+    icon: 'map',
     title: 'Find food nearby',
     body: 'Browse fresh food shared by growers around you and request what your household needs.',
     cta: 'Discover food',
@@ -33,7 +33,7 @@ const options: ConnectOption[] = [
   },
   {
     id: 'insights',
-    emoji: '🌾',
+    icon: 'seeds',
     title: 'What neighbors need',
     body: 'See what’s abundant and what’s scarce near you, and get ideas for what to plant next.',
     cta: 'View insights',
@@ -41,7 +41,7 @@ const options: ConnectOption[] = [
   },
   {
     id: 'garden-link',
-    emoji: '🔗',
+    icon: 'bed',
     title: 'Share your garden',
     body: 'Create a public link to your garden design so you can show friends and neighbors what you’re growing.',
     cta: 'Open Designer',
@@ -52,7 +52,7 @@ const options: ConnectOption[] = [
 function ConnectCard({ option, action }: { option: ConnectOption; action: () => void }): ReactNode {
   return (
     <Card padding="6" className="grn-connect-card">
-      <span className="grn-connect-card__emoji" aria-hidden="true">{option.emoji}</span>
+      <GardenIcon name={option.icon} />
       <h3 className="grn-connect-card__title">{option.title}</h3>
       <p className="grn-connect-card__body">{option.body}</p>
       <Button variant="secondary" size="md" onClick={action}>

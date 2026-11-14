@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, EmptyState, SectionHeading } from '@olivias/ui';
 import { listPublicProducts, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
 
@@ -15,6 +15,7 @@ const KIND_LABEL: Record<StoreProduct['kind'], string> = {
 export function BrowsePage() {
   const [products, setProducts] = useState<StoreProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const cart = useCart();
   const navigate = useNavigate();
 
@@ -32,7 +33,9 @@ export function BrowsePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
+
+  const foundationUrl = (import.meta.env.VITE_FOUNDATION_URL || 'https://oliviasgarden.org').replace(/\/+$/, '');
 
   return (
     <section className="store-section">
@@ -41,10 +44,25 @@ export function BrowsePage() {
         body="Every purchase helps us grow food, share seeds, and welcome more neighbors into the garden."
       />
 
-      {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
+      {error ? (
+        <div role="alert">
+          <EmptyState icon="basket" title="We couldn't load the store." actions={(
+            <>
+              <Button onClick={() => { setError(null); setProducts(null); setAttempt((value) => value + 1); }}>Try again</Button>
+              <a className="og-button og-button--secondary og-button--md" href={`${foundationUrl}/contact`}>Contact the garden</a>
+            </>
+          )}>
+            <p>The catalog is unavailable right now. Try loading it again, or get in touch and we&apos;ll help you find what you need.</p>
+          </EmptyState>
+        </div>
+      ) : null}
 
       {products && products.length === 0 ? (
-        <p className="store-empty">No products are available right now. Check back soon.</p>
+        <EmptyState icon="seeds" title="Something new is growing." actions={(
+          <a className="og-button og-button--secondary og-button--md" href={foundationUrl}>Visit the garden</a>
+        )}>
+          <p>No products are available right now. Check back soon, or explore what&apos;s happening at the foundation.</p>
+        </EmptyState>
       ) : null}
 
       {products === null && !error ? (
