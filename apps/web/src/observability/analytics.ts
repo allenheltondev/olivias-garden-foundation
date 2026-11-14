@@ -35,19 +35,44 @@ export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
   }
 }
 
-const ONCE_PREFIX = 'ogf:analytics-once:';
+// Once-only records live in localStorage (shared across tabs) so reopening a
+// return URL in another tab can't count the same action twice. Entries expire
+// and the record is capped so it can't grow without bound.
+const ONCE_STORAGE_KEY = 'ogf:analytics-once';
+const ONCE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const ONCE_MAX_ENTRIES = 50;
+
+function readOnceRecord(now: number): Record<string, number> {
+  const raw = window.localStorage.getItem(ONCE_STORAGE_KEY);
+  if (!raw) return {};
+  const parsed = JSON.parse(raw) as unknown;
+  if (!parsed || typeof parsed !== 'object') return {};
+  const fresh: Record<string, number> = {};
+  for (const [key, sentAt] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof sentAt === 'number' && now - sentAt < ONCE_TTL_MS) {
+      fresh[key] = sentAt;
+    }
+  }
+  return fresh;
+}
 
 /**
- * Sends an event at most once per browser session for a given key, so a page
- * refresh (for example on the donation return URL) doesn't double count.
+ * Sends an event at most once per browser for a given key (across tabs and
+ * refreshes, within ONCE_TTL_MS), so a donation return URL that is reloaded or
+ * reopened doesn't double count.
  */
 export function trackEventOnce(onceKey: string, eventName: string, params: AnalyticsParams = {}) {
-  const storageKey = `${ONCE_PREFIX}${onceKey}`;
   try {
-    if (window.sessionStorage.getItem(storageKey)) {
+    const now = Date.now();
+    const record = readOnceRecord(now);
+    if (record[onceKey]) {
       return;
     }
-    window.sessionStorage.setItem(storageKey, '1');
+    record[onceKey] = now;
+    const trimmed = Object.entries(record)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, ONCE_MAX_ENTRIES);
+    window.localStorage.setItem(ONCE_STORAGE_KEY, JSON.stringify(Object.fromEntries(trimmed)));
   } catch {
     // Storage unavailable (private mode, blocked): fall through and send once now.
   }

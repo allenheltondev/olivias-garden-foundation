@@ -50,27 +50,58 @@ test.describe('analytics key events', () => {
     expect(events).toEqual([{ fulfillment_method: 'mail', country: 'US' }]);
   });
 
-  test('a completed donation sends donation_completed once, even after a refresh', async ({ page }) => {
+  test.describe('donation completion', () => {
     const sessionId = 'cs_test_analytics';
-    await page.route(/\/donations\/checkout-session-status/, (route) => route.fulfill({
-      status: 200,
-      json: { sessionId, status: 'complete', paymentStatus: 'paid', customerEmail: null },
-    }));
 
-    await page.addInitScript((id) => {
-      if (!window.sessionStorage.getItem(`ogf:pending-donation:${id}`)) {
-        window.sessionStorage.setItem(`ogf:pending-donation:${id}`, JSON.stringify({ mode: 'recurring', amountCents: 2500 }));
-      }
-    }, sessionId);
+    async function mockSessionStatus(page: Page, paymentStatus: string) {
+      await page.route(/\/donations\/checkout-session-status/, (route) => route.fulfill({
+        status: 200,
+        json: { sessionId, status: 'complete', paymentStatus, customerEmail: null },
+      }));
+    }
 
-    await gotoAndWait(page, `/donate?session_id=${sessionId}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('Your gift is in.')).toBeVisible();
-    expect(await gaEvents(page, 'donation_completed')).toEqual([
-      { donation_type: 'recurring', value: 25, currency: 'USD' },
-    ]);
+    test.beforeEach(async ({ context }) => {
+      await context.addInitScript((id) => {
+        const key = `ogf:pending-donation:${id}`;
+        if (!window.localStorage.getItem(key)) {
+          window.localStorage.setItem(key, JSON.stringify({ mode: 'recurring', amountCents: 2500, savedAt: Date.now() }));
+        }
+      }, sessionId);
+    });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.getByText('Your gift is in.')).toBeVisible();
-    expect(await gaEvents(page, 'donation_completed')).toEqual([]);
+    test('a paid session sends donation_completed once, even after a refresh', async ({ page }) => {
+      await mockSessionStatus(page, 'paid');
+
+      await gotoAndWait(page, `/donate?session_id=${sessionId}`, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByText('Your gift is in.')).toBeVisible();
+      expect(await gaEvents(page, 'donation_completed')).toEqual([
+        { donation_type: 'recurring', value: 25, currency: 'USD' },
+      ]);
+
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(page.getByText('Your gift is in.')).toBeVisible();
+      expect(await gaEvents(page, 'donation_completed')).toEqual([]);
+    });
+
+    test('reopening the return URL in a second tab does not count the gift again', async ({ context, page }) => {
+      await mockSessionStatus(page, 'paid');
+      await gotoAndWait(page, `/donate?session_id=${sessionId}`, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByText('Your gift is in.')).toBeVisible();
+      expect(await gaEvents(page, 'donation_completed')).toHaveLength(1);
+
+      const secondTab = await context.newPage();
+      await mockSessionStatus(secondTab, 'paid');
+      await gotoAndWait(secondTab, `/donate?session_id=${sessionId}`, { waitUntil: 'domcontentloaded' });
+      await expect(secondTab.getByText('Your gift is in.')).toBeVisible();
+      expect(await gaEvents(secondTab, 'donation_completed')).toEqual([]);
+    });
+
+    test('a complete but unpaid session does not count as a donation', async ({ page }) => {
+      await mockSessionStatus(page, 'unpaid');
+
+      await gotoAndWait(page, `/donate?session_id=${sessionId}`, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByText('Your gift is in.')).toBeVisible();
+      expect(await gaEvents(page, 'donation_completed')).toEqual([]);
+    });
   });
 });

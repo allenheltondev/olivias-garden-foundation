@@ -38,13 +38,36 @@ const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : 
 
 // Stripe returns to /donate?session_id=... after a full page load, so the gift
 // type and amount are stashed per checkout session for the completion event.
+// localStorage (not sessionStorage) so the details survive a return in another
+// tab; entries expire so abandoned checkouts don't pile up.
 const PENDING_DONATION_KEY_PREFIX = 'ogf:pending-donation:';
+const PENDING_DONATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type PendingDonation = { mode: DonationMode; amountCents: number };
 
+function prunePendingDonations(now: number) {
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (!key?.startsWith(PENDING_DONATION_KEY_PREFIX)) continue;
+    try {
+      const { savedAt } = JSON.parse(window.localStorage.getItem(key) ?? '{}') as { savedAt?: number };
+      if (typeof savedAt !== 'number' || now - savedAt > PENDING_DONATION_TTL_MS) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
+}
+
 function rememberPendingDonation(checkoutSessionId: string, donation: PendingDonation) {
   try {
-    window.sessionStorage.setItem(`${PENDING_DONATION_KEY_PREFIX}${checkoutSessionId}`, JSON.stringify(donation));
+    const now = Date.now();
+    prunePendingDonations(now);
+    window.localStorage.setItem(
+      `${PENDING_DONATION_KEY_PREFIX}${checkoutSessionId}`,
+      JSON.stringify({ ...donation, savedAt: now }),
+    );
   } catch {
     // Best-effort only; the completion event falls back to an unknown type.
   }
@@ -52,7 +75,7 @@ function rememberPendingDonation(checkoutSessionId: string, donation: PendingDon
 
 function readPendingDonation(checkoutSessionId: string): PendingDonation | null {
   try {
-    const raw = window.sessionStorage.getItem(`${PENDING_DONATION_KEY_PREFIX}${checkoutSessionId}`);
+    const raw = window.localStorage.getItem(`${PENDING_DONATION_KEY_PREFIX}${checkoutSessionId}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PendingDonation>;
     if ((parsed.mode === 'one_time' || parsed.mode === 'recurring') && typeof parsed.amountCents === 'number') {
@@ -250,7 +273,10 @@ export function DonatePage({
         }
 
         setCheckoutStatus(status);
-        if (status.status === 'complete') {
+        // Stripe can report a session as `complete` while payment is still
+        // pending (delayed methods). Only a paid session counts as a donation;
+        // delayed successes are still recorded server-side in admin.
+        if (status.status === 'complete' && status.paymentStatus === 'paid') {
           trackEventOnce(
             `donation_completed:${status.sessionId}`,
             'donation_completed',
