@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loadStripe, type StripeEmbeddedCheckout } from '@stripe/stripe-js';
 import { Button, FormFeedback } from '@olivias/ui';
 import type { AuthSession } from '../../auth/session';
+import { trackEvent, trackEventOnce } from '../../observability/analytics';
 import { CtaButton, PageHero } from '../chrome';
 import { NewsletterSignup } from '../components/NewsletterSignup';
 import { foundationOrganization } from '../organization';
@@ -34,6 +35,42 @@ type DonationCheckoutSessionStatus = {
 };
 
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+
+// Stripe returns to /donate?session_id=... after a full page load, so the gift
+// type and amount are stashed per checkout session for the completion event.
+const PENDING_DONATION_KEY_PREFIX = 'ogf:pending-donation:';
+
+type PendingDonation = { mode: DonationMode; amountCents: number };
+
+function rememberPendingDonation(checkoutSessionId: string, donation: PendingDonation) {
+  try {
+    window.sessionStorage.setItem(`${PENDING_DONATION_KEY_PREFIX}${checkoutSessionId}`, JSON.stringify(donation));
+  } catch {
+    // Best-effort only; the completion event falls back to an unknown type.
+  }
+}
+
+function readPendingDonation(checkoutSessionId: string): PendingDonation | null {
+  try {
+    const raw = window.sessionStorage.getItem(`${PENDING_DONATION_KEY_PREFIX}${checkoutSessionId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PendingDonation>;
+    if ((parsed.mode === 'one_time' || parsed.mode === 'recurring') && typeof parsed.amountCents === 'number') {
+      return { mode: parsed.mode, amountCents: parsed.amountCents };
+    }
+  } catch {
+    // Ignore unreadable storage.
+  }
+  return null;
+}
+
+function donationEventParams(donation: PendingDonation | null) {
+  return {
+    donation_type: donation?.mode ?? 'unknown',
+    value: donation ? donation.amountCents / 100 : undefined,
+    currency: donation ? 'USD' : undefined,
+  };
+}
 
 function createCorrelationId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -213,6 +250,13 @@ export function DonatePage({
         }
 
         setCheckoutStatus(status);
+        if (status.status === 'complete') {
+          trackEventOnce(
+            `donation_completed:${status.sessionId}`,
+            'donation_completed',
+            donationEventParams(readPendingDonation(status.sessionId)),
+          );
+        }
       })
       .catch((statusError) => {
         if (!active) {
@@ -334,7 +378,7 @@ export function DonatePage({
     setIsSubmitting(true);
 
     try {
-      const { clientSecret } = await createDonationCheckoutSession(
+      const { clientSecret, checkoutSessionId } = await createDonationCheckoutSession(
         {
           mode,
           amountCents: effectiveAmount,
@@ -351,6 +395,10 @@ export function DonatePage({
       if (typeof window !== 'undefined') {
         window.history.replaceState({}, '', window.location.pathname);
       }
+
+      const pendingDonation = { mode, amountCents: effectiveAmount };
+      rememberPendingDonation(checkoutSessionId, pendingDonation);
+      trackEvent('donation_checkout_started', donationEventParams(pendingDonation));
 
       setReturnedSessionId(null);
       setCheckoutStatus(null);

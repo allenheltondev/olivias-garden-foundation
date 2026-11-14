@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AuthSession } from '../../auth/session';
+import { trackEvent } from '../../observability/analytics';
 import { createCorrelationId, createOkraHeaders, okraApiUrl } from '../api';
 import './SubmissionModal.css';
 import './SeedRequestModal.css';
@@ -222,6 +223,10 @@ export function SeedRequestModal({
         return;
       }
 
+      trackEvent('seed_request_submitted', {
+        fulfillment_method: form.fulfillmentMethod,
+        country: form.fulfillmentMethod === 'mail' ? form.country : undefined,
+      });
       setSubmitSuccess(true);
     } catch {
       setSubmitError('Network error. Please try again.');
