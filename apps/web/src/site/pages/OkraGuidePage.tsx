@@ -285,6 +285,11 @@ export function OkraGuidePage({
         title={summary.title}
         titleClassName="okra-guide__title"
         body={summary.summary}
+        actions={summary.seedCallToAction === 'hero' ? (
+          <button type="button" className="ok-btn ok-btn--primary ok-btn--lg" onClick={openSeedRequest}>
+            Request free seeds
+          </button>
+        ) : undefined}
         aside={(
           <figure className="page-photo okra-guide__hero-photo">
             <ResponsiveImage
@@ -306,6 +311,7 @@ export function OkraGuidePage({
         {summary.status === 'draft' ? <> &middot; <strong>Draft: not indexed</strong></> : null}
       </p>
 
+      {summary.seedCallToAction === 'hero' ? null : (
       <aside className="okra-guide__seed-cta" aria-labelledby="okra-guide-seed-cta-heading">
         <div>
           <h2 id="okra-guide-seed-cta-heading" className="okra-guide__seed-cta-title">Grow Olivia&apos;s okra</h2>
@@ -318,6 +324,7 @@ export function OkraGuidePage({
           Request free seeds
         </button>
       </aside>
+      )}
 
       {body}
 

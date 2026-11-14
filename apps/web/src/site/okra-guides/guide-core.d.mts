@@ -48,6 +48,12 @@ export interface OkraGuide {
   targetQueries?: string[];
   related?: string[];
   order?: number;
+  /**
+   * Where the seed request button goes. "callout" (default): a box under the
+   * hero, good on long guides. "hero": a button under the summary, for pages
+   * whose summary already is the pitch (e.g. free-okra-seeds).
+   */
+  seedCallToAction?: 'callout' | 'hero';
   intro: string[];
   sections: GuideSection[];
   faq?: GuideFaqItem[];
@@ -56,7 +62,7 @@ export interface OkraGuide {
 export type OkraGuideSummary = Pick<
   OkraGuide,
   'slug' | 'status' | 'title' | 'seoTitle' | 'description' | 'summary' | 'heroImage' | 'socialImage' | 'datePublished' | 'dateModified'
-> & { order: number };
+> & { order: number; seedCallToAction: 'callout' | 'hero' };
 
 export type InlineToken =
   | { type: 'text'; text: string }
@@ -91,6 +97,7 @@ export function guidePath(slug: string): string;
 export function parseInline(text: string): InlineToken[];
 export function stripInline(text: string): string;
 export function isInternalHref(href: string): boolean;
+export function collectGuideTexts(guide: OkraGuide): string[];
 export function collectGuideLinks(guide: OkraGuide): string[];
 export function guidePageTitle(guide: Pick<OkraGuide, 'title' | 'seoTitle'>): string;
 export function guideRouteMeta(guide: OkraGuideSummary | OkraGuide): GuideRouteMeta;

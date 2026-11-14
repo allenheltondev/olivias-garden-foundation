@@ -59,17 +59,19 @@ export function isInternalHref(href) {
   return href.startsWith('/') && !href.startsWith('//');
 }
 
-/** Every href used in a guide's inline text, in document order. */
-export function collectGuideLinks(guide) {
-  const texts = [
+/** Every string in a guide that supports inline markup, in document order. */
+export function collectGuideTexts(guide) {
+  return [
     guide.summary,
     ...guide.intro,
-    ...guide.sections.flatMap((section) => section.blocks.flatMap(blockTexts)),
+    ...guide.sections.flatMap((section) => (section.blocks ?? []).flatMap(blockTexts)),
     ...(guide.faq ?? []).map((item) => item.answer),
-  ];
+  ].filter((text) => typeof text === 'string' && text.length > 0);
+}
 
-  return texts
-    .filter(Boolean)
+/** Every href used in a guide's inline text, in document order. */
+export function collectGuideLinks(guide) {
+  return collectGuideTexts(guide)
     .flatMap((text) => parseInline(text))
     .filter((token) => token.type === 'link')
     .map((token) => token.href);
@@ -131,6 +133,7 @@ export function guideSummary(guide) {
     datePublished: guide.datePublished,
     dateModified: guide.dateModified,
     order: guide.order ?? 100,
+    seedCallToAction: guide.seedCallToAction ?? 'callout',
   };
 }
 

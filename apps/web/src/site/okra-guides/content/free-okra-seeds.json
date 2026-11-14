@@ -23,9 +23,9 @@
   ],
   "related": [],
   "order": 1,
+  "seedCallToAction": "hero",
   "intro": [
-    "Okra was Olivia Helton's favorite thing to grow. Her family has kept her plants going, and Olivia's Garden Foundation now mails seeds from that line to anyone who wants to grow them. The seeds are free, mailing is free, and you don't need an account.",
-    "Use the **Request free seeds** button on this page. Below is what you'll get, how the request works, and what to do once the seeds arrive."
+    "Okra was Olivia Helton's favorite thing to grow. Her family has kept her plants going, and every packet we mail comes from that same line."
   ],
   "sections": [
     {
@@ -35,88 +35,24 @@
         {
           "type": "list",
           "items": [
-            "**One packet of 10 okra seeds** per request.",
-            "**Clemson Spineless okra**, a dependable variety with smooth, spineless pods that loves sun and heat.",
-            "**Free mailing** to addresses in the United States and Canada.",
-            "**In-person pickup** if you live near McKinney, Texas."
+            "**10 Clemson Spineless okra seeds**: smooth pods, and plants that love sun and heat.",
+            "**Free mailing** by USPS anywhere in the United States or Canada.",
+            "**Local pickup** instead, if you're near McKinney, Texas."
           ]
-        },
-        {
-          "type": "paragraph",
-          "text": "There's no cost and no catch. Sending seeds out is how the foundation shares Olivia's love of okra with as many people as possible."
         }
       ]
     },
     {
-      "id": "how-to-request",
-      "title": "How to request free okra seeds",
-      "blocks": [
-        {
-          "type": "list",
-          "ordered": true,
-          "items": [
-            "Select **Request free seeds** on this page or on the [Okra Project page](/okra).",
-            "Enter your name and email address.",
-            "Choose **Mail to me** and add your mailing address, or choose **In-person exchange** if you're near McKinney.",
-            "Add a message if you'd like, then send your request."
-          ]
-        },
-        {
-          "type": "paragraph",
-          "text": "You'll see a confirmation right away, and we'll follow up by email. Signing in is optional: create an account only if you want to see your request later on your profile."
-        }
-      ]
-    },
-    {
-      "id": "where-the-seeds-come-from",
-      "title": "Where the seeds come from",
-      "blocks": [
-        {
-          "type": "paragraph",
-          "text": "These aren't seeds bought in bulk. They come from the okra plants Olivia grew in her family's garden in McKinney, Texas. Her family has kept those plants going, and the seed you receive comes from that same line."
-        },
-        {
-          "type": "paragraph",
-          "text": "Read more about Olivia and the foundation on the [About page](/about)."
-        }
-      ]
-    },
-    {
-      "id": "pick-up-near-mckinney",
-      "title": "Picking up seeds near McKinney",
-      "blocks": [
-        {
-          "type": "paragraph",
-          "text": "If you live in or near McKinney, choose **In-person exchange** when you request. We'll email you to set up a time and place to hand off your seeds."
-        }
-      ]
-    },
-    {
-      "id": "planting-your-seeds",
-      "title": "Planting your seeds",
+      "id": "once-your-seeds-arrive",
+      "title": "Once your seeds arrive",
       "blocks": [
         {
           "type": "list",
           "items": [
-            "**Wait for warm weather.** Okra needs warm soil to sprout, so plant after your last frost once the weather has settled.",
-            "**Sow seeds directly in the ground** where they'll grow. Okra doesn't transplant well, so skip starting it in pots.",
-            "**Pick your sunniest spot.** Clemson Spineless thrives in full sun and summer heat.",
-            "**Save seed for next year.** Okra is an annual, but if you leave a few pods on the plant until they turn brown and dry, the seeds can come up again next season."
+            "**Plant after your last frost**, straight into the sunniest spot you have. Okra doesn't like being transplanted.",
+            "**Let a few pods dry on the plant** at the end of the season, and you'll have seed for next year.",
+            "**Add your patch to the map.** Share a photo on the [Okra Project map](/okra) so others can see where Olivia's okra is growing."
           ]
-        }
-      ]
-    },
-    {
-      "id": "add-your-garden-to-the-map",
-      "title": "Add your garden to the Okra Project map",
-      "blocks": [
-        {
-          "type": "paragraph",
-          "text": "The [Okra Project map](/okra) shows where Olivia's okra is growing. Once your plants are up, add a pin with a photo of your patch so others can see it too."
-        },
-        {
-          "type": "paragraph",
-          "text": "When we mail your seeds, we also add a \"seeds sent\" pin at your city with the month we mailed them. It never shows your street address or last name. Your first name appears only if you tick the box for it when you request."
         }
       ]
     }
@@ -124,31 +60,19 @@
   "faq": [
     {
       "question": "Are the okra seeds really free?",
-      "answer": "Yes. The seeds and the mailing are free, and you don't need to create an account or sign up for anything."
-    },
-    {
-      "question": "Where can you mail free okra seeds?",
-      "answer": "We mail seeds to addresses in the United States and Canada. If you're near McKinney, Texas, you can choose in-person pickup instead."
+      "answer": "Yes. The seeds and the mailing are free, and you don't need an account."
     },
     {
       "question": "How are the okra seeds shipped?",
-      "answer": "We mail seeds by standard USPS mail, so delivery time depends on the mail where you live. We'll email you about your request."
+      "answer": "By standard USPS mail, so delivery time depends on the mail where you live. We'll email you about your request."
     },
     {
       "question": "Can schools or groups request free okra seeds?",
       "answer": "Schools, garden clubs, and other groups should reach out through our [Partner with us](/partners) page rather than the seed request form."
     },
     {
-      "question": "What kind of okra seeds do you send?",
-      "answer": "Clemson Spineless okra, from the plants Olivia grew in her family's garden. Each packet has 10 seeds."
-    },
-    {
-      "question": "Do I need an account to request seeds?",
-      "answer": "No. An account is optional; sign in only if you want to see your request on your profile later."
-    },
-    {
       "question": "Will my address show on the Okra Project map?",
-      "answer": "No. A \"seeds sent\" pin shows only your city and the month we mailed your seeds. Your first name appears only if you choose to show it."
+      "answer": "No. When we mail your seeds, a \"seeds sent\" pin shows only your city and the month. Your first name appears only if you choose to show it."
     }
   ]
 }

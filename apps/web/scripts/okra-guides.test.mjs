@@ -13,6 +13,7 @@ import {
   collectGuideLinks,
   formatGuideDate,
   guideRouteMeta,
+  guideSummary,
   parseInline,
   renderGuideFallbackHtml,
   renderGuideListHtml,
@@ -185,6 +186,22 @@ describe('validation', () => {
     assert.ok(errors.some((error) => /javascript:alert must be an internal path/.test(error)), errors.join('\n'));
   });
 
+  test('links nested inside bold text are rejected, even in drafts', async () => {
+    const guide = { ...readFixture('example-related-guide'), status: 'draft' };
+    guide.intro = ['**See the [map](/okra)** for more.'];
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /link inside bold text won't render/.test(error)), errors.join('\n'));
+  });
+
+  test('seedCallToAction only accepts "callout" or "hero"', async () => {
+    const guide = readFixture('example-related-guide');
+    guide.seedCallToAction = 'sidebar';
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /seedCallToAction must be/.test(error)), errors.join('\n'));
+    guide.seedCallToAction = 'hero';
+    assert.deepEqual((await validate(readFixture('example-okra-guide'), guide)).errors, []);
+  });
+
   test('structural problems are errors even for drafts', async () => {
     const guide = { ...readFixture('example-related-guide'), status: 'draft', slug: 'submissions' };
     guide.sections = [{ id: 'Bad Id', title: '', blocks: [{ type: 'video' }] }];
@@ -257,6 +274,11 @@ describe('structured data and fallback HTML', () => {
       prerender: true,
     });
     assert.equal(guideRouteMeta({ ...guide, status: 'draft' }).allowIndex, false);
+  });
+
+  test('the slim summary carries the seed button placement, defaulting to the callout', () => {
+    assert.equal(guideSummary(guide).seedCallToAction, 'callout');
+    assert.equal(guideSummary({ ...guide, seedCallToAction: 'hero' }).seedCallToAction, 'hero');
   });
 
   test('hub list and dates render', () => {

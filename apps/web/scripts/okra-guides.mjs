@@ -16,6 +16,8 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   collectGuideLinks,
+  collectGuideTexts,
+  parseInline,
   guidePath,
   isInternalHref,
   RESERVED_GUIDE_SLUGS,
@@ -173,6 +175,9 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
       structural('description is required (it is the meta description).');
     } else if (guide.description.length < 70 || guide.description.length > 160) {
       publishing(`description is ${guide.description.length} characters; keep it between 70 and 160.`);
+    }
+    if (guide.seedCallToAction !== undefined && !['callout', 'hero'].includes(guide.seedCallToAction)) {
+      structural('seedCallToAction must be "callout" or "hero".');
     }
     if (!isNonEmptyString(guide.summary)) {
       structural('summary is required (it is the short paragraph under the h1).');
@@ -342,6 +347,14 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
 
     // Inline links
     if (Array.isArray(guide.intro) && Array.isArray(guide.sections)) {
+      // Markup can't nest: a link inside **bold** renders as raw "[text](href)".
+      for (const text of collectGuideTexts(guide)) {
+        for (const token of parseInline(text)) {
+          if (token.type === 'strong' && /\[[^\]]+\]\([^)]+\)/.test(token.text)) {
+            structural(`link inside bold text won't render: "**${token.text}**". Put the link outside the ** markers.`);
+          }
+        }
+      }
       let links = [];
       try {
         links = collectGuideLinks(guide);
