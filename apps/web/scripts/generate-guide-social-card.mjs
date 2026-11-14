@@ -24,7 +24,7 @@ import { guidesContentDir, publicDir, SOCIAL_IMAGE_HEIGHT, SOCIAL_IMAGE_WIDTH } 
 
 const WIDTH = SOCIAL_IMAGE_WIDTH;
 const HEIGHT = SOCIAL_IMAGE_HEIGHT;
-const PANEL_WIDTH = 600;
+const PANEL_WIDTH = 700;
 const TEXT_LEFT = 100;
 const TEXT_MAX_WIDTH = PANEL_WIDTH - TEXT_LEFT - 40;
 const COLORS = {
@@ -68,15 +68,21 @@ export function wrapHeadline(text, fontSize, maxWidth) {
   return lines;
 }
 
-/** Largest font size (64 down to 44) that fits the headline in 4 lines. */
+export const MAX_HEADLINE_LINES = 3;
+
+/**
+ * Largest font size (64 down to 44) that fits the headline in at most three
+ * lines. Throws instead of truncating when even 44px needs more lines, so a
+ * too-long headline is shortened by a person rather than silently cut off.
+ */
 export function layoutHeadline(text) {
   for (let fontSize = 64; fontSize >= 44; fontSize -= 4) {
     const lines = wrapHeadline(text, fontSize, TEXT_MAX_WIDTH);
-    if (lines.length <= 4) {
+    if (lines.length <= MAX_HEADLINE_LINES) {
       return { fontSize, lines };
     }
   }
-  return { fontSize: 44, lines: wrapHeadline(text, 44, TEXT_MAX_WIDTH).slice(0, 4) };
+  throw new Error(`Headline "${text}" needs more than ${MAX_HEADLINE_LINES} lines; shorten it (aim for 3-7 words) with --headline.`);
 }
 
 export function buildPanelSvg(headline) {

@@ -302,10 +302,20 @@ describe('llms.txt section', () => {
 });
 
 describe('social card generator', () => {
-  test('fits long headlines in four lines or fewer', () => {
+  test('fits headlines in three lines or fewer, shrinking the font if needed', () => {
+    const short = layoutHeadline("Free okra seeds from Olivia's garden");
+    assert.equal(short.fontSize, 64);
+    assert.ok(short.lines.length <= 3);
     const { lines, fontSize } = layoutHeadline('When to plant okra in North Texas and across the South');
-    assert.ok(lines.length <= 4);
+    assert.ok(lines.length <= 3);
     assert.ok(fontSize >= 44 && fontSize <= 64);
+  });
+
+  test('refuses a headline that needs more than three lines instead of cutting it off', () => {
+    assert.throws(
+      () => layoutHeadline('A very long headline that keeps going well past anything a social card could ever show at a glance'),
+      /needs more than 3 lines; shorten it/,
+    );
   });
 
   test('renders a 1200x630 card from a photo', async () => {
