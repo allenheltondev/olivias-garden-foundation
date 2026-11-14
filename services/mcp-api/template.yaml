@@ -50,14 +50,12 @@ Globals:
 
 Resources:
   # One item per key, PK = KEY#<id>. Holds no key: only a hash of its secret,
-  # its scopes, its operator and its expiry. Retained so a stack replacement
-  # never silently revokes every key — or brings a revoked one back.
+  # its scopes, its operator and its expiry. Declared like the repo's other
+  # tables (generated name, default encryption): losing it only revokes every
+  # key, which fails safe, and `npm run mcp:keys` finds it by the stack output.
   McpKeysTable:
     Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
     Properties:
-      TableName: !Sub "ogf-mcp-keys-${EnvironmentName}"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: PK
@@ -65,10 +63,6 @@ Resources:
       KeySchema:
         - AttributeName: PK
           KeyType: HASH
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      SSESpecification:
-        SSEEnabled: true
 
   # No API Gateway authorizer on purpose: the function checks the key against
   # its row on every request, so a revoked key stops at once rather than when

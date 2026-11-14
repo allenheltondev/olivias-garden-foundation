@@ -5,8 +5,8 @@
  *   npm run mcp:keys -w services/mcp-api -- list   --env prod
  *   npm run mcp:keys -w services/mcp-api -- revoke --env prod <id>
  *
- * Runs with your AWS credentials, on the environment's keys table
- * (`ogf-mcp-keys-<env>`, or --table). Being able to write that table is what
+ * Runs with your AWS credentials, on the environment's keys table (the
+ * `McpKeysTableName` output of the `ogf-mcp-<env>` stack, or --table). Being able to write that table is what
  * makes someone able to mint a key: nothing reachable over the internet can,
  * and a key cannot mint another. The operator must be an admin in the user
  * pool (found by email; the pool id comes from the OGF-UserPoolId export, or
@@ -15,7 +15,7 @@
 
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import { CloudFormationClient, ListExportsCommand } from '@aws-sdk/client-cloudformation';
+import { CloudFormationClient, DescribeStacksCommand, ListExportsCommand } from '@aws-sdk/client-cloudformation';
 import { DynamoKeyStore } from '../src/mcp/dynamo-keys.mjs';
 import { CognitoOperatorDirectory } from '../src/mcp/operator.mjs';
 import { KeyError, SCOPES, listKeys, mintKey, revokeKey } from '../src/mcp/keys.mjs';
@@ -32,6 +32,19 @@ async function userPoolFromExports() {
   throw new KeyError('No OGF-UserPoolId export in this account and region; pass --user-pool-id.');
 }
 
+async function keysTableFromStack(env) {
+  const stackName = `ogf-mcp-${env}`;
+  let out;
+  try {
+    out = await new CloudFormationClient({}).send(new DescribeStacksCommand({ StackName: stackName }));
+  } catch (error) {
+    throw new KeyError(`Could not read stack ${stackName} (${error.message}); pass --table.`);
+  }
+  const table = out.Stacks?.[0]?.Outputs?.find((o) => o.OutputKey === 'McpKeysTableName')?.OutputValue;
+  if (!table) throw new KeyError(`Stack ${stackName} has no McpKeysTableName output; pass --table.`);
+  return table;
+}
+
 const usage = (io) => {
   io.err('usage: npm run mcp:keys -w services/mcp-api -- <create|list|revoke> --env <prod|staging|dev> [--table NAME]');
   io.err('  create --label NAME --operator EMAIL --scope SCOPE [--scope SCOPE…] [--days N] [--user-pool-id ID]');
@@ -40,7 +53,7 @@ const usage = (io) => {
   return 2;
 };
 
-/** deps: { openStore(table), openDirectory(userPoolId), resolveUserPool() } */
+/** deps: { openStore(table), openDirectory(userPoolId), resolveUserPool(), resolveTable(env) } */
 export async function runKeysCli(argv, deps, io) {
   const [command, ...rest] = argv;
   let parsed;
@@ -64,10 +77,10 @@ export async function runKeysCli(argv, deps, io) {
   }
   const { values, positionals } = parsed;
   if (!values.env && !values.table) return usage(io);
-  const table = values.table ?? `ogf-mcp-keys-${values.env}`;
-  const store = deps.openStore(table);
 
   try {
+    const table = values.table ?? (await deps.resolveTable(values.env));
+    const store = deps.openStore(table);
     switch (command) {
       case 'create': {
         if (!values.label || !values.operator) return usage(io);
@@ -128,7 +141,8 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     {
       openStore: (table) => new DynamoKeyStore(table),
       openDirectory: (poolId) => new CognitoOperatorDirectory(poolId),
-      resolveUserPool: userPoolFromExports
+      resolveUserPool: userPoolFromExports,
+      resolveTable: keysTableFromStack
     },
     { out: console.log, err: console.error }
   ).then(

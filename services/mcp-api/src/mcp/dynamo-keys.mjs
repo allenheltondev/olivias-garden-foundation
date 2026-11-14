@@ -1,5 +1,5 @@
 /**
- * The MCP keys table, `ogf-mcp-keys-<env>` (template.yaml). One item per key,
+ * The MCP keys table (template.yaml, McpKeysTable; stack output McpKeysTableName). One item per key,
  * `PK = KEY#<id>`. A handful of keys at most, so listing them is a Scan.
  * Its own table: the MCP function's role names this table and nothing that
  * holds a supporter's data.

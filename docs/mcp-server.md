@@ -42,8 +42,8 @@ spring workshop"*.
 | List | `npm run mcp:keys -w services/mcp-api -- list --env prod` (label, operator, scopes, expiry, last use; never the key) |
 | Revoke | `npm run mcp:keys -w services/mcp-api -- revoke --env prod <id>`. The next request with it is refused. |
 
-Run with your AWS credentials against the environment's `ogf-mcp-keys-<env>`
-table. Being able to write that table is what lets someone mint a key: nothing
+Run with your AWS credentials against the environment's keys table (the
+`McpKeysTableName` output of `ogf-mcp-<env>`; `--table` overrides it). Being able to write that table is what lets someone mint a key: nothing
 reachable over the internet can, and a key cannot mint another.
 
 **A key acts as an operator.** `--operator` names an admin user by email; the CLI
@@ -138,8 +138,10 @@ stacks' outputs and deploys `ogf-mcp-<env>`, so it runs after them: the
 staging validation. With a domain configured the server is mapped to
 `https://api.<domain>/mcp` on the shared API domain.
 
-The keys table is retained if the stack is deleted, so a stack replacement never
-silently revokes every key or brings a revoked one back.
+The keys table belongs to the stack. Deleting or replacing the stack deletes it,
+which revokes every key: that fails safe, and new keys are minted the same way.
+A first create that fails leaves the stack in `ROLLBACK_COMPLETE`; the deploy
+script deletes such a stack (it holds nothing) and creates it again.
 
 ## Testing
 

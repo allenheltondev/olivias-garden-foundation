@@ -393,7 +393,16 @@ describe('keys CLI', () => {
         return username === OPERATOR.username;
       }
     };
-    const deps = { openStore: () => store, openDirectory: () => directory, resolveUserPool: async () => 'pool' };
+    const tables = [];
+    const deps = {
+      openStore: (table) => {
+        tables.push(table);
+        return store;
+      },
+      openDirectory: () => directory,
+      resolveUserPool: async () => 'pool',
+      resolveTable: async (env) => `table-from-ogf-mcp-${env}`
+    };
     assert.equal(await runKeysCli(['create', '--env', 'dev', '--label', 'laptop', '--operator', OPERATOR.email, '--scope', 'all:read'], deps, io), 0);
     assert.ok(lines.some((l) => /^\s+ogfmcp_/.test(l)));
     assert.equal(store.rows.size, 1);
@@ -402,5 +411,8 @@ describe('keys CLI', () => {
     const [id] = store.rows.keys();
     assert.equal(await runKeysCli(['revoke', '--env', 'dev', id], deps, io), 0);
     assert.equal(store.rows.size, 0);
+    assert.ok(tables.every((t) => t === 'table-from-ogf-mcp-dev'));
+    assert.equal(await runKeysCli(['list', '--table', 'explicit'], deps, io), 0);
+    assert.equal(tables.at(-1), 'explicit');
   });
 });

@@ -85,6 +85,20 @@ if [ -n "${FOUNDATION_DOMAIN_NAME:-}" ] && [ -n "${DOMAIN_HOSTED_ZONE_ID:-}" ]; 
   PARAM_OVERRIDES+=("DomainName=$FOUNDATION_DOMAIN_NAME" "DomainHostedZoneId=$DOMAIN_HOSTED_ZONE_ID")
 fi
 
+# A first create that failed leaves the stack in ROLLBACK_COMPLETE, which
+# CloudFormation can only delete, never update. Such a stack holds no
+# resources, so delete it and create afresh.
+STACK_STATUS=$(aws cloudformation describe-stacks \
+  --stack-name "$MCP_STACK_NAME" \
+  --region "$AWS_REGION" \
+  --query "Stacks[0].StackStatus" \
+  --output text 2>/dev/null || echo "NONE")
+if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+  echo "Stack $MCP_STACK_NAME is in ROLLBACK_COMPLETE from a failed first create; deleting it before deploying."
+  aws cloudformation delete-stack --stack-name "$MCP_STACK_NAME" --region "$AWS_REGION"
+  aws cloudformation wait stack-delete-complete --stack-name "$MCP_STACK_NAME" --region "$AWS_REGION"
+fi
+
 sam build --template-file services/mcp-api/template.yaml --build-dir services/mcp-api/.aws-sam/build
 
 sam deploy \
