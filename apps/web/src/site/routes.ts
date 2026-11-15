@@ -146,7 +146,8 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'Partner with us',
     description: "Partner with Olivia's Garden Foundation: sponsor free okra seeds through bulk growing or satellite seed sharing. For extension programs, colleges, nonprofits, and local businesses.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/partners.png',
+    seoImageAlt: "A pile of hundreds of saved okra seeds on cream linen, with the headline: Help Olivia's okra spread.",
     prerender: true,
   },
   {
@@ -231,8 +232,13 @@ const primaryPageOrder = new Map([
   ['/partners', 9],
 ]);
 
+// Okra guides shown in nav/footer sort right after "Okra Project".
+function pageOrder(route: AppRoute) {
+  return primaryPageOrder.get(route.path) ?? (route.path.startsWith('/okra/') ? 1.5 : routes.indexOf(route));
+}
+
 function byPrimaryPageOrder(left: AppRoute, right: AppRoute) {
-  return (primaryPageOrder.get(left.path) ?? routes.indexOf(left)) - (primaryPageOrder.get(right.path) ?? routes.indexOf(right));
+  return pageOrder(left) - pageOrder(right);
 }
 
 export const navRoutes = routes.filter((route) => route.showInNav).sort(byPrimaryPageOrder);

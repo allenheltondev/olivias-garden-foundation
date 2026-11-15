@@ -59,17 +59,19 @@ export function isInternalHref(href) {
   return href.startsWith('/') && !href.startsWith('//');
 }
 
-/** Every href used in a guide's inline text, in document order. */
-export function collectGuideLinks(guide) {
-  const texts = [
+/** Every string in a guide that supports inline markup, in document order. */
+export function collectGuideTexts(guide) {
+  return [
     guide.summary,
     ...guide.intro,
-    ...guide.sections.flatMap((section) => section.blocks.flatMap(blockTexts)),
+    ...guide.sections.flatMap((section) => (section.blocks ?? []).flatMap(blockTexts)),
     ...(guide.faq ?? []).map((item) => item.answer),
-  ];
+  ].filter((text) => typeof text === 'string' && text.length > 0);
+}
 
-  return texts
-    .filter(Boolean)
+/** Every href used in a guide's inline text, in document order. */
+export function collectGuideLinks(guide) {
+  return collectGuideTexts(guide)
     .flatMap((text) => parseInline(text))
     .filter((token) => token.type === 'link')
     .map((token) => token.href);
@@ -114,6 +116,7 @@ export function guideRouteMeta(guide) {
     // must never be indexed.
     allowIndex: guide.status === 'published',
     prerender: true,
+    showInFooter: guide.showInFooter === true,
   };
 }
 
@@ -131,6 +134,7 @@ export function guideSummary(guide) {
     datePublished: guide.datePublished,
     dateModified: guide.dateModified,
     order: guide.order ?? 100,
+    seedCallToAction: guide.seedCallToAction ?? 'callout',
   };
 }
 
@@ -294,10 +298,6 @@ export function renderGuideFallbackHtml(guide, relatedGuides = []) {
       '<h2>Related okra guides</h2>',
       `<ul>${relatedGuides.map((related) => `<li><a href="${escapeHtml(guidePath(related.slug))}">${escapeHtml(related.title)}</a></li>`).join('')}</ul>`,
     );
-  }
-
-  if (guide.review?.reviewedOn) {
-    parts.push(`<p>Reviewed by ${escapeHtml(guide.review.reviewedBy)} on ${escapeHtml(guide.review.reviewedOn)}.</p>`);
   }
 
   return parts.filter(Boolean).map((part) => `      ${part}`).join('\n');

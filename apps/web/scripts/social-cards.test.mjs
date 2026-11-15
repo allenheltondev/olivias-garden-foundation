@@ -19,7 +19,7 @@ const clientModule = stripTypeScriptTypes(source
   .replace(okraGuideImport, `const okraGuideRoutes = ${JSON.stringify(loadOkraGuides().map(guideRouteMeta))};`));
 const { routes, socialShareImage } = await import(`data:text/javascript;base64,${Buffer.from(clientModule).toString('base64')}`);
 
-const cards = ['okra', 'donate', 'about', 'faq', 'good-roots', 'get-involved', 'impact'];
+const cards = ['okra', 'donate', 'about', 'faq', 'good-roots', 'get-involved', 'impact', 'partners'];
 
 for (const name of cards) {
   test(`${name} uses the same optimized social card for the client and crawlers`, async () => {

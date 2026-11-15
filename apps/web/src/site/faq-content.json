@@ -8,12 +8,13 @@
           "id": "are-seeds-free",
           "question": "Are the okra seeds really free?",
           "answer": "Yes. Requesting seeds is free. Olivia loved okra more than anything else in the garden, and sending seeds out is how we share that love with as many people as we can.",
-          "link": { "href": "/okra", "label": "Request your seeds" }
+          "link": { "href": "/okra/free-okra-seeds", "label": "Get free okra seeds" }
         },
         {
           "id": "what-do-i-get",
           "question": "What do I get when I request seeds?",
-          "answer": "Each request gets a single packet of 10 Clemson Spineless okra seeds."
+          "answer": "Each request gets a single packet of 10 Clemson Spineless okra seeds.",
+          "link": { "href": "/okra/free-okra-seeds", "label": "See what's in a packet" }
         },
         {
           "id": "where-do-you-ship",

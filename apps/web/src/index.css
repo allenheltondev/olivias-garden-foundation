@@ -4275,6 +4275,16 @@ html {
 }
 
 /* Partners page */
+/* The seed photo is portrait; crop it to landscape so the header stays compact. */
+.partners-hero__photo {
+  min-height: 0;
+}
+
+.partners-hero__photo img {
+  aspect-ratio: 4 / 3;
+  height: auto;
+}
+
 .og-page-hero__title.partners-hero__title {
   font-size: clamp(2rem, 4vw, 2.75rem);
   line-height: 1.1;
@@ -4388,8 +4398,76 @@ html {
   margin: 0;
 }
 
+.okra-guide__hero-photo {
+  min-height: 0;
+}
+
 .okra-guide__hero-photo img {
-  height: 22rem;
+  aspect-ratio: 4 / 5;
+  height: auto;
+}
+
+/* Two columns on desktop: article on the left, a rail on the right with the
+   photo, aside cards, contents, and the seed callout. On phones the rail sits
+   above the article (it comes first in the DOM). */
+.okra-guide__layout {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+  align-items: start;
+}
+
+.okra-guide__main {
+  display: grid;
+  gap: clamp(1.25rem, 2.5vw, 1.75rem);
+  min-width: 0;
+}
+
+.okra-guide__rail {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.okra-guide__rail-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--site-border);
+  border-radius: 1.25rem;
+  background: var(--site-paper-strong);
+}
+
+.okra-guide__rail-card .okra-guide__heading {
+  font-size: 1.2rem;
+}
+
+.okra-guide__rail-card .okra-guide__list {
+  gap: 0.45rem;
+}
+
+@media (min-width: 960px) {
+  .okra-guide__layout {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+
+  .okra-guide__main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .okra-guide__rail {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* Keep the rail in view while reading, but only when it fits on screen
+   (OkraGuidePage measures it and adds --sticky). */
+@media (min-width: 960px) {
+  .okra-guide__rail--sticky {
+    position: sticky;
+    top: 5.5rem;
+  }
 }
 
 .okra-guide__hero-photo figcaption,
@@ -4518,6 +4596,9 @@ html {
   display: block;
   width: 100%;
   height: auto;
+  /* Keep tall (portrait) photos from taking over the article. */
+  max-height: 30rem;
+  object-fit: cover;
 }
 
 .okra-guide__toc {
@@ -4547,8 +4628,8 @@ html {
 
 .okra-guide__seed-cta {
   display: grid;
-  gap: 1rem;
-  align-items: center;
+  gap: 0.75rem;
+  align-items: start;
   padding: 1.15rem 1.25rem;
   border: 1px solid var(--site-border);
   border-radius: 1.25rem;
@@ -4619,14 +4700,6 @@ html {
 }
 
 @media (min-width: 720px) {
-  .okra-guide__seed-cta {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .okra-guide__seed-cta .ok-btn {
-    justify-self: end;
-  }
-
   .okra-guide__related,
   .okra-guide-hub__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));

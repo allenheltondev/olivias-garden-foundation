@@ -12,6 +12,7 @@ type GuideFile = {
   socialImage?: { src: string };
   faq?: unknown[];
   related?: string[];
+  showInFooter?: boolean;
   sections?: Array<{ id: string }>;
 };
 
@@ -74,8 +75,37 @@ test.describe('published okra guides', () => {
 
     test(`${path} is listed on the Okra Project page`, async ({ page }) => {
       await gotoAndWait(page, '/okra');
-      await expect(page.getByRole('link', { name: new RegExp(guide.title) })).toHaveAttribute('href', path);
+      // Scope to the guides list: the same title can also appear as a footer link.
+      const guideList = page.getByRole('region', { name: 'Okra growing guides' });
+      await expect(guideList.getByRole('link', { name: new RegExp(guide.title) })).toHaveAttribute('href', path);
     });
+
+    if (guide.showInFooter) {
+      test(`${path} is linked from the footer and the link opens it`, async ({ page }) => {
+        await gotoAndWait(page, '/');
+        const footerLink = page.getByRole('contentinfo').getByRole('link', { name: guide.title, exact: true });
+        await expect(footerLink).toHaveAttribute('href', path);
+        await footerLink.click();
+        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        await expect(page.getByRole('heading', { level: 1, name: guide.title })).toBeVisible();
+      });
+    }
+  }
+});
+
+test('FAQ links to published okra guides open the guide', async ({ page }) => {
+  await gotoAndWait(page, '/faq');
+  const guidePaths = new Set(publishedGuides.map((guide) => `/okra/${guide.slug}`));
+  const hrefs = await page.locator('main a[href^="/okra/"]').evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
+  const linked = [...new Set(hrefs.filter((href) => guidePaths.has(href)))];
+  test.skip(linked.length === 0, 'The FAQ does not link to a published okra guide yet.');
+
+  for (const href of linked) {
+    const guide = publishedGuides.find((candidate) => `/okra/${candidate.slug}` === href)!;
+    await gotoAndWait(page, '/faq');
+    await page.locator(`main a[href="${href}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.getByRole('heading', { level: 1, name: guide.title })).toBeVisible();
   }
 });
 

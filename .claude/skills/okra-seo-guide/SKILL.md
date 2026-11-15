@@ -39,6 +39,7 @@ The build fails for a published guide without these, but get them right, not jus
 - In-body `image` blocks follow the same filename and alt rules. Use them where a picture answers the question better than text (pod size, pest damage).
 
 ### 3. First-hand, accurate, and reviewed
+- Refer to Olivia by her first name only. Never use her surname, anywhere on the site.
 - Ground advice in the foundation's real experience growing okra in McKinney, North Texas, and say so where it helps. Never invent anecdotes, quotes, harvest numbers, or family stories. If the issue calls for one, ask the user.
 - Check facts that vary by region or carry risk (planting dates, soil temperatures, canning and food safety, pest treatments) against extension sources, such as Texas A&M AgriLife or the National Center for Home Food Preservation. Link the source where it helps the reader.
 - Seed program facts must match the live service: one packet of **10 Clemson Spineless** seeds, mailed within the **US and Canada**, with in-person pickup near McKinney. Check `apps/web/src/site/faq-content.json` if unsure.
@@ -52,6 +53,8 @@ The build fails for a published guide without these, but get them right, not jus
 
 ### 5. Write for people
 - Plain, warm, specific language. Short paragraphs, lists for steps, and a `table` for anything regional or comparative.
+- No semicolons in prose: use two sentences instead.
+- No decorative bold. Don't bold the start of list items or random words. Let plain sentences carry the meaning.
 - No keyword stuffing, filler intros ("Okra is a popular vegetable..."), or "In conclusion" endings.
 - Follow `AGENTS.md`: no eyebrow labels, restrained headings, and human language over jargon.
 - Sensible length: as long as it takes to answer fully. Usually 800–1,800 words for a main guide, and less for a narrow one.
