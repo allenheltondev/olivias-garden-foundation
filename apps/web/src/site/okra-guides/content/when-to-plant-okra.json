@@ -112,6 +112,21 @@
       ]
     },
     {
+      "id": "north-texas",
+      "title": "When to plant okra in North Texas",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "In McKinney, which is zone 8b, we plant okra in mid April. The latest we've planted is the first few days of June, and those plants still gave us a good crop."
+        },
+        {
+          "type": "tip",
+          "title": "From Olivia's garden",
+          "text": "We plant once a year. Our okra plants get big and keep producing pods all season, so there's no need for a second planting."
+        }
+      ]
+    },
+    {
       "id": "too-early",
       "title": "What happens if you plant okra too early",
       "blocks": [
@@ -137,11 +152,11 @@
     },
     {
       "id": "second-crop",
-      "title": "Planting a second crop, and the latest date to plant",
+      "title": "Do you need a second planting?",
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Where summers are long and hot, you can plant again in summer for a fall crop. AgriLife recommends planting a fall crop [at least 3 months before the first fall frost](https://agrilifeextension.tamu.edu/library/gardening/okra/). Count back 3 months from your usual first frost to find your last planting date."
+          "text": "Usually not. One spring planting keeps producing all season. If you're getting a late start or want a separate fall crop, AgriLife recommends planting [at least 3 months before the first fall frost](https://agrilifeextension.tamu.edu/library/gardening/okra/). Count back 3 months from your usual first frost to find your last planting date."
         },
         {
           "type": "paragraph",
