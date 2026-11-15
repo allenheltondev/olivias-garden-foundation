@@ -1,6 +1,6 @@
 {
   "slug": "saving-okra-seeds",
-  "status": "draft",
+  "status": "published",
   "title": "How to save okra seeds",
   "seoTitle": "How to Save Okra Seeds for Next Year",
   "description": "Save okra seeds by letting pods dry brown on the plant, then shelling, drying and storing the seeds. When they're ready and how long they last.",
@@ -14,6 +14,11 @@
     "alt": "How to save okra seeds card with a photo of dried okra pods split open to show the seeds."
   },
   "datePublished": "2026-11-15",
+  "dateModified": "2026-11-15",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-15"
+  },
   "targetQueries": [
     "how to save okra seeds",
     "saving okra seeds",
@@ -105,10 +110,6 @@
     }
   ],
   "faq": [
-    {
-      "question": "How many seeds are in an okra pod?",
-      "answer": "In our experience, each mature pod holds 50 to 70 seeds. A handful of pods gives you plenty for next season."
-    },
     {
       "question": "Can you save seeds from store-bought okra?",
       "answer": "Usually not. Okra sold for eating is picked young, while its seeds are still white and soft, so they won't sprout. Let pods mature and dry on a growing plant instead."
