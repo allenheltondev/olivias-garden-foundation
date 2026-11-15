@@ -300,3 +300,56 @@ describe('queue tools', () => {
     assert.equal(posts().filter((p) => p.path.endsWith('/map-pin')).length, 0);
   });
 });
+
+describe('seed pin lookups across requests', () => {
+  it('share one cache and queue for every request the endpoint serves', async () => {
+    const requests = [seedRequest(1, 1), seedRequest(2, 2), seedRequest(3, 3)];
+    const keys = new MemoryKeyStore();
+    const { key } = await mintKey(keys, { label: 'agent', scopes: ['queues:write'], operator: OPERATOR });
+    let geocodes = 0;
+    const endpoint = mcpEndpoint({
+      keys,
+      operators: new StaticOperatorDirectory([OPERATOR.username]),
+      logger: quiet,
+      // As the Lambda builds it: no locator passed in, only the provider.
+      geocode: async () => {
+        geocodes += 1;
+        return { ResultItems: [{ Position: [-97.74, 30.27] }] };
+      },
+      backendsFor: (operator, correlationId) => new FakeBackends((_service, event) => {
+        if (event.httpMethod === 'GET') return okraRequestsRoute(requests, event);
+        const id = event.path.split('/')[2];
+        const request = requests.find((r) => r.id === id);
+        request.requestStatus = 'handled';
+        request.mapPin = { locality: 'Austin, TX' };
+        return { statusCode: 200, body: JSON.stringify({ id, requestStatus: 'handled', mapPin: request.mapPin }) };
+      }, { operator, correlationId })
+    });
+    // Each call is its own HTTP request, so its own MCP server.
+    for (const request of requests) {
+      const res = await endpoint(new Request('https://api.example.org/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+          'mcp-protocol-version': VERSION,
+          'mcp-method': 'tools/call',
+          'mcp-name': 'mark_seed_request_done',
+          authorization: `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: {
+            name: 'mark_seed_request_done',
+            arguments: { id: request.id },
+            _meta: { 'io.modelcontextprotocol/protocolVersion': VERSION, 'io.modelcontextprotocol/clientCapabilities': {} }
+          }
+        })
+      }));
+      assert.equal((await res.json()).result.structuredContent.map_pin.placed, true);
+    }
+    assert.equal(geocodes, 1, 'three requests from one town, one lookup');
+  });
+});

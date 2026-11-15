@@ -18,7 +18,6 @@ import { registerWorkshopTools } from './tools/workshops.mjs';
 import { registerContentTools } from './tools/content.mjs';
 import { registerQueueTools } from './tools/queues.mjs';
 import { registerReportTools } from './tools/reports.mjs';
-import { createSeedPinLocator } from './seed-pins.mjs';
 
 export const SERVER_INFO = { name: 'olivias-garden-operator', version: '1.0.0' };
 
@@ -54,7 +53,8 @@ export function buildServer(key, deps) {
   const ctx = {
     backends: deps.backends,
     logger: deps.logger ?? console,
-    locateSeedPin: deps.locateSeedPin ?? createSeedPinLocator()
+    // Shared across requests: made once by the endpoint (handler.mjs).
+    locateSeedPin: deps.locateSeedPin
   };
   registerStoreTools(scoped(server, 'store', key.scopes), ctx);
   registerWorkshopTools(scoped(server, 'workshops', key.scopes), ctx);

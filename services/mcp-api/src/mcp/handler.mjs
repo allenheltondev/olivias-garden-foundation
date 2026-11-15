@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { createMcpHandler, originValidationResponse } from '@modelcontextprotocol/server';
 import { bearerKey, verifyKey } from './keys.mjs';
 import { buildServer } from './server.mjs';
+import { createSeedPinLocator } from './seed-pins.mjs';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
@@ -31,16 +32,21 @@ function refusal(status, message, correlationId) {
 }
 
 /**
- * deps: { keys, operators, backendsFor(operator, correlationId), allowedOriginHosts?, logger?, locateSeedPin? }
+ * deps: { keys, operators, backendsFor(operator, correlationId), allowedOriginHosts?, logger?, geocode?, locateSeedPin? }
+ *
+ * The seed pin locator is made here, once per endpoint, so its cache and its
+ * one-call-at-a-time queue span every request a warm container serves. Only
+ * the key, its operator and the service calls are per request.
  */
 export function mcpEndpoint(deps) {
   const logger = deps.logger ?? console;
+  const locateSeedPin = deps.locateSeedPin ?? createSeedPinLocator(deps.geocode, { logger });
   const mcp = createMcpHandler(
     ({ authInfo }) => {
       const extra = authInfo?.extra;
       // Fail closed: nothing reaches the factory without a verified key.
       if (!extra?.key) throw new Error('MCP server built without a verified key');
-      return buildServer(extra.key, { backends: extra.backends, logger, locateSeedPin: deps.locateSeedPin });
+      return buildServer(extra.key, { backends: extra.backends, logger, locateSeedPin });
     },
     {
       maxRequestBodySize: MAX_BODY_BYTES,
