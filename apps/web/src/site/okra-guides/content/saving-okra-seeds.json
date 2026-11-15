@@ -70,7 +70,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Let the saved pods keep growing well past eating size. Over several weeks they turn brown, dry, and papery. We wait until a pod has fully matured and started cracking open on its own. The seeds inside are ready when they've turned dark gray."
+          "text": "Let the saved pods keep growing well past eating size so they can [ripen and dry on the plant](https://extension.uga.edu/publications/detail.html?number=C1242). Over several weeks they turn brown, dry, and papery. We wait until a pod has fully matured and started cracking open on its own. The seeds inside are ready when they've turned dark gray."
         },
         {
           "type": "tip",
@@ -104,21 +104,7 @@
         },
         {
           "type": "paragraph",
-          "text": "Stored that way, okra seed usually grows well for at least two years. For anything older, fold 10 seeds into a damp paper towel and keep it warm and moist. Okra can take up to three weeks to sprout, so check every few days and count the sprouts at the end. If 8 come up, plant a little thicker to make up the difference."
-        }
-      ]
-    },
-    {
-      "id": "sources",
-      "title": "Sources",
-      "blocks": [
-        {
-          "type": "list",
-          "items": [
-            "[Variety Selection and Seed Saving for Organic Growers, University of Georgia Extension](https://extension.uga.edu/publications/detail.html?number=B1486)",
-            "[Seed Saving in Georgia Gardens, University of Georgia Extension](https://extension.uga.edu/publications/detail.html?number=C1242)",
-            "[Will Your Seeds Grow Plants?, Oregon State University Extension](https://extension.oregonstate.edu/imported-publication/will-your-seeds-grow-plants)"
-          ]
+          "text": "Stored that way, okra seed usually [grows well for at least two years](https://extension.uga.edu/publications/detail.html?number=B1486). For anything older, [fold 10 seeds into a damp paper towel](https://extension.oregonstate.edu/imported-publication/will-your-seeds-grow-plants) and keep it warm and moist. Okra can [take up to three weeks to sprout](https://extension.uga.edu/publications/detail.html?number=B1486), so check every few days and count the sprouts at the end. If 8 come up, plant a little thicker to make up the difference."
         }
       ]
     }
