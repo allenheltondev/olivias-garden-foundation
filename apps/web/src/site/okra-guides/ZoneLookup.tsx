@@ -4,6 +4,7 @@ import {
   createZoneLookup,
   findZoneRow,
   HARDINESS_ZONE_SOURCE,
+  PHZMAPI_URL,
   parsePostalInput,
 } from './hardiness-zones.mjs';
 
@@ -16,7 +17,7 @@ type LookupState =
   | { status: 'invalid' }
   | { status: 'error' };
 
-// One lookup (and its shard cache) for the whole app session.
+// One lookup (and its per-ZIP cache) for the whole app session.
 const lookupZone = createZoneLookup();
 
 function formatAccessDate(isoDate: string) {
@@ -76,7 +77,7 @@ export function ZoneLookup({ block, renderText }: { block: ZoneLookupBlock; rend
           </button>
         </div>
         <p id={hintId} className="okra-zone-lookup__hint">
-          We look this up on your device and don&apos;t save it.
+          We only use your ZIP code to look up the zone, and we don&apos;t save it.
         </p>
       </form>
 
@@ -133,7 +134,8 @@ export function ZoneLookup({ block, renderText }: { block: ZoneLookupBlock; rend
 
       <p className="okra-zone-lookup__source">
         Zones from the {HARDINESS_ZONE_SOURCE.mapName} data by the{' '}
-        <a href={HARDINESS_ZONE_SOURCE.url} rel="noopener">{HARDINESS_ZONE_SOURCE.name}</a>, accessed {formatAccessDate(HARDINESS_ZONE_SOURCE.accessed)}.
+        <a href={HARDINESS_ZONE_SOURCE.url} rel="noopener">{HARDINESS_ZONE_SOURCE.name}</a>, accessed {formatAccessDate(HARDINESS_ZONE_SOURCE.accessed)},
+        looked up through <a href={PHZMAPI_URL} rel="noopener">phzmapi.org</a>.
         Frost dates vary within a zone, so check your local forecast too.
       </p>
     </div>

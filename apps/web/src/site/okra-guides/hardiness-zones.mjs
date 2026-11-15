@@ -1,11 +1,11 @@
 // ZIP code to USDA plant hardiness zone lookup for the zoneLookup guide block.
-// The data files come from scripts/build-hardiness-zones.mjs. Lookups happen in
-// the reader's browser: the ZIP is never sent to an API or stored, only the
-// file for its first two digits is fetched from this site.
+// Uses phzmapi.org, the public 2023 USDA hardiness zone dataset that the GRN
+// onboarding, the admin seed requests page and the Slack seed request
+// notification already use. Only the 5-digit ZIP is sent, and nothing is stored.
 
-export const HARDINESS_ZONE_EDITION = '2023';
+export const PHZMAPI_URL = 'https://phzmapi.org';
 
-/** Attribution required by the PRISM terms of use: name, URL and access date. */
+/** Attribution: PRISM's terms ask for their name, URL and the access date. */
 export const HARDINESS_ZONE_SOURCE = {
   name: 'PRISM Group, Oregon State University',
   url: 'https://prism.oregonstate.edu/phzm/',
@@ -34,40 +34,46 @@ export function zoneNumber(zone) {
   return match ? Number(match[1]) : undefined;
 }
 
-export function zoneShardPath(zip) {
-  return `/data/hardiness-zones/${HARDINESS_ZONE_EDITION}/${zip.slice(0, 2)}.json`;
+export function zoneLookupUrl(zip) {
+  return `${PHZMAPI_URL}/${zip}.json`;
 }
 
 /**
- * Creates a lookup that caches each shard after the first fetch.
+ * Creates a lookup that remembers each ZIP for the life of the page. Failed
+ * lookups aren't remembered, so the reader can retry once they're back online.
  * @param {typeof fetch} fetchImpl
  */
-export function createZoneLookup(fetchImpl = (...args) => fetch(...args)) {
-  const shards = new Map();
+export function createZoneLookup(fetchImpl = (...args) => fetch(...args), { timeoutMs = 5000 } = {}) {
+  const cache = new Map();
 
-  const loadShard = (path) => {
-    if (!shards.has(path)) {
-      const request = fetchImpl(path, { headers: { Accept: 'application/json' } }).then(async (response) => {
-        // A missing file falls back to the SPA's index.html with a 200, so
-        // check the type too. Either way it means no ZIP codes start this way.
-        const type = response.headers.get('content-type') ?? '';
-        if (response.status === 404 || (response.ok && !type.includes('json'))) return {};
-        if (!response.ok) throw new Error(`Zone lookup failed with ${response.status}`);
-        return response.json();
+  const load = async (zip) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetchImpl(zoneLookupUrl(zip), {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
       });
-      // Don't cache failures, so the reader can retry once they're back online.
-      request.catch(() => shards.delete(path));
-      shards.set(path, request);
+      // phzmapi has no file for ZIP codes outside the map data (PO boxes, for example).
+      if (response.status === 404) return { status: 'not-found', zip };
+      if (!response.ok) throw new Error(`Zone lookup failed with ${response.status}`);
+      const data = await response.json();
+      const zone = typeof data?.zone === 'string' ? data.zone.trim() : '';
+      const number = zoneNumber(zone);
+      return number === undefined ? { status: 'not-found', zip } : { status: 'found', zip, zone, zoneNumber: number };
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return shards.get(path);
   };
 
   /** @returns {Promise<{ status: 'found', zip: string, zone: string, zoneNumber: number } | { status: 'not-found', zip: string }>} */
-  return async function lookupZone(zip) {
-    const shard = await loadShard(zoneShardPath(zip));
-    const zone = shard[zip];
-    const number = zoneNumber(zone);
-    return number === undefined ? { status: 'not-found', zip } : { status: 'found', zip, zone, zoneNumber: number };
+  return function lookupZone(zip) {
+    if (!cache.has(zip)) {
+      const request = load(zip);
+      request.catch(() => cache.delete(zip));
+      cache.set(zip, request);
+    }
+    return cache.get(zip);
   };
 }
 

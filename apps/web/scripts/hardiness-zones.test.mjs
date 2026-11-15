@@ -1,19 +1,11 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import {
   createZoneLookup,
   findZoneRow,
-  HARDINESS_ZONE_EDITION,
   parsePostalInput,
   zoneNumber,
-  zoneShardPath,
 } from '../src/site/okra-guides/hardiness-zones.mjs';
-import { parseZoneCsv, shardZones } from './build-hardiness-zones.mjs';
-
-const dataDir = fileURLToPath(new URL(`../public/data/hardiness-zones/${HARDINESS_ZONE_EDITION}/`, import.meta.url));
 
 const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -49,29 +41,36 @@ describe('postal code input', () => {
 });
 
 describe('zone lookup', () => {
-  test('fetches only the shard for the ZIP code, once', async () => {
+  test('sends only the 5-digit ZIP to phzmapi and remembers the answer', async () => {
     const calls = [];
-    const lookup = createZoneLookup(async (path) => {
-      calls.push(path);
-      return jsonResponse({ 75069: '8b', 75070: '8b' });
+    const lookup = createZoneLookup(async (url) => {
+      calls.push(url);
+      return jsonResponse({ zone: '8b', temperature_range: '15 to 20' });
     });
     assert.deepEqual(await lookup('75070'), { status: 'found', zip: '75070', zone: '8b', zoneNumber: 8 });
-    assert.deepEqual(await lookup('75071'), { status: 'not-found', zip: '75071' });
-    assert.deepEqual(calls, ['/data/hardiness-zones/2023/75.json']);
+    await lookup('75070');
+    assert.deepEqual(calls, ['https://phzmapi.org/75070.json']);
   });
 
-  test('a missing shard (the SPA fallback page or a 404) means not found', async () => {
-    const html = createZoneLookup(async () => new Response('<!doctype html>', { status: 200, headers: { 'content-type': 'text/html' } }));
-    assert.deepEqual(await html('99999'), { status: 'not-found', zip: '99999' });
+  test('ZIP codes outside the map data are not found', async () => {
     const missing = createZoneLookup(async () => new Response('', { status: 404 }));
     assert.deepEqual(await missing('99999'), { status: 'not-found', zip: '99999' });
+    const noZone = createZoneLookup(async () => jsonResponse({ zone: '' }));
+    assert.deepEqual(await noZone('99999'), { status: 'not-found', zip: '99999' });
+  });
+
+  test('a slow lookup times out instead of hanging', async () => {
+    const lookup = createZoneLookup((_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }), { timeoutMs: 10 });
+    await assert.rejects(lookup('75070'), /Aborted/);
   });
 
   test('network failures are reported and not cached, so a retry works', async () => {
     let online = false;
     const lookup = createZoneLookup(async () => {
       if (!online) throw new TypeError('Failed to fetch');
-      return jsonResponse({ 75070: '8b' });
+      return jsonResponse({ zone: '8b' });
     });
     await assert.rejects(lookup('75070'));
     online = true;
@@ -88,38 +87,5 @@ describe('zone lookup', () => {
     assert.equal(findZoneRow(block, 8)?.plant, 'a');
     assert.equal(findZoneRow(block, 9)?.plant, 'b');
     assert.equal(findZoneRow(block, 3), undefined);
-  });
-});
-
-describe('zone data files', () => {
-  test('parses PRISM CSVs and shards them by the first two digits', () => {
-    const pairs = parseZoneCsv('zipcode,zone,trange,zonetitle\n75070,8b,15 to 20,8b: 15 to 20\n00501,7b,5 to 10,7b: 5 to 10\n75002,8a,10 to 15,8a: 10 to 15\n');
-    const shards = shardZones(pairs);
-    assert.deepEqual([...shards.keys()], ['00', '75']);
-    assert.deepEqual(shards.get('75'), { 75002: '8a', 75070: '8b' });
-    assert.throws(() => parseZoneCsv('zip,zone\n75070,8b\n'), /Unexpected PRISM CSV header/);
-    assert.throws(() => parseZoneCsv('zipcode,zone\n7507,8b\n'), /Bad row 2/);
-  });
-
-  test('the committed files are valid, small, and cover known ZIP codes', () => {
-    const files = readdirSync(dataDir).filter((name) => name.endsWith('.json'));
-    assert.ok(files.length >= 90, `expected about 99 shard files, found ${files.length}`);
-    let total = 0;
-    for (const name of files) {
-      const raw = readFileSync(join(dataDir, name), 'utf8');
-      assert.ok(raw.length < 16_000, `${name} is ${raw.length} bytes`);
-      const shard = JSON.parse(raw);
-      for (const [zip, zone] of Object.entries(shard)) {
-        assert.equal(zip.slice(0, 2), name.slice(0, 2), `${zip} in ${name}`);
-        assert.ok(zoneNumber(zone) !== undefined, `${zip} has zone ${zone}`);
-        total += 1;
-      }
-    }
-    assert.ok(total > 39_000, `only ${total} ZIP codes`);
-
-    const zoneFor = (zip) => JSON.parse(readFileSync(join(dataDir, zoneShardPath(zip).split('/').pop()), 'utf8'))[zip];
-    assert.equal(zoneFor('75070'), '8b'); // McKinney, Texas
-    assert.equal(zoneFor('55401'), '5a'); // Minneapolis
-    assert.equal(zoneFor('33101'), '11a'); // Miami
   });
 });
