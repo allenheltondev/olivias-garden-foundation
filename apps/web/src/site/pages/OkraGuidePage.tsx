@@ -69,7 +69,12 @@ function InlineText({ text, onNavigate }: { text: string; onNavigate: Navigate }
   );
 }
 
-function GuideBlockView({ block, onNavigate }: { block: GuideBlock; onNavigate: Navigate }) {
+/** Image slot widths for the browser to pick a variant: full article width, or
+ * the narrower column beside a section's text on wide screens. */
+const IMAGE_SIZES_FULL = '(max-width: 900px) 100vw, 48rem';
+const IMAGE_SIZES_BESIDE_TEXT = '(min-width: 1100px) 22rem, (max-width: 900px) 100vw, 48rem';
+
+function GuideBlockView({ block, onNavigate, imageSizes = IMAGE_SIZES_FULL }: { block: GuideBlock; onNavigate: Navigate; imageSizes?: string }) {
   switch (block.type) {
     case 'paragraph':
       return <p className="okra-guide__text"><InlineText text={block.text} onNavigate={onNavigate} /></p>;
@@ -115,7 +120,7 @@ function GuideBlockView({ block, onNavigate }: { block: GuideBlock; onNavigate: 
     case 'image':
       return (
         <figure className="okra-guide__figure">
-          <ResponsiveImage src={block.src} alt={block.alt} sizes="(max-width: 900px) 100vw, 48rem" loading="lazy" />
+          <ResponsiveImage src={block.src} alt={block.alt} sizes={imageSizes} loading="lazy" />
           {block.caption ? (
             <figcaption><InlineText text={block.caption} onNavigate={onNavigate} /></figcaption>
           ) : null}
@@ -305,7 +310,7 @@ export function OkraGuidePage({
             {text.map((block, index) => <GuideBlockView key={index} block={block} onNavigate={onNavigate} />)}
           </div>
           <div className="okra-guide__section-media">
-            {figures.map((block, index) => <GuideBlockView key={index} block={block} onNavigate={onNavigate} />)}
+            {figures.map((block, index) => <GuideBlockView key={index} block={block} onNavigate={onNavigate} imageSizes={IMAGE_SIZES_BESIDE_TEXT} />)}
           </div>
         </section>
       );
