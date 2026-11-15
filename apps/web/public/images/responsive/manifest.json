@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T21:43:36.488Z",
+  "generatedAt": "2026-11-15T22:06:43.508Z",
   "widths": [
     480,
     768,
@@ -648,6 +648,30 @@
             "width": 1600,
             "path": "images/responsive/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods-1600.avif",
             "bytes": 228830
+          }
+        ]
+      }
+    },
+    "okra/guides/how-to-harvest-okra/okra-pod-right-size-vs-too-big.jpg": {
+      "original": "okra/guides/how-to-harvest-okra/okra-pod-right-size-vs-too-big.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/okra-pod-right-size-vs-too-big-480.avif",
+            "bytes": 50695
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/okra-pod-right-size-vs-too-big-768.avif",
+            "bytes": 157532
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/okra-pod-right-size-vs-too-big-1205.avif",
+            "bytes": 361567
           }
         ]
       }
