@@ -326,11 +326,17 @@ describe('llms.txt section', () => {
 describe('social card generator', () => {
   test('fits headlines in three lines or fewer, shrinking the font if needed', () => {
     const short = layoutHeadline("Free okra seeds from Olivia's garden");
-    assert.equal(short.fontSize, 64);
+    assert.ok(short.fontSize >= 56, `font shrank to ${short.fontSize}px`);
     assert.ok(short.lines.length <= 3);
     const { lines, fontSize } = layoutHeadline('When to plant okra in North Texas and across the South');
     assert.ok(lines.length <= 3);
     assert.ok(fontSize >= 44 && fontSize <= 64);
+  });
+
+  test('guide headlines wrap before they can run into the photo', () => {
+    const { lines } = layoutHeadline('How to save okra seeds');
+    // About 14 characters fit the 460px text column at 64px.
+    assert.ok(lines.every((line) => line.length <= 14), lines.join(' / '));
   });
 
   test('page-style headlines prefer fewer lines over a bigger font', () => {

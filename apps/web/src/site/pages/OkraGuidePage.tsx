@@ -135,6 +135,33 @@ function navigateLink(onNavigate: Navigate, path: string) {
   };
 }
 
+/** Distance from the viewport top where the sticky rail rests (5.5rem). */
+const RAIL_STICKY_TOP_PX = 88;
+
+/**
+ * True when the rail fits on screen below its sticky offset. A sticky element
+ * taller than the viewport hides its bottom (the seed callout) until the
+ * article ends, so taller rails scroll normally instead.
+ */
+function useRailFitsViewport(rail: HTMLElement | null) {
+  const [fits, setFits] = useState(false);
+  useLayoutEffect(() => {
+    if (!rail) {
+      return undefined;
+    }
+    const measure = () => setFits(rail.offsetHeight + RAIL_STICKY_TOP_PX + 16 <= window.innerHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(rail);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [rail]);
+  return fits;
+}
+
 /** Page-specific JSON-LD (Article, BreadcrumbList, FAQPage). The prerendered
  * HTML carries the same blocks; this keeps them correct after client-side
  * navigation and removes them when leaving the guide. */
@@ -170,6 +197,8 @@ export function OkraGuidePage({
   const [attempt, setAttempt] = useState(0);
   const [seedModalOpen, setSeedModalOpen] = useState(false);
   const [seedModalRequested, setSeedModalRequested] = useState(false);
+  const [railElement, setRailElement] = useState<HTMLElement | null>(null);
+  const railFits = useRailFitsViewport(railElement);
 
   useEffect(() => {
     if (!summary) {
@@ -307,7 +336,11 @@ export function OkraGuidePage({
       />
 
       <div className="okra-guide__layout">
-        <aside className="okra-guide__rail" aria-label="About this guide">
+        <aside
+          ref={setRailElement}
+          className={`okra-guide__rail${railFits ? ' okra-guide__rail--sticky' : ''}`}
+          aria-label="About this guide"
+        >
           <figure className="page-photo okra-guide__hero-photo">
             <ResponsiveImage
               src={summary.heroImage.src}
