@@ -93,6 +93,28 @@ async function testRequireAdminContextAcceptsAdmin() {
   assert.equal(ctx.userId, 'admin-1');
 }
 
+async function testAuthorizerContextIsHonoredForDirectInvoke() {
+  // The operator MCP server invokes this function directly with the context an
+  // authorizer would attach; it must be honored without a bearer token.
+  const failVerify = () => {
+    throw new Error('JWT must not be verified when an authorizer context is present');
+  };
+  const admin = await requireAdminContext(
+    { requestContext: { authorizer: { userId: 'op-1', isAdmin: 'true', email: 'op@example.com' } } },
+    { verifyJwt: failVerify }
+  );
+  assert.deepEqual(admin, { userId: 'op-1', email: 'op@example.com', isAdmin: true });
+
+  await assert.rejects(
+    () => requireAdminContext({ requestContext: { authorizer: { userId: 'u-1', isAdmin: 'false' } } }),
+    /Forbidden/
+  );
+
+  // An authorizer object without a userId falls back to the bearer token.
+  const anonymous = await resolveOptionalAuthContext({ requestContext: { authorizer: {} } });
+  assert.equal(anonymous, null);
+}
+
 function testHttpHelpers() {
   assert.equal(normalizeRoutePath('/api/products'), '/products');
   assert.equal(mapApiError(new Error('Product not found'), 'cid').statusCode, 404);
@@ -650,6 +672,7 @@ await testResolveOptionalAuthContextRejectsMalformedHeader();
 await testRequireUserContextRejectsAnonymous();
 await testRequireAdminContextRejectsNonAdmin();
 await testRequireAdminContextAcceptsAdmin();
+await testAuthorizerContextIsHonoredForDirectInvoke();
 testHttpHelpers();
 testProductMapperExposesMultiImageContract();
 await testStripeCheckoutSession();

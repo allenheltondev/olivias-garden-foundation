@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Operator MCP server: lets the site operator's AI agent manage the store,
+  workshops, site content and queues (docs/mcp-server.md).
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+      - pr
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Optional root domain; the server is then at https://api.<domain>/mcp
+  DomainHostedZoneId:
+    Type: String
+    Default: ""
+    Description: Optional Route 53 hosted zone id (the shared API domain must already exist)
+  AdminApiFunctionArn:
+    Type: String
+    Description: ApiFunctionArn output of the admin stack
+  OkraAdminApiFunctionArn:
+    Type: String
+    Description: AdminApiFunctionArn output of the okra stack
+  StoreApiFunctionArn:
+    Type: String
+    Description: ApiFunctionArn output of the store stack
+  GrnApiFunctionArn:
+    Type: String
+    Description: ApiFunctionArn output of the Good Roots Network stack
+
+Conditions:
+  DeploySharedApiBasePathMapping: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
+
+Globals:
+  Function:
+    Tracing: Disabled
+    Runtime: nodejs24.x
+    Architectures: [arm64]
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+
+Resources:
+  # One item per key, PK = KEY#<id>. Holds no key: only a hash of its secret,
+  # its scopes, its operator and its expiry. Declared like the repo's other
+  # tables (generated name, default encryption): losing it only revokes every
+  # key, which fails safe, and `npm run mcp:keys` finds it by the stack output.
+  McpKeysTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+
+  # No API Gateway authorizer on purpose: the function checks the key against
+  # its row on every request, so a revoked key stops at once rather than when
+  # an authorizer cache expires.
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "Olivia's Garden Foundation Operator MCP (${EnvironmentName})"
+      StageName: api
+      TracingEnabled: false
+      MethodSettings:
+        - MetricsEnabled: true
+          ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: ERROR
+
+  SharedApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeploySharedApiBasePathMapping
+    DependsOn:
+      - ApiapiStage
+    Properties:
+      DomainName: !Sub "api.${DomainName}"
+      RestApiId: !Ref Api
+      Stage: api
+      BasePath: mcp
+
+  McpFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/mcp.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/mcp.handler
+      Description: Operator MCP server (store, workshops, content, queues, reports)
+      MemorySize: 512
+      # API Gateway waits 29s at most; each service call is one of the services' own (10s) requests.
+      Timeout: 29
+      Environment:
+        Variables:
+          MCP_KEYS_TABLE: !Ref McpKeysTable
+          USER_POOL_ID: !ImportValue OGF-UserPoolId
+          ADMIN_API_FUNCTION: !Ref AdminApiFunctionArn
+          OKRA_ADMIN_API_FUNCTION: !Ref OkraAdminApiFunctionArn
+          STORE_API_FUNCTION: !Ref StoreApiFunctionArn
+          GRN_API_FUNCTION: !Ref GrnApiFunctionArn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            # Read a key, record its last use. Minting and revoking are done
+            # with an operator's own AWS credentials (scripts/keys.mjs), never here.
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt McpKeysTable.Arn
+            # Is the key's operator still in the admin group?
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:AdminListGroupsForUser
+              Resource: !Sub
+                - 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
+                - UserPoolId: !ImportValue OGF-UserPoolId
+            # Locating a seed request's map pin (src/mcp/seed-pins.mjs): Amazon
+            # Location's Geocode, rather than the public Nominatim, whose
+            # one-request-per-second limit a server cannot share safely.
+            - Effect: Allow
+              Action: geo-places:Geocode
+              Resource: !Sub 'arn:${AWS::Partition}:geo-places:${AWS::Region}::provider/default'
+            # The services that own the data. The MCP function holds no
+            # database connection; every change runs through the owning API.
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource:
+                - !Ref AdminApiFunctionArn
+                - !Ref OkraAdminApiFunctionArn
+                - !Ref StoreApiFunctionArn
+                - !Ref GrnApiFunctionArn
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /
+            Method: ANY
+        Proxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  McpServerUrl:
+    Description: The operator MCP endpoint
+    Value: !If
+      - DeploySharedApiBasePathMapping
+      - !Sub "https://api.${DomainName}/mcp"
+      - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api/"
+  McpKeysTableName:
+    Description: Table that npm run mcp:keys writes
+    Value: !Ref McpKeysTable

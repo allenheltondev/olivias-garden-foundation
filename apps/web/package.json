@@ -17,7 +17,8 @@
     "check:prerender-drift": "node ./scripts/check-prerender-drift.mjs",
     "validate:guides": "node ./scripts/validate-okra-guides.mjs",
     "llms:generate": "node ./scripts/generate-llms.mjs",
-    "social:guide": "node ./scripts/generate-guide-social-card.mjs"
+    "social:guide": "node ./scripts/generate-guide-social-card.mjs",
+    "social:page": "node ./scripts/generate-guide-social-card.mjs --style=page"
   },
   "dependencies": {
     "@olivias/ui": "file:../../packages/ui",

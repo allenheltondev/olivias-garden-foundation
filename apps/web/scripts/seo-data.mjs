@@ -56,7 +56,7 @@ export const organizationJsonLd = {
   legalName: 'OLIVIAS GARDEN FOUNDATION',
   alternateName: "Olivia's Garden",
   description:
-    "Olivia's Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency. The foundation is run by the Helton family in memory of Olivia Helton.",
+    "Olivia's Garden Foundation is a Texas nonprofit teaching families to grow food, care for animals, preserve harvests, and build practical self-sufficiency. The foundation is run by the Helton family in memory of Olivia.",
   url: siteUrl,
   logo: `${siteUrl}${logoImage}`,
   email: contactEmail,
@@ -167,7 +167,7 @@ export const seoRoutes = [
       <h1>Olivia's Garden Foundation</h1>
       <p>
         Olivia's Garden Foundation is a 501(c)(3) nonprofit based in McKinney, Texas, founded in
-        2025 in memory of Olivia Helton. We help individuals and families learn how to grow food,
+        2025 in memory of Olivia. We help individuals and families learn how to grow food,
         care for animals, preserve what they produce, and build practical self-sufficiency through
         real work on a functioning property.
       </p>
@@ -210,7 +210,7 @@ export const seoRoutes = [
       <h1>About Olivia's Garden</h1>
       <p>
         Olivia's Garden Foundation is a 501(c)(3) nonprofit in McKinney, Texas. It was founded in
-        2025 in memory of Olivia Helton, a four-year-old who loved being in the garden, working
+        2025 in memory of Olivia, a four-year-old who loved being in the garden, working
         with animals, and helping with whatever was happening on the family's land.
       </p>
       <h2>How the foundation began</h2>
@@ -286,7 +286,7 @@ export const seoRoutes = [
     bodyFallback: `
       <h1>The Okra Project</h1>
       <p>
-        Okra was Olivia Helton's favorite thing to grow. Olivia's Garden Foundation has kept her
+        Okra was Olivia's favorite thing to grow. Olivia's Garden Foundation has kept her
         plants going and now mails free okra seeds to anyone who wants to grow them.
       </p>
       <h2>How it works</h2>
@@ -464,7 +464,8 @@ ${renderGuideListHtml(okraGuides)}
     title: 'Partner with us',
     description:
       "Partner with Olivia's Garden Foundation: sponsor free okra seeds through bulk growing or satellite seed sharing. For extension programs, colleges, nonprofits, and local businesses.",
-    seoImage: defaultImage,
+    seoImage: '/images/social/partners.png',
+    seoImageAlt: "A pile of hundreds of saved okra seeds on cream linen, with the headline: Help Olivia's okra spread.",
     prerender: true,
     sitemap: { changefreq: 'monthly', priority: 0.6 },
     bodyFallback: `

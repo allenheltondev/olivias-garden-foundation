@@ -16,6 +16,8 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   collectGuideLinks,
+  collectGuideTexts,
+  parseInline,
   guidePath,
   isInternalHref,
   RESERVED_GUIDE_SLUGS,
@@ -174,6 +176,12 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
     } else if (guide.description.length < 70 || guide.description.length > 160) {
       publishing(`description is ${guide.description.length} characters; keep it between 70 and 160.`);
     }
+    if (guide.showInFooter !== undefined && typeof guide.showInFooter !== 'boolean') {
+      structural('showInFooter must be true or false.');
+    }
+    if (guide.seedCallToAction !== undefined && !['callout', 'hero'].includes(guide.seedCallToAction)) {
+      structural('seedCallToAction must be "callout" or "hero".');
+    }
     if (!isNonEmptyString(guide.summary)) {
       structural('summary is required (it is the short paragraph under the h1).');
     }
@@ -200,6 +208,9 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
         }
         if (!isNonEmptyString(section?.title)) {
           structural(`${where}.title is required.`);
+        }
+        if (section?.placement !== undefined && !['main', 'aside'].includes(section.placement)) {
+          structural(`${where}.placement must be "main" or "aside".`);
         }
         if (!Array.isArray(section?.blocks) || section.blocks.length === 0) {
           structural(`${where}.blocks must be a non-empty array.`);
@@ -342,6 +353,27 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
 
     // Inline links
     if (Array.isArray(guide.intro) && Array.isArray(guide.sections)) {
+      // House style: no semicolons in prose, and no decorative bold.
+      const styleTexts = [
+        guide.title,
+        guide.description,
+        ...collectGuideTexts(guide),
+        ...(Array.isArray(guide.faq) ? guide.faq.map((item) => item?.question ?? '') : []),
+      ].filter((text) => typeof text === 'string');
+      if (styleTexts.some((text) => text.includes(';'))) {
+        advisory('uses a semicolon. House style is two sentences instead.');
+      }
+      if (styleTexts.some((text) => text.includes('**'))) {
+        advisory('uses **bold**. House style avoids decorative bold.');
+      }
+      // Markup can't nest: a link inside **bold** renders as raw "[text](href)".
+      for (const text of collectGuideTexts(guide)) {
+        for (const token of parseInline(text)) {
+          if (token.type === 'strong' && /\[[^\]]+\]\([^)]+\)/.test(token.text)) {
+            structural(`link inside bold text won't render: "**${token.text}**". Put the link outside the ** markers.`);
+          }
+        }
+      }
       let links = [];
       try {
         links = collectGuideLinks(guide);

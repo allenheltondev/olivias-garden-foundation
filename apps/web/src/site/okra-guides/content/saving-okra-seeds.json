@@ -1,0 +1,122 @@
+{
+  "slug": "saving-okra-seeds",
+  "status": "published",
+  "title": "How to save okra seeds",
+  "seoTitle": "How to Save Okra Seeds for Next Year",
+  "description": "Save okra seeds by letting pods dry brown on the plant, then shelling, drying and storing the seeds. When they're ready and how long they last.",
+  "summary": "Leave a few pods on your healthiest plants until they turn brown and dry. Then shell the seeds, let them dry a little longer, and store them somewhere cool and dry for next season.",
+  "heroImage": {
+    "src": "/images/okra/guides/saving-okra-seeds/dried-okra-pods-with-seeds.jpg",
+    "alt": "Three dried, ridged okra pods held up in the garden, one split open to show a row of dark seeds inside."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/saving-okra-seeds.jpg",
+    "alt": "How to save okra seeds card with a photo of dried okra pods split open to show the seeds."
+  },
+  "datePublished": "2026-11-15",
+  "dateModified": "2026-11-15",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-15"
+  },
+  "targetQueries": [
+    "how to save okra seeds",
+    "saving okra seeds",
+    "harvesting okra seeds",
+    "how long do okra seeds last",
+    "okra seed viability"
+  ],
+  "related": [
+    "free-okra-seeds"
+  ],
+  "order": 20,
+  "intro": [
+    "Okra was Olivia's favorite thing to grow. Her family has kept her plants going by saving seed, and every packet the foundation mails comes from that line. We've harvested tens of thousands of seeds this way, and you can do the same with a few of your own plants and almost no equipment.",
+    "Don't have okra growing yet? Start with [free okra seeds](/okra/free-okra-seeds) from Olivia's garden."
+  ],
+  "sections": [
+    {
+      "id": "what-you-need",
+      "title": "What you need",
+      "placement": "aside",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "A few healthy plants of an open-pollinated variety, like Clemson Spineless.",
+            "Paper envelopes or a glass jar, and a pen for labels.",
+            "A cool, dry, dark place for storage."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choose-plants",
+      "title": "Choose which plants to save seed from",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Pick your strongest plants, the ones that grew well and gave you good pods. You don't need many. Each pod holds 50 to 70 seeds, so leave just a few pods for seed and keep harvesting the rest to eat. A twist tie around the stem helps you remember which ones to leave."
+        },
+        {
+          "type": "paragraph",
+          "text": "Save seed only from open-pollinated varieties like Clemson Spineless. Their seed grows into the same kind of plant. Seed from hybrid varieties won't come back true."
+        }
+      ]
+    },
+    {
+      "id": "when-pods-are-ready",
+      "title": "When okra seeds are ready to harvest",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Let the saved pods keep growing well past eating size so they can [ripen and dry on the plant](https://extension.uga.edu/publications/detail.html?number=C1242). Over several weeks they turn brown, dry, and papery. We wait until a pod has fully matured and started cracking open on its own. The seeds inside are ready when they've turned dark gray."
+        },
+        {
+          "type": "tip",
+          "title": "If the weather turns",
+          "text": "If frost or a long stretch of rain is coming first, cut the pods with a bit of stem and finish drying them indoors somewhere warm and airy."
+        }
+      ]
+    },
+    {
+      "id": "shell-and-dry",
+      "title": "Shell and dry the seeds",
+      "blocks": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Split each dry pod along its seams over a bowl and run your thumb down the inside.",
+            "Keep the dark gray seeds. Seeds that are still white and soft aren't mature and won't grow.",
+            "Spread the seeds on a paper plate and let them dry for another week or two."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "store-the-seeds",
+      "title": "How to store okra seeds and how long they last",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Put the dry seeds in a paper envelope or a glass jar labeled with the variety and the year. Keep it somewhere cool, dry, and dark, not in a hot garage or a humid shed."
+        },
+        {
+          "type": "paragraph",
+          "text": "Stored that way, okra seed usually [keeps for around two years](https://extension.uga.edu/publications/detail.html?number=B1486). For anything older, [fold 10 seeds into a damp paper towel](https://extension.oregonstate.edu/imported-publication/will-your-seeds-grow-plants) and keep it warm and moist. Okra can [take up to three weeks to sprout](https://extension.uga.edu/publications/detail.html?number=B1486), so check every few days and count the sprouts at the end. If 8 come up, plant a little thicker to make up the difference."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "Can you save seeds from store-bought okra?",
+      "answer": "Usually not. Okra sold for eating is picked young, while its seeds are still white and soft, so they won't sprout. Let pods mature and dry on a growing plant instead."
+    },
+    {
+      "question": "What do I do with all the extra okra seeds?",
+      "answer": "Share them with friends and neighbors, and add your patch to the [Okra Project map](/okra) so others can see where Olivia's okra is growing."
+    }
+  ]
+}

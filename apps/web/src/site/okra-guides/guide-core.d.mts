@@ -21,6 +21,8 @@ export interface GuideSection {
   id: string;
   title: string;
   blocks: GuideBlock[];
+  /** "aside" renders the section as a card in the right-hand rail (under the photo). Default "main". */
+  placement?: 'main' | 'aside';
 }
 
 export interface GuideFaqItem {
@@ -48,6 +50,14 @@ export interface OkraGuide {
   targetQueries?: string[];
   related?: string[];
   order?: number;
+  /**
+   * Where the seed request button goes. "callout" (default): a box under the
+   * hero, good on long guides. "hero": a button under the summary, for pages
+   * whose summary already is the pitch (e.g. free-okra-seeds).
+   */
+  seedCallToAction?: 'callout' | 'hero';
+  /** Adds a link to this guide in the site footer, right after "Okra Project". */
+  showInFooter?: boolean;
   intro: string[];
   sections: GuideSection[];
   faq?: GuideFaqItem[];
@@ -56,7 +66,7 @@ export interface OkraGuide {
 export type OkraGuideSummary = Pick<
   OkraGuide,
   'slug' | 'status' | 'title' | 'seoTitle' | 'description' | 'summary' | 'heroImage' | 'socialImage' | 'datePublished' | 'dateModified'
-> & { order: number };
+> & { order: number; seedCallToAction: 'callout' | 'hero' };
 
 export type InlineToken =
   | { type: 'text'; text: string }
@@ -73,6 +83,7 @@ export interface GuideRouteMeta {
   ogType: 'article';
   allowIndex: boolean;
   prerender: true;
+  showInFooter: boolean;
 }
 
 export interface JsonLdBlock {
@@ -91,9 +102,10 @@ export function guidePath(slug: string): string;
 export function parseInline(text: string): InlineToken[];
 export function stripInline(text: string): string;
 export function isInternalHref(href: string): boolean;
+export function collectGuideTexts(guide: OkraGuide): string[];
 export function collectGuideLinks(guide: OkraGuide): string[];
 export function guidePageTitle(guide: Pick<OkraGuide, 'title' | 'seoTitle'>): string;
-export function guideRouteMeta(guide: OkraGuideSummary | OkraGuide): GuideRouteMeta;
+export function guideRouteMeta(guide: (OkraGuideSummary & { showInFooter?: boolean }) | OkraGuide): GuideRouteMeta;
 export function guideSummary(guide: OkraGuide): OkraGuideSummary;
 export function sortGuides<T extends { order?: number; title: string }>(guides: T[]): T[];
 export function buildGuideArticleJsonLd(guide: OkraGuide, siteUrl: string): Record<string, unknown>;

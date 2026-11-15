@@ -402,6 +402,54 @@
         ]
       }
     },
+    "okra/guides/free-okra-seeds/okra-seed-packet.jpg": {
+      "original": "okra/guides/free-okra-seeds/okra-seed-packet.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/free-okra-seeds/okra-seed-packet-480.avif",
+            "bytes": 58308
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/free-okra-seeds/okra-seed-packet-768.avif",
+            "bytes": 153620
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/free-okra-seeds/okra-seed-packet-1205.avif",
+            "bytes": 308017
+          }
+        ]
+      }
+    },
+    "okra/guides/saving-okra-seeds/dried-okra-pods-with-seeds.jpg": {
+      "original": "okra/guides/saving-okra-seeds/dried-okra-pods-with-seeds.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/saving-okra-seeds/dried-okra-pods-with-seeds-480.avif",
+            "bytes": 23666
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/saving-okra-seeds/dried-okra-pods-with-seeds-768.avif",
+            "bytes": 43516
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/saving-okra-seeds/dried-okra-pods-with-seeds-1205.avif",
+            "bytes": 77510
+          }
+        ]
+      }
+    },
     "okra/olivia-okra.jpg": {
       "original": "okra/olivia-okra.jpg",
       "width": 978,
@@ -422,6 +470,30 @@
             "width": 978,
             "path": "images/responsive/okra/olivia-okra-978.avif",
             "bytes": 89518
+          }
+        ]
+      }
+    },
+    "partners/okra-seed-pile.jpg": {
+      "original": "partners/okra-seed-pile.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/partners/okra-seed-pile-480.avif",
+            "bytes": 50965
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/partners/okra-seed-pile-768.avif",
+            "bytes": 122556
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/partners/okra-seed-pile-1205.avif",
+            "bytes": 254457
           }
         ]
       }
