@@ -90,7 +90,7 @@ function blockTexts(block) {
     case 'image':
       return [block.caption ?? ''];
     case 'zoneLookup':
-      return [block.caption ?? '', ...block.rows.flatMap((row) => [row.lastFrost, row.plant])];
+      return [block.caption ?? '', ...block.rows.map((row) => row.plant)];
     default:
       return [];
   }
@@ -251,7 +251,7 @@ export function zoneRowLabel(zones) {
 }
 
 /** Column headings shared by the zoneLookup table on the page and in the fallback HTML. */
-export const ZONE_LOOKUP_HEADERS = ['Hardiness zone', 'Typical last spring frost', 'When to plant okra'];
+export const ZONE_LOOKUP_HEADERS = ['Hardiness zone', 'When to plant okra'];
 
 function blockToHtml(block) {
   switch (block.type) {
@@ -277,7 +277,7 @@ function blockToHtml(block) {
         type: 'table',
         caption: block.caption,
         headers: ZONE_LOOKUP_HEADERS,
-        rows: block.rows.map((row) => [zoneRowLabel(row.zones), row.lastFrost, row.plant]),
+        rows: block.rows.map((row) => [zoneRowLabel(row.zones), row.plant]),
       });
     case 'image':
       return `<figure><img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" />${block.caption ? `<figcaption>${inlineToHtml(block.caption)}</figcaption>` : ''}</figure>`;

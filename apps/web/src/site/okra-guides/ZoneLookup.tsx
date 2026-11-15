@@ -85,8 +85,7 @@ export function ZoneLookup({ block, renderText }: { block: ZoneLookupBlock; rend
         {state.status === 'found' && matchedRow ? (
           <div className="okra-zone-lookup__answer">
             <p className="okra-zone-lookup__zone">{state.zip} is in zone {state.zone}.</p>
-            <p className="okra-guide__text">Plant okra: {renderText(matchedRow.plant)}</p>
-            <p className="okra-guide__text">Typical last spring frost: {renderText(matchedRow.lastFrost)}</p>
+            <p className="okra-guide__text">When to plant okra: {renderText(matchedRow.plant)}</p>
           </div>
         ) : null}
         {state.status === 'not-found' ? (
@@ -123,7 +122,6 @@ export function ZoneLookup({ block, renderText }: { block: ZoneLookupBlock; rend
               return (
                 <tr key={row.zones.join('-')} className={current ? 'okra-zone-lookup__row--current' : undefined} aria-current={current ? 'true' : undefined}>
                   <th scope="row">{zoneRowLabel(row.zones)}{current ? <span className="okra-zone-lookup__you"> (your zone)</span> : null}</th>
-                  <td>{renderText(row.lastFrost)}</td>
                   <td>{renderText(row.plant)}</td>
                 </tr>
               );

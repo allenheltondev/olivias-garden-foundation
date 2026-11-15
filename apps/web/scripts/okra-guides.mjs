@@ -247,8 +247,8 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
                 } else {
                   for (const zone of row.zones) covered.set(zone, (covered.get(zone) ?? 0) + 1);
                 }
-                if (!isNonEmptyString(row?.lastFrost) || !isNonEmptyString(row?.plant)) {
-                  structural(`${rowWhere} needs lastFrost and plant text.`);
+                if (!isNonEmptyString(row?.plant)) {
+                  structural(`${rowWhere}.plant is required.`);
                 }
               });
               // Every zone needs exactly one answer, or some ZIP codes would get none.

@@ -1,0 +1,167 @@
+{
+  "slug": "when-to-plant-okra",
+  "status": "draft",
+  "title": "When to plant okra",
+  "seoTitle": "When to Plant Okra: Soil Temperature and Dates by Zone",
+  "description": "Plant okra 2 to 3 weeks after your last frost, once the soil is 65°F. Enter your ZIP code to see your hardiness zone and planting window.",
+  "summary": "Plant okra in spring 2 to 3 weeks after your last frost, once the soil is at least 65°F a few inches down. Enter your ZIP code below to see the usual window where you live.",
+  "targetQueries": [
+    "when to plant okra",
+    "when to plant okra in Texas",
+    "when to plant okra in north Texas",
+    "okra planting time",
+    "okra soil temperature"
+  ],
+  "related": [
+    "free-okra-seeds",
+    "saving-okra-seeds"
+  ],
+  "order": 10,
+  "intro": [
+    "Okra loves heat. Plant it into cold ground and the seed sits and rots, but wait for warm soil and it comes up fast and grows all summer.",
+    "Need seeds? Start with [free okra seeds](/okra/free-okra-seeds) from Olivia's garden."
+  ],
+  "sections": [
+    {
+      "id": "rule-of-thumb",
+      "title": "The rule of thumb",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Texas A&M AgriLife recommends planting okra [2 to 3 weeks after all danger of frost has passed](https://agrilifeextension.tamu.edu/library/gardening/okra/). The soil matters more than the calendar, though. Okra seed needs soil of [at least 65°F at a depth of 4 inches](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/), and it sprouts best between 70°F and 95°F."
+        },
+        {
+          "type": "tip",
+          "title": "Check the soil, not the date",
+          "text": "Push a soil thermometer 4 inches into the bed in the morning. When it reads 65°F or warmer, it's time to plant."
+        }
+      ]
+    },
+    {
+      "id": "by-zone",
+      "title": "When to plant okra in your zone",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Enter your ZIP code to find your USDA hardiness zone and the usual spring planting window there. Zones are based on winter cold, not frost dates, so treat the window as a starting point and let your soil temperature make the final call."
+        },
+        {
+          "type": "zoneLookup",
+          "caption": "Spring okra planting windows by USDA hardiness zone",
+          "rows": [
+            {
+              "zones": [
+                1,
+                2
+              ],
+              "plant": "Summers are usually too short and cool for okra outdoors. Try it in a greenhouse."
+            },
+            {
+              "zones": [
+                3,
+                4
+              ],
+              "plant": "Start seeds indoors in mid March, then plant outside late May to mid June once the soil is warm."
+            },
+            {
+              "zones": [
+                5
+              ],
+              "plant": "Mid May to mid June. Starting seeds indoors in mid March gives you a head start."
+            },
+            {
+              "zones": [
+                6
+              ],
+              "plant": "Early May to early June"
+            },
+            {
+              "zones": [
+                7
+              ],
+              "plant": "Mid April to late May"
+            },
+            {
+              "zones": [
+                8
+              ],
+              "plant": "Early April to early June"
+            },
+            {
+              "zones": [
+                9
+              ],
+              "plant": "March to May"
+            },
+            {
+              "zones": [
+                10
+              ],
+              "plant": "February to April"
+            },
+            {
+              "zones": [
+                11,
+                12,
+                13
+              ],
+              "plant": "Any time the weather is warm"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "too-early",
+      "title": "What happens if you plant okra too early",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "In cold, wet soil, okra seed is slow to sprout and seedlings grow slowly. Clemson Extension notes that [root-decay diseases that kill young seedlings](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/) are the most serious okra problem, and they're more common when okra goes into cold, wet soil."
+        }
+      ]
+    },
+    {
+      "id": "start-indoors",
+      "title": "Starting okra indoors in short-season areas",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Where summers are short, give okra a head start inside. University of Minnesota Extension suggests [starting okra indoors in mid March](https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/starting-seeds-indoors) and keeping the plants inside about 9 weeks, until after the last frost."
+        },
+        {
+          "type": "paragraph",
+          "text": "Okra doesn't like having its roots disturbed, so sow each seed in its own pot and plant it out without breaking up the root ball. Okra takes about [55 to 65 days from planting to first harvest](https://agrilifeextension.tamu.edu/library/gardening/texas-home-vegetable-gardening-guide/), so check that your summer is long enough."
+        }
+      ]
+    },
+    {
+      "id": "second-crop",
+      "title": "Planting a second crop, and the latest date to plant",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Where summers are long and hot, you can plant again in summer for a fall crop. AgriLife recommends planting a fall crop [at least 3 months before the first fall frost](https://agrilifeextension.tamu.edu/library/gardening/okra/). Count back 3 months from your usual first frost to find your last planting date."
+        },
+        {
+          "type": "paragraph",
+          "text": "You can also keep spring plants going instead of replanting. When production slows in the heat of mid to late summer, cutting the plants back makes them regrow. Clemson Extension calls this [ratooning](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/), and the plants start producing again in about 4 to 6 weeks, until frost."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "What temperature should the soil be to plant okra?",
+      "answer": "At least 65°F at a depth of 4 inches, and 70°F or warmer is better. In colder soil, okra sprouts slowly and seedlings are more likely to rot."
+    },
+    {
+      "question": "What's the latest you can plant okra?",
+      "answer": "Count back 3 months from your first fall frost. Plants need that long to grow and give you a harvest before cold weather stops them."
+    },
+    {
+      "question": "Can you grow okra in Canada?",
+      "answer": "In the warmest areas, yes. Start seeds indoors, plant out after your last frost once the soil is warm, and choose a sunny, sheltered spot."
+    }
+  ]
+}

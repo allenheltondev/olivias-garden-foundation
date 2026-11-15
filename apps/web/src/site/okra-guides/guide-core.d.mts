@@ -22,7 +22,6 @@ export type GuideBlock =
 export interface ZoneLookupRow {
   /** Whole USDA zone numbers (1-13) this row covers. Every zone must be in exactly one row. */
   zones: number[];
-  lastFrost: string;
   plant: string;
 }
 
@@ -58,8 +57,10 @@ export interface OkraGuide {
   seoTitle?: string;
   description: string;
   summary: string;
-  heroImage: GuideImage;
-  socialImage: GuideImage;
+  /** Required to publish. Drafts may leave it out until the photo exists. */
+  heroImage?: GuideImage;
+  /** Required to publish. Drafts may leave it out until the card exists. */
+  socialImage?: GuideImage;
   datePublished: string;
   dateModified?: string;
   review?: GuideReview;
