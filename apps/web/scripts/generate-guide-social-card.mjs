@@ -50,7 +50,9 @@ function escapeXml(value) {
 
 /** Greedy word wrap using an average glyph width estimate for serif text. */
 export function wrapHeadline(text, fontSize, maxWidth) {
-  const maxChars = Math.max(8, Math.floor(maxWidth / (fontSize * 0.52)));
+  // Bold serif glyphs average about 0.6em wide (measured on the rendered
+  // cards); 0.52 let "How to save okra" run into the photo.
+  const maxChars = Math.max(8, Math.floor(maxWidth / (fontSize * 0.6)));
   const lines = [];
   let line = '';
   for (const word of text.split(/\s+/).filter(Boolean)) {
