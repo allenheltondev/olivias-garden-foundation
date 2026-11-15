@@ -132,3 +132,9 @@
   margin-top: 0.15rem;
   accent-color: var(--color-primary-600, #336431);
 }
+
+.seed-request__account { padding-bottom: 1rem; border-bottom: 1px solid var(--og-color-border, #e2ded3); font-size: 0.9rem; }
+.seed-request__account p { margin: 0 0 0.4rem; }
+.seed-request__account summary { cursor: pointer; color: var(--og-color-moss, #426b3f); text-underline-offset: 0.2em; }
+.seed-request__account summary:focus-visible { outline: 2px solid var(--og-color-moss, #426b3f); outline-offset: 4px; }
+.seed-request__account .submission-modal__auth-actions { margin-top: 0.75rem; }

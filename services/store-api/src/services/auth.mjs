@@ -44,10 +44,33 @@ function isAdminFromClaims(claims) {
   );
 }
 
+// The identity an upstream authorizer already established, or null.
+//
+// The store API has no API Gateway authorizer, so a request through API
+// Gateway never carries `requestContext.authorizer`: API Gateway writes that
+// field itself and a client cannot set it. It is present only when an IAM
+// principal invokes this function directly with an event that carries it —
+// the operator MCP server (services/mcp-api), which has verified its own key
+// and the operator's admin group first — exactly as admin-api, okra-api and
+// grn-api read the context their authorizers attach.
+function authorizerContext(event) {
+  const authorizer = event?.requestContext?.authorizer;
+  const userId = authorizer?.userId;
+  if (typeof userId !== 'string' || userId.length === 0) return null;
+  return {
+    userId,
+    email: typeof authorizer.email === 'string' && authorizer.email.length > 0 ? authorizer.email : null,
+    isAdmin: String(authorizer.isAdmin ?? '').toLowerCase() === 'true'
+  };
+}
+
 // Resolve auth context from the request's bearer token. Returns null when
 // no token is present (anonymous requests on public routes). Throws when a
 // token is present but invalid — handlers map that to a 401.
 export async function resolveOptionalAuthContext(event, options = {}) {
+  const upstream = authorizerContext(event);
+  if (upstream) return upstream;
+
   const token = getBearerToken(event?.headers ?? {});
   if (!token) return null;
 

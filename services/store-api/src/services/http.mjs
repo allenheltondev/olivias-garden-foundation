@@ -31,15 +31,22 @@ export function errorResponse(statusCode, message, correlationId) {
 }
 
 export function normalizeRoutePath(path = '/') {
-  if (path === '/api') {
-    return '/';
+  // REST events can retain the stage or custom-domain mapping prefix.
+  for (const prefix of ['/api', '/store']) {
+    if (path === prefix) return '/';
+    if (path.startsWith(`${prefix}/`)) return path.slice(prefix.length);
   }
-
-  if (path.startsWith('/api/')) {
-    return path.slice(4);
-  }
-
   return path;
+}
+
+export function resolveRoutePath(event) {
+  // API Gateway's greedy proxy capture is relative to this API, independent
+  // of the deployment stage or shared-domain mapping.
+  const proxy = event?.pathParameters?.proxy;
+  if (typeof proxy === 'string' && proxy.length > 0) {
+    return `/${proxy.replace(/^\/+/, '')}`;
+  }
+  return normalizeRoutePath(event?.rawPath ?? event?.path ?? '/');
 }
 
 export function readRawBody(event) {

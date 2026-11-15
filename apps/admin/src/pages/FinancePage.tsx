@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, EmptyState, FormFeedback, PageHeading } from '@olivias/ui';
 import { getFinanceRevenue, type FinanceBucket, type FinanceRevenueResponse } from '../api';
 import type { AdminSession } from '../auth/session';
 
@@ -84,6 +84,7 @@ export function FinancePage({ session }: FinancePageProps) {
   const [data, setData] = useState<FinanceRevenueResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [isSmallScreen, setIsSmallScreen] = useState<boolean>(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
     return window.matchMedia(SMALL_SCREEN_QUERY).matches;
@@ -104,27 +105,23 @@ export function FinancePage({ session }: FinancePageProps) {
   );
   const activeGranularity: Granularity = granularityOverride ?? activeRange.granularity;
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    let active = true;
     setIsLoading(true);
     setError(null);
-    try {
-      const { from, to } = rangeBoundaries(activeRange.days);
-      const response = await getFinanceRevenue(session.accessToken, {
-        from,
-        to,
-        granularity: activeGranularity,
-      });
-      setData(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load finance data.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session.accessToken, activeRange.days, activeGranularity]);
+    setData(null);
+    const { from, to } = rangeBoundaries(activeRange.days);
+    void getFinanceRevenue(session.accessToken, { from, to, granularity: activeGranularity })
+      .then((response) => { if (active) setData(response); })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Unable to load finance data.');
+      })
+      .finally(() => { if (active) setIsLoading(false); });
+    return () => { active = false; };
+  }, [session.accessToken, activeRange.days, activeGranularity, attempt]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const total = (key: keyof FinanceRevenueResponse['totals']) =>
+    isLoading ? 'Loading…' : data ? formatMoney(data.totals[key]) : 'Unavailable';
 
   const chartRows = useMemo(
     () => (data ? bucketsToChartRows(data.buckets, activeGranularity) : []),
@@ -133,11 +130,9 @@ export function FinancePage({ session }: FinancePageProps) {
 
   return (
     <section className="admin-section admin-finance">
-      <SectionHeading
-        eyebrow="Finance"
-        title="Revenue"
-        body="Donations and merchandise revenue over time. Recurring donations are split out so you can see Garden Club versus one-time gifts."
-      />
+      <PageHeading title="Revenue">
+        <p>Donations and merchandise revenue over time. Recurring donations are split out so you can see Garden Club versus one-time gifts.</p>
+      </PageHeading>
 
       <div className="admin-finance__controls">
         <div className="admin-finance__control-group" role="tablist" aria-label="Date range">
@@ -175,30 +170,34 @@ export function FinancePage({ session }: FinancePageProps) {
 
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
 
-      <div className="admin-finance__totals">
+      <div className="admin-finance__totals" aria-busy={isLoading}>
         <Card className="admin-finance__tile">
           <p className="admin-finance__tile-label">Total revenue</p>
-          <p className="admin-finance__tile-value">{formatMoney(data?.totals.totalCents ?? 0)}</p>
+          <p className="admin-finance__tile-value">{total('totalCents')}</p>
         </Card>
         <Card className="admin-finance__tile">
           <p className="admin-finance__tile-label">One-time donations</p>
-          <p className="admin-finance__tile-value">{formatMoney(data?.totals.donationOneTimeCents ?? 0)}</p>
+          <p className="admin-finance__tile-value">{total('donationOneTimeCents')}</p>
         </Card>
         <Card className="admin-finance__tile">
           <p className="admin-finance__tile-label">Recurring donations</p>
-          <p className="admin-finance__tile-value">{formatMoney(data?.totals.donationRecurringCents ?? 0)}</p>
+          <p className="admin-finance__tile-value">{total('donationRecurringCents')}</p>
         </Card>
         <Card className="admin-finance__tile">
           <p className="admin-finance__tile-label">Merchandise</p>
-          <p className="admin-finance__tile-value">{formatMoney(data?.totals.merchandiseCents ?? 0)}</p>
+          <p className="admin-finance__tile-value">{total('merchandiseCents')}</p>
         </Card>
       </div>
 
       <Card className="admin-finance__chart-card">
         {isLoading ? (
-          <p>Loading revenue…</p>
+          <p role="status">Loading revenue…</p>
+        ) : error ? (
+          <EmptyState compact icon="journal" title="Revenue is unavailable" actions={(
+            <Button variant="secondary" size="sm" onClick={() => setAttempt((value) => value + 1)}>Try again</Button>
+          )}><p>We couldn't load this date range. Try again to see current totals.</p></EmptyState>
         ) : chartRows.length === 0 ? (
-          <p>No revenue in this range yet.</p>
+          <EmptyState compact icon="journal" title="No revenue in this range yet"><p>Choose another date range to explore earlier donations and purchases.</p></EmptyState>
         ) : (
           <ResponsiveContainer width="100%" height={isSmallScreen ? 260 : 320}>
             <BarChart

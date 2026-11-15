@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, FormFeedback, Input, SectionHeading, Textarea } from '@olivias/ui';
+import { Button, Card, FormFeedback, Input, PageHeading, SectionHeading, Textarea } from '@olivias/ui';
 import {
   listImpactMetrics,
   listTestimonials,
@@ -134,7 +134,6 @@ function MetricsEditor({ session }: { session: AdminSession }) {
     <section className="admin-section">
       <div className="admin-section__header">
         <SectionHeading
-          eyebrow="Impact"
           title="Impact numbers"
           body="These appear on the public impact section alongside live Okra map figures. The label is the description, the value is shown big (e.g. 2,733), and the optional caption sits underneath (e.g. as of June 2026)."
         />
@@ -305,7 +304,6 @@ function TestimonialsEditor({ session }: { session: AdminSession }) {
     <section className="admin-section">
       <div className="admin-section__header">
         <SectionHeading
-          eyebrow="Impact"
           title="Testimonials"
           body="Short, approved quotes shown on the public home page. Attribution is who said it (e.g. Seed recipient); role is an optional second line (e.g. McKinney, TX)."
         />
@@ -382,6 +380,9 @@ function TestimonialsEditor({ session }: { session: AdminSession }) {
 export function ImpactPage({ session }: ImpactPageProps) {
   return (
     <>
+      <PageHeading title="Foundation impact">
+        <p>Manage the numbers and stories shared on the public site.</p>
+      </PageHeading>
       <MetricsEditor session={session} />
       <TestimonialsEditor session={session} />
     </>

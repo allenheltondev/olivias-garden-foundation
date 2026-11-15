@@ -1,0 +1,49 @@
+$kind: http-request
+name: List Tools
+description: |-
+  With a live key, tools/list returns whoami plus the tools the key's scopes reach, each annotated.
+method: POST
+url: '{{mcpUrl}}'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: 'application/json, text/event-stream'
+  - key: MCP-Protocol-Version
+    value: '{{protocolVersion}}'
+  - key: Mcp-Method
+    value: tools/list
+  - key: Authorization
+    value: 'Bearer {{mcpKey}}'
+body:
+  type: json
+  content: |-
+    {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "{{protocolVersion}}", "io.modelcontextprotocol/clientCapabilities": {}}}}
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get("mcpKey") && !pm.environment.get("mcpKey")) {
+          console.log("mcpKey not set; skipping authenticated MCP request.");
+          pm.execution.skipRequest();
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Lists whoami and annotates every tool", function () {
+          const tools = pm.response.json().result.tools;
+          pm.expect(tools.map((t) => t.name)).to.include("whoami");
+          tools.forEach((tool) => {
+              pm.expect(tool.inputSchema, tool.name).to.be.an("object");
+              pm.expect(tool.annotations.readOnlyHint, tool.name).to.be.a("boolean");
+          });
+      });
+
+      pm.test("Carries a correlation id", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });

@@ -4,7 +4,7 @@ import {
   requireUserContext,
   resolveOptionalAuthContext
 } from '../src/services/auth.mjs';
-import { mapApiError, normalizeRoutePath, parseJsonBody, readRawBody } from '../src/services/http.mjs';
+import { mapApiError, normalizeRoutePath, resolveRoutePath, parseJsonBody, readRawBody } from '../src/services/http.mjs';
 import {
   createCheckoutSession,
   getAllowedRedirectOrigins,
@@ -93,8 +93,43 @@ async function testRequireAdminContextAcceptsAdmin() {
   assert.equal(ctx.userId, 'admin-1');
 }
 
+async function testAuthorizerContextIsHonoredForDirectInvoke() {
+  // The operator MCP server invokes this function directly with the context an
+  // authorizer would attach; it must be honored without a bearer token.
+  const failVerify = () => {
+    throw new Error('JWT must not be verified when an authorizer context is present');
+  };
+  const admin = await requireAdminContext(
+    { requestContext: { authorizer: { userId: 'op-1', isAdmin: 'true', email: 'op@example.com' } } },
+    { verifyJwt: failVerify }
+  );
+  assert.deepEqual(admin, { userId: 'op-1', email: 'op@example.com', isAdmin: true });
+
+  await assert.rejects(
+    () => requireAdminContext({ requestContext: { authorizer: { userId: 'u-1', isAdmin: 'false' } } }),
+    /Forbidden/
+  );
+
+  // An authorizer object without a userId falls back to the bearer token.
+  const anonymous = await resolveOptionalAuthContext({ requestContext: { authorizer: {} } });
+  assert.equal(anonymous, null);
+}
+
 function testHttpHelpers() {
   assert.equal(normalizeRoutePath('/api/products'), '/products');
+  assert.equal(normalizeRoutePath('/store/products'), '/products');
+  assert.equal(normalizeRoutePath('/store/orders'), '/orders');
+  assert.equal(normalizeRoutePath('/store/admin/orders'), '/admin/orders');
+  assert.equal(normalizeRoutePath('/store'), '/');
+  assert.equal(normalizeRoutePath('/api'), '/');
+  assert.equal(normalizeRoutePath('/products'), '/products');
+  assert.equal(normalizeRoutePath('/storefront/products'), '/storefront/products');
+  assert.equal(resolveRoutePath({ path: '/store/products', pathParameters: { proxy: 'products' } }), '/products');
+  assert.equal(resolveRoutePath({ path: '/api/checkout', pathParameters: { proxy: 'checkout' } }), '/checkout');
+  assert.equal(resolveRoutePath({ rawPath: '/store/products/garden-shirt' }), '/products/garden-shirt');
+  assert.equal(resolveRoutePath({ path: '/orders', pathParameters: null }), '/orders');
+  assert.equal(resolveRoutePath({ path: '/store/products', pathParameters: { proxy: '' } }), '/products');
+  assert.equal(resolveRoutePath({}), '/');
   assert.equal(mapApiError(new Error('Product not found'), 'cid').statusCode, 404);
   assert.equal(mapApiError(new Error('Cart is empty'), 'cid').statusCode, 400);
   assert.equal(mapApiError(new Error('Authentication required'), 'cid').statusCode, 401);
@@ -650,6 +685,7 @@ await testResolveOptionalAuthContextRejectsMalformedHeader();
 await testRequireUserContextRejectsAnonymous();
 await testRequireAdminContextRejectsNonAdmin();
 await testRequireAdminContextAcceptsAdmin();
+await testAuthorizerContextIsHonoredForDirectInvoke();
 testHttpHelpers();
 testProductMapperExposesMultiImageContract();
 await testStripeCheckoutSession();

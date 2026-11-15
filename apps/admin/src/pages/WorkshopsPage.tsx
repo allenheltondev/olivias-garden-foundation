@@ -12,7 +12,8 @@ import {
   FormFeedback,
   FormField,
   Input,
-  SectionHeading,
+  EmptyState,
+  PageHeading,
   Select,
   Textarea,
 } from '@olivias/ui';
@@ -116,6 +117,7 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
   const [signups, setSignups] = useState<AdminWorkshopSignup[]>([]);
   const [signupsWorkshopId, setSignupsWorkshopId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadingWorkshops, setLoadingWorkshops] = useState(true);
   const [info, setInfo] = useState<string | null>(null);
 
   // Modal state lives here; opening sets `editingWorkshop` to either an
@@ -125,12 +127,15 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
   const [editingWorkshop, setEditingWorkshop] = useState<AdminWorkshop | null>(null);
 
   const refresh = useCallback(async () => {
+    setLoadingWorkshops(true);
     try {
       const next = await listAdminWorkshops(session.accessToken);
       setWorkshops(next);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to load workshops.');
+    } finally {
+      setLoadingWorkshops(false);
     }
   }, [session.accessToken]);
 
@@ -188,11 +193,9 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
 
   return (
     <section className="admin-section">
-      <SectionHeading
-        eyebrow="Workshops"
-        title="Hands-on workshops"
-        body="Create, schedule, and manage workshop sessions. Sign-ups happen on the public site."
-      />
+      <PageHeading title="Hands-on workshops">
+        <p>Create, schedule, and manage workshop sessions. Sign-ups happen on the public site.</p>
+      </PageHeading>
 
       {error ? <FormFeedback tone="error" className="admin-load-error">{error}</FormFeedback> : null}
       {info ? <FormFeedback tone="success" className="admin-load-error">{info}</FormFeedback> : null}
@@ -209,8 +212,8 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
         </div>
 
         <div className="admin-workshops__list">
-          {workshops.length === 0 ? (
-            <p className="admin-workshops__empty">No workshops yet.</p>
+          {loadingWorkshops ? <p role="status">Loading workshops…</p> : !error && workshops.length === 0 ? (
+            <EmptyState compact icon="tools" title="No workshops yet"><p>Choose New workshop to prepare a session before publishing it.</p></EmptyState>
           ) : (
             workshops.map((workshop) => (
               <div
@@ -276,6 +279,8 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
               Close
             </Button>
           </div>
+          <p className="admin-workshops__table-hint">On smaller screens, scroll the table to see all sign-up details.</p>
+          <div className="admin-table-scroll" role="region" aria-label="Workshop sign-ups" tabIndex={0}>
           <table className="admin-workshops__signups-table">
             <thead>
               <tr>
@@ -331,6 +336,7 @@ export function WorkshopsPage({ session }: WorkshopsPageProps) {
               ) : null}
             </tbody>
           </table>
+          </div>
         </Card>
       ) : null}
 

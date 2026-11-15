@@ -6,8 +6,10 @@ import {
   FormFeedback,
   isColorVariation,
   resolveColorSwatch,
-  SectionHeading,
+  EmptyState,
+  PageHeading,
 } from '@olivias/ui';
+import { ProductImage } from '../components/ProductImage';
 import { getProductBySlug, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
 
@@ -20,7 +22,7 @@ const KIND_LABEL: Record<StoreProduct['kind'], string> = {
 };
 
 const FULFILLMENT_LABEL: Record<StoreProduct['fulfillment_type'], string> = {
-  none: 'No fulfillment required',
+  none: 'No delivery needed',
   digital: 'Digital delivery',
   shipping: 'Ships to your address',
   pickup: 'Pickup at the garden',
@@ -34,6 +36,7 @@ export function ProductPage() {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
   const [variationError, setVariationError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const cart = useCart();
   const navigate = useNavigate();
 
@@ -43,6 +46,7 @@ export function ProductPage() {
     setError(null);
     setSelectedVariations({});
     setVariationError(null);
+    setQuantity(1);
 
     getProductBySlug(slug)
       .then((next) => {
@@ -58,21 +62,22 @@ export function ProductPage() {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [slug, attempt]);
 
   if (error) {
     return (
       <section className="store-section">
         <Link className="store-back-link" to="/">Back to store</Link>
-        <FormFeedback tone="error">{error}</FormFeedback>
+        <PageHeading title="Product unavailable" />
+        <div role="alert"><EmptyState icon="basket" title="We couldn't load this product" actions={(
+          <Button variant="secondary" onClick={() => setAttempt((value) => value + 1)}>Try again</Button>
+        )}><p>It may no longer be available, or the store may be temporarily offline. Try again or browse other products.</p></EmptyState></div>
       </section>
     );
   }
-
   if (!product) {
-    return <p className="store-empty">Loading product…</p>;
+    return <p className="store-empty" role="status">Loading product…</p>;
   }
-
   const onAdd = () => {
     const missing = product.variations
       .filter((variation) => !selectedVariations[variation.name])
@@ -104,21 +109,21 @@ export function ProductPage() {
   const selectedImage =
     visibleImages.find((image) => image.id === selectedImageId) ?? visibleImages[0] ?? null;
   const primaryImage = selectedImage?.url ?? product.image_url;
-
+  const canPurchase = product.status === 'active' && product.is_public;
   return (
     <section className="store-section store-product-detail">
       <Link className="store-back-link" to="/">Back to store</Link>
+      <PageHeading title={product.name}>
 
-      <SectionHeading
-        title={product.name}
-        body={[KIND_LABEL[product.kind], product.short_description].filter(Boolean).join('. ')}
-      />
+        <p>{product.short_description || KIND_LABEL[product.kind]}</p>
+
+      </PageHeading>
 
       <div className="store-product-detail__layout">
         <Card className="store-product-detail__media" padding="none">
           {primaryImage ? (
             <>
-              <img
+              <ProductImage
                 className="store-product-detail__main-image"
                 src={primaryImage}
                 alt={selectedImage?.alt_text || product.name}
@@ -143,7 +148,7 @@ export function ProductPage() {
               ) : null}
             </>
           ) : (
-            <div className="store-product-card__placeholder" aria-hidden="true" />
+            <ProductImage alt={product.name} />
           )}
         </Card>
 
@@ -154,6 +159,7 @@ export function ProductPage() {
               {FULFILLMENT_LABEL[product.fulfillment_type]}
             </p>
           </div>
+          <p className="store-product-detail__availability">{canPurchase ? 'Available to order' : 'Currently unavailable'}</p>
 
           {product.description ? (
             <p className="store-product-detail__description">{product.description}</p>
@@ -170,29 +176,33 @@ export function ProductPage() {
               {product.variations.map((variation) => {
                 const showSwatches = isColorVariation(variation.name);
                 return (
-                  <div key={variation.name} className="store-variations__group">
-                    <span className="store-variations__label">{variation.name}</span>
-                    <div className="store-variations__options" role="radiogroup" aria-label={variation.name}>
+                  <fieldset key={variation.name} className="store-variations__group">
+                    <legend className="store-variations__label">{variation.name}{selectedVariations[variation.name] ? `: ${selectedVariations[variation.name]}` : ' — choose an option'}</legend>
+                    <div className="store-variations__options">
                       {variation.values.map((value) => {
                         const isSelected = selectedVariations[variation.name] === value;
                         const swatch = showSwatches ? resolveColorSwatch(value) : null;
                         return (
-                          <button
+                          <label
                             key={value}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
                             className={`store-variations__option${isSelected ? ' is-selected' : ''}${
                               swatch ? ' has-swatch' : ''
                             }`}
-                            onClick={() => {
-                              setSelectedVariations((current) => ({
-                                ...current,
-                                [variation.name]: value,
-                              }));
-                              setVariationError(null);
-                            }}
                           >
+                            <input
+                              type="radio"
+                              name={`variation-${variation.name}`}
+                              value={value}
+                              checked={isSelected}
+                              className="store-variations__input"
+                              onChange={() => {
+                                setSelectedVariations((current) => ({
+                                  ...current,
+                                  [variation.name]: value,
+                                }));
+                                setVariationError(null);
+                              }}
+                            />
                             {swatch ? (
                               <span
                                 className="store-variations__swatch"
@@ -201,11 +211,11 @@ export function ProductPage() {
                               />
                             ) : null}
                             {value}
-                          </button>
+                          </label>
                         );
                       })}
                     </div>
-                  </div>
+                  </fieldset>
                 );
               })}
               {variationError ? (
@@ -252,8 +262,8 @@ export function ProductPage() {
             </div>
           </div>
 
-          <Button className="store-product-detail__add" onClick={onAdd}>
-            Add to cart
+          <Button className="store-product-detail__add" onClick={onAdd} disabled={!canPurchase}>
+            {canPurchase ? 'Add to cart' : 'Currently unavailable'}
           </Button>
         </Card>
       </div>

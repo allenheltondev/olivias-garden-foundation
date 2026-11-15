@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, FormFeedback, PageHeading, SectionHeading, EmptyState } from '@olivias/ui';
 import {
   getAdminStats,
   listActivity,
@@ -147,11 +147,9 @@ export function DashboardPage({ session }: DashboardPageProps) {
 
   return (
     <section className="admin-section admin-activity">
-      <SectionHeading
-        eyebrow="Overview"
-        title="Admin dashboard"
-        body="A quick look at the foundation's active work across users, seeds, and okra submissions."
-      />
+      <PageHeading title="Admin dashboard">
+        <p>A quick look at the foundation's active work across users, seeds, and okra submissions.</p>
+      </PageHeading>
 
       {statsError ? (
         <FormFeedback tone="error" className="admin-load-error">{statsError}</FormFeedback>
@@ -175,7 +173,6 @@ export function DashboardPage({ session }: DashboardPageProps) {
       </div>
 
       <SectionHeading
-        eyebrow="Activity"
         title="Recent activity"
         body="Donations, signups, seed requests, okra submissions, and Good Roots inquiries."
       />
@@ -201,10 +198,8 @@ export function DashboardPage({ session }: DashboardPageProps) {
         <Card className="admin-activity__loading">
           <p>Loading activity…</p>
         </Card>
-      ) : events.length === 0 ? (
-        <Card className="admin-activity__empty">
-          <p>No activity yet for this filter.</p>
-        </Card>
+      ) : !activityError && events.length === 0 ? (
+        <EmptyState compact icon="journal" title="No activity for this filter" actions={activeFilterId !== 'all' ? <Button variant="secondary" size="sm" onClick={() => setActiveFilterId('all')}>Show all activity</Button> : undefined}><p>New foundation activity will appear here as it happens.</p></EmptyState>
       ) : (
         <ul className="admin-activity__list" role="list">
           {events.map((event) => {

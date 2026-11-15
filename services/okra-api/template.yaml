@@ -390,6 +390,10 @@ Resources:
                 - UserPoolId: !ImportValue OGF-UserPoolId
 
 Outputs:
+  AdminApiFunctionArn:
+    Description: ARN of the okra admin API function; the operator MCP server (services/mcp-api) invokes it directly
+    Value: !GetAtt AdminApiFunction.Arn
+
   HttpApiUrl:
     Description: Base URL for the HTTP API
     Value: !If
