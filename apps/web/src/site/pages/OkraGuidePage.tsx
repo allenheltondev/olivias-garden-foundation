@@ -10,6 +10,7 @@ import {
   OKRA_HUB_PATH,
   parseInline,
 } from '../okra-guides/guide-core.mjs';
+import { ZoneLookup } from '../okra-guides/ZoneLookup';
 import { ResponsiveImage } from '../responsive-images';
 import { siteUrl } from '../routes';
 import { ensureStructuredData, removeStructuredData } from '../seo';
@@ -120,6 +121,8 @@ function GuideBlockView({ block, onNavigate }: { block: GuideBlock; onNavigate: 
           ) : null}
         </figure>
       );
+    case 'zoneLookup':
+      return <ZoneLookup block={block} renderText={(text) => <InlineText text={text} onNavigate={onNavigate} />} />;
     default:
       return null;
   }

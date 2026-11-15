@@ -4583,6 +4583,96 @@ html {
   color: var(--site-branch);
 }
 
+.okra-zone-lookup {
+  display: grid;
+  gap: 1rem;
+}
+
+.okra-zone-lookup__form {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--site-border);
+  border-radius: 0.9rem;
+  background: rgba(255, 252, 246, 0.9);
+}
+
+.okra-zone-lookup__label {
+  color: var(--site-branch);
+  font-weight: 700;
+}
+
+.okra-zone-lookup__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.okra-zone-lookup__input {
+  flex: 1 1 9rem;
+  max-width: 14rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--site-border);
+  border-radius: 0.6rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.okra-zone-lookup__input:focus-visible {
+  outline: 2px solid var(--site-leaf);
+  outline-offset: 2px;
+}
+
+.okra-zone-lookup__hint,
+.okra-zone-lookup__source {
+  margin: 0;
+  color: var(--site-muted);
+  font-size: 0.875rem;
+}
+
+.okra-zone-lookup__source a {
+  color: var(--site-leaf);
+  text-underline-offset: 0.2em;
+}
+
+.okra-zone-lookup__result:empty {
+  display: none;
+}
+
+.okra-zone-lookup__answer {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  border-left: 4px solid var(--site-leaf);
+  border-radius: 0 0.9rem 0.9rem 0;
+  background: rgba(225, 235, 220, 0.6);
+}
+
+.okra-zone-lookup__answer p {
+  margin: 0;
+}
+
+.okra-zone-lookup__zone {
+  color: var(--site-branch);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.okra-zone-lookup__table tbody th {
+  white-space: nowrap;
+}
+
+.okra-zone-lookup__row--current {
+  background: rgba(225, 235, 220, 0.6);
+}
+
+.okra-zone-lookup__you {
+  color: var(--site-leaf);
+  font-weight: 600;
+  white-space: normal;
+}
+
 .okra-guide__figure {
   display: grid;
   margin: 0;

@@ -37,7 +37,8 @@ const DEFAULT_SOCIAL_IMAGE = '/images/home/og-image.png';
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const BLOCK_TYPES = new Set(['paragraph', 'list', 'tip', 'table', 'image']);
+const BLOCK_TYPES = new Set(['paragraph', 'list', 'tip', 'table', 'image', 'zoneLookup']);
+const HARDINESS_ZONES = Array.from({ length: 13 }, (_, index) => index + 1);
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const SOCIAL_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png']);
 // Camera/phone defaults and other filenames that say nothing about the image.
@@ -232,6 +233,29 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
             const width = Array.isArray(block.headers) ? block.headers.length : 0;
             if (width === 0 || !Array.isArray(block.rows) || block.rows.length === 0 || !block.rows.every((row) => Array.isArray(row) && row.length === width)) {
               structural(`${blockWhere} needs headers and rows with the same number of cells.`);
+            }
+          }
+          if (block.type === 'zoneLookup') {
+            if (!Array.isArray(block.rows) || block.rows.length === 0) {
+              structural(`${blockWhere}.rows must be a non-empty array.`);
+            } else {
+              const covered = new Map();
+              block.rows.forEach((row, rowIndex) => {
+                const rowWhere = `${blockWhere}.rows[${rowIndex}]`;
+                if (!Array.isArray(row?.zones) || row.zones.length === 0 || !row.zones.every((zone) => HARDINESS_ZONES.includes(zone))) {
+                  structural(`${rowWhere}.zones must be a non-empty array of whole zone numbers from 1 to 13.`);
+                } else {
+                  for (const zone of row.zones) covered.set(zone, (covered.get(zone) ?? 0) + 1);
+                }
+                if (!isNonEmptyString(row?.lastFrost) || !isNonEmptyString(row?.plant)) {
+                  structural(`${rowWhere} needs lastFrost and plant text.`);
+                }
+              });
+              // Every zone needs exactly one answer, or some ZIP codes would get none.
+              const missing = HARDINESS_ZONES.filter((zone) => !covered.has(zone));
+              const repeated = HARDINESS_ZONES.filter((zone) => (covered.get(zone) ?? 0) > 1);
+              if (missing.length > 0) structural(`${blockWhere} has no row for zone ${missing.join(', ')}.`);
+              if (repeated.length > 0) structural(`${blockWhere} covers zone ${repeated.join(', ')} more than once.`);
             }
           }
           if (block.type === 'image') {
