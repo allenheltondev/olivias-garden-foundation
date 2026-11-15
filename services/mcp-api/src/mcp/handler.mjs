@@ -31,7 +31,7 @@ function refusal(status, message, correlationId) {
 }
 
 /**
- * deps: { keys, operators, backendsFor(operator, correlationId), allowedOriginHosts?, logger? }
+ * deps: { keys, operators, backendsFor(operator, correlationId), allowedOriginHosts?, logger?, locateSeedPin? }
  */
 export function mcpEndpoint(deps) {
   const logger = deps.logger ?? console;
@@ -40,7 +40,7 @@ export function mcpEndpoint(deps) {
       const extra = authInfo?.extra;
       // Fail closed: nothing reaches the factory without a verified key.
       if (!extra?.key) throw new Error('MCP server built without a verified key');
-      return buildServer(extra.key, { backends: extra.backends, logger });
+      return buildServer(extra.key, { backends: extra.backends, logger, locateSeedPin: deps.locateSeedPin });
     },
     {
       maxRequestBodySize: MAX_BODY_BYTES,

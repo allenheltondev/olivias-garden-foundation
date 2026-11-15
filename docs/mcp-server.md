@@ -85,9 +85,10 @@ is absent from `tools/list`, and calling it is an unknown-tool error.
 | `request_workshop_image_upload` | `workshops:write` | A presigned URL for a cover image; set the returned `s3Key` as `image_s3_key`. |
 | `get_impact_metrics` / `get_testimonials` | `content:read` | The site's impact numbers and testimonials. |
 | `set_impact_metrics` / `set_testimonials` | `content:write` | Replace the whole list (get it first, send it back changed). |
-| `whats_pending` | `queues:read` | Open seed requests, okra photos to review, API access requests to decide: counts and the oldest few. |
-| `list_seed_requests` / `list_okra_submissions` / `list_api_access_requests` | `queues:read` | Each queue by status. |
-| `mark_seed_request_done` | `queues:write` | Seeds sent: counts the packet, and with `map_location` pins it on the public map. |
+| `whats_pending` | `queues:read` | Open seed requests, okra photos to review, API access requests to decide: counts and the few waiting longest. |
+| `list_seed_requests` / `list_okra_submissions` / `list_api_access_requests` | `queues:read` | Each queue by status. Seed requests list newest first, or `order: "oldest"`. |
+| `mark_seed_request_done` | `queues:write` | Seeds sent: counts the packet and, as the admin app does, pins it on the public map (see "Seed request pins"). |
+| `add_seed_request_map_pin` | `queues:write` | Pin a done request that has none: one done before pins existed, or whose city could not be found. |
 | `cancel_seed_request` / `reopen_seed_request` | `queues:write` | Close without sending; move back to open (undoing "done" un-counts it and removes the pin). |
 | `review_okra_submission` | `queues:write` | Approve onto the map, or deny with a reason. |
 | `decide_api_access_request` | `queues:write` | Approve or deny Good Roots Network API access. |
@@ -95,6 +96,27 @@ is absent from `tools/list`, and calling it is an unknown-tool error.
 
 Writes that the services make idempotent (store products) take an optional
 `idempotency_key`; reuse it when retrying the same change.
+
+### Seed request pins
+
+`mark_seed_request_done` places the public "seeds sent" pin the way the admin
+app's **Mark done** does. When the requester may have a pin (the okra API's
+`pinVisibility`), it looks up their city with OpenStreetMap's Nominatim, using
+the admin app's rules (`src/mcp/seed-pins.mjs`, after
+`apps/admin/src/services/seed-pin-geocoder.ts`): a mailed request is located
+from city, region, postal code and country only, never its street lines, name
+or email. A street is looked up only for an in-person exchange an admin gave a
+map address. Nothing is looked up for a request told it would get no pin, or
+when the caller passes `map_location`.
+
+The result's `map_pin` says what happened: `placed`, or a `reason` (no pin was
+promised) or a `warning` (the city could not be found). In that last case the
+seeds are still recorded as sent, and `add_seed_request_map_pin` adds the pin
+later, with a lookup or a given `map_location`.
+
+The okra API lists seed requests newest first. For `whats_pending` and
+`order: "oldest"`, the tools read the total and fetch the last pages, so the
+requests waiting longest come first.
 
 ## How tools reach the services
 

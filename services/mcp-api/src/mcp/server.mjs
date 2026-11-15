@@ -18,6 +18,7 @@ import { registerWorkshopTools } from './tools/workshops.mjs';
 import { registerContentTools } from './tools/content.mjs';
 import { registerQueueTools } from './tools/queues.mjs';
 import { registerReportTools } from './tools/reports.mjs';
+import { createSeedPinLocator } from './seed-pins.mjs';
 
 export const SERVER_INFO = { name: 'olivias-garden-operator', version: '1.0.0' };
 
@@ -50,7 +51,11 @@ export function buildServer(key, deps) {
     }), deps.logger)
   );
 
-  const ctx = { backends: deps.backends, logger: deps.logger ?? console };
+  const ctx = {
+    backends: deps.backends,
+    logger: deps.logger ?? console,
+    locateSeedPin: deps.locateSeedPin ?? createSeedPinLocator()
+  };
   registerStoreTools(scoped(server, 'store', key.scopes), ctx);
   registerWorkshopTools(scoped(server, 'workshops', key.scopes), ctx);
   registerContentTools(scoped(server, 'content', key.scopes), ctx);
