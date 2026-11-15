@@ -77,7 +77,9 @@ test.describe('published okra guides', () => {
       await gotoAndWait(page, '/okra');
       // Scope to the guides list: the same title can also appear as a footer link.
       const guideList = page.getByRole('region', { name: 'Okra growing guides' });
-      await expect(guideList.getByRole('link', { name: new RegExp(guide.title) })).toHaveAttribute('href', path);
+      // Anchor on the title: another guide's description can mention this one.
+      const title = guide.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(guideList.getByRole('link', { name: new RegExp(`^${title}`) })).toHaveAttribute('href', path);
     });
 
     if (guide.showInFooter) {
