@@ -1,6 +1,6 @@
 {
   "slug": "how-to-harvest-okra",
-  "status": "draft",
+  "status": "published",
   "title": "How to harvest okra",
   "seoTitle": "How to Harvest Okra: When to Pick and How Often",
   "description": "Pick okra pods at 2 to 5 inches, every day or two, before they turn woody. Why to use pruners and gloves, and how to store and eat your harvest.",
@@ -12,6 +12,12 @@
   "socialImage": {
     "src": "/images/social/okra-guides/how-to-harvest-okra.jpg",
     "alt": "How to harvest okra card with a photo of freshly picked okra pods lined up on a towel."
+  },
+  "datePublished": "2026-11-15",
+  "dateModified": "2026-11-15",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-15"
   },
   "targetQueries": [
     "how to harvest okra",
