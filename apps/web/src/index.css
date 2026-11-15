@@ -7,12 +7,12 @@
   --site-paper: rgba(255, 250, 241, 0.88);
   --site-paper-strong: #fffaf1;
   --site-ink: var(--og-color-ink);
-  --site-muted: color-mix(in srgb, var(--og-color-soil) 72%, white 28%);
+  --site-muted: color-mix(in srgb, var(--og-color-soil) 86%, white 14%);
   --site-branch: var(--og-color-soil);
   --site-leaf: var(--og-color-moss);
   --site-gold: var(--color-accent-500);
   --site-border: rgba(76, 52, 38, 0.14);
-  --site-shadow: var(--shadow-card);
+  --site-shadow: 0 5px 18px rgba(38, 23, 15, 0.045);
   --site-display: var(--og-font-display);
   --site-body: var(--og-font-body);
 }
@@ -100,8 +100,8 @@ html {
 }
 
 .page-hero h1 {
-  font-size: clamp(2.2rem, 5vw, 4.25rem);
-  line-height: 1;
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem);
+  line-height: 1.12;
   text-wrap: balance;
 }
 
@@ -945,7 +945,7 @@ html {
   font-family: var(--site-display);
   font-size: clamp(1.75rem, 3vw, 2.5rem);
   line-height: 1.02;
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
 }
 
 .home-mission-band__copy p:last-child {
@@ -1099,9 +1099,9 @@ html {
 .about-prose-hero__header h1 {
   margin: 0;
   font-family: var(--site-display);
-  font-size: clamp(2.25rem, 4.8vw, 3.85rem);
-  line-height: 0.96;
-  letter-spacing: -0.03em;
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: normal;
   text-wrap: balance;
 }
 
@@ -1223,6 +1223,7 @@ html {
 
 .site-cta {
   min-height: 3rem;
+  justify-self: start;
 }
 
 .page-section {
@@ -1412,26 +1413,25 @@ html {
 
 .get-involved-grid {
   align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
 }
 
-.get-involved-card {
-  display: grid;
-  gap: 0.8rem;
-}
+.get-involved-card { display: block; }
+.get-involved-card .og-card-body { display: flex; flex-direction: column; gap: 0.85rem; height: 100%; }
+.get-involved-card__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.get-involved-card h2 { margin: 0; font-family: var(--site-display); font-size: 1.5rem; line-height: 1.2; }
+.get-involved-card p { margin: 0; }
+.get-involved-card .site-cta { align-self: flex-start; margin-top: auto; }
+.participation-status { padding: 0.35rem 0.65rem; border: 1px solid var(--site-border); border-radius: 0.5rem; color: var(--site-leaf); font-size: 0.8rem; font-weight: 700; }
 
-.get-involved-card__eyebrow {
-  margin: 0 0 -0.2rem;
-  color: var(--site-leaf);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
 
 .contact-card {
-  display: grid;
-  gap: 0.8rem;
+  display: block;
 }
+.contact-card .og-card-body { display: grid; align-content: start; gap: 0.8rem; }
+.contact-card .og-card-body > p,
+.contact-card .og-card-body > ul { margin: 0; }
+.contact-card .og-card-title { margin-bottom: 1rem; }
 
 .contact-card__eyebrow {
   margin: 0 0 -0.2rem;
@@ -1484,25 +1484,13 @@ html {
 }
 
 .good-roots-hero .page-hero__aside {
-  display: none;
+  display: block;
 }
 
-.good-roots-hero__image {
-  display: block;
-  width: min(100%, 28rem);
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border: 1px solid rgba(58, 42, 29, 0.14);
-  border-radius: 1.25rem;
-  box-shadow: 0 20px 42px rgba(38, 23, 15, 0.16);
-}
-
-.good-roots-hero__image img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.good-roots-product-preview { margin: 0; width: 100%; border: 1px solid var(--site-border); border-radius: 1rem; overflow: hidden; background: var(--site-paper-strong); box-shadow: var(--site-shadow); }
+.good-roots-product-preview__bar { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--site-border); color: var(--site-muted); font-size: 0.75rem; }
+.good-roots-product-preview img { display: block; width: 100%; height: auto; }
+.good-roots-product-preview figcaption { padding: 0.85rem 1rem; color: var(--site-muted); font-size: 0.9rem; line-height: 1.5; }
 
 .good-roots-mission .home-mission-band__copy h2 {
   letter-spacing: 0;
@@ -2054,10 +2042,6 @@ html {
     gap: 0.7rem;
   }
 
-  .get-involved-card__eyebrow {
-    margin-bottom: -0.1rem;
-    font-size: 0.7rem;
-  }
 
   .contact-card {
     gap: 0.7rem;
@@ -2089,8 +2073,8 @@ html {
   }
 
   .about-prose-hero__header h1 {
-    font-size: clamp(2rem, 9vw, 3rem);
-    line-height: 0.98;
+    font-size: clamp(1.85rem, 7vw, 2.4rem);
+    line-height: 1.12;
   }
 
   .about-prose-hero__dek {
@@ -2335,84 +2319,16 @@ html {
   }
 }
 
-.donate-hero {
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  margin-top: -1.5rem;
-  min-height: clamp(22rem, 42vw, 28rem);
-  gap: clamp(1.25rem, 3vw, 2rem);
-  padding: clamp(1.1rem, 2.4vw, 1.8rem) max(1rem, calc((100vw - 1180px) / 2 + 1rem)) clamp(1rem, 2.2vw, 1.6rem);
-  background:
-    linear-gradient(90deg, rgba(27, 17, 12, 0.82) 0%, rgba(27, 17, 12, 0.52) 40%, rgba(27, 17, 12, 0.24) 100%),
-    linear-gradient(180deg, rgba(17, 10, 7, 0.2), rgba(17, 10, 7, 0.42)),
-    var(--page-hero-image) center/cover no-repeat;
-}
-
-.donate-hero .page-hero__copy--overlay {
-  max-width: 46rem;
-  padding: clamp(1.4rem, 3vw, 2rem);
-  border: 1px solid rgba(255, 250, 241, 0.18);
-  border-radius: 1.6rem;
-  background: linear-gradient(180deg, rgba(255, 251, 245, 0.9), rgba(255, 248, 236, 0.72));
-  box-shadow: 0 24px 48px rgba(19, 12, 8, 0.2);
-  backdrop-filter: blur(14px);
-}
-
-.donate-hero__title {
-  max-width: 16ch;
-  font-size: clamp(2.1rem, 4.2vw, 3.4rem);
-  line-height: 1;
-}
-
-.donate-hero__aside-card {
-  display: grid;
-  gap: 1.15rem;
-  min-height: 100%;
-  padding: 1.2rem;
-  border: 1px solid rgba(255, 237, 188, 0.32);
-  border-radius: 1.6rem;
-  background:
-    radial-gradient(circle at top, rgba(255, 215, 108, 0.24), transparent 48%),
-    linear-gradient(180deg, rgba(67, 46, 31, 0.9), rgba(44, 31, 20, 0.9));
-  color: #fffaf1;
-  box-shadow: 0 22px 48px rgba(19, 12, 8, 0.24);
-  backdrop-filter: blur(14px);
-}
-
-.donate-hero__eyebrow {
-  margin: 0;
-  color: rgba(255, 228, 147, 0.92);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.donate-hero__bee {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 9rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 1.3rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 213, 120, 0.08));
-}
-
-.donate-hero__bee-image {
-  width: min(100%, 18rem);
-  height: auto;
-  border-radius: 1rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
-  display: block;
-}
-
-.donate-hero__aside-title {
-  margin: 0;
-  font-family: var(--site-display);
-  font-size: 1.5rem;
-  line-height: 1.05;
-}
+.donate-hero { align-items: center; gap: 1.5rem; }
+.page-hero h1.donate-hero__title { font-size: clamp(1.85rem, 3.8vw, 2.75rem); line-height: 1.12; max-width: 22ch; }
+.donate-hero__aside-card { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 0.5rem 1rem; padding: 1rem; border: 1px solid var(--site-border); border-radius: 1rem; background: var(--site-paper-strong); }
+.donate-hero__eyebrow { grid-column: 2; margin: 0; color: var(--site-leaf); font-size: 0.72rem; font-weight: 700; }
+.donate-hero__bee { grid-column: 1; grid-row: 1 / span 3; align-self: center; }
+.donate-hero__bee-image { display: block; width: 100%; height: auto; border-radius: 0.6rem; }
+.donate-hero__aside-title { grid-column: 2; margin: 0; font-family: var(--site-display); font-size: 1.25rem; line-height: 1.2; }
+.donate-hero__aside-card .page-text { grid-column: 2; margin: 0; font-size: 0.9rem; line-height: 1.5; }
+.donate-form-card__title { margin: 0; font-family: var(--site-display); font-size: 1.7rem; line-height: 1.2; }
+#donate-options { scroll-margin-top: 6rem; }
 
 .donate-story-band,
 .donate-checkout {
@@ -2436,11 +2352,12 @@ html {
   margin: 0;
   font-family: var(--site-display);
   color: var(--site-branch);
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
 }
 
 .donate-story-band__copy h2 {
-  font-size: clamp(2.3rem, 5vw, 4rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.2;
 }
 
 .donate-story-band__body {
@@ -2794,7 +2711,7 @@ html {
   margin: 0;
   font-family: var(--site-display);
   color: var(--site-branch);
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
 }
 
 .donate-status-card p,
@@ -2875,29 +2792,16 @@ html {
 }
 
 @media (max-width: 759px) {
-  .donate-hero .page-hero__copy--overlay,
-  .donate-hero__aside-card {
-    padding: 1rem;
-  }
-
-  .donate-hero {
-    min-height: 20rem;
-    margin-top: -0.85rem;
-    padding:
-      0.9rem
-      max(1rem, calc((100vw - (100% - 1rem)) / 2 + 0.5rem))
-      1rem;
-  }
+  .donate-hero__aside-card { grid-template-columns: 5rem minmax(0, 1fr); }
 
   .donate-story-band__highlights,
-  .donate-form-grid,
-  .donate-amounts {
+  .donate-form-grid {
     grid-template-columns: 1fr;
   }
 
-  .donate-mode-toggle {
-    grid-template-columns: 1fr;
-  }
+  .donate-mode-toggle,
+  .donate-amounts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .donate-amounts__custom { grid-column: 1 / -1; }
 
   .donate-story-band__photo img {
     min-height: 13rem;
@@ -2913,7 +2817,7 @@ html {
 @media (min-width: 760px) {
   .donate-hero {
     grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.8fr);
-    align-items: end;
+    align-items: center;
   }
 
   .donate-story-band {
@@ -4705,3 +4609,11 @@ html {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Participation and contact reading order follow the same DOM order on phones. */
+@media (min-width: 760px) {
+  .contact-card--form { grid-column: 2; grid-row: 1; }
+  .contact-card--details { grid-column: 1; grid-row: 1; }
+}
+.donate-mode-toggle__button--active,
+.donate-amounts__chip--active { background: var(--site-leaf); border-color: var(--site-leaf); color: #fffaf1; box-shadow: none; }

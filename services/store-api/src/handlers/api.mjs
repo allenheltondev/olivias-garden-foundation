@@ -4,7 +4,7 @@ import {
   getCorrelationId,
   jsonResponse,
   mapApiError,
-  normalizeRoutePath,
+  resolveRoutePath,
   parseJsonBody
 } from '../services/http.mjs';
 import {
@@ -51,7 +51,7 @@ export async function handler(event) {
   const correlationId = getCorrelationId(event);
   const method = getMethod(event);
   const rawPath = getPath(event);
-  const path = normalizeRoutePath(rawPath);
+  const path = resolveRoutePath(event);
   const normalizedEvent = { ...event, rawPath: path, path };
 
   logger.info('Request received', {

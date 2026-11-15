@@ -557,6 +557,9 @@ jobs:
       - name: Build check
         run: npm --workspace @olivias/store run build
 
+      - name: Test store interactions
+        run: npm --workspace @olivias/store run test
+
   backend-functions-tests:
     name: GRN Backend Functions (Node.js) Lint & Tests
     if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true')

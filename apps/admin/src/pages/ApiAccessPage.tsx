@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Card, FormFeedback, SectionHeading, Textarea } from '@olivias/ui';
+import { Button, Card, FormFeedback, PageHeading, Textarea, EmptyState } from '@olivias/ui';
 import {
   decideApiAccessRequest,
   listApiAccessRequests,
@@ -92,10 +92,9 @@ export function ApiAccessPage({ session }: ApiAccessPageProps) {
 
   return (
     <section className="admin-section">
-      <SectionHeading
-        title="API access"
-        body="Growers asking to integrate with the Good Roots API. Approving lets them create one key from their own settings — the key itself never passes through here."
-      />
+      <PageHeading title="API access">
+        <p>Growers asking to integrate with the Good Roots API. Approving lets them create one key from their own settings — the key itself never passes through here.</p>
+      </PageHeading>
 
       <div className="admin-tabs" role="tablist">
         {STATUS_TABS.map((tab) => (
@@ -116,14 +115,8 @@ export function ApiAccessPage({ session }: ApiAccessPageProps) {
 
       {loading ? <p>Loading requests…</p> : null}
 
-      {!loading && requests.length === 0 ? (
-        <Card padding="6">
-          <p>
-            {status === 'pending'
-              ? 'Nothing waiting for review.'
-              : `No ${status} requests yet.`}
-          </p>
-        </Card>
+      {!loading && !error && requests.length === 0 ? (
+        <EmptyState compact icon="journal" title={status === 'pending' ? 'Nothing waiting for review' : `No ${status} requests yet`}><p>Use the status filters to review other API access requests.</p></EmptyState>
       ) : null}
 
       <ul className="admin-list" aria-label="API access requests">

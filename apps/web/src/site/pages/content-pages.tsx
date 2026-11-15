@@ -1,4 +1,4 @@
-import { Button, Card, FormFeedback, Input, Select, Textarea } from '@olivias/ui';
+import { Button, Card, FormFeedback, GardenIcon, Input, Select, Textarea } from '@olivias/ui';
 import { lazy, Suspense, useState, type FormEvent, type MouseEvent } from 'react';
 import type { AuthSession } from '../../auth/session';
 import {
@@ -373,8 +373,9 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
       />
 
       <div className="stack-grid get-involved-grid">
-        <Card title="Start with seeds. Literally." className="get-involved-card">
-          <p className="get-involved-card__eyebrow">Easiest first step</p>
+        <Card className="get-involved-card">
+          <div className="get-involved-card__top"><GardenIcon name="seeds" /><span className="participation-status">Available now</span></div>
+          <h2>Start with seeds. Literally.</h2>
           <p>
             The easiest way into this is okra. It&apos;s one of the most forgiving plants you can grow.
             It tolerates heat, bounces back from neglect, and produces more than you expect.
@@ -385,35 +386,37 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
           }}>Request your free okra seeds</CtaButton>
         </Card>
 
-        <Card title="Want to help in person?" className="get-involved-card">
-          <p className="get-involved-card__eyebrow">In person</p>
+        <Card className="get-involved-card">
+          <div className="get-involved-card__top"><GardenIcon name="tools" /><span className="participation-status">Join the interest list</span></div>
+          <h2>Want to help in person?</h2>
           <p>
             We aren&apos;t open for visits or volunteer days yet. When we are, the work will be
             real: garden prep, animal care, and whatever else needs doing that week. If
             you&apos;d like to be part of it, let us know and we&apos;ll reach out when the
             gate opens.
           </p>
-          <CtaButton href="/contact" onClick={(event) => {
+          <CtaButton variant="secondary" href="/contact" onClick={(event) => {
             event?.preventDefault?.();
             onNavigate('/contact');
           }}>Tell us you&apos;re interested</CtaButton>
         </Card>
 
-        <Card title="Hands-on workshops." className="get-involved-card">
-          <p className="get-involved-card__eyebrow">Workshops</p>
+        <Card className="get-involved-card">
+          <div className="get-involved-card__top"><GardenIcon name="bed" /><span className="participation-status">Browse workshops</span></div>
+          <h2>Hands-on workshops.</h2>
           <p>
-            We&apos;re planning workshops built around real tasks and hands-on learning, not
-            classroom-style theory. Nothing is on the calendar yet. Tell us what you&apos;d
-            want to learn, and you&apos;ll hear about the first sessions before anyone else.
+            Learn through real tasks in the garden, from garden prep to food preservation.
+            Browse upcoming sessions, check registration, or share what you&apos;d like to learn.
           </p>
-          <CtaButton href="/workshops" onClick={(event) => {
+          <CtaButton variant="secondary" href="/workshops" onClick={(event) => {
             event?.preventDefault?.();
             onNavigate('/workshops');
-          }}>See what&apos;s planned</CtaButton>
+          }}>View workshops</CtaButton>
         </Card>
 
-        <Card title="Help us map where food is growing." className="get-involved-card">
-          <p className="get-involved-card__eyebrow">Online</p>
+        <Card className="get-involved-card">
+          <div className="get-involved-card__top"><GardenIcon name="map" /><span className="participation-status">Available now</span></div>
+          <h2>Help us map where food is growing.</h2>
           <p>
             The Okra Project is a living map of people growing food. If you&apos;re growing food
             anywhere, add your pin. Every garden on the map makes the case that this is normal,
@@ -1427,15 +1430,23 @@ export function GoodRootsPage({
     <div className="good-roots-page">
       <PageHero
         className="good-roots-hero"
+        titleClassName="good-roots-hero__title"
         title={hero.title}
         body={hero.body}
         aside={(
-          <ResponsiveImage
-            className="good-roots-hero__image"
-            src="/images/home/produce-basket.jpg"
-            alt="Basket of harvested produce from the garden."
-            sizes="(min-width: 760px) 28rem, 0px"
-          />
+          <figure className="good-roots-product-preview">
+            <div className="good-roots-product-preview__bar"><span>Good Roots Network</span><span>Sample garden</span></div>
+            <ResponsiveImage
+              src="/images/good-roots/app-garden-map.jpg"
+              width="1616"
+              height="1212"
+              alt="Good Roots garden designer showing vegetable beds laid out across a garden."
+              sizes="(min-width: 1200px) 26rem, (min-width: 760px) 36vw, calc(100vw - 2rem)"
+              loading="eager"
+              fetchPriority="high"
+            />
+            <figcaption>Your garden, bed by bed. Plan your first one for free.</figcaption>
+          </figure>
         )}
         actions={!authSession ? (
           <>
@@ -1745,43 +1756,7 @@ export function ContactPage() {
       />
 
       <div className="contact-grid">
-        <Card title="Reach us directly" className="contact-card">
-          <p className="contact-card__eyebrow">Quickest way</p>
-          <p>
-            Email is the fastest path to us. If you're sharing photos of your garden or a long
-            story, it's also the easiest format for us to reply to carefully.
-          </p>
-          <p className="contact-meta">
-            Email:{' '}
-            <a className="contact-meta__link" href={`mailto:${CONTACT_EMAIL}`}>
-              {CONTACT_EMAIL}
-            </a>
-          </p>
-          <p className="contact-meta">
-            Legal name: {foundationOrganization.legalName}
-            <br />
-            EIN: {foundationOrganization.ein}
-            <br />
-            Mailing address: {foundationOrganization.mailingAddress.line1},{' '}
-            {foundationOrganization.mailingAddress.city},{' '}
-            {foundationOrganization.mailingAddress.region}{' '}
-            {foundationOrganization.mailingAddress.postalCode}
-          </p>
-          <ul className="site-list contact-card__list">
-            <li>
-              <a href={instagramUrl} target="_blank" rel="noreferrer">Instagram</a> — day-to-day work, harvests, animals
-            </li>
-            <li>
-              <a href={facebookUrl} target="_blank" rel="noreferrer">Facebook</a> — events and community posts
-            </li>
-          </ul>
-          <p className="page-text">
-            We try to respond within a few days. If it has been longer than that, a second note
-            is welcome — things occasionally slip during busy weeks on the land.
-          </p>
-        </Card>
-
-        <Card title="Send a message" className="contact-card">
+        <Card title="Send a message" className="contact-card contact-card--form">
           <p className="contact-card__eyebrow">Prefer a form</p>
           <p className="page-text">
             Send a note here and it will go straight to our inbox. Or email us directly at{' '}
@@ -1842,6 +1817,42 @@ export function ContactPage() {
               <FormFeedback tone={feedback.type}>{feedback.message}</FormFeedback>
             ) : null}
           </form>
+        </Card>
+
+        <Card title="Reach us directly" className="contact-card contact-card--details">
+          <p className="contact-card__eyebrow">Quickest way</p>
+          <p>
+            Email is the fastest path to us. If you're sharing photos of your garden or a long
+            story, it's also the easiest format for us to reply to carefully.
+          </p>
+          <p className="contact-meta">
+            Email:{' '}
+            <a className="contact-meta__link" href={`mailto:${CONTACT_EMAIL}`}>
+              {CONTACT_EMAIL}
+            </a>
+          </p>
+          <p className="contact-meta">
+            Legal name: {foundationOrganization.legalName}
+            <br />
+            EIN: {foundationOrganization.ein}
+            <br />
+            Mailing address: {foundationOrganization.mailingAddress.line1},{' '}
+            {foundationOrganization.mailingAddress.city},{' '}
+            {foundationOrganization.mailingAddress.region}{' '}
+            {foundationOrganization.mailingAddress.postalCode}
+          </p>
+          <ul className="site-list contact-card__list">
+            <li>
+              <a href={instagramUrl} target="_blank" rel="noreferrer">Instagram</a> — day-to-day work, harvests, animals
+            </li>
+            <li>
+              <a href={facebookUrl} target="_blank" rel="noreferrer">Facebook</a> — events and community posts
+            </li>
+          </ul>
+          <p className="page-text">
+            We try to respond within a few days. If it has been longer than that, a second note
+            is welcome — things occasionally slip during busy weeks on the land.
+          </p>
         </Card>
       </div>
     </>

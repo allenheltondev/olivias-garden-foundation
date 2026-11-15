@@ -1184,3 +1184,30 @@ body {
     animation: none;
   }
 }
+/* Product photography shares one quiet frame; contain preserves printed designs. */
+.store-product-card__media { aspect-ratio: 1; background: #f4f0e7; }
+.store-product-card__media img,
+.store-product-detail__main-image,
+.store-product-detail__thumb img,
+.store-cart__line-media img { object-fit: contain; background: #f4f0e7; }
+.store-product-detail__main-image { aspect-ratio: 1; }
+.store-product-card__placeholder { min-height: 100%; display: grid; align-content: center; justify-items: center; gap: 0.5rem; background: #f4f0e7; color: var(--og-color-soil); font-size: 0.85rem; padding: 1rem; }
+.store-product-card__placeholder::after { content: none; }
+.store-product-card__placeholder .og-garden-icon { width: 3.5rem; height: 3.5rem; }
+.store-cart__line-media .store-product-card__placeholder { padding: 0.4rem; }
+.store-cart__line-media .store-product-card__placeholder span { display: none; }
+.store-product-card:hover { transform: none; box-shadow: 0 8px 24px rgba(35, 27, 22, 0.08); }
+.store-product-card:hover .store-product-card__media img { transform: none; }
+.store-product-card__body h2 { margin: 0; font-size: 1.15rem; line-height: 1.35; }
+.store-product-card__body h2 a { color: inherit; text-decoration: none; }
+.store-product-card__body h2 a:hover { color: var(--og-color-moss); }
+.store-product-card__footer { flex-wrap: wrap; }
+.store-product-detail__availability { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--og-color-moss); }
+.store-variations__group { border: 0; padding: 0; margin: 0; min-width: 0; }
+.store-variations__label { margin-bottom: 0.6rem; }
+.store-variations__option { display: inline-flex; align-items: center; min-height: 2.75rem; position: relative; }
+.store-variations__input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.store-variations__option:has(:focus-visible) { outline: 2px solid var(--og-color-moss); outline-offset: 3px; }
+.store-product-detail__buy, .store-cart__summary-card { box-shadow: 0 8px 24px rgba(35, 27, 22, 0.06); }
+.store-shell-main__inner, .store-product-detail__buy { min-width: 0; }
+.store-cart__line-body, .store-product-detail__description { overflow-wrap: anywhere; }

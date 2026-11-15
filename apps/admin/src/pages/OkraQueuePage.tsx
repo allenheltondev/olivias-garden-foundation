@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, FormFeedback, PageHeading, EmptyState } from '@olivias/ui';
 import {
   listOkraReviewQueue,
   reviewOkraSubmission,
@@ -260,11 +260,9 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
   return (
     <section className="admin-section">
       <div className="admin-section__header">
-        <SectionHeading
-          eyebrow="Okra"
-          title={`Pending submissions (${total})`}
-          body="Approve new submissions and edits. Approved submissions stay live while proposed edits wait here."
-        />
+        <PageHeading title={`Pending submissions (${total})`}>
+          <p>Approve new submissions and edits. Approved submissions stay live while proposed edits wait here.</p>
+        </PageHeading>
         <Button
           className="admin-refresh-action"
           variant="outline"
@@ -282,8 +280,8 @@ export function OkraQueuePage({ session }: OkraQueuePageProps) {
 
       {loading && queue.length === 0 ? (
         <Card><p>Loading okra submissions…</p></Card>
-      ) : queue.length === 0 ? (
-        <Card><p>No pending okra submissions.</p></Card>
+      ) : !error && queue.length === 0 ? (
+        <EmptyState compact icon="map" title="No pending okra submissions"><p>New submissions and proposed edits will appear here for review.</p></EmptyState>
       ) : (
         <div className="admin-stack">
           {queue.map((submission) => (

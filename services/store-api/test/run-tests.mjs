@@ -4,7 +4,7 @@ import {
   requireUserContext,
   resolveOptionalAuthContext
 } from '../src/services/auth.mjs';
-import { mapApiError, normalizeRoutePath, parseJsonBody, readRawBody } from '../src/services/http.mjs';
+import { mapApiError, normalizeRoutePath, resolveRoutePath, parseJsonBody, readRawBody } from '../src/services/http.mjs';
 import {
   createCheckoutSession,
   getAllowedRedirectOrigins,
@@ -117,6 +117,19 @@ async function testAuthorizerContextIsHonoredForDirectInvoke() {
 
 function testHttpHelpers() {
   assert.equal(normalizeRoutePath('/api/products'), '/products');
+  assert.equal(normalizeRoutePath('/store/products'), '/products');
+  assert.equal(normalizeRoutePath('/store/orders'), '/orders');
+  assert.equal(normalizeRoutePath('/store/admin/orders'), '/admin/orders');
+  assert.equal(normalizeRoutePath('/store'), '/');
+  assert.equal(normalizeRoutePath('/api'), '/');
+  assert.equal(normalizeRoutePath('/products'), '/products');
+  assert.equal(normalizeRoutePath('/storefront/products'), '/storefront/products');
+  assert.equal(resolveRoutePath({ path: '/store/products', pathParameters: { proxy: 'products' } }), '/products');
+  assert.equal(resolveRoutePath({ path: '/api/checkout', pathParameters: { proxy: 'checkout' } }), '/checkout');
+  assert.equal(resolveRoutePath({ rawPath: '/store/products/garden-shirt' }), '/products/garden-shirt');
+  assert.equal(resolveRoutePath({ path: '/orders', pathParameters: null }), '/orders');
+  assert.equal(resolveRoutePath({ path: '/store/products', pathParameters: { proxy: '' } }), '/products');
+  assert.equal(resolveRoutePath({}), '/');
   assert.equal(mapApiError(new Error('Product not found'), 'cid').statusCode, 404);
   assert.equal(mapApiError(new Error('Cart is empty'), 'cid').statusCode, 400);
   assert.equal(mapApiError(new Error('Authentication required'), 'cid').statusCode, 401);

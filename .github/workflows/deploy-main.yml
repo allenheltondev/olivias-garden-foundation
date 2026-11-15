@@ -1329,6 +1329,12 @@ jobs:
           echo "rum-identity-pool-id=$RUM_IDENTITY_POOL_ID" >> $GITHUB_OUTPUT
           echo "rum-guest-role-arn=$RUM_GUEST_ROLE_ARN" >> $GITHUB_OUTPUT
 
+      - name: Validate public store API contract
+        run: |
+          npx --yes newman@6.2.1 run postman/store-api-smoke.postman_collection.json \
+            --env-var "baseUrl=${{ steps.get-outputs.outputs.api-url }}" \
+            --timeout-request 30000
+
   deploy-store-frontend:
     name: Deploy Store Frontend
     runs-on: ubuntu-latest

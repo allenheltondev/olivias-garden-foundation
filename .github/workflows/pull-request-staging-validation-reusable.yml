@@ -1059,6 +1059,12 @@ jobs:
           echo "frontend-bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront-distribution-id=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
 
+      - name: Validate public store API contract
+        run: |
+          npx --yes newman@6.2.1 run postman/store-api-smoke.postman_collection.json \
+            --env-var "baseUrl=${{ steps.get-outputs.outputs.api-url }}" \
+            --timeout-request 30000
+
   deploy-staging-store-frontend:
     name: Deploy Store Staging Frontend
     runs-on: ubuntu-latest
