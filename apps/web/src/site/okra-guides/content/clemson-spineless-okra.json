@@ -27,7 +27,7 @@
   "order": 3,
   "seedCallToAction": "hero",
   "intro": [
-    "Clemson Spineless is the okra Olivia grew, and it's the variety in every free seed packet the foundation mails."
+    "Clemson Spineless is the okra Olivia grew, and it's the variety in every free seed packet the foundation mails. We've grown it since 2022. We chose it because we loved the taste and how vigorously it grows here in North Texas."
   ],
   "sections": [
     {
@@ -42,6 +42,7 @@
             "Bred by the South Carolina Experiment Station",
             "Smooth, dark green pods without spines",
             "Recommended for Texas by Texas A&M AgriLife",
+            "Grows over 6 feet tall in our North Texas garden",
             "First pods about 2 months after planting"
           ]
         }
@@ -67,7 +68,7 @@
         },
         {
           "type": "paragraph",
-          "text": "Plants are tall and upright. Like most okra, they [flower about 2 months after planting](https://agrilifeextension.tamu.edu/library/gardening/okra/), with pods ready to pick a few days later."
+          "text": "Plants are tall and upright. In our McKinney garden they grow over 6 feet tall. Like most okra, they [flower about 2 months after planting](https://agrilifeextension.tamu.edu/library/gardening/okra/). When we plant in mid April, the first pods are ready in mid June."
         },
         {
           "type": "image",
@@ -84,6 +85,11 @@
         {
           "type": "paragraph",
           "text": "Yes. Texas A&M AgriLife lists Clemson Spineless among [the best okra varieties to grow in Texas](https://agrilifeextension.tamu.edu/library/gardening/okra/). It loves heat and keeps producing through the summer when given full sun and regular water."
+        },
+        {
+          "type": "tip",
+          "title": "From Olivia's garden",
+          "text": "Clemson Spineless loves the heat, as long as you keep it watered. It keeps producing straight through our North Texas summers."
         }
       ]
     },
@@ -116,6 +122,11 @@
               "A [compact plant](https://agrilifeextension.tamu.edu/library/gardening/okra/) for smaller spaces."
             ]
           ]
+        },
+        {
+          "type": "tip",
+          "title": "From Olivia's garden",
+          "text": "We've also grown a Burgundy variety. It grew fine, but it wasn't as tasty or as productive as Clemson Spineless."
         }
       ]
     },
@@ -136,8 +147,12 @@
       "answer": "It's named for its spineless pods, which are smooth to handle. It was bred by the South Carolina Experiment Station and won an All-America Selections award in 1939."
     },
     {
+      "question": "How tall does Clemson Spineless okra grow?",
+      "answer": "Tall. In our McKinney, Texas garden the plants grow over 6 feet tall, so give each one plenty of room. We space ours 3 to 4 feet apart."
+    },
+    {
       "question": "How many days until Clemson Spineless okra is ready?",
-      "answer": "Plants usually flower about 2 months after planting, and the first pods are ready to pick a few days after that."
+      "answer": "About 2 months. Plants usually flower about 2 months after planting, with pods ready a few days later. When we plant in mid April, our first pods come in mid June."
     },
     {
       "question": "Can I get free Clemson Spineless okra seeds?",
