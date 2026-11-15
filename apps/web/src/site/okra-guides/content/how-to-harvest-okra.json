@@ -3,8 +3,8 @@
   "status": "published",
   "title": "How to harvest okra",
   "seoTitle": "How to Harvest Okra: When to Pick and How Often",
-  "description": "Pick okra pods at 2 to 5 inches, every day or two, before they turn woody. Why to use pruners and gloves, and how to store and eat your harvest.",
-  "summary": "Pick okra pods when they're 2 to 5 inches long, and pick every day or two. A pod goes from just right to too big in about 2 days, and regular picking keeps the plant producing.",
+  "description": "Pick okra pods at 2 to 4 inches, every day or two, before they turn woody. Why to use pruners and gloves, and how to store and eat your harvest.",
+  "summary": "Pick okra pods when they're about 2 to 4 inches long, and pick every day or two. A pod goes from just right to too big in about 2 days, and regular picking keeps the plant producing.",
   "heroImage": {
     "src": "/images/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods.jpg",
     "alt": "Two rows of freshly picked green okra pods laid out on a white towel, most of them a few inches long."
@@ -46,10 +46,10 @@
           "type": "list",
           "items": [
             "First pods about 2 months after planting",
-            "Pick at 2 to 5 inches long",
+            "Pick at about 2 to 4 inches long",
             "Pick every day or two",
             "Cut with pruners, and wear gloves",
-            "Keep unwashed and eat within about 3 days"
+            "Store unwashed, rinse before eating, and use within about 3 days"
           ]
         }
       ]
@@ -129,7 +129,7 @@
         },
         {
           "type": "paragraph",
-          "text": "We love okra fresh off the plant, no washing needed, as well as pickled, stir-fried with other vegetables, and of course fried."
+          "text": "We love okra fresh from the garden, as well as pickled, stir-fried with other vegetables, and of course fried. Whichever way you eat it, rinse the pods under running water just before eating or cooking."
         }
       ]
     }
@@ -137,7 +137,7 @@
   "faq": [
     {
       "question": "How big should okra be when you pick it?",
-      "answer": "About 2 to 5 inches long. Smaller pods are the most tender, and past about 5 inches most pods turn tough and woody."
+      "answer": "About 2 to 4 inches long, and smaller pods are the most tender. We pick our Clemson Spineless up to 5 inches, but past that they turn tough and woody."
     },
     {
       "question": "Why is my okra tough and woody?",
@@ -153,7 +153,7 @@
     },
     {
       "question": "Can you eat okra raw?",
-      "answer": "Yes. We love eating pods fresh off the plant. Pick them young and tender."
+      "answer": "Yes. We love eating young, tender pods fresh from the garden. Rinse them under running water first."
     }
   ]
 }
