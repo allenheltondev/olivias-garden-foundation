@@ -13,6 +13,7 @@ import {
   collectGuideLinks,
   formatGuideDate,
   guideRouteMeta,
+  guideSummary,
   parseInline,
   renderGuideFallbackHtml,
   renderGuideListHtml,
@@ -185,6 +186,41 @@ describe('validation', () => {
     assert.ok(errors.some((error) => /javascript:alert must be an internal path/.test(error)), errors.join('\n'));
   });
 
+  test('links nested inside bold text are rejected, even in drafts', async () => {
+    const guide = { ...readFixture('example-related-guide'), status: 'draft' };
+    guide.intro = ['**See the [map](/okra)** for more.'];
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /link inside bold text won't render/.test(error)), errors.join('\n'));
+  });
+
+  test('semicolons and decorative bold are flagged as house-style warnings', async () => {
+    const guide = readFixture('example-related-guide');
+    guide.intro = ['Plant in spring; harvest in summer.'];
+    guide.sections[0].blocks = [{ type: 'list', items: ['**Bold start** of an item.'] }];
+    const { errors, warnings } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(warnings.some((warning) => /example-related-guide.*semicolon/.test(warning)), warnings.join('\n'));
+    assert.ok(warnings.some((warning) => /example-related-guide.*bold/.test(warning)), warnings.join('\n'));
+    assert.equal(errors.some((error) => /example-related-guide/.test(error)), false, errors.join('\n'));
+  });
+
+  test('section placement only accepts "main" or "aside"', async () => {
+    const guide = readFixture('example-related-guide');
+    guide.sections[0].placement = 'sidebar';
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /placement must be "main" or "aside"/.test(error)), errors.join('\n'));
+    guide.sections[0].placement = 'aside';
+    assert.deepEqual((await validate(readFixture('example-okra-guide'), guide)).errors, []);
+  });
+
+  test('seedCallToAction only accepts "callout" or "hero"', async () => {
+    const guide = readFixture('example-related-guide');
+    guide.seedCallToAction = 'sidebar';
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /seedCallToAction must be/.test(error)), errors.join('\n'));
+    guide.seedCallToAction = 'hero';
+    assert.deepEqual((await validate(readFixture('example-okra-guide'), guide)).errors, []);
+  });
+
   test('structural problems are errors even for drafts', async () => {
     const guide = { ...readFixture('example-related-guide'), status: 'draft', slug: 'submissions' };
     guide.sections = [{ id: 'Bad Id', title: '', blocks: [{ type: 'video' }] }];
@@ -241,7 +277,8 @@ describe('structured data and fallback HTML', () => {
     assert.match(html, /<h3>Is this a real guide\?<\/h3>/);
     assert.match(html, /Request seeds and see the Okra Project map/);
     assert.match(html, /<a href="\/okra\/example-related-guide">Example related guide<\/a>/);
-    assert.match(html, /Reviewed by Fixture Reviewer on 2026-11-15/);
+    // The reviewer is an internal record only; it never appears on the page.
+    assert.doesNotMatch(html, /Fixture Reviewer|Reviewed by/);
   });
 
   test('route metadata marks drafts noindex and uses the page-specific card', () => {
@@ -255,8 +292,15 @@ describe('structured data and fallback HTML', () => {
       ogType: 'article',
       allowIndex: true,
       prerender: true,
+      showInFooter: false,
     });
+    assert.equal(guideRouteMeta({ ...guide, showInFooter: true }).showInFooter, true);
     assert.equal(guideRouteMeta({ ...guide, status: 'draft' }).allowIndex, false);
+  });
+
+  test('the slim summary carries the seed button placement, defaulting to the callout', () => {
+    assert.equal(guideSummary(guide).seedCallToAction, 'callout');
+    assert.equal(guideSummary({ ...guide, seedCallToAction: 'hero' }).seedCallToAction, 'hero');
   });
 
   test('hub list and dates render', () => {
@@ -280,10 +324,20 @@ describe('llms.txt section', () => {
 });
 
 describe('social card generator', () => {
-  test('fits long headlines in four lines or fewer', () => {
+  test('fits headlines in three lines or fewer, shrinking the font if needed', () => {
+    const short = layoutHeadline("Free okra seeds from Olivia's garden");
+    assert.equal(short.fontSize, 64);
+    assert.ok(short.lines.length <= 3);
     const { lines, fontSize } = layoutHeadline('When to plant okra in North Texas and across the South');
-    assert.ok(lines.length <= 4);
+    assert.ok(lines.length <= 3);
     assert.ok(fontSize >= 44 && fontSize <= 64);
+  });
+
+  test('refuses a headline that needs more than three lines instead of cutting it off', () => {
+    assert.throws(
+      () => layoutHeadline('A very long headline that keeps going well past anything a social card could ever show at a glance'),
+      /needs more than 3 lines; shorten it/,
+    );
   });
 
   test('renders a 1200x630 card from a photo', async () => {

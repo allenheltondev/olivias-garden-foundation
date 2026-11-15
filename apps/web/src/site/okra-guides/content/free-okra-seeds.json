@@ -1,0 +1,85 @@
+{
+  "slug": "free-okra-seeds",
+  "status": "published",
+  "title": "Free okra seeds",
+  "seoTitle": "Free Okra Seeds by Mail",
+  "description": "Request a free packet of 10 Clemson Spineless okra seeds from Olivia's Garden Foundation, mailed in the US and Canada. No account needed.",
+  "summary": "Olivia's Garden Foundation mails a free packet of 10 Clemson Spineless okra seeds to anyone in the United States or Canada. Request yours with a short form. No account needed.",
+  "heroImage": {
+    "src": "/images/okra/guides/free-okra-seeds/okra-seed-packet.jpg",
+    "alt": "A kraft seed packet hand-labeled Clemson Spineless okra, with a handful of dark seeds inside, surrounded by three fresh okra pods."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/free-okra-seeds.jpg",
+    "alt": "Free okra seeds from Olivia's garden, with a hand-labeled Clemson Spineless okra seed packet and fresh pods."
+  },
+  "datePublished": "2026-11-14",
+  "dateModified": "2026-11-14",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-14"
+  },
+  "targetQueries": [
+    "free okra seeds",
+    "free okra seeds by mail",
+    "okra seed giveaway",
+    "free garden seeds",
+    "free Clemson Spineless okra seeds"
+  ],
+  "related": [],
+  "order": 1,
+  "seedCallToAction": "hero",
+  "showInFooter": true,
+  "intro": [
+    "Okra was Olivia's favorite thing to grow. Her family has kept her plants going, and every packet we mail comes from that same line."
+  ],
+  "sections": [
+    {
+      "id": "what-you-get",
+      "title": "What you get",
+      "placement": "aside",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "10 Clemson Spineless okra seeds, a variety with smooth pods that loves sun and heat.",
+            "Free mailing by USPS anywhere in the United States or Canada.",
+            "Local pickup instead, if you're near McKinney, Texas."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "once-your-seeds-arrive",
+      "title": "Once your seeds arrive",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "Plant according to your hardiness zone, straight into the sunniest spot you have. Okra doesn't like being transplanted.",
+            "Let a few pods dry on the plant at the end of the season, and you'll have seed for next year.",
+            "Share a photo of your patch on the [Okra Project map](/okra) so others can see where Olivia's okra is growing."
+          ]
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "Are the okra seeds really free?",
+      "answer": "Yes. The seeds and the mailing are free, and you don't need an account."
+    },
+    {
+      "question": "How are the okra seeds shipped?",
+      "answer": "By standard USPS mail, so delivery time depends on the mail where you live. We'll email you about your request."
+    },
+    {
+      "question": "Can schools or groups request free okra seeds?",
+      "answer": "Schools, garden clubs, and other groups should reach out through our [Partner with us](/partners) page rather than the seed request form."
+    },
+    {
+      "question": "Will my address show on the Okra Project map?",
+      "answer": "No. When we mail your seeds, a \"seeds sent\" pin shows only your city and the month. Your first name appears only if you choose to show it."
+    }
+  ]
+}

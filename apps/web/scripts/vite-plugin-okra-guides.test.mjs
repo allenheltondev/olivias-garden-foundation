@@ -6,7 +6,8 @@
 // rendered blank on `npm run dev` (production builds were unaffected).
 
 import assert from 'node:assert/strict';
-import { statSync } from 'node:fs';
+import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -61,4 +62,19 @@ test('the registry exposes summaries, routes, and a lazy loader per guide', () =
 test('each guide content module exports that guide', () => {
   const { code } = loadAsDevServer('virtual:okra-guide-content/example-okra-guide');
   assert.match(code, /^export default \{"slug":"example-okra-guide"/);
+});
+
+test('an empty content folder yields an empty registry and watches nothing', () => {
+  const emptyDir = mkdtempSync(join(tmpdir(), 'okra-guides-empty-'));
+  process.env.OKRA_GUIDES_CONTENT_DIR = emptyDir;
+  try {
+    const { code, watched } = loadAsDevServer('virtual:okra-guides');
+    assert.deepEqual(watched, []);
+    assert.match(code, /export const okraGuideSummaries = \[\];/);
+    assert.match(code, /export const okraGuideRoutes = \[\];/);
+    assert.match(code, /export const okraGuideLoaders = \{\n\n\};/);
+  } finally {
+    process.env.OKRA_GUIDES_CONTENT_DIR = fixtureDir;
+    rmSync(emptyDir, { recursive: true, force: true });
+  }
 });

@@ -402,6 +402,30 @@
         ]
       }
     },
+    "okra/guides/free-okra-seeds/okra-seed-packet.jpg": {
+      "original": "okra/guides/free-okra-seeds/okra-seed-packet.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/free-okra-seeds/okra-seed-packet-480.avif",
+            "bytes": 58308
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/free-okra-seeds/okra-seed-packet-768.avif",
+            "bytes": 153620
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/free-okra-seeds/okra-seed-packet-1205.avif",
+            "bytes": 308017
+          }
+        ]
+      }
+    },
     "okra/olivia-okra.jpg": {
       "original": "okra/olivia-okra.jpg",
       "width": 978,
