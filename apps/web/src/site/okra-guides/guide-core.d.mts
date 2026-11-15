@@ -15,7 +15,22 @@ export type GuideBlock =
   | { type: 'list'; ordered?: boolean; items: string[] }
   | { type: 'tip'; title?: string; text: string }
   | { type: 'table'; caption?: string; headers: string[]; rows: string[][] }
-  | { type: 'image'; src: string; alt: string; caption?: string };
+  | { type: 'image'; src: string; alt: string; caption?: string }
+  | ZoneLookupBlock;
+
+/** One row of a zoneLookup block: the planting advice for a range of hardiness zones. */
+export interface ZoneLookupRow {
+  /** Whole USDA zone numbers (1-13) this row covers. Every zone must be in exactly one row. */
+  zones: number[];
+  plant: string;
+}
+
+/** A ZIP code lookup that finds the reader's hardiness zone and highlights its row. */
+export interface ZoneLookupBlock {
+  type: 'zoneLookup';
+  caption?: string;
+  rows: ZoneLookupRow[];
+}
 
 export interface GuideSection {
   id: string;
@@ -42,8 +57,10 @@ export interface OkraGuide {
   seoTitle?: string;
   description: string;
   summary: string;
-  heroImage: GuideImage;
-  socialImage: GuideImage;
+  /** Required to publish. Drafts may leave it out until the photo exists. */
+  heroImage?: GuideImage;
+  /** Required to publish. Drafts may leave it out until the card exists. */
+  socialImage?: GuideImage;
   datePublished: string;
   dateModified?: string;
   review?: GuideReview;
@@ -117,3 +134,5 @@ export function inlineToHtml(text: string): string;
 export function renderGuideFallbackHtml(guide: OkraGuide, relatedGuides?: Array<Pick<OkraGuide, 'slug' | 'title'>>): string;
 export function renderGuideListHtml(guides: Array<Pick<OkraGuide, 'slug' | 'title' | 'description'>>): string;
 export function formatGuideDate(isoDate: string | undefined): string;
+export const ZONE_LOOKUP_HEADERS: string[];
+export function zoneRowLabel(zones: number[]): string;

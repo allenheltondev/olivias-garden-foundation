@@ -221,6 +221,27 @@ describe('validation', () => {
     assert.deepEqual((await validate(readFixture('example-okra-guide'), guide)).errors, []);
   });
 
+  test('a zone lookup must answer every hardiness zone exactly once', async () => {
+    const guide = readFixture('example-related-guide');
+    const rows = [
+      { zones: [1, 2, 3, 4], plant: 'June' },
+      { zones: [5, 6, 7], plant: 'May' },
+      { zones: [8, 9, 10, 11, 12, 13], plant: 'April' },
+    ];
+    guide.sections[0].blocks = [{ type: 'zoneLookup', rows }];
+    assert.deepEqual((await validate(readFixture('example-okra-guide'), guide)).errors, []);
+
+    guide.sections[0].blocks = [{ type: 'zoneLookup', rows: [rows[0], { ...rows[1], zones: [4, 5, 6] }, rows[2]] }];
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /no row for zone 7/.test(error)), errors.join('\n'));
+    assert.ok(errors.some((error) => /covers zone 4 more than once/.test(error)), errors.join('\n'));
+
+    guide.sections[0].blocks = [{ type: 'zoneLookup', rows: [{ zones: ['8b'], plant: '' }] }];
+    const malformed = (await validate(readFixture('example-okra-guide'), guide)).errors;
+    assert.ok(malformed.some((error) => /whole zone numbers from 1 to 13/.test(error)), malformed.join('\n'));
+    assert.ok(malformed.some((error) => /plant is required/.test(error)), malformed.join('\n'));
+  });
+
   test('structural problems are errors even for drafts', async () => {
     const guide = { ...readFixture('example-related-guide'), status: 'draft', slug: 'submissions' };
     guide.sections = [{ id: 'Bad Id', title: '', blocks: [{ type: 'video' }] }];
@@ -279,6 +300,30 @@ describe('structured data and fallback HTML', () => {
     assert.match(html, /<a href="\/okra\/example-related-guide">Example related guide<\/a>/);
     // The reviewer is an internal record only; it never appears on the page.
     assert.doesNotMatch(html, /Fixture Reviewer|Reviewed by/);
+  });
+
+  test('fallback HTML renders a zone lookup as the full zone table', () => {
+    const html = renderGuideFallbackHtml({
+      ...guide,
+      sections: [{
+        id: 'by-zone',
+        title: 'By zone',
+        blocks: [{
+          type: 'zoneLookup',
+          caption: 'Okra planting by zone',
+          rows: [
+            { zones: [3, 4], plant: 'Mid June' },
+            { zones: [8], plant: 'Mid April, see [the hub](/okra)' },
+            { zones: [11, 12, 13], plant: 'Any time' },
+          ],
+        }],
+      }],
+    });
+    assert.match(html, /<caption>Okra planting by zone<\/caption>/);
+    assert.match(html, /<th scope="col">Hardiness zone<\/th><th scope="col">Rough planting window<\/th>/);
+    assert.match(html, /<td>Zones 3 and 4<\/td><td>Mid June<\/td>/);
+    assert.match(html, /<td>Zone 8<\/td><td>Mid April, see <a href="\/okra">the hub<\/a><\/td>/);
+    assert.match(html, /<td>Zones 11 to 13<\/td>/);
   });
 
   test('route metadata marks drafts noindex and uses the page-specific card', () => {

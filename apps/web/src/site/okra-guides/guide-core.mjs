@@ -89,6 +89,8 @@ function blockTexts(block) {
       return [...block.headers, ...block.rows.flat()];
     case 'image':
       return [block.caption ?? ''];
+    case 'zoneLookup':
+      return [block.caption ?? '', ...block.rows.map((row) => row.plant)];
     default:
       return [];
   }
@@ -240,6 +242,17 @@ export function inlineToHtml(text) {
     .join('');
 }
 
+/** "Zones 3 and 4", "Zone 8", "Zones 11 to 13". */
+export function zoneRowLabel(zones) {
+  const sorted = [...zones].sort((a, b) => a - b);
+  if (sorted.length === 1) return `Zone ${sorted[0]}`;
+  if (sorted.length === 2) return `Zones ${sorted[0]} and ${sorted[1]}`;
+  return `Zones ${sorted[0]} to ${sorted[sorted.length - 1]}`;
+}
+
+/** Column headings shared by the zoneLookup table on the page and in the fallback HTML. */
+export const ZONE_LOOKUP_HEADERS = ['Hardiness zone', 'Rough planting window'];
+
 function blockToHtml(block) {
   switch (block.type) {
     case 'paragraph':
@@ -258,6 +271,14 @@ function blockToHtml(block) {
         `<tbody>${block.rows.map((row) => `<tr>${row.map((cell) => `<td>${inlineToHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`,
         '</table>',
       ].join('');
+    case 'zoneLookup':
+      // Crawlers and no-JS readers get the full table the lookup highlights.
+      return blockToHtml({
+        type: 'table',
+        caption: block.caption,
+        headers: ZONE_LOOKUP_HEADERS,
+        rows: block.rows.map((row) => [zoneRowLabel(row.zones), row.plant]),
+      });
     case 'image':
       return `<figure><img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" />${block.caption ? `<figcaption>${inlineToHtml(block.caption)}</figcaption>` : ''}</figure>`;
     default:

@@ -10,6 +10,7 @@ import {
   OKRA_HUB_PATH,
   parseInline,
 } from '../okra-guides/guide-core.mjs';
+import { ZoneLookup } from '../okra-guides/ZoneLookup';
 import { ResponsiveImage } from '../responsive-images';
 import { siteUrl } from '../routes';
 import { ensureStructuredData, removeStructuredData } from '../seo';
@@ -120,6 +121,8 @@ function GuideBlockView({ block, onNavigate }: { block: GuideBlock; onNavigate: 
           ) : null}
         </figure>
       );
+    case 'zoneLookup':
+      return <ZoneLookup block={block} renderText={(text) => <InlineText text={text} onNavigate={onNavigate} />} />;
     default:
       return null;
   }
@@ -341,16 +344,19 @@ export function OkraGuidePage({
           className={`okra-guide__rail${railFits ? ' okra-guide__rail--sticky' : ''}`}
           aria-label="About this guide"
         >
-          <figure className="page-photo okra-guide__hero-photo">
-            <ResponsiveImage
-              src={summary.heroImage.src}
-              alt={summary.heroImage.alt}
-              sizes="(max-width: 959px) 100vw, 22rem"
-              loading="eager"
-              fetchPriority="high"
-            />
-            {summary.heroImage.caption ? <figcaption>{summary.heroImage.caption}</figcaption> : null}
-          </figure>
+          {/* Published guides always have a photo (the validator requires it). Drafts may not yet. */}
+          {summary.heroImage ? (
+            <figure className="page-photo okra-guide__hero-photo">
+              <ResponsiveImage
+                src={summary.heroImage.src}
+                alt={summary.heroImage.alt}
+                sizes="(max-width: 959px) 100vw, 22rem"
+                loading="eager"
+                fetchPriority="high"
+              />
+              {summary.heroImage.caption ? <figcaption>{summary.heroImage.caption}</figcaption> : null}
+            </figure>
+          ) : null}
 
           {railExtras}
 

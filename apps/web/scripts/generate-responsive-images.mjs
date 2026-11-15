@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -90,11 +90,39 @@ async function generateVariant(sharp, sourcePath, outputPath, width, format) {
   await pipeline.toFile(outputPath);
 }
 
+/**
+ * Absolute paths of the variant files owned by the selected manifest entries.
+ * Paths that would resolve outside the generated output folder are ignored.
+ */
+export function staleVariantFiles(manifest, isSelected, publicRoot, generatedRoot) {
+  const root = `${path.resolve(generatedRoot)}${path.sep}`;
+  return Object.entries(manifest)
+    .filter(([key]) => isSelected(key))
+    .flatMap(([, entry]) => Object.values(entry?.variants ?? {}).flat())
+    .map((variant) => path.resolve(publicRoot, String(variant?.path ?? '')))
+    .filter((file) => file.startsWith(root));
+}
+
+async function readExistingManifest() {
+  try {
+    const existing = JSON.parse(await readFile(path.join(outputRoot, 'manifest.json'), 'utf8'));
+    return existing.images ?? {};
+  } catch {
+    throw new Error('--only needs an existing manifest.json. Run without --only first.');
+  }
+}
+
 async function main() {
   const sharp = await loadSharp();
   const widths = parseWidthArg();
   const formats = parseFormatArg();
-  const manifest = {};
+  // --only=okra/guides/foo,okra/guides/bar regenerates just those folders (or
+  // files) and keeps every other image's variants and manifest entry as is.
+  // Without it, everything is rebuilt from scratch.
+  const only = parseCsvArg('only', []).map((prefix) => prefix.replace(/^\/+|\/+$/g, ''));
+  const isSelected = (relativePath) => only.length === 0
+    || only.some((prefix) => relativePath === prefix || relativePath.startsWith(`${prefix}/`));
+  const manifest = only.length === 0 ? {} : await readExistingManifest();
   let generatedCount = 0;
 
   if (widths.length === 0) {
@@ -109,7 +137,18 @@ async function main() {
   console.log(`Widths: ${widths.join(', ')}`);
   console.log(`Formats: ${formats.join(', ')}`);
 
-  await rm(outputRoot, { recursive: true, force: true });
+  if (only.length === 0) {
+    await rm(outputRoot, { recursive: true, force: true });
+  } else {
+    console.log(`Only: ${only.join(', ')}`);
+    // Remove only the files the selected manifest entries own. Matching by
+    // name prefix would also catch a sibling (okra.jpg vs okra-flower.jpg).
+    const stale = staleVariantFiles(manifest, isSelected, path.join(appRoot, 'public'), outputRoot);
+    await Promise.all(stale.map((file) => rm(file, { force: true })));
+    for (const key of Object.keys(manifest)) {
+      if (isSelected(key)) delete manifest[key];
+    }
+  }
   await mkdir(outputRoot, { recursive: true });
 
   const sourceFiles = await collectImageFiles(sourceRoot);
@@ -121,6 +160,9 @@ async function main() {
     }
 
     const relativePath = path.relative(sourceRoot, sourcePath);
+    if (!isSelected(relativePath.replaceAll(path.sep, '/'))) {
+      continue;
+    }
     const parsedPath = path.parse(relativePath);
     const sourceInfo = await sharp(sourcePath).metadata();
     const usableWidths = widths.filter((width) => !sourceInfo.width || width < sourceInfo.width);
@@ -183,7 +225,9 @@ async function main() {
   console.log(`Manifest written to ${path.join(outputRoot, 'manifest.json')}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

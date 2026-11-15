@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-22T16:55:47.773Z",
+  "generatedAt": "2026-11-15T18:46:09.893Z",
   "widths": [
     480,
     768,
@@ -494,6 +494,30 @@
             "width": 1205,
             "path": "images/responsive/partners/okra-seed-pile-1205.avif",
             "bytes": 254457
+          }
+        ]
+      }
+    },
+    "okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line.jpg": {
+      "original": "okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line-480.avif",
+            "bytes": 60994
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line-768.avif",
+            "bytes": 123226
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line-1205.avif",
+            "bytes": 220768
           }
         ]
       }
