@@ -6,7 +6,8 @@ import {
   Input,
   isColorVariation,
   resolveColorSwatch,
-  SectionHeading,
+  EmptyState,
+  PageHeading,
   Select,
   Textarea,
 } from '@olivias/ui';
@@ -111,6 +112,7 @@ export function StorePage({ session }: StorePageProps) {
   // without the input snapping to "1.50" mid-keystroke.
   const [priceInput, setPriceInput] = useState('0.00');
   const [productImages, setProductImages] = useState<ProductImageFormItem[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -127,7 +129,8 @@ export function StorePage({ session }: StorePageProps) {
       .catch((err: Error) => {
         if (!active) return;
         setError(err.message || 'Unable to load store products.');
-      });
+      })
+      .finally(() => { if (active) setLoadingProducts(false); });
     return () => {
       active = false;
     };
@@ -400,11 +403,9 @@ export function StorePage({ session }: StorePageProps) {
 
   return (
     <section className="admin-section">
-      <SectionHeading
-        eyebrow="Store catalog"
-        title="Products"
-        body="Create and edit donation, merchandise, ticket, and sponsorship products."
-      />
+      <PageHeading title="Products">
+        <p>Create and edit donation, merchandise, ticket, and sponsorship products.</p>
+      </PageHeading>
 
       {error ? (
         <FormFeedback tone="error" className="admin-load-error">{error}</FormFeedback>
@@ -422,8 +423,8 @@ export function StorePage({ session }: StorePageProps) {
             </Button>
           </div>
           <div className="admin-store-list">
-            {products.length === 0 ? (
-              <p className="admin-store-list__empty">No products yet.</p>
+            {loadingProducts ? <p role="status">Loading products…</p> : !error && products.length === 0 ? (
+              <EmptyState compact icon="basket" title="No products yet"><p>Choose New product to start your catalog. Drafts stay private until published.</p></EmptyState>
             ) : (
               products.map((product) => (
                 <button

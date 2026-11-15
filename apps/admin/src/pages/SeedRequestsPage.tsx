@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, FormFeedback, PageHeading, EmptyState } from '@olivias/ui';
 import {
   addSeedRequestMapPin,
   cancelSeedRequest,
@@ -365,7 +365,9 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
   return (
     <section className="admin-section">
       <div className="admin-section__header">
-        <SectionHeading title={`${copy.title} (${total})`} body={copy.body} />
+        <PageHeading title={`${copy.title} (${total})`}>
+          <p>{copy.body}</p>
+        </PageHeading>
         <Button
           className="admin-refresh-action"
           variant="outline"
@@ -402,8 +404,8 @@ export function SeedRequestsPage({ session }: SeedRequestsPageProps) {
 
       {loading && requests.length === 0 ? (
         <Card><p>Loading seed requests…</p></Card>
-      ) : requests.length === 0 ? (
-        <Card><p>{copy.empty}</p></Card>
+      ) : !error && requests.length === 0 ? (
+        <EmptyState compact icon="seeds" title={copy.empty}><p>Use the status filters to review other requests.</p></EmptyState>
       ) : (
         <>
           <div className="admin-stack">

@@ -2159,3 +2159,21 @@ body {
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
+.admin-request-card__details dd,
+.admin-submission-card__story,
+.admin-store-orders__row-meta,
+.admin-activity__summary { overflow-wrap: anywhere; }
+.admin-finance__tile-value { overflow-wrap: anywhere; }
+.admin-finance__totals[aria-busy="true"] .admin-finance__tile-value { color: var(--og-color-soil); font-size: 1rem; }
+.admin-store-layout__list-header, .admin-workshops__list-header { flex-wrap: wrap; }
+.admin-table-scroll { max-width: 100%; min-width: 0; overflow-x: auto; border-radius: var(--og-radius-md); }
+.admin-table-scroll:focus-visible { outline: 2px solid var(--og-color-moss); outline-offset: 3px; }
+.admin-workshops__signups-table { min-width: 44rem; }
+.admin-workshops__table-hint { font-size: 0.85rem; color: var(--og-color-soil); }
+.admin-workshops__signups-card, .admin-workshops__signups-card > .og-card-body { min-width: 0; }
+@media (min-width: 1000px) { .admin-workshops__table-hint { display: none; } }
+.admin-finance__chart-card .og-empty-state--compact { padding: 0; border: 0; background: transparent; box-shadow: none; }
+@media (max-width: 799px) {
+  .admin-vertical-nav { visibility: hidden; }
+  .admin-vertical-nav.is-mobile-open { visibility: visible; }
+}

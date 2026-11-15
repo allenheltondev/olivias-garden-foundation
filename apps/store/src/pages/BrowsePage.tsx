@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Card, EmptyState, SectionHeading } from '@olivias/ui';
+import { Button, Card, EmptyState, PageHeading } from '@olivias/ui';
+import { ProductImage } from '../components/ProductImage';
 import { listPublicProducts, type StoreProduct } from '../api';
 import { formatMoney, useCart } from '../cart/CartContext';
 
@@ -39,10 +40,9 @@ export function BrowsePage() {
 
   return (
     <section className="store-section">
-      <SectionHeading
-        title="Support Olivia's Garden"
-        body="Every purchase helps us grow food, share seeds, and welcome more neighbors into the garden."
-      />
+      <PageHeading title="Support Olivia's Garden">
+        <p>Every purchase helps us grow food, share seeds, and welcome more neighbors into the garden.</p>
+      </PageHeading>
 
       {error ? (
         <div role="alert">
@@ -98,18 +98,14 @@ export function BrowsePage() {
       <div className="store-product-grid">
         {(products ?? []).map((product) => (
           <Card key={product.id} className="store-product-card" padding="none">
-            <Link to={`/products/${product.slug}`} className="store-product-card__media">
-              {product.images[0]?.thumbnail_url || product.image_url ? (
-                <img src={product.images[0]?.thumbnail_url || product.image_url || ''} alt="" loading="lazy" />
-              ) : (
-                <div className="store-product-card__placeholder" aria-hidden="true" />
-              )}
+            <Link to={`/products/${product.slug}`} className="store-product-card__media" aria-label={`View ${product.name}`}>
+              <ProductImage src={product.images[0]?.thumbnail_url || product.image_url} alt="" loading="lazy" />
             </Link>
             <div className="store-product-card__body">
               <p className="og-section-label">{KIND_LABEL[product.kind]}</p>
-              <h3>
+              <h2>
                 <Link to={`/products/${product.slug}`}>{product.name}</Link>
-              </h3>
+              </h2>
               {product.short_description ? (
                 <p className="store-product-card__excerpt">{product.short_description}</p>
               ) : null}
@@ -120,11 +116,14 @@ export function BrowsePage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() =>
-                    product.variations.length > 0
-                      ? navigate(`/products/${product.slug}`)
-                      : cart.add(product, 1)
-                  }
+                  onClick={() => {
+                    if (product.variations.length > 0) {
+                      navigate(`/products/${product.slug}`);
+                    } else {
+                      cart.add(product, 1);
+                      navigate('/cart');
+                    }
+                  }}
                 >
                   {product.variations.length > 0 ? 'Choose options' : 'Add to cart'}
                 </Button>

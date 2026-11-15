@@ -12,6 +12,7 @@ export { Input } from './components/Input.tsx';
 export { KeyValueList } from './components/KeyValueList.tsx';
 export { Panel } from './components/Panel.tsx';
 export { PageHero } from './components/PageHero.tsx';
+export { PageHeading } from './components/PageHeading.tsx';
 export { SectionHeading } from './components/SectionHeading.tsx';
 export { Select } from './components/Select.tsx';
 export { SiteFooter } from './components/SiteFooter.tsx';

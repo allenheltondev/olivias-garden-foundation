@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Card, FormFeedback, PageHeading, EmptyState } from '@olivias/ui';
 import { listStoreOrders, type StoreOrder } from '../api';
 import type { AdminSession } from '../auth/session';
 
@@ -68,11 +68,9 @@ export function StoreOrdersPage({ session }: StoreOrdersPageProps) {
 
   return (
     <section className="admin-section">
-      <SectionHeading
-        eyebrow="Store"
-        title="Customer orders"
-        body="Review every order placed through the store, including guest checkouts."
-      />
+      <PageHeading title="Customer orders">
+        <p>Review every order placed through the store, including guest checkouts.</p>
+      </PageHeading>
 
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
 
@@ -96,7 +94,7 @@ export function StoreOrdersPage({ session }: StoreOrdersPageProps) {
       {orders === null && !error ? <p className="admin-store-list__empty">Loading orders…</p> : null}
 
       {orders && orders.length === 0 ? (
-        <p className="admin-store-list__empty">No orders yet.</p>
+        <EmptyState compact icon="basket" title="No customer orders yet"><p>Orders from the public store will appear here, including guest purchases.</p></EmptyState>
       ) : null}
 
       <div className="admin-store-orders">

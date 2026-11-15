@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react';
 import { GardenIcon, type GardenIconName } from './GardenIcon';
 
-export function EmptyState({ title, children, icon, actions, className = '' }: {
+export function EmptyState({ title, children, icon, actions, compact = false, className = '' }: {
   title: string;
   children: ReactNode;
   icon: GardenIconName;
   actions?: ReactNode;
+  compact?: boolean;
   className?: string;
 }) {
   return (
-    <section className={`og-empty-state ${className}`.trim()} aria-label={title}>
+    <section className={`og-empty-state ${compact ? 'og-empty-state--compact' : ''} ${className}`.trim()} aria-label={title}>
       <GardenIcon name={icon} />
       <div className="og-empty-state__copy">
         <h2>{title}</h2>

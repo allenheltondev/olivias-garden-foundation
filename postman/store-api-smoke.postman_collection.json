@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Store API - Public smoke",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Read-only contract checks against the store API base URL, including its shared-domain /store mapping. Never starts checkout or creates records."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.oliviasgarden.org/store"
+    }
+  ],
+  "item": [
+    {
+      "name": "Public catalog schema",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/products"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Catalog is available', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Catalog contract is stable', () => { pm.expect(body.items).to.be.an('array'); for (const item of body.items) { pm.expect(item.id).to.be.a('string'); pm.expect(item.slug).to.be.a('string'); pm.expect(item.name).to.be.a('string'); pm.expect(item.status).to.eql('active'); pm.expect(item.is_public).to.eql(true); pm.expect(item.images).to.be.an('array'); pm.expect(item.variations).to.be.an('array'); pm.expect(item.unit_amount_cents).to.be.a('number'); } });",
+              "pm.test('Correlation ID is returned', () => pm.expect(pm.response.headers.get('x-correlation-id')).to.be.a('string').and.not.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Missing product returns 404",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/products/codex-contract-product-that-does-not-exist"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status', () => pm.response.to.have.status(404));",
+              "pm.test('Error contract is stable', () => pm.expect(pm.response.json().error).to.be.a('string'));",
+              "pm.test('Correlation ID is returned', () => pm.expect(pm.response.headers.get('x-correlation-id')).to.be.a('string').and.not.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Order history requires authentication",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/orders"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status', () => pm.response.to.have.status(401));",
+              "pm.test('Error contract is stable', () => pm.expect(pm.response.json().error).to.be.a('string'));",
+              "pm.test('Correlation ID is returned', () => pm.expect(pm.response.headers.get('x-correlation-id')).to.be.a('string').and.not.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin orders require authentication",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/admin/orders"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status', () => pm.response.to.have.status(401));",
+              "pm.test('Error contract is stable', () => pm.expect(pm.response.json().error).to.be.a('string'));",
+              "pm.test('Correlation ID is returned', () => pm.expect(pm.response.headers.get('x-correlation-id')).to.be.a('string').and.not.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unknown route stays 404",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/not-a-store-route"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status', () => pm.response.to.have.status(404));",
+              "pm.test('Error contract is stable', () => pm.expect(pm.response.json().error).to.be.a('string'));",
+              "pm.test('Correlation ID is returned', () => pm.expect(pm.response.headers.get('x-correlation-id')).to.be.a('string').and.not.empty);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

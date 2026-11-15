@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, EmptyState, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Button, Card, EmptyState, FormFeedback, PageHeading } from '@olivias/ui';
+import { ProductImage } from '../components/ProductImage';
 import { createCheckoutSession, listPublicProducts } from '../api';
 import { formatMoney, isCartLineValidForProduct, useCart } from '../cart/CartContext';
 import type { StoreSession } from '../auth/session';
@@ -9,7 +10,7 @@ const FULFILLMENT_LABEL: Record<string, string> = {
   shipping: 'Ships to you',
   digital: 'Digital delivery',
   pickup: 'Pickup at the garden',
-  none: 'No fulfillment required',
+  none: 'No delivery needed',
 };
 
 export interface CartPageProps {
@@ -94,6 +95,7 @@ export function CartPage({ session }: CartPageProps) {
       <section className="store-section">
         <Link className="store-back-link" to="/">Back to store</Link>
         {pruneNotice ? <FormFeedback tone="info">{pruneNotice}</FormFeedback> : null}
+        <PageHeading title="Your cart" />
         <EmptyState icon="basket" title="Your cart is empty" actions={(
           <Link className="og-button og-button--primary og-button--md" to="/">Browse the store</Link>
         )}>
@@ -102,17 +104,14 @@ export function CartPage({ session }: CartPageProps) {
       </section>
     );
   }
-
   const itemCount = cart.lines.reduce((total, line) => total + line.quantity, 0);
   const currency = cart.lines[0]?.currency ?? 'usd';
-
   return (
     <section className="store-section">
       <Link className="store-back-link" to="/">Back to store</Link>
-      <SectionHeading
-        title="Review your cart"
-        body={`${itemCount} ${itemCount === 1 ? 'item' : 'items'} ready for checkout.`}
-      />
+      <PageHeading title="Review your cart">
+        <p>{`${itemCount} ${itemCount === 1 ? 'item' : 'items'} ready for checkout.`}</p>
+      </PageHeading>
 
       {pruneNotice ? <FormFeedback tone="info">{pruneNotice}</FormFeedback> : null}
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
@@ -125,18 +124,14 @@ export function CartPage({ session }: CartPageProps) {
                 <Link
                   to={`/products/${line.slug}`}
                   className="store-cart__line-media"
-                  aria-hidden={line.imageUrl ? undefined : true}
+                  aria-label={`View ${line.name}`}
                 >
-                  {line.imageUrl ? (
-                    <img src={line.imageUrl} alt="" />
-                  ) : (
-                    <div className="store-product-card__placeholder" />
-                  )}
+                  <ProductImage src={line.imageUrl} alt="" />
                 </Link>
                 <div className="store-cart__line-body">
-                  <h3 className="store-cart__line-name">
+                  <h2 className="store-cart__line-name">
                     <Link to={`/products/${line.slug}`}>{line.name}</Link>
-                  </h3>
+                  </h2>
                   {line.selectedVariations ? (
                     <p className="store-cart__line-variations">
                       {Object.entries(line.selectedVariations)
@@ -216,10 +211,7 @@ export function CartPage({ session }: CartPageProps) {
               Shipping and tax are calculated during checkout.
             </p>
           ) : null}
-          <div className="store-cart__summary-row store-cart__summary-row--total">
-            <span>Total</span>
-            <strong>{formatMoney(cart.subtotalCents, currency)}</strong>
-          </div>
+
           <Button
             className="store-cart__checkout-action"
             onClick={startCheckout}

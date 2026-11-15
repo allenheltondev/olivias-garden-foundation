@@ -37,3 +37,11 @@ There is no need to create replacement logo art or new Good Roots screenshots fo
 ## Review checks
 
 Check desktop and phone layouts, keyboard focus, decorative icon accessibility, selected donation controls, optional-account disclosure, and error retry. Existing checkout payloads, validation, auth, API contracts, and program availability remain intact. No donations, registrations, or real seed requests are needed for the focused presentation tests.
+
+## Admin and store follow-up
+
+Admin routes now use a compact semantic primary heading, without repeated page eyebrows. Operational queues use compact shared empty states. Finance distinguishes loading, unavailable responses, and real zero totals, supports retry, and ignores responses from a previously selected date range. Workshop sign-up tables scroll within a labeled keyboard-focusable region on phones; long operational text wraps. The closed mobile navigation is hidden from keyboard focus.
+
+The store uses consistent neutral photography frames with `contain` fitting to preserve printed designs, a shared SVG photo fallback, primary page headings, native radio option groups, visible selection/availability, product-load recovery, and immediate cart navigation after adding a simple product. Cart totals show the subtotal and defer shipping/tax to checkout. Photography still needs to be supplied; no product images or availability claims were invented.
+
+The store backend handles the shared-domain mapping prefix and API Gateway's relative route capture, with routing regression tests and a read-only Postman smoke collection in staging/main deployment. See `docs/testing/store-public-api-smoke.md` for the remaining production verification step. Visual verification uses local fixtures for admin and populated store screens; production authentication was not bypassed.

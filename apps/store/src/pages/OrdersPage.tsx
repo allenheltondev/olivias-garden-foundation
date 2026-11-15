@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, FormFeedback, SectionHeading } from '@olivias/ui';
+import { Card, FormFeedback, PageHeading } from '@olivias/ui';
 import { listMyOrders, type StoreOrder } from '../api';
 import { formatMoney } from '../cart/CartContext';
 import type { StoreSession } from '../auth/session';
@@ -45,10 +45,9 @@ export function OrdersPage({ session }: OrdersPageProps) {
 
   return (
     <section className="store-section">
-      <SectionHeading
-        title="My orders"
-        body="A history of everything you've contributed to or purchased from the garden."
-      />
+      <PageHeading title="My orders">
+        <p>A history of everything you've contributed to or purchased from the garden.</p>
+      </PageHeading>
 
       {error ? <FormFeedback tone="error">{error}</FormFeedback> : null}
 
