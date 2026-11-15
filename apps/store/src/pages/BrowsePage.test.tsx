@@ -8,8 +8,11 @@ import { BrowsePage } from './BrowsePage';
 vi.mock('../api', () => ({ listPublicProducts: vi.fn() }));
 vi.mock('../cart/CartContext', () => ({ useCart: () => ({ add: vi.fn() }), formatMoney: () => '$15.00' }));
 
-afterEach(cleanup);
-beforeEach(() => vi.mocked(listPublicProducts).mockReset());
+afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
+beforeEach(() => {
+  vi.mocked(listPublicProducts).mockReset();
+  vi.stubEnv('VITE_FOUNDATION_URL', 'https://oliviasgarden.org');
+});
 
 describe('store catalog recovery', () => {
   it('provides a useful error state and retries without leaving the store', async () => {
