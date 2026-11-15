@@ -41,7 +41,7 @@
           "items": [
             "Full sun and well-drained soil",
             "Plant once the soil is at least 65°F",
-            "Seeds 1 inch deep, thinned to about 1 foot apart",
+            "Seeds 1 inch deep, plants at least 1 foot apart, and we give ours 3 to 4 feet",
             "First flowers about 2 months after planting",
             "Pick pods at 3 to 4 inches, every day or two"
           ]
@@ -81,9 +81,9 @@
           "ordered": true,
           "items": [
             "Sow seeds straight into the garden [about 1 inch deep and 2 inches apart](https://agrilifeextension.tamu.edu/library/gardening/okra/), in rows at least 3 feet apart. Okra doesn't like being transplanted.",
-            "Soaking the seeds in water overnight can help them sprout, but it won't save seed planted in cold soil.",
+            "Some gardeners soak seeds in water overnight to help them sprout, though it won't save seed planted in cold soil. We plant ours straight from the packet without soaking or nicking them.",
             "Keep the soil moist until the seedlings come up.",
-            "When the plants are 3 to 4 inches tall, thin them to about 1 foot apart. Crowded plants give fewer pods."
+            "When the plants are 3 to 4 inches tall, thin them so they stand at least 1 foot apart. Ours grow so big that we space them 3 to 4 feet apart."
           ]
         },
         {
@@ -105,6 +105,11 @@
         {
           "type": "paragraph",
           "text": "Water in the morning so the leaves dry before dark, or use drip irrigation to keep the leaves dry. Steady moisture matters most [once pods start to form](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/). A 2 to 3 inch layer of mulch holds moisture in and keeps weeds down through the hottest part of summer."
+        },
+        {
+          "type": "tip",
+          "title": "From Olivia's garden",
+          "text": "In McKinney summers, we run our drip line for 15 minutes every other day."
         }
       ]
     },
@@ -114,7 +119,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Go easy on nitrogen early. Clemson Extension notes that [too much nitrogen early in the season](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/) gives you a big leafy plant with few pods. Mix a balanced fertilizer or compost into the bed before planting, then wait to feed again until the plants start producing."
+          "text": "Go easy on nitrogen early. Clemson Extension notes that [too much nitrogen early in the season](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/) gives you a big leafy plant with few pods. We mix compost into the bed at the start of the season, before planting. If you add fertilizer, wait to feed again until the plants start producing."
         },
         {
           "type": "paragraph",
@@ -144,7 +149,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Okra plants [flower about 2 months after planting](https://agrilifeextension.tamu.edu/library/gardening/okra/), and the pods are ready to pick 3 or 4 days after each flower opens. Pick pods at 3 to 4 inches long, every day or two. Pods left too long turn tough and stringy, and the plant slows down."
+          "text": "Okra plants [flower about 2 months after planting](https://agrilifeextension.tamu.edu/library/gardening/okra/), and the pods are ready to pick 3 or 4 days after each flower opens. Pick pods at 3 to 4 inches long, every day or two. Pods left too long turn tough and stringy, and the plant slows down. By late summer we pick every day, because the pods grow fast and get too big if you skip one."
         },
         {
           "type": "paragraph",
@@ -164,6 +169,11 @@
             "Small pods that rot after the flower drops. Full sun, good air movement and proper spacing help.",
             "Seedlings that die soon after coming up, usually from planting into cold, wet soil."
           ]
+        },
+        {
+          "type": "tip",
+          "title": "From Olivia's garden",
+          "text": "We sometimes get aphids, but our plants grow so vigorously that we've never lost one to them, and we don't treat. The plant wins."
         }
       ]
     }
@@ -175,11 +185,15 @@
     },
     {
       "question": "How far apart should you plant okra?",
-      "answer": "Sow seeds about 2 inches apart, then thin the plants to about 1 foot apart once they're 3 to 4 inches tall. Leave at least 3 feet between rows."
+      "answer": "Space plants at least 1 foot apart in rows 3 feet apart. In our garden the plants grow over 6 feet tall, so we give each one 3 to 4 feet."
     },
     {
       "question": "Why are my okra flowers falling off?",
       "answer": "That's usually normal. Each okra flower opens for about a day, then drops as the pod starts to grow behind it. If small pods are rotting after the flower falls, give the plants more sun, space and air movement."
+    },
+    {
+      "question": "Can you grow okra in a pot?",
+      "answer": "Yes. We haven't grown okra in a container ourselves, but we've seen it grow very well in one. Container plants may be slower to start producing pods than okra in the ground."
     },
     {
       "question": "How long does okra take to grow?",
