@@ -26,7 +26,7 @@
   ],
   "order": 20,
   "intro": [
-    "Okra was Olivia's favorite thing to grow. Her family has kept her plants going by saving seed, and every packet the foundation mails comes from that line. You can do the same with a few of your own plants and almost no equipment.",
+    "Okra was Olivia's favorite thing to grow. Her family has kept her plants going by saving seed, and every packet the foundation mails comes from that line. We've harvested tens of thousands of seeds this way, and you can do the same with a few of your own plants and almost no equipment.",
     "Don't have okra growing yet? Start with [free okra seeds](/okra/free-okra-seeds) from Olivia's garden."
   ],
   "sections": [
@@ -38,7 +38,7 @@
         {
           "type": "list",
           "items": [
-            "A few healthy plants of one open-pollinated variety, like Clemson Spineless.",
+            "A few healthy plants of an open-pollinated variety, like Clemson Spineless.",
             "Paper envelopes or a glass jar, and a pen for labels.",
             "A cool, dry, dark place for storage."
           ]
@@ -51,7 +51,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Pick your strongest plants, the ones that grew well and gave you good pods. Choose a few pods on each and stop picking them. A twist tie around the stem helps you remember which ones to leave."
+          "text": "Pick your strongest plants, the ones that grew well and gave you good pods. You don't need many. Each pod holds 50 to 70 seeds, so leave just a few pods for seed and keep harvesting the rest to eat. A twist tie around the stem helps you remember which ones to leave."
         },
         {
           "type": "paragraph",
@@ -65,7 +65,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Let the saved pods keep growing well past eating size. Over several weeks they turn brown, dry, and papery. They're ready when the seams start to split and the seeds rattle when you shake the pod."
+          "text": "Let the saved pods keep growing well past eating size. Over several weeks they turn brown, dry, and papery. We wait until a pod has fully matured and started cracking open on its own. The seeds inside are ready when they've turned dark gray."
         },
         {
           "type": "tip",
@@ -83,7 +83,7 @@
           "ordered": true,
           "items": [
             "Split each dry pod along its seams over a bowl and run your thumb down the inside.",
-            "Keep the plump, dark seeds and toss any that are small, pale, or shriveled.",
+            "Keep the dark gray seeds. Seeds that are still white and soft aren't mature and won't grow.",
             "Spread the seeds on a paper plate and let them dry for another week or two."
           ]
         }
@@ -102,22 +102,16 @@
           "text": "Stored that way, okra seed usually grows well for two to three years. For anything older, fold 10 seeds into a damp paper towel, keep it warm for about a week, and count the sprouts. If 8 come up, plant a little thicker to make up the difference."
         }
       ]
-    },
-    {
-      "id": "keep-the-variety-true",
-      "title": "Keep the variety true",
-      "blocks": [
-        {
-          "type": "paragraph",
-          "text": "Bees can carry pollen between different kinds of okra, so seed saved near another variety may come up as a mix. The simplest fix is to grow just one variety. Seed savers who want to keep a variety pure next to other okra plant anywhere from about 800 feet to half a mile apart."
-        }
-      ]
     }
   ],
   "faq": [
     {
+      "question": "How many seeds are in an okra pod?",
+      "answer": "In our experience, each mature pod holds 50 to 70 seeds. A handful of pods gives you plenty for next season."
+    },
+    {
       "question": "Can you save seeds from store-bought okra?",
-      "answer": "Usually not. Okra sold for eating is picked young, before its seeds are mature, so they won't sprout. Let pods dry on a growing plant instead."
+      "answer": "Usually not. Okra sold for eating is picked young, while its seeds are still white and soft, so they won't sprout. Let pods mature and dry on a growing plant instead."
     },
     {
       "question": "What do I do with all the extra okra seeds?",
