@@ -8,6 +8,7 @@ Today it contains:
 - `apps/web`: the foundation website and public Okra experience
 - `packages/ui`: shared UI primitives and brand tokens
 - `packages/auth`: shared frontend auth helpers
+- `services/mcp-api`: the operator MCP server for running the back office from an AI agent ([docs/mcp-server.md](docs/mcp-server.md))
 
 The long-term platform plan lives in [docs/plans/platform_plan.md](docs/plans/platform_plan.md).
 

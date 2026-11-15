@@ -479,6 +479,10 @@ Resources:
                 - checkout.session.async_payment_succeeded
 
 Outputs:
+  ApiFunctionArn:
+    Description: ARN of the store API function; the operator MCP server (services/mcp-api) invokes it directly
+    Value: !GetAtt ApiFunction.Arn
+
   ApiUrl:
     Description: Store API endpoint URL
     Value: !If
