@@ -194,6 +194,31 @@ test.describe('okra guide client-side navigation', () => {
   });
 });
 
+test.describe('okra guide contents on desktop', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+  test.skip(publishedGuides.length === 0, 'No published okra guides yet.');
+
+  test('the contents stay in view and mark the section being read', async ({ page }) => {
+    const guide = publishedGuides.find((candidate) => (candidate.sections ?? []).length >= 4 && candidate.faq?.length);
+    test.skip(!guide, 'No published guide is long enough to show its contents.');
+
+    await gotoAndWait(page, `/okra/${guide!.slug}`);
+    const contents = page.getByRole('navigation', { name: 'In this guide' });
+    await expect(contents).toBeVisible();
+
+    // Bring the FAQ heading near the top, where a reader would be reading it.
+    await page.evaluate(() => {
+      const faq = document.getElementById('faq')!;
+      window.scrollTo(0, faq.getBoundingClientRect().top + window.scrollY - 120);
+    });
+    await expect.poll(() => contents.evaluate((nav) => {
+      const box = nav.getBoundingClientRect();
+      return box.top >= 0 && box.bottom <= window.innerHeight;
+    })).toBe(true);
+    await expect(contents.getByRole('link', { name: 'Common questions' })).toHaveAttribute('aria-current', 'location');
+  });
+});
+
 test.describe('okra guides on mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
   test.skip(publishedGuides.length === 0, 'No published okra guides yet.');

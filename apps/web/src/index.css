@@ -4365,12 +4365,50 @@ html {
   }
 }
 
-/* Keep the rail in view while reading, but only when it fits on screen
-   (OkraGuidePage measures it and adds --sticky). */
+/* The rail runs the full height of the article on wide screens. Its lower
+   part (contents and seed callout) stays in view while reading, but only when
+   it fits on screen (OkraGuidePage measures it and adds --sticky). */
+.okra-guide__rail-follow {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
 @media (min-width: 960px) {
-  .okra-guide__rail--sticky {
+  .okra-guide__rail {
+    align-self: stretch;
+    align-content: start;
+  }
+
+  .okra-guide__rail-follow--sticky {
     position: sticky;
     top: 5.5rem;
+  }
+}
+
+/* Photos beside their section's text on wide screens. */
+.okra-guide__section-text,
+.okra-guide__section-media {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+  align-content: start;
+}
+
+@media (min-width: 1100px) {
+  .okra-guide__section--with-figure {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 38%);
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+
+  .okra-guide__section--with-figure > .okra-guide__heading {
+    grid-column: 1 / -1;
+  }
+
+  .okra-guide__section-media .okra-guide__figure img {
+    max-height: 28rem;
   }
 }
 
@@ -4642,6 +4680,12 @@ html {
 .okra-guide__toc-list a {
   color: var(--site-leaf);
   text-underline-offset: 0.2em;
+}
+
+.okra-guide__toc-list a[aria-current='location'] {
+  color: var(--site-branch);
+  font-weight: 700;
+  text-decoration-thickness: 2px;
 }
 
 .okra-guide__seed-cta {

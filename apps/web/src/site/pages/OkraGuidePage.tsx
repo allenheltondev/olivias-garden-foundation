@@ -142,11 +142,11 @@ function navigateLink(onNavigate: Navigate, path: string) {
 const RAIL_STICKY_TOP_PX = 88;
 
 /**
- * True when the rail fits on screen below its sticky offset. A sticky element
- * taller than the viewport hides its bottom (the seed callout) until the
- * article ends, so taller rails scroll normally instead.
+ * True when the element fits on screen below its sticky offset. A sticky
+ * element taller than the viewport hides its bottom (the seed callout) until
+ * the article ends, so taller ones scroll normally instead.
  */
-function useRailFitsViewport(rail: HTMLElement | null) {
+function useFitsViewport(rail: HTMLElement | null) {
   const [fits, setFits] = useState(false);
   useLayoutEffect(() => {
     if (!rail) {
@@ -163,6 +163,47 @@ function useRailFitsViewport(rail: HTMLElement | null) {
     };
   }, [rail]);
   return fits;
+}
+
+/**
+ * The id of the section being read, for highlighting it in the table of
+ * contents: the last section whose top has scrolled past the upper third of
+ * the screen.
+ */
+function useActiveSection(ids: string[]) {
+  const [active, setActive] = useState<string | null>(null);
+  const key = ids.join('|');
+  useEffect(() => {
+    if (ids.length === 0) {
+      return undefined;
+    }
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight / 3;
+      let current: string | null = null;
+      for (const id of ids) {
+        const element = document.getElementById(id);
+        if (element && element.getBoundingClientRect().top <= line) {
+          current = id;
+        }
+      }
+      setActive(current);
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures ids
+  }, [key]);
+  return active;
 }
 
 /** Page-specific JSON-LD (Article, BreadcrumbList, FAQPage). The prerendered
@@ -200,8 +241,8 @@ export function OkraGuidePage({
   const [attempt, setAttempt] = useState(0);
   const [seedModalOpen, setSeedModalOpen] = useState(false);
   const [seedModalRequested, setSeedModalRequested] = useState(false);
-  const [railElement, setRailElement] = useState<HTMLElement | null>(null);
-  const railFits = useRailFitsViewport(railElement);
+  const [railFollowElement, setRailFollowElement] = useState<HTMLElement | null>(null);
+  const railFollowFits = useFitsViewport(railFollowElement);
 
   useEffect(() => {
     if (!summary) {
@@ -227,6 +268,13 @@ export function OkraGuidePage({
     : { status: 'loading' };
   const guide = current.status === 'ready' ? current.guide : null;
   useGuideStructuredData(guide);
+  const tocIds = guide
+    ? [
+      ...guide.sections.filter((section) => section.placement !== 'aside').map((section) => section.id),
+      ...(guide.faq && guide.faq.length > 0 ? ['faq'] : []),
+    ]
+    : [];
+  const activeSection = useActiveSection(tocIds);
 
   if (!summary) {
     return <NotFoundPage onNavigate={onNavigate} />;
@@ -243,20 +291,41 @@ export function OkraGuidePage({
 
   const seedInHero = summary.seedCallToAction === 'hero';
 
-  const renderSection = (section: OkraGuide['sections'][number], className: string) => (
-    <section key={section.id} id={section.id} className={className} aria-labelledby={`${section.id}-heading`}>
-      <h2 id={`${section.id}-heading`} className="okra-guide__heading">{section.title}</h2>
-      {section.blocks.map((block, index) => (
-        <GuideBlockView key={index} block={block} onNavigate={onNavigate} />
-      ))}
-    </section>
-  );
+  const renderSection = (section: OkraGuide['sections'][number], className: string) => {
+    const isMain = section.placement !== 'aside';
+    const figures = section.blocks.filter((block) => block.type === 'image');
+    const text = section.blocks.filter((block) => block.type !== 'image');
+    // On wide screens a main section's photos sit beside its text rather than
+    // breaking it up at full width. Narrow screens stack them below the text.
+    if (isMain && figures.length > 0 && text.length > 0) {
+      return (
+        <section key={section.id} id={section.id} className={`${className} okra-guide__section--with-figure`} aria-labelledby={`${section.id}-heading`}>
+          <h2 id={`${section.id}-heading`} className="okra-guide__heading">{section.title}</h2>
+          <div className="okra-guide__section-text">
+            {text.map((block, index) => <GuideBlockView key={index} block={block} onNavigate={onNavigate} />)}
+          </div>
+          <div className="okra-guide__section-media">
+            {figures.map((block, index) => <GuideBlockView key={index} block={block} onNavigate={onNavigate} />)}
+          </div>
+        </section>
+      );
+    }
+    return (
+      <section key={section.id} id={section.id} className={className} aria-labelledby={`${section.id}-heading`}>
+        <h2 id={`${section.id}-heading`} className="okra-guide__heading">{section.title}</h2>
+        {section.blocks.map((block, index) => (
+          <GuideBlockView key={index} block={block} onNavigate={onNavigate} />
+        ))}
+      </section>
+    );
+  };
 
   // Main column: the article. Rail (right column on desktop, near the top on
   // phones): the photo, any `"placement": "aside"` sections as cards, the table
   // of contents for long guides, and the seed callout unless it's in the header.
   let main: ReactNode;
-  let railExtras: ReactNode = null;
+  let railCards: ReactNode = null;
+  let railToc: ReactNode = null;
 
   if (current.status === 'error') {
     main = (
@@ -307,17 +376,21 @@ export function OkraGuidePage({
       </>
     );
 
-    railExtras = (
+    railCards = asideSections.map((section) => renderSection(section, 'okra-guide__rail-card'));
+    railToc = (
       <>
-        {asideSections.map((section) => renderSection(section, 'okra-guide__rail-card'))}
         {showToc ? (
           <nav className="okra-guide__toc" aria-label="In this guide">
             <p className="okra-guide__toc-title">In this guide</p>
             <ol className="okra-guide__toc-list">
               {mainSections.map((section) => (
-                <li key={section.id}><a href={`#${section.id}`}>{section.title}</a></li>
+                <li key={section.id}>
+                  <a href={`#${section.id}`} aria-current={activeSection === section.id ? 'location' : undefined}>{section.title}</a>
+                </li>
               ))}
-              {guide.faq && guide.faq.length > 0 ? <li><a href="#faq">Common questions</a></li> : null}
+              {guide.faq && guide.faq.length > 0 ? (
+                <li><a href="#faq" aria-current={activeSection === 'faq' ? 'location' : undefined}>Common questions</a></li>
+              ) : null}
             </ol>
           </nav>
         ) : null}
@@ -339,11 +412,7 @@ export function OkraGuidePage({
       />
 
       <div className="okra-guide__layout">
-        <aside
-          ref={setRailElement}
-          className={`okra-guide__rail${railFits ? ' okra-guide__rail--sticky' : ''}`}
-          aria-label="About this guide"
-        >
+        <aside className="okra-guide__rail" aria-label="About this guide">
           {/* Published guides always have a photo (the validator requires it). Drafts may not yet. */}
           {summary.heroImage ? (
             <figure className="page-photo okra-guide__hero-photo">
@@ -358,20 +427,29 @@ export function OkraGuidePage({
             </figure>
           ) : null}
 
-          {railExtras}
+          {railCards}
 
-          {seedInHero ? null : (
-            <div className="okra-guide__seed-cta" role="region" aria-labelledby="okra-guide-seed-cta-heading">
-              <h2 id="okra-guide-seed-cta-heading" className="okra-guide__seed-cta-title">Grow Olivia&apos;s okra</h2>
-              <p className="okra-guide__text">
-                We mail free Clemson Spineless okra seeds from Olivia&apos;s own seed line to anyone in the
-                United States or Canada.
-              </p>
-              <button type="button" className="ok-btn ok-btn--primary" onClick={openSeedRequest}>
-                Request free seeds
-              </button>
-            </div>
-          )}
+          {/* The contents and seed callout follow the reader down the page on
+              wide screens, so the right column isn't empty below the photo. */}
+          <div
+            ref={setRailFollowElement}
+            className={`okra-guide__rail-follow${railFollowFits ? ' okra-guide__rail-follow--sticky' : ''}`}
+          >
+            {railToc}
+
+            {seedInHero ? null : (
+              <div className="okra-guide__seed-cta" role="region" aria-labelledby="okra-guide-seed-cta-heading">
+                <h2 id="okra-guide-seed-cta-heading" className="okra-guide__seed-cta-title">Grow Olivia&apos;s okra</h2>
+                <p className="okra-guide__text">
+                  We mail free Clemson Spineless okra seeds from Olivia&apos;s own seed line to anyone in the
+                  United States or Canada.
+                </p>
+                <button type="button" className="ok-btn ok-btn--primary" onClick={openSeedRequest}>
+                  Request free seeds
+                </button>
+              </div>
+            )}
+          </div>
         </aside>
 
         <div className="okra-guide__main">
