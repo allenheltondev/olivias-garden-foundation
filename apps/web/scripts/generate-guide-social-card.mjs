@@ -103,28 +103,133 @@ export function buildPanelSvg(headline) {
 </svg>`;
 }
 
-export async function renderSocialCard({ photoPath, headline, outPath }) {
+// --- "page" style ----------------------------------------------------------
+// Matches the main-site cards from #428 (docs/design/social-share-cards.md):
+// cream #f6f2e7, garden-green #305526 serif headline, a thin divider, and the
+// heart logo with the wordmark, with a real photo on the right.
+
+const PAGE = {
+  panelWidth: 576,
+  textLeft: 78,
+  textMaxWidth: 576 - 78 - 46,
+  cream: '#f6f2e7',
+  green: '#305526',
+  dividerY: 372,
+};
+
+/**
+ * Page headline layout: the fewest lines (at most three) at any size from 72px
+ * down to 52px, then the largest size for that line count. Avoids orphaned
+ * first words like "Help / Olivia's / okra spread".
+ */
+export function layoutPageHeadline(text) {
+  let best = null;
+  for (let fontSize = 72; fontSize >= 52; fontSize -= 4) {
+    const maxChars = Math.max(6, Math.floor(PAGE.textMaxWidth / (fontSize * 0.58)));
+    const lines = [];
+    let line = '';
+    for (const word of text.split(/\s+/).filter(Boolean)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (candidate.length > maxChars && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) lines.push(line);
+    const fits = lines.length <= MAX_HEADLINE_LINES && lines.every((entry) => entry.length <= maxChars + 1);
+    if (fits && (!best || lines.length < best.lines.length)) {
+      best = { fontSize, lines };
+    }
+  }
+  if (!best) {
+    throw new Error(`Headline "${text}" needs more than ${MAX_HEADLINE_LINES} lines; shorten it with --headline.`);
+  }
+  return best;
+}
+
+function logoDataUri() {
+  const svg = readFileSync(join(publicDir, 'images', 'icons', 'logo.svg'), 'utf8').replace(/#4d7a13/gi, PAGE.green);
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
+export function buildPagePanelSvg(headline) {
+  const { fontSize, lines } = layoutPageHeadline(headline);
+  const lineHeight = Math.round(fontSize * 1.1);
+  // Bottom-align the headline just above the divider.
+  const lastBaseline = PAGE.dividerY - 36;
+  const firstBaseline = lastBaseline - (lines.length - 1) * lineHeight;
+  const tspans = lines
+    .map((line, index) => `<tspan x="${PAGE.textLeft}" y="${firstBaseline + index * lineHeight}">${escapeXml(line)}</tspan>`)
+    .join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${WIDTH}" height="${HEIGHT}">
+  <rect x="0" y="0" width="${PAGE.panelWidth}" height="${HEIGHT}" fill="${PAGE.cream}"/>
+  <text font-family="${SERIF}" font-size="${fontSize}" font-weight="700" fill="${PAGE.green}">${tspans}</text>
+  <rect x="${PAGE.textLeft}" y="${PAGE.dividerY}" width="420" height="1.5" fill="${PAGE.green}" opacity="0.45"/>
+  <image x="${PAGE.textLeft}" y="${PAGE.dividerY + 24}" width="114" height="117" href="${logoDataUri()}" xlink:href="${logoDataUri()}"/>
+  <text font-family="${SERIF}" font-size="34" font-weight="700" fill="${PAGE.green}">
+    <tspan x="${PAGE.textLeft + 136}" y="${PAGE.dividerY + 76}">Olivia&apos;s Garden</tspan>
+    <tspan x="${PAGE.textLeft + 136}" y="${PAGE.dividerY + 116}">Foundation</tspan>
+  </text>
+</svg>`;
+}
+
+/**
+ * style "guide" (default): the okra guide card. style "page": the main-site
+ * card style from #428.
+ */
+export async function renderSocialCard({ photoPath, headline, outPath, style = 'guide' }) {
+  const panelWidth = style === 'page' ? PAGE.panelWidth : PANEL_WIDTH;
+  const background = style === 'page' ? PAGE.cream : COLORS.cream;
+  const panelSvg = style === 'page' ? buildPagePanelSvg(headline) : buildPanelSvg(headline);
   const photo = await sharp(photoPath)
-    .resize(WIDTH - PANEL_WIDTH, HEIGHT, { fit: 'cover', position: 'attention' })
+    .resize(WIDTH - panelWidth, HEIGHT, { fit: 'cover', position: 'attention' })
     .toBuffer();
 
   const card = sharp({
-    create: { width: WIDTH, height: HEIGHT, channels: 3, background: COLORS.cream },
+    create: { width: WIDTH, height: HEIGHT, channels: 3, background },
   }).composite([
-    { input: photo, left: PANEL_WIDTH, top: 0 },
-    { input: Buffer.from(buildPanelSvg(headline)), left: 0, top: 0 },
+    { input: photo, left: panelWidth, top: 0 },
+    { input: Buffer.from(panelSvg), left: 0, top: 0 },
   ]);
 
   await mkdir(dirname(outPath), { recursive: true });
   const extension = extname(outPath).toLowerCase();
   if (extension === '.png') {
-    await card.png({ compressionLevel: 9 }).toFile(outPath);
+    // Palette PNG keeps photo cards well under 1 MB without visible banding.
+    await card.png({ compressionLevel: 9, palette: true, quality: 90, effort: 10 }).toFile(outPath);
   } else {
     await card.jpeg({ quality: 86, mozjpeg: true }).toFile(outPath);
   }
 }
 
+async function renderPageCard() {
+  const photoSrc = readArg('photo');
+  const headline = readArg('headline');
+  const outSrc = readArg('out');
+  if (!photoSrc || !headline || !outSrc) {
+    console.error('Usage: npm run social:page -- --photo=/images/... --headline="..." --out=/images/social/<page>.png');
+    process.exit(1);
+  }
+  const photoPath = join(publicDir, photoSrc.replace(/^\/+/, ''));
+  if (!existsSync(photoPath)) {
+    console.error(`Photo not found: ${photoPath}`);
+    process.exit(1);
+  }
+  const outPath = join(publicDir, outSrc.replace(/^\/+/, ''));
+  await renderSocialCard({ photoPath, headline, outPath, style: 'page' });
+  console.log(`generate-guide-social-card: wrote ${outPath}`);
+  console.log('\nSet seoImage and seoImageAlt for the page in src/site/routes.ts and scripts/seo-data.mjs, then open the image and check it reads at small sizes.');
+}
+
 async function main() {
+  if (readArg('style') === 'page') {
+    await renderPageCard();
+    return;
+  }
+
   const slug = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
   if (!slug) {
     console.error('Usage: npm run social:guide -- <slug> [--headline="..."] [--photo=/images/...]');

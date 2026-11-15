@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { trackEvent } from '../../observability/analytics';
 import { PageHero, Section } from '../chrome';
 import { foundationOrganization } from '../organization';
+import { ResponsiveImage } from '../responsive-images';
 import { webApiBase } from '../routes';
 
 const CONTACT_EMAIL = foundationOrganization.contactEmail;
@@ -199,6 +200,17 @@ export function PartnersPage() {
         title="Partner with us"
         titleClassName="partners-hero__title"
         body="We're a young, family-run foundation, and we'd like to grow alongside organizations that share the work of helping people grow their own food. We don't have any partners yet. You could be the first."
+        aside={(
+          <div className="page-photo partners-hero__photo">
+            <ResponsiveImage
+              src="/images/partners/okra-seed-pile.jpg"
+              alt="A pile of hundreds of saved okra seeds on cream linen."
+              sizes="(max-width: 900px) 100vw, 28rem"
+              loading="eager"
+              fetchPriority="high"
+            />
+          </div>
+        )}
       />
 
       <Section
