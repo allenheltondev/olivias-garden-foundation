@@ -104,7 +104,21 @@
         },
         {
           "type": "paragraph",
-          "text": "Stored that way, okra seed usually grows well for two to three years. For anything older, fold 10 seeds into a damp paper towel and keep it warm and moist. Okra can take up to three weeks to sprout, so check every few days and count the sprouts at the end. If 8 come up, plant a little thicker to make up the difference."
+          "text": "Stored that way, okra seed usually grows well for at least two years. For anything older, fold 10 seeds into a damp paper towel and keep it warm and moist. Okra can take up to three weeks to sprout, so check every few days and count the sprouts at the end. If 8 come up, plant a little thicker to make up the difference."
+        }
+      ]
+    },
+    {
+      "id": "sources",
+      "title": "Sources",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "[Variety Selection and Seed Saving for Organic Growers](https://extension.uga.edu/publications/detail.html?number=B1486), University of Georgia Cooperative Extension. Covers okra sprouting time and how long the seed keeps.",
+            "[Seed Saving in Georgia Gardens](https://extension.uga.edu/publications/detail.html?number=C1242), University of Georgia Cooperative Extension. Covers letting pods ripen and dry on the plant.",
+            "[Will Your Seeds Grow Plants?](https://extension.oregonstate.edu/imported-publication/will-your-seeds-grow-plants), Oregon State University Extension. Covers the paper towel germination test."
+          ]
         }
       ]
     }
