@@ -17,7 +17,7 @@ This pass tightens the existing cream-and-green presentation and uses the photos
 
 ![Six garden icon drafts](garden-icon-drafts.svg)
 
-The six decorative SVG icons are seed packet, tools, map, harvest basket, journal, and raised bed. They use a 64-unit grid, consistent rounded strokes, garden green, a pale wash, and small gold details. Their visible labels carry the meaning, so assistive technology skips the SVGs. These are lightweight vector drafts in `packages/ui/src/components/GardenIcon.tsx`, not generated bitmap assets. Journal is included for future use; this pass does not redesign the authenticated journal or garden designer.
+The six decorative SVG icons are seed packet, tools, map, harvest basket, journal, and raised bed. They use a 64-unit grid, consistent rounded strokes, garden green, a pale wash, and small gold details. The refined set uses upright, simplified silhouettes with aligned bounds, clear internal spacing, and restrained accent marks. The contact sheet includes 100-, 48-, and 32-pixel examples to review small-size legibility. Their visible labels carry the meaning, so assistive technology skips the SVGs. These are lightweight vector drafts in `packages/ui/src/components/GardenIcon.tsx`, not generated bitmap assets. Journal is included for future use; this pass does not redesign the authenticated journal or garden designer.
 
 ## Images requested
 
