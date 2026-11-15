@@ -4654,6 +4654,7 @@ html {
 }
 
 .okra-zone-lookup__hint,
+.okra-zone-lookup__note,
 .okra-zone-lookup__source,
 .okra-zone-lookup__placeholder {
   margin: 0;

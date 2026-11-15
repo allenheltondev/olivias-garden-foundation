@@ -90,6 +90,19 @@ async function generateVariant(sharp, sourcePath, outputPath, width, format) {
   await pipeline.toFile(outputPath);
 }
 
+/**
+ * Absolute paths of the variant files owned by the selected manifest entries.
+ * Paths that would resolve outside the generated output folder are ignored.
+ */
+export function staleVariantFiles(manifest, isSelected, publicRoot, generatedRoot) {
+  const root = `${path.resolve(generatedRoot)}${path.sep}`;
+  return Object.entries(manifest)
+    .filter(([key]) => isSelected(key))
+    .flatMap(([, entry]) => Object.values(entry?.variants ?? {}).flat())
+    .map((variant) => path.resolve(publicRoot, String(variant?.path ?? '')))
+    .filter((file) => file.startsWith(root));
+}
+
 async function readExistingManifest() {
   try {
     const existing = JSON.parse(await readFile(path.join(outputRoot, 'manifest.json'), 'utf8'));
@@ -128,18 +141,12 @@ async function main() {
     await rm(outputRoot, { recursive: true, force: true });
   } else {
     console.log(`Only: ${only.join(', ')}`);
+    // Remove only the files the selected manifest entries own. Matching by
+    // name prefix would also catch a sibling (okra.jpg vs okra-flower.jpg).
+    const stale = staleVariantFiles(manifest, isSelected, path.join(appRoot, 'public'), outputRoot);
+    await Promise.all(stale.map((file) => rm(file, { force: true })));
     for (const key of Object.keys(manifest)) {
       if (isSelected(key)) delete manifest[key];
-    }
-    for (const prefix of only) {
-      const parsed = path.parse(prefix);
-      // Remove old variants for the selected folders (or a single file's widths).
-      await rm(path.join(outputRoot, prefix), { recursive: true, force: true });
-      if (parsed.ext) {
-        const dir = path.join(outputRoot, parsed.dir);
-        const stale = (await readdir(dir).catch(() => [])).filter((name) => name.startsWith(`${parsed.name}-`));
-        await Promise.all(stale.map((name) => rm(path.join(dir, name), { force: true })));
-      }
     }
   }
   await mkdir(outputRoot, { recursive: true });
@@ -218,7 +225,9 @@ async function main() {
   console.log(`Manifest written to ${path.join(outputRoot, 'manifest.json')}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

@@ -3,8 +3,8 @@
   "status": "published",
   "title": "When to plant okra",
   "seoTitle": "When to Plant Okra: Soil Temperature and Dates by Zone",
-  "description": "Plant okra 2 to 3 weeks after your last frost, once the soil is 65°F. Enter your ZIP code to see your hardiness zone and planting window.",
-  "summary": "Plant okra in spring 2 to 3 weeks after your last frost, once the soil is at least 65°F a few inches down. Enter your ZIP code below to see the usual window where you live.",
+  "description": "Plant okra 2 to 3 weeks after your last frost, once the soil is 65°F. Enter your ZIP code for your hardiness zone and a rough planting window.",
+  "summary": "Plant okra in spring 2 to 3 weeks after your last frost, once the soil is at least 65°F a few inches down. Enter your ZIP code below for your hardiness zone and a rough planting window.",
   "heroImage": {
     "src": "/images/okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line.jpg",
     "alt": "A young okra seedling with its first true leaves, growing in a garden bed beside a drip irrigation line."
@@ -57,11 +57,11 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Enter your ZIP code to find your USDA hardiness zone and the usual spring planting window there. Zones are based on winter cold, not frost dates, so treat the window as a starting point and let your soil temperature make the final call."
+          "text": "Enter your ZIP code to find your USDA hardiness zone and a rough spring planting window for it. Zones are based on average winter lows, not frost dates, so planting seasons can differ a lot within one zone. Treat the window as a rough example, check your local Extension planting calendar, and let your soil temperature make the final call."
         },
         {
           "type": "zoneLookup",
-          "caption": "Spring okra planting windows by USDA hardiness zone",
+          "caption": "Rough spring okra planting windows by USDA hardiness zone",
           "rows": [
             {
               "zones": [

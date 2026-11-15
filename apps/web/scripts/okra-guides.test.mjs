@@ -320,7 +320,7 @@ describe('structured data and fallback HTML', () => {
       }],
     });
     assert.match(html, /<caption>Okra planting by zone<\/caption>/);
-    assert.match(html, /<th scope="col">Hardiness zone<\/th><th scope="col">When to plant okra<\/th>/);
+    assert.match(html, /<th scope="col">Hardiness zone<\/th><th scope="col">Rough planting window<\/th>/);
     assert.match(html, /<td>Zones 3 and 4<\/td><td>Mid June<\/td>/);
     assert.match(html, /<td>Zone 8<\/td><td>Mid April, see <a href="\/okra">the hub<\/a><\/td>/);
     assert.match(html, /<td>Zones 11 to 13<\/td>/);

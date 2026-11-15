@@ -89,7 +89,10 @@ export function ZoneLookup({ block, renderText }: { block: ZoneLookupBlock; rend
           {state.status === 'found' && matchedRow ? (
             <>
               <p className="okra-zone-lookup__zone">{state.zip} is in zone {state.zone}.</p>
-              <p className="okra-guide__text">When to plant okra: {renderText(matchedRow.plant)}</p>
+              <p className="okra-guide__text">Rough planting window for zone {state.zoneNumber}: {renderText(matchedRow.plant)}</p>
+              <p className="okra-zone-lookup__note">
+                Zones are based on winter lows, so planting seasons vary within a zone. Check your local Extension planting calendar, and plant once your soil reaches 65°F.
+              </p>
             </>
           ) : null}
           {state.status === 'not-found' ? (

@@ -251,7 +251,7 @@ export function zoneRowLabel(zones) {
 }
 
 /** Column headings shared by the zoneLookup table on the page and in the fallback HTML. */
-export const ZONE_LOOKUP_HEADERS = ['Hardiness zone', 'When to plant okra'];
+export const ZONE_LOOKUP_HEADERS = ['Hardiness zone', 'Rough planting window'];
 
 function blockToHtml(block) {
   switch (block.type) {
