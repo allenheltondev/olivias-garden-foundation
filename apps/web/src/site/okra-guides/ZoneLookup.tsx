@@ -57,55 +57,60 @@ export function ZoneLookup({ block, renderText }: { block: ZoneLookupBlock; rend
 
   return (
     <div className="okra-zone-lookup">
-      <form className="okra-zone-lookup__form" onSubmit={onSubmit} noValidate>
-        <label className="okra-zone-lookup__label" htmlFor={inputId}>Your ZIP code</label>
-        <div className="okra-zone-lookup__controls">
-          <input
-            id={inputId}
-            className="okra-zone-lookup__input"
-            type="text"
-            inputMode="numeric"
-            autoComplete="postal-code"
-            maxLength={10}
-            placeholder="75070"
-            aria-describedby={hintId}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-          <button type="submit" className="ok-btn ok-btn--ghost" disabled={state.status === 'loading'}>
-            {state.status === 'loading' ? 'Looking up...' : 'Find my zone'}
-          </button>
-        </div>
-        <p id={hintId} className="okra-zone-lookup__hint">
-          We only use your ZIP code to look up the zone, and we don&apos;t save it.
-        </p>
-      </form>
-
-      <div className="okra-zone-lookup__result" aria-live="polite">
-        {state.status === 'found' && matchedRow ? (
-          <div className="okra-zone-lookup__answer">
-            <p className="okra-zone-lookup__zone">{state.zip} is in zone {state.zone}.</p>
-            <p className="okra-guide__text">When to plant okra: {renderText(matchedRow.plant)}</p>
+      <div className="okra-zone-lookup__panel">
+        <form className="okra-zone-lookup__form" onSubmit={onSubmit} noValidate>
+          <label className="okra-zone-lookup__label" htmlFor={inputId}>Your ZIP code</label>
+          <div className="okra-zone-lookup__controls">
+            <input
+              id={inputId}
+              className="okra-zone-lookup__input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              maxLength={10}
+              placeholder="5-digit ZIP"
+              aria-describedby={hintId}
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+            <button type="submit" className="ok-btn ok-btn--ghost" disabled={state.status === 'loading'}>
+              {state.status === 'loading' ? 'Looking up...' : 'Find my zone'}
+            </button>
           </div>
-        ) : null}
-        {state.status === 'not-found' ? (
-          <p className="okra-guide__text">
-            We don&apos;t have a zone for {state.zip}. Some ZIP codes, like PO boxes, aren&apos;t in the map data. Try a nearby ZIP code, or use the table below.
+          <p id={hintId} className="okra-zone-lookup__hint">
+            We only use your ZIP code to look up the zone, and we don&apos;t save it.
           </p>
-        ) : null}
-        {state.status === 'canada' ? (
-          <p className="okra-guide__text">
-            This lookup covers US ZIP codes. In Canada, plant okra 2 to 3 weeks after your last spring frost, once the soil is warm, and use the cooler zones below as a guide.
-          </p>
-        ) : null}
-        {state.status === 'invalid' ? (
-          <p className="okra-guide__text">Enter a 5-digit US ZIP code, like 75070.</p>
-        ) : null}
-        {state.status === 'error' ? (
-          <p className="okra-guide__text">
-            We couldn&apos;t look that up right now. Check your connection and try again, or use the table below.
-          </p>
-        ) : null}
+        </form>
+
+        <div className="okra-zone-lookup__result" aria-live="polite">
+          {state.status === 'idle' || state.status === 'loading' ? (
+            <p className="okra-zone-lookup__placeholder">Your zone and planting window will show here.</p>
+          ) : null}
+          {state.status === 'found' && matchedRow ? (
+            <>
+              <p className="okra-zone-lookup__zone">{state.zip} is in zone {state.zone}.</p>
+              <p className="okra-guide__text">When to plant okra: {renderText(matchedRow.plant)}</p>
+            </>
+          ) : null}
+          {state.status === 'not-found' ? (
+            <p className="okra-guide__text">
+              We don&apos;t have a zone for {state.zip}. Some ZIP codes, like PO boxes, aren&apos;t in the map data. Try a nearby ZIP code, or use the table below.
+            </p>
+          ) : null}
+          {state.status === 'canada' ? (
+            <p className="okra-guide__text">
+              This lookup covers US ZIP codes. In Canada, plant okra 2 to 3 weeks after your last spring frost, once the soil is warm, and use the cooler zones below as a guide.
+            </p>
+          ) : null}
+          {state.status === 'invalid' ? (
+            <p className="okra-guide__text">Enter a 5-digit US ZIP code, like 75070.</p>
+          ) : null}
+          {state.status === 'error' ? (
+            <p className="okra-guide__text">
+              We couldn&apos;t look that up right now. Check your connection and try again, or use the table below.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="okra-guide__table-wrap">
