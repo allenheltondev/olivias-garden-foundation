@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T19:23:48.994Z",
+  "generatedAt": "2026-11-15T20:42:33.734Z",
   "widths": [
     480,
     768,
@@ -595,6 +595,30 @@
             "width": 900,
             "path": "images/responsive/okra/guides/how-to-grow-okra/young-okra-plant-with-first-pod-900.avif",
             "bytes": 278101
+          }
+        ]
+      }
+    },
+    "okra/guides/how-to-grow-okra/late-season-okra-with-drying-pods.jpg": {
+      "original": "okra/guides/how-to-grow-okra/late-season-okra-with-drying-pods.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/late-season-okra-with-drying-pods-480.avif",
+            "bytes": 54683
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/late-season-okra-with-drying-pods-768.avif",
+            "bytes": 106709
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/late-season-okra-with-drying-pods-1205.avif",
+            "bytes": 183344
           }
         ]
       }
