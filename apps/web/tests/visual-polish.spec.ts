@@ -29,6 +29,12 @@ test('the mobile product introduction shows the garden designer before the featu
   await gotoAndWait(page, '/good-roots', { waitUntil: 'domcontentloaded' });
   const preview = page.getByRole('img', { name: 'Good Roots garden designer showing vegetable beds laid out across a garden.' });
   await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute('width', '1616');
+  await expect(preview).toHaveAttribute('height', '1212');
+  await expect(preview).toHaveAttribute('loading', 'eager');
+  await expect(preview).toHaveAttribute('fetchpriority', 'high');
+  await expect.poll(() => preview.evaluate((image: HTMLImageElement) => image.currentSrc))
+    .toMatch(/app-garden-map-(480|768)\.avif$/);
   expect((await preview.boundingBox())!.y).toBeLessThan(850);
   const steps = page.getByRole('heading', { name: 'How it works', exact: true });
   expect((await preview.boundingBox())!.y).toBeLessThan((await steps.boundingBox())!.y);
@@ -41,13 +47,34 @@ test('participation choices show availability and workshops have a useful next s
     : route.continue());
   await gotoAndWait(page, '/get-involved');
   await expect(page.getByText('Available now', { exact: true })).toHaveCount(2);
-  await expect(page.getByText('Being planned', { exact: true })).toBeVisible();
+  await expect(page.getByText('Browse workshops', { exact: true })).toBeVisible();
   await expect(page.locator('.get-involved-card .og-garden-icon')).toHaveCount(4);
-  await page.getByRole('link', { name: "See what's planned", exact: true }).click();
+  await page.getByRole('link', { name: 'View workshops', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'No workshops scheduled yet.' })).toBeVisible();
   await page.getByRole('link', { name: 'Suggest a workshop' }).click();
   await expect(page).toHaveURL(/\/contact$/);
   await expect(page.getByRole('heading', { name: 'Send a message' })).toBeVisible();
+});
+
+test('the participation workshop card stays accurate when registration is open', async ({ page }) => {
+  await page.route('**/workshops', (route) => route.request().resourceType() === 'fetch'
+    ? route.fulfill({ json: { items: [{
+      id: 'sample-workshop', slug: 'seed-saving', title: 'Seed saving',
+      short_description: 'Learn to save seeds from the garden.', description: null,
+      status: 'open', workshop_date: null, location: 'The garden', capacity: 10,
+      seats_remaining: 10, image_url: null, is_paid: false, price_cents: null,
+      currency: 'usd', interested_count: 0, my_signup: null,
+    }] } })
+    : route.continue());
+  await gotoAndWait(page, '/get-involved');
+  const card = page.locator('.get-involved-card').filter({ has: page.getByRole('heading', { name: 'Hands-on workshops.' }) });
+  await expect(card.getByText('Browse workshops', { exact: true })).toBeVisible();
+  await expect(card).not.toContainText('Nothing is on the calendar');
+  await expect(card).not.toContainText('Being planned');
+  await card.getByRole('link', { name: 'View workshops', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Seed saving' })).toBeVisible();
+  await expect(page.getByText('Registration open', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No workshops scheduled yet.' })).toHaveCount(0);
 });
 
 test('mobile contact puts the message form before supporting details', async ({ page }) => {

@@ -402,17 +402,16 @@ export function GetInvolvedPage({ onNavigate }: { onNavigate: (path: string) => 
         </Card>
 
         <Card className="get-involved-card">
-          <div className="get-involved-card__top"><GardenIcon name="bed" /><span className="participation-status">Being planned</span></div>
+          <div className="get-involved-card__top"><GardenIcon name="bed" /><span className="participation-status">Browse workshops</span></div>
           <h2>Hands-on workshops.</h2>
           <p>
-            We&apos;re planning workshops built around real tasks and hands-on learning, not
-            classroom-style theory. Nothing is on the calendar yet. Tell us what you&apos;d
-            want to learn, and you&apos;ll hear about the first sessions before anyone else.
+            Learn through real tasks in the garden, from garden prep to food preservation.
+            Browse upcoming sessions, check registration, or share what you&apos;d like to learn.
           </p>
           <CtaButton variant="secondary" href="/workshops" onClick={(event) => {
             event?.preventDefault?.();
             onNavigate('/workshops');
-          }}>See what&apos;s planned</CtaButton>
+          }}>View workshops</CtaButton>
         </Card>
 
         <Card className="get-involved-card">
@@ -1437,7 +1436,15 @@ export function GoodRootsPage({
         aside={(
           <figure className="good-roots-product-preview">
             <div className="good-roots-product-preview__bar"><span>Good Roots Network</span><span>Sample garden</span></div>
-            <img src="/images/good-roots/app-garden-map.jpg" width="1616" height="1212" alt="Good Roots garden designer showing vegetable beds laid out across a garden." fetchPriority="high" />
+            <ResponsiveImage
+              src="/images/good-roots/app-garden-map.jpg"
+              width="1616"
+              height="1212"
+              alt="Good Roots garden designer showing vegetable beds laid out across a garden."
+              sizes="(min-width: 1200px) 26rem, (min-width: 760px) 36vw, calc(100vw - 2rem)"
+              loading="eager"
+              fetchPriority="high"
+            />
             <figcaption>Your garden, bed by bed. Plan your first one for free.</figcaption>
           </figure>
         )}
