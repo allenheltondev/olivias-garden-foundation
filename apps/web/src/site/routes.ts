@@ -146,7 +146,8 @@ export const routes: AppRoute[] = [
     showInFooter: true,
     title: 'Partner with us',
     description: "Partner with Olivia's Garden Foundation: sponsor free okra seeds through bulk growing or satellite seed sharing. For extension programs, colleges, nonprofits, and local businesses.",
-    seoImage: socialShareImage,
+    seoImage: '/images/social/partners.png',
+    seoImageAlt: "A pile of hundreds of saved okra seeds on cream linen, with the headline: Help Olivia's okra spread.",
     prerender: true,
   },
   {

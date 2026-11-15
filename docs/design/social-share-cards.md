@@ -12,6 +12,16 @@ Both `src/site/routes.ts` and `scripts/seo-data.mjs` select the page images, pag
 - Output resized and PNG-optimized with Sharp; originals retained outside the repository.
 - The donate card uses the current bee marker and should be reviewed when the annual marker changes.
 
+## Cards generated in code
+
+`partners.png` ("Help Olivia's okra spread") follows the same spec but is composed in code from a real photograph instead of image generation:
+
+```bash
+npm --workspace @olivias/web run social:page -- --photo=/images/partners/okra-seed-pile.jpg --headline="Help Olivia's okra spread" --out=/images/social/partners.png
+```
+
+The `page` style uses the cream background, garden-green serif headline (at most three lines, preferring fewer), a thin divider, and the heart logo with the wordmark. Okra guide cards use `npm run social:guide` instead (see `apps/web/src/site/okra-guides/README.md`).
+
 ## Validation
 
 Run `npm --workspace @olivias/web test` for asset size, dimensions, format, and route parity checks.

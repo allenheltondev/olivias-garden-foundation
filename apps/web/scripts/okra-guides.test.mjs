@@ -19,7 +19,7 @@ import {
   renderGuideListHtml,
   stripInline,
 } from '../src/site/okra-guides/guide-core.mjs';
-import { layoutHeadline, renderSocialCard } from './generate-guide-social-card.mjs';
+import { layoutHeadline, layoutPageHeadline, renderSocialCard } from './generate-guide-social-card.mjs';
 import { withGuideSection } from './generate-llms.mjs';
 import { loadOkraGuides, readGuideFiles, validateOkraGuides } from './okra-guides.mjs';
 
@@ -331,6 +331,24 @@ describe('social card generator', () => {
     const { lines, fontSize } = layoutHeadline('When to plant okra in North Texas and across the South');
     assert.ok(lines.length <= 3);
     assert.ok(fontSize >= 44 && fontSize <= 64);
+  });
+
+  test('page-style headlines prefer fewer lines over a bigger font', () => {
+    assert.deepEqual(layoutPageHeadline("Help Olivia's okra spread").lines, ["Help Olivia's", 'okra spread']);
+    assert.throws(() => layoutPageHeadline('A headline far too long to ever fit on a main page social card at any size'), /needs more than 3 lines/);
+  });
+
+  test('renders a 1200x630 page-style card under 1 MB', async () => {
+    const outPath = join(workDir, 'cards', 'page-card.png');
+    await renderSocialCard({
+      photoPath: join(publicRoot, 'images/okra/olivia-okra.jpg'),
+      headline: 'Start where you are',
+      outPath,
+      style: 'page',
+    });
+    const { width, height, format, size } = await sharp(outPath).metadata();
+    assert.deepEqual({ width, height, format }, { width: 1200, height: 630, format: 'png' });
+    assert.ok((size ?? readFileSync(outPath).length) < 1_000_000);
   });
 
   test('refuses a headline that needs more than three lines instead of cutting it off', () => {
