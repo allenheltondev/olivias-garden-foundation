@@ -17,6 +17,7 @@
     "@aws-sdk/client-cloudformation": "~3.1034.0",
     "@aws-sdk/client-cognito-identity-provider": "~3.1030.0",
     "@aws-sdk/client-dynamodb": "~3.1034.0",
+    "@aws-sdk/client-geo-places": "~3.1034.0",
     "@aws-sdk/client-lambda": "~3.1034.0",
     "@aws-sdk/lib-dynamodb": "~3.1034.0",
     "@modelcontextprotocol/server": "^2.4.0",

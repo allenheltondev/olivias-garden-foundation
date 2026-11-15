@@ -101,13 +101,26 @@ Writes that the services make idempotent (store products) take an optional
 
 `mark_seed_request_done` places the public "seeds sent" pin the way the admin
 app's **Mark done** does. When the requester may have a pin (the okra API's
-`pinVisibility`), it looks up their city with OpenStreetMap's Nominatim, using
-the admin app's rules (`src/mcp/seed-pins.mjs`, after
-`apps/admin/src/services/seed-pin-geocoder.ts`): a mailed request is located
-from city, region, postal code and country only, never its street lines, name
-or email. A street is looked up only for an in-person exchange an admin gave a
-map address. Nothing is looked up for a request told it would get no pin, or
-when the caller passes `map_location`.
+`pinVisibility`), it looks up their location using the admin app's rules
+(`src/mcp/seed-pins.mjs`, after `apps/admin/src/services/seed-pin-geocoder.ts`):
+a mailed request is located from city, region, postal code and country only,
+never its street lines, name or email. A street is looked up only for an
+in-person exchange an admin gave a map address. Nothing is looked up for a
+request told it would get no pin, or when the caller passes `map_location`.
+
+The lookup uses **Amazon Location Service** (Geo Places `Geocode`, through the
+function's IAM role), not the public Nominatim the admin app calls from the
+browser. Nominatim's [usage policy](https://operations.osmfoundation.org/policies/nominatim/)
+allows at most one request per second across the whole application and
+expects bulk users to cache. A server that agents call in parallel can't
+safely share that budget with the admin app, so the MCP server sends Nominatim
+nothing.
+- **Storage use:** requests set `IntendedUse: "Storage"`, which Amazon
+  Location's terms require because the okra API stores the pin's coordinates.
+- **Load:** within a container, identical lookups share one call and are
+  cached, and calls run one at a time. Marking a batch of requests from one
+  town costs a single lookup. A failed call isn't cached, so it is retried
+  next time.
 
 The result's `map_pin` says what happened: `placed`, or a `reason` (no pin was
 promised) or a `warning` (the city could not be found). In that last case the

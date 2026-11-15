@@ -68,13 +68,14 @@ describe('seed request ordering', () => {
 });
 
 describe('seed pin lookup', () => {
+  const sent = (request) => JSON.stringify(buildSeedPinQueries(request).map((q) => q.query));
+  const found = (lng, lat) => ({ ResultItems: [{ Position: [lng, lat] }] });
+
   it('sends only city-level fields for a mailed request, never street, name or email', () => {
-    const queries = buildSeedPinQueries(seedRequest(1, 1)).map((q) => q.params.toString());
-    assert.ok(queries.length >= 1);
-    for (const q of queries) {
-      assert.ok(!/Secret|Person|example\.org|street/.test(q), q);
-    }
-    assert.match(queries[0], /city=Austin/);
+    const queries = buildSeedPinQueries(seedRequest(1, 1));
+    assert.deepEqual(queries.map((q) => q.precision), ['city', 'city']);
+    assert.deepEqual(queries[0].query, { QueryComponents: { Locality: 'Austin', Region: 'TX', Country: 'US' } });
+    assert.ok(!/Secret|Person|example\.org|Street|QueryText/.test(sent(seedRequest(1, 1))));
   });
 
   it('looks nothing up for a request that may not have a pin', () => {
@@ -87,25 +88,78 @@ describe('seed pin lookup', () => {
   it('looks up the street only for an in-person exchange with a map address', () => {
     const inPerson = seedRequest(1, 1, {
       fulfillmentMethod: 'in_person',
-      pinAddress: { line1: '1 Market Sq', city: 'McKinney', region: 'TX', country: 'US' }
+      pinAddress: { line1: '1 Market Sq', city: 'McKinney', region: 'TX', country: 'us' }
     });
     const [first] = buildSeedPinQueries(inPerson);
     assert.equal(first.precision, 'nearby');
-    assert.match(first.params.toString(), /street=1\+Market\+Sq/);
+    assert.deepEqual(first.query, { QueryText: '1 Market Sq, McKinney, TX', Filter: { IncludeCountries: ['US'] } });
+  });
+
+  it('asks Amazon Location for one result, intended for storage, and reads [lng, lat]', async () => {
+    const commands = [];
+    const client = { send: async (command) => { commands.push(command.input); return found(-97.74, 30.27); } };
+    // The default provider, with its client swapped for a fake.
+    const { GeoPlacesClient } = await import('@aws-sdk/client-geo-places');
+    const original = GeoPlacesClient.prototype.send;
+    GeoPlacesClient.prototype.send = function (command) {
+      return client.send(command);
+    };
+    try {
+      const locate = createSeedPinLocator(undefined, { logger: quiet });
+      assert.deepEqual(await locate(seedRequest(1, 1)), { lat: 30.27, lng: -97.74, precision: 'city' });
+    } finally {
+      GeoPlacesClient.prototype.send = original;
+    }
+    assert.equal(commands.length, 1);
+    assert.equal(commands[0].IntendedUse, 'Storage');
+    assert.equal(commands[0].MaxResults, 1);
   });
 
   it('falls back to coarser queries and never throws', async () => {
     const calls = [];
-    const locate = createSeedPinLocator(async (url, init) => {
-      calls.push({ url, ua: init.headers['User-Agent'] });
-      if (calls.length === 1) throw new Error('network down');
-      return new Response(JSON.stringify([{ lat: '30.27', lon: '-97.74' }]), { status: 200 });
-    });
+    const locate = createSeedPinLocator(async (query) => {
+      calls.push(query);
+      if (calls.length === 1) throw Object.assign(new Error('throttled'), { name: 'ThrottlingException' });
+      return found(-97.74, 30.27);
+    }, { logger: quiet });
     assert.deepEqual(await locate(seedRequest(1, 1)), { lat: 30.27, lng: -97.74, precision: 'city' });
     assert.equal(calls.length, 2);
-    assert.ok(calls.every((c) => c.ua && !c.ua.includes('@')));
-    const nothing = createSeedPinLocator(async () => new Response('[]', { status: 200 }));
+    assert.ok('PostalCode' in calls[1].QueryComponents);
+    const nothing = createSeedPinLocator(async () => ({ ResultItems: [] }), { logger: quiet });
     assert.equal(await nothing(seedRequest(1, 1)), null);
+  });
+
+  it('shares identical lookups and runs calls one at a time under concurrency', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    let calls = 0;
+    const locate = createSeedPinLocator(async () => {
+      calls += 1;
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      return found(-97.74, 30.27);
+    }, { logger: quiet });
+    const sameTown = Array.from({ length: 8 }, (_, i) => seedRequest(i + 1, 1));
+    const otherTown = seedRequest(99, 1, { shippingAddress: { city: 'Plano', region: 'TX', postalCode: '75024', country: 'US' } });
+    const results = await Promise.all([...sameTown, otherTown].map((r) => locate(r)));
+    assert.ok(results.every((r) => r && r.precision === 'city'));
+    assert.equal(calls, 2, 'one call per distinct town');
+    assert.equal(maxInFlight, 1, 'never more than one call at once');
+    await locate(seedRequest(50, 1));
+    assert.equal(calls, 2, 'a later lookup for a known town is cached');
+  });
+
+  it('does not cache a failed call', async () => {
+    let calls = 0;
+    const locate = createSeedPinLocator(async () => {
+      calls += 1;
+      if (calls <= 2) throw new Error('down');
+      return found(-97.74, 30.27);
+    }, { logger: quiet });
+    assert.equal(await locate(seedRequest(1, 1)), null);
+    assert.deepEqual(await locate(seedRequest(1, 1)), { lat: 30.27, lng: -97.74, precision: 'city' });
   });
 });
 

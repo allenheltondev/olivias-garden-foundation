@@ -139,6 +139,12 @@ Resources:
               Resource: !Sub
                 - 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}'
                 - UserPoolId: !ImportValue OGF-UserPoolId
+            # Locating a seed request's map pin (src/mcp/seed-pins.mjs): Amazon
+            # Location's Geocode, rather than the public Nominatim, whose
+            # one-request-per-second limit a server cannot share safely.
+            - Effect: Allow
+              Action: geo-places:Geocode
+              Resource: !Sub 'arn:${AWS::Partition}:geo-places:${AWS::Region}::provider/default'
             # The services that own the data. The MCP function holds no
             # database connection; every change runs through the owning API.
             - Effect: Allow

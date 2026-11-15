@@ -1,21 +1,30 @@
 /**
- * Locating a seed request for its public "seeds sent" map pin, as the admin
- * app does (apps/admin/src/services/seed-pin-geocoder.ts and
- * pages/seed-request-display.ts). Kept rule for rule the same, so marking a
- * request done here pins it exactly where the admin app's button would.
+ * Locating a seed request for its public "seeds sent" map pin, with the admin
+ * app's rules (apps/admin/src/services/seed-pin-geocoder.ts and
+ * pages/seed-request-display.ts): which requests may have a pin, which fields
+ * are looked up, and in what order.
  *
  * Privacy: nothing is looked up for a request that may not have a pin. Mailed
  * requests are located at city level only: city, region, postal code and
- * country go to the geocoder; street lines, names and emails never do. The one
+ * country are sent; street lines, names and emails never are. The one
  * exception is an in-person exchange where an admin entered a map address:
  * that street is looked up so the pin can sit nearby, and the okra API still
  * rounds and fuzzes it before it goes public.
+ *
+ * Provider: Amazon Location Service (Geo Places `Geocode`), not the public
+ * Nominatim the admin app calls from the browser. Nominatim's usage policy
+ * allows one request per second across the whole application and expects
+ * bulk users to cache, which a server that agents call in parallel cannot
+ * promise; this way the MCP server adds no load to it at all. Amazon Location
+ * is called with IntendedUse "Storage", which its terms require because the
+ * okra API stores the pin's coordinates. Within one container, identical
+ * lookups are shared and cached, and lookups run one at a time, so marking a
+ * batch of requests from the same town costs one call.
  */
 
-const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
-// Nominatim's usage policy asks every client to identify itself.
-const USER_AGENT = 'olivias-garden-foundation-operator-mcp/1.0';
-const QUERY_TIMEOUT_MS = 4000;
+import { GeoPlacesClient, GeocodeCommand } from '@aws-sdk/client-geo-places';
+
+const CACHE_LIMIT = 500;
 
 function clean(value) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -35,61 +44,90 @@ export function wantsMapPin(request) {
   return (request.pinVisibility ?? 'none') !== 'none';
 }
 
-/** Ordered structured queries, most to least specific. Empty when the request may not have a pin. */
+/**
+ * Ordered Geocode queries, most to least specific, as the admin app orders
+ * them. Empty when the request may not have a pin.
+ */
 export function buildSeedPinQueries(request) {
   if (!wantsMapPin(request)) return [];
   const address = pinAddressOf(request);
   const city = clean(address.city);
   const region = clean(address.region);
   const postalCode = clean(address.postalCode);
-  const country = clean(address.country);
+  const country = clean(address.country)?.toUpperCase() ?? null;
   if (!country) return [];
 
   const steps = [];
   const street = request.fulfillmentMethod === 'in_person' ? clean(address.line1) : null;
   if (street && city) {
     steps.push({
-      fields: { street, city, ...(region ? { state: region } : {}), ...(postalCode ? { postalcode: postalCode } : {}), country },
+      query: { QueryText: [street, city, [region, postalCode].filter(Boolean).join(' ')].filter(Boolean).join(', '), Filter: { IncludeCountries: [country] } },
       precision: 'nearby'
     });
   }
-  if (city) steps.push({ fields: { city, ...(region ? { state: region } : {}), country }, precision: 'city' });
-  if (postalCode) steps.push({ fields: { postalcode: postalCode, country }, precision: 'city' });
-
-  return steps.map(({ fields, precision }) => ({
-    params: new URLSearchParams({ ...fields, format: 'json', limit: '1' }),
-    precision
-  }));
+  if (city) {
+    steps.push({ query: { QueryComponents: { Locality: city, ...(region ? { Region: region } : {}), Country: country } }, precision: 'city' });
+  }
+  if (postalCode) {
+    steps.push({ query: { QueryComponents: { PostalCode: postalCode, Country: country } }, precision: 'city' });
+  }
+  return steps;
 }
 
-function parseResult(body, precision) {
-  if (!Array.isArray(body) || body.length === 0) return null;
-  const lat = Number.parseFloat(body[0]?.lat);
-  const lng = Number.parseFloat(body[0]?.lon);
+/** Amazon Location returns Position as [longitude, latitude]. */
+export function parseGeocodeResult(out, precision) {
+  const position = out?.ResultItems?.[0]?.Position;
+  if (!Array.isArray(position) || position.length < 2) return null;
+  const [lng, lat] = position.map(Number);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
   if (lat === 0 && lng === 0) return null;
   return { lat, lng, precision };
 }
 
+/** `geocode(query)` → the provider's raw response. The default calls Amazon Location. */
+function amazonLocationGeocoder(client = new GeoPlacesClient({})) {
+  return (query) => client.send(new GeocodeCommand({ ...query, MaxResults: 1, IntendedUse: 'Storage' }));
+}
+
 /**
  * `locate(request)`: the most precise location found, or null. Never throws:
- * a missing pin never blocks recording that seeds were sent.
+ * a missing pin never blocks recording that seeds were sent. Identical
+ * queries share one call (in flight or cached, misses included), and calls run
+ * one at a time.
  */
-export function createSeedPinLocator(fetcher = (url, init) => fetch(url, init)) {
-  return async function locate(request) {
-    for (const { params, precision } of buildSeedPinQueries(request)) {
+export function createSeedPinLocator(geocode = amazonLocationGeocoder(), { logger = console } = {}) {
+  const cache = new Map();
+  let queue = Promise.resolve();
+
+  const serially = (fn) => {
+    const run = queue.then(fn, fn);
+    queue = run.catch(() => undefined);
+    return run;
+  };
+
+  function lookup(step) {
+    const key = JSON.stringify(step.query);
+    if (cache.has(key)) return cache.get(key);
+    const pending = serially(async () => {
       try {
-        const res = await fetcher(`${NOMINATIM_SEARCH_URL}?${params.toString()}`, {
-          headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
-          signal: AbortSignal.timeout(QUERY_TIMEOUT_MS)
-        });
-        if (!res.ok) continue;
-        const location = parseResult(await res.json(), precision);
-        if (location) return location;
-      } catch {
-        // Try the next, coarser query.
+        return parseGeocodeResult(await geocode(step.query), step.precision);
+      } catch (error) {
+        // A failed call is not cached: the next lookup may succeed.
+        cache.delete(key);
+        logger.warn?.(JSON.stringify({ level: 'WARN', msg: 'Seed pin geocode failed', error: error?.name ?? String(error) }));
+        return null;
       }
+    });
+    if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);
+    cache.set(key, pending);
+    return pending;
+  }
+
+  return async function locate(request) {
+    for (const step of buildSeedPinQueries(request)) {
+      const location = await lookup(step);
+      if (location) return location;
     }
     return null;
   };
