@@ -1,6 +1,6 @@
 {
   "slug": "how-to-grow-okra",
-  "status": "draft",
+  "status": "published",
   "title": "How to grow okra",
   "seoTitle": "How to Grow Okra: A Guide for Hot Summers",
   "description": "Grow okra in full sun and warm soil, thin plants to a foot apart, water deeply and pick pods every day or two. Tips from a North Texas okra garden.",
@@ -12,6 +12,12 @@
   "socialImage": {
     "src": "/images/social/okra-guides/how-to-grow-okra.jpg",
     "alt": "How to grow okra card with a photo of a yellow okra flower on a tall okra plant."
+  },
+  "datePublished": "2026-11-15",
+  "dateModified": "2026-11-15",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-15"
   },
   "targetQueries": [
     "how to grow okra",
