@@ -292,7 +292,9 @@ describe('structured data and fallback HTML', () => {
       ogType: 'article',
       allowIndex: true,
       prerender: true,
+      showInFooter: false,
     });
+    assert.equal(guideRouteMeta({ ...guide, showInFooter: true }).showInFooter, true);
     assert.equal(guideRouteMeta({ ...guide, status: 'draft' }).allowIndex, false);
   });
 

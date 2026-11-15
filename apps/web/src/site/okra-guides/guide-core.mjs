@@ -116,6 +116,7 @@ export function guideRouteMeta(guide) {
     // must never be indexed.
     allowIndex: guide.status === 'published',
     prerender: true,
+    showInFooter: guide.showInFooter === true,
   };
 }
 

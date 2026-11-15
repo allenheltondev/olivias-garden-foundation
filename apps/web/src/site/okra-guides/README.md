@@ -43,6 +43,7 @@ Strategy and the list of planned guides: epic #413.
   "targetQueries": ["how to grow okra", "okra growing tips"],  // not rendered; documents search intent
   "related": ["when-to-plant-okra"],     // other guide slugs, shown under "Keep going"
   "order": 10,                           // sort order in guide lists (lower first)
+  "showInFooter": false,                 // optional: true adds a footer link after "Okra Project"
   "seedCallToAction": "callout",         // optional: "callout" (box under the header, the default) or
                                          // "hero" (button under the summary, for short pages like free-okra-seeds)
   "intro": ["Paragraph", "Paragraph"],

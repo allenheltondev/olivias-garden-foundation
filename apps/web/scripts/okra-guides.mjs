@@ -176,6 +176,9 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
     } else if (guide.description.length < 70 || guide.description.length > 160) {
       publishing(`description is ${guide.description.length} characters; keep it between 70 and 160.`);
     }
+    if (guide.showInFooter !== undefined && typeof guide.showInFooter !== 'boolean') {
+      structural('showInFooter must be true or false.');
+    }
     if (guide.seedCallToAction !== undefined && !['callout', 'hero'].includes(guide.seedCallToAction)) {
       structural('seedCallToAction must be "callout" or "hero".');
     }

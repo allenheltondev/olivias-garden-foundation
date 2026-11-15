@@ -56,6 +56,8 @@ export interface OkraGuide {
    * whose summary already is the pitch (e.g. free-okra-seeds).
    */
   seedCallToAction?: 'callout' | 'hero';
+  /** Adds a link to this guide in the site footer, right after "Okra Project". */
+  showInFooter?: boolean;
   intro: string[];
   sections: GuideSection[];
   faq?: GuideFaqItem[];
@@ -81,6 +83,7 @@ export interface GuideRouteMeta {
   ogType: 'article';
   allowIndex: boolean;
   prerender: true;
+  showInFooter: boolean;
 }
 
 export interface JsonLdBlock {
@@ -102,7 +105,7 @@ export function isInternalHref(href: string): boolean;
 export function collectGuideTexts(guide: OkraGuide): string[];
 export function collectGuideLinks(guide: OkraGuide): string[];
 export function guidePageTitle(guide: Pick<OkraGuide, 'title' | 'seoTitle'>): string;
-export function guideRouteMeta(guide: OkraGuideSummary | OkraGuide): GuideRouteMeta;
+export function guideRouteMeta(guide: (OkraGuideSummary & { showInFooter?: boolean }) | OkraGuide): GuideRouteMeta;
 export function guideSummary(guide: OkraGuide): OkraGuideSummary;
 export function sortGuides<T extends { order?: number; title: string }>(guides: T[]): T[];
 export function buildGuideArticleJsonLd(guide: OkraGuide, siteUrl: string): Record<string, unknown>;
