@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T18:46:09.893Z",
+  "generatedAt": "2026-11-15T19:23:48.994Z",
   "widths": [
     480,
     768,
@@ -518,6 +518,83 @@
             "width": 1205,
             "path": "images/responsive/okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line-1205.avif",
             "bytes": 220768
+          }
+        ]
+      }
+    },
+    "okra/guides/how-to-grow-okra/okra-flower-on-plant.jpg": {
+      "original": "okra/guides/how-to-grow-okra/okra-flower-on-plant.jpg",
+      "width": 1200,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-flower-on-plant-480.avif",
+            "bytes": 39011
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-flower-on-plant-768.avif",
+            "bytes": 68135
+          },
+          {
+            "width": 1200,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-flower-on-plant-1200.avif",
+            "bytes": 116890
+          }
+        ]
+      }
+    },
+    "okra/guides/how-to-grow-okra/okra-plants-in-backyard-garden.jpg": {
+      "original": "okra/guides/how-to-grow-okra/okra-plants-in-backyard-garden.jpg",
+      "width": 1600,
+      "height": 1205,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-plants-in-backyard-garden-480.avif",
+            "bytes": 37302
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-plants-in-backyard-garden-768.avif",
+            "bytes": 93717
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-plants-in-backyard-garden-1280.avif",
+            "bytes": 216705
+          },
+          {
+            "width": 1600,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/okra-plants-in-backyard-garden-1600.avif",
+            "bytes": 298290
+          }
+        ]
+      }
+    },
+    "okra/guides/how-to-grow-okra/young-okra-plant-with-first-pod.jpg": {
+      "original": "okra/guides/how-to-grow-okra/young-okra-plant-with-first-pod.jpg",
+      "width": 900,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/young-okra-plant-with-first-pod-480.avif",
+            "bytes": 107747
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/young-okra-plant-with-first-pod-768.avif",
+            "bytes": 224443
+          },
+          {
+            "width": 900,
+            "path": "images/responsive/okra/guides/how-to-grow-okra/young-okra-plant-with-first-pod-900.avif",
+            "bytes": 278101
           }
         ]
       }
