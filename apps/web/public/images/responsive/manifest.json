@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T20:42:33.734Z",
+  "generatedAt": "2026-11-15T21:43:36.488Z",
   "widths": [
     480,
     768,
@@ -619,6 +619,35 @@
             "width": 1205,
             "path": "images/responsive/okra/guides/how-to-grow-okra/late-season-okra-with-drying-pods-1205.avif",
             "bytes": 183344
+          }
+        ]
+      }
+    },
+    "okra/guides/how-to-harvest-okra/freshly-picked-okra-pods.jpg": {
+      "original": "okra/guides/how-to-harvest-okra/freshly-picked-okra-pods.jpg",
+      "width": 1600,
+      "height": 774,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods-480.avif",
+            "bytes": 25170
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods-768.avif",
+            "bytes": 63489
+          },
+          {
+            "width": 1280,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods-1280.avif",
+            "bytes": 165500
+          },
+          {
+            "width": 1600,
+            "path": "images/responsive/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods-1600.avif",
+            "bytes": 228830
           }
         ]
       }

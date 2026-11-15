@@ -1,0 +1,137 @@
+{
+  "slug": "how-to-harvest-okra",
+  "status": "draft",
+  "title": "How to harvest okra",
+  "seoTitle": "How to Harvest Okra: When to Pick and How Often",
+  "description": "Pick okra pods at 2 to 4 inches long, every day or two, before they turn tough. How to cut them, keep the plant producing and store the harvest.",
+  "summary": "Pick okra pods when they're 2 to 4 inches long, and pick every day or two. Pods grow fast and turn tough and woody if you wait, and regular picking keeps the plant producing.",
+  "heroImage": {
+    "src": "/images/okra/guides/how-to-harvest-okra/freshly-picked-okra-pods.jpg",
+    "alt": "Two rows of freshly picked green okra pods laid out on a white towel, most of them a few inches long."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/how-to-harvest-okra.jpg",
+    "alt": "How to harvest okra card with a photo of freshly picked okra pods lined up on a towel."
+  },
+  "targetQueries": [
+    "how to harvest okra",
+    "when to pick okra",
+    "okra pods too big",
+    "why is my okra tough",
+    "how often to harvest okra"
+  ],
+  "related": [
+    "how-to-grow-okra",
+    "saving-okra-seeds",
+    "free-okra-seeds"
+  ],
+  "order": 15,
+  "intro": [
+    "Okra rewards the gardener who shows up. Once the plants start producing, there are new pods ready almost every day, and the difference between tender and tough is often just a day or two.",
+    "New to okra? Start with [how to grow okra](/okra/how-to-grow-okra), or get [free okra seeds](/okra/free-okra-seeds) from Olivia's garden."
+  ],
+  "sections": [
+    {
+      "id": "at-a-glance",
+      "title": "Harvest at a glance",
+      "placement": "aside",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "First pods about 2 months after planting",
+            "Pick at 2 to 4 inches long",
+            "Pick every day or two",
+            "Cut the stem, don't pull the pod",
+            "Refrigerate unwashed and use within a week"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "when-to-pick",
+      "title": "When to pick okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Okra plants [flower about 2 months after planting](https://agrilifeextension.tamu.edu/library/gardening/okra/), and each pod is ready to pick 3 to 4 days after its flower opens. Pick pods while they're 2 to 4 inches long. Clemson Extension notes that [2 to 3 inch pods are still tender](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/), while bigger pods get tougher and more fibrous."
+        },
+        {
+          "type": "paragraph",
+          "text": "A pod that's ready snaps or slices easily and the tip bends a little. If the knife drags or the pod feels hard and woody, it waited too long."
+        }
+      ]
+    },
+    {
+      "id": "how-often",
+      "title": "How often to harvest okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Pick every day or two. Texas A&M AgriLife warns that if you don't pick [every 1 to 2 days, yields will decrease](https://agrilifeextension.tamu.edu/library/gardening/okra/). Pods left to mature signal the plant that its job is done, and it slows down."
+        },
+        {
+          "type": "paragraph",
+          "text": "Picked often and kept watered, okra can keep producing [for up to 12 weeks](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/), and in a long, hot summer it often goes until frost."
+        }
+      ]
+    },
+    {
+      "id": "how-to-cut",
+      "title": "How to cut okra pods",
+      "blocks": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Cut each pod with [pruners or a sharp knife](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/), leaving a short piece of stem on the pod. Pulling can tear the branch.",
+            "Handle the pods gently. They bruise easily, and bruised spots turn dark.",
+            "Check the whole plant, including the undersides of leaves. Pods hide, and a missed one turns woody in a few days."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "too-big",
+      "title": "Okra pods too big or woody",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Pods that grew too long are tough and stringy, and cooking won't soften them. Cut them off anyway, so the plant puts its energy into new pods."
+        },
+        {
+          "type": "paragraph",
+          "text": "Overgrown pods aren't wasted. Toss them in the compost, or leave a few on the plant to dry and [save the seeds](/okra/saving-okra-seeds) for next year."
+        }
+      ]
+    },
+    {
+      "id": "storing",
+      "title": "How to store fresh okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Don't wash okra until you're ready to cook it, since washing [speeds up decay](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/) in the refrigerator. Store the pods dry, and use them within a few days. Well-handled pods can last up to a week."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "How big should okra be when you pick it?",
+      "answer": "About 2 to 4 inches long. Smaller pods are the most tender. Past about 4 inches most pods turn tough and fibrous."
+    },
+    {
+      "question": "Why is my okra tough and woody?",
+      "answer": "It stayed on the plant too long. Okra grows fast, so a pod can go from tender to woody in a day or two. Pick every day or two to keep up."
+    },
+    {
+      "question": "How often should you harvest okra?",
+      "answer": "Every day or two once the plants start producing. Regular picking keeps the plant making new pods."
+    },
+    {
+      "question": "Does okra keep producing after you pick it?",
+      "answer": "Yes. Picking encourages new pods, and well-watered plants keep producing for weeks, often until frost."
+    }
+  ]
+}
