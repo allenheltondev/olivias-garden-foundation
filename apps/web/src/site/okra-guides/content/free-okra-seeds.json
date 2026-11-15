@@ -26,7 +26,10 @@
     "free garden seeds",
     "free Clemson Spineless okra seeds"
   ],
-  "related": ["saving-okra-seeds"],
+  "related": [
+    "when-to-plant-okra",
+    "saving-okra-seeds"
+  ],
   "order": 1,
   "seedCallToAction": "hero",
   "showInFooter": true,
@@ -56,7 +59,7 @@
         {
           "type": "list",
           "items": [
-            "Plant according to your hardiness zone, straight into the sunniest spot you have. Okra doesn't like being transplanted.",
+            "[Plant according to your hardiness zone](/okra/when-to-plant-okra), straight into the sunniest spot you have. Okra doesn't like being transplanted.",
             "Let a few pods dry on the plant at the end of the season, and you'll have seed for next year.",
             "Share a photo of your patch on the [Okra Project map](/okra) so others can see where Olivia's okra is growing."
           ]

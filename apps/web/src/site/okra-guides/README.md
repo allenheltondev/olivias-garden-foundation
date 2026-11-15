@@ -13,7 +13,11 @@ Strategy and the list of planned guides: epic #413.
 1. Create `content/<slug>.json` with `"status": "draft"` (format below).
 2. Add the hero photo under `public/images/okra/guides/<slug>/` with a
    descriptive kebab-case filename (`okra-pods-ready-to-harvest.jpg`), then
-   `npm run images:generate` to build its responsive variants.
+   `npm run images:generate -- --only=okra/guides/<slug>` to build its
+   responsive variants. `--only` leaves every other image alone. Without it the
+   script rebuilds every image on the site, which takes minutes and rewrites
+   unrelated files. Strip location data from phone photos first (re-encode with
+   sharp, which drops metadata by default).
 3. Create the page's social card:
    `npm --workspace @olivias/web run social:guide -- <slug> --headline="3-7 words"`.
    This writes a 1200x630 card from the hero photo. Open it and check it reads

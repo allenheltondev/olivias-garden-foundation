@@ -28,7 +28,7 @@ pin to the map.
 ### 2. Every page gets its own images (required)
 The build fails for a published guide without these, but get them right, not just passing:
 - **Hero photo**, `heroImage`: a real photo that shows this guide's subject (pods at picking size for harvest, a seedling for planting). Prefer the foundation's own garden photos.
-  - Put it at `public/images/okra/guides/<slug>/<what-it-shows>.jpg`, then run `npm --workspace @olivias/web run images:generate`.
+  - Put it at `public/images/okra/guides/<slug>/<what-it-shows>.jpg`, then run `npm --workspace @olivias/web run images:generate -- --only=okra/guides/<slug>` (`--only` keeps it from rebuilding every image on the site). Re-encode phone photos with sharp first so EXIF and GPS data are stripped, and resize to about 1600px on the long side.
   - Alt text describes the scene in one sentence ("Okra pods about three inches long, ready to pick"), not "image of okra".
   - **If no suitable photo exists, stop and ask the user for one.** Don't reuse another guide's photo, the Okra page's photo of Olivia, stock photos, or AI-generated images presented as the garden.
 - **Social card**, `socialImage`: unique to this page and exactly 1200×630.
@@ -63,7 +63,7 @@ The build fails for a published guide without these, but get them right, not jus
 
 1. Read the sub-issue and `apps/web/src/site/okra-guides/README.md`.
 2. Draft `content/<slug>.json` with `"status": "draft"`.
-3. Add the hero photo (or ask for one), run `images:generate`, generate the social card, and look at it.
+3. Add the hero photo (or ask for one), run `images:generate -- --only=okra/guides/<slug>`, generate the social card, and look at it.
 4. Run `npm --workspace @olivias/web run validate:guides`. Fix every warning for this guide, not just errors.
 5. Preview with `npm --workspace @olivias/web run dev` at `/okra/<slug>`: desktop and a 390px-wide phone. Check that the seed button opens the form.
 6. Run `npm --workspace @olivias/web test` and `npm --workspace @olivias/web run build`.

@@ -1,10 +1,20 @@
 {
   "slug": "when-to-plant-okra",
-  "status": "draft",
+  "status": "published",
   "title": "When to plant okra",
   "seoTitle": "When to Plant Okra: Soil Temperature and Dates by Zone",
   "description": "Plant okra 2 to 3 weeks after your last frost, once the soil is 65°F. Enter your ZIP code to see your hardiness zone and planting window.",
   "summary": "Plant okra in spring 2 to 3 weeks after your last frost, once the soil is at least 65°F a few inches down. Enter your ZIP code below to see the usual window where you live.",
+  "heroImage": {
+    "src": "/images/okra/guides/when-to-plant-okra/okra-seedling-next-to-drip-line.jpg",
+    "alt": "A young okra seedling with its first true leaves, growing in a garden bed beside a drip irrigation line."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/when-to-plant-okra.jpg",
+    "alt": "When to plant okra card with a photo of a young okra seedling in a garden bed."
+  },
+  "datePublished": "2026-11-15",
+  "dateModified": "2026-11-15",
   "review": {
     "reviewedBy": "Allen Helton",
     "reviewedOn": "2026-11-15"

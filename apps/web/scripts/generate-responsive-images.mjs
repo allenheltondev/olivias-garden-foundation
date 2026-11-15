@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -90,11 +90,26 @@ async function generateVariant(sharp, sourcePath, outputPath, width, format) {
   await pipeline.toFile(outputPath);
 }
 
+async function readExistingManifest() {
+  try {
+    const existing = JSON.parse(await readFile(path.join(outputRoot, 'manifest.json'), 'utf8'));
+    return existing.images ?? {};
+  } catch {
+    throw new Error('--only needs an existing manifest.json. Run without --only first.');
+  }
+}
+
 async function main() {
   const sharp = await loadSharp();
   const widths = parseWidthArg();
   const formats = parseFormatArg();
-  const manifest = {};
+  // --only=okra/guides/foo,okra/guides/bar regenerates just those folders (or
+  // files) and keeps every other image's variants and manifest entry as is.
+  // Without it, everything is rebuilt from scratch.
+  const only = parseCsvArg('only', []).map((prefix) => prefix.replace(/^\/+|\/+$/g, ''));
+  const isSelected = (relativePath) => only.length === 0
+    || only.some((prefix) => relativePath === prefix || relativePath.startsWith(`${prefix}/`));
+  const manifest = only.length === 0 ? {} : await readExistingManifest();
   let generatedCount = 0;
 
   if (widths.length === 0) {
@@ -109,7 +124,24 @@ async function main() {
   console.log(`Widths: ${widths.join(', ')}`);
   console.log(`Formats: ${formats.join(', ')}`);
 
-  await rm(outputRoot, { recursive: true, force: true });
+  if (only.length === 0) {
+    await rm(outputRoot, { recursive: true, force: true });
+  } else {
+    console.log(`Only: ${only.join(', ')}`);
+    for (const key of Object.keys(manifest)) {
+      if (isSelected(key)) delete manifest[key];
+    }
+    for (const prefix of only) {
+      const parsed = path.parse(prefix);
+      // Remove old variants for the selected folders (or a single file's widths).
+      await rm(path.join(outputRoot, prefix), { recursive: true, force: true });
+      if (parsed.ext) {
+        const dir = path.join(outputRoot, parsed.dir);
+        const stale = (await readdir(dir).catch(() => [])).filter((name) => name.startsWith(`${parsed.name}-`));
+        await Promise.all(stale.map((name) => rm(path.join(dir, name), { force: true })));
+      }
+    }
+  }
   await mkdir(outputRoot, { recursive: true });
 
   const sourceFiles = await collectImageFiles(sourceRoot);
@@ -121,6 +153,9 @@ async function main() {
     }
 
     const relativePath = path.relative(sourceRoot, sourcePath);
+    if (!isSelected(relativePath.replaceAll(path.sep, '/'))) {
+      continue;
+    }
     const parsedPath = path.parse(relativePath);
     const sourceInfo = await sharp(sourcePath).metadata();
     const usableWidths = widths.filter((width) => !sourceInfo.width || width < sourceInfo.width);
