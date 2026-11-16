@@ -16,8 +16,8 @@ scripts:
   - type: afterResponse
     language: text/javascript
     code: |-
-      const baseUrl = pm.collectionVariables.get("baseUrl") || pm.environment.get("baseUrl");
-      const token = pm.collectionVariables.get("authToken") || pm.environment.get("authToken");
+      const baseUrl = pm.variables.get("baseUrl");
+      const token = pm.variables.get("authToken");
       const live = (pm.response.json().items || []).length;
 
       pm.test("Two keys are live before the cap check", function () {

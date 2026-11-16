@@ -20,8 +20,8 @@ scripts:
       });
 
       const items = (pm.response.json().items || []).map((item) => item.id);
-      const baseUrl = pm.collectionVariables.get("baseUrl") || pm.environment.get("baseUrl");
-      const token = pm.collectionVariables.get("authToken") || pm.environment.get("authToken");
+      const baseUrl = pm.variables.get("baseUrl");
+      const token = pm.variables.get("authToken");
 
       function revokeNext(index) {
           if (index >= items.length) return;
