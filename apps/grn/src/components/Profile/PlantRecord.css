@@ -1,0 +1,15 @@
+.grn-plant-record { display: grid; gap: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--color-secondary-100); padding-top: 1rem; }
+.grn-plant-record__heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.grn-plant-record h3 { margin: 0; font-size: 1.1rem; }
+.grn-plant-record p { color: var(--color-neutral-700); line-height: 1.6; }
+.grn-plant-record__notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.grn-plant-record form { display: grid; gap: .75rem; }
+.grn-plant-record textarea { width: 100%; min-height: 7rem; padding: .75rem; border: 1px solid var(--color-secondary-300); border-radius: .5rem; background: #fffdf8; color: var(--color-neutral-800); font: inherit; resize: vertical; }
+.grn-plant-record textarea:focus-visible { outline: 3px solid var(--color-primary-600); outline-offset: 2px; }
+.grn-plant-record__actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.grn-plant-record__timeline { list-style: none; margin: 1rem 0 0 .5rem; padding: 0 0 0 1.25rem; border-inline-start: 2px solid var(--color-primary-200); }
+.grn-plant-record__timeline li { position: relative; padding: 0 0 1.5rem; }
+.grn-plant-record__timeline li::before { content: ''; position: absolute; inset-inline-start: -1.6rem; top: .3rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--color-primary-600); }
+.grn-plant-record__timeline h4 { margin: .25rem 0; font-size: 1rem; }
+.grn-plant-record__timeline time { color: var(--color-neutral-600); font-size: .85rem; }
+.grn-plant-record button { min-height: 44px; }
