@@ -228,6 +228,24 @@ body {
     display: flex;
   }
 
+  .grn-app-shell .og-auth-menu__popover {
+    position: fixed;
+    top: calc(4.5rem + env(safe-area-inset-top, 0px));
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    max-height: calc(100dvh - 9.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-padding-block: 0.35rem;
+  }
+
+  .grn-app-shell .og-auth-menu__popover > * {
+    flex-shrink: 0;
+  }
+
+  .grn-app-shell .og-auth-menu__item {
+    min-height: 2.75rem;
+  }
+
   .grn-app-shell .og-site-header__menu-toggle,
   .grn-app-shell .og-site-header__nav,
   .grn-app-shell .og-site-header__eyebrow {
