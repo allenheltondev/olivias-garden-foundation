@@ -90,7 +90,7 @@ export function grnMcpEndpoint(deps) {
     const verdict = await check(key, client, keyId);
     if (verdict === 'invalid') {
       logger.warn?.(JSON.stringify({ level: 'WARN', msg: 'GRN key refused', correlationId, keyId }));
-      return refusal(401, 'This API key is not valid. It may have been revoked; create a new one in Settings → API keys.', correlationId);
+      return refusal(401, 'This API key is not working. A key created in the last minute or so may not be active yet: try again shortly. Otherwise it may have been revoked; create a new one in Settings → API keys.', correlationId);
     }
     if (verdict === 'unavailable') {
       return refusal(503, 'Could not check the API key just now. Try again shortly.', correlationId);

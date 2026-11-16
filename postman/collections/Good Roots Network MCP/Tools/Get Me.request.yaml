@@ -41,7 +41,8 @@ scripts:
     language: text/javascript
     code: |-
       pm.test("Status code is 200", function () {
-          pm.response.to.have.status(200);
+          // On failure, show the refusal: the MCP server says which check failed.
+          pm.expect(pm.response.code, pm.response.text()).to.eql(200);
       });
 
       pm.test("Returns the key's own grower, through the deployed stack", function () {

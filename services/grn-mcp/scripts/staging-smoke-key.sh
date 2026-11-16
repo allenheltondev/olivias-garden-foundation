@@ -99,6 +99,26 @@ case "${1:-}" in
     KEY="$(printf '%s' "$CREATED" | jq -r '.key')"
     KEY_ID="$(printf '%s' "$CREATED" | jq -r '.id')"
     echo "::add-mask::$KEY"
+
+    # A new key is backed by a new API Gateway key on the usage plan, which can
+    # take a little while to be honoured; until then the API answers 403. Wait
+    # until the key itself works against the GRN API, so a failure in the MCP
+    # tests means the MCP path, not a key that was not live yet.
+    status=""
+    for attempt in $(seq 1 24); do
+      status="$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/me" -H "Authorization: Bearer $KEY" -H 'Accept: application/json' || echo 000)"
+      if [ "${status:0:1}" = "2" ]; then
+        echo "The new key works against the GRN API (attempt $attempt)."
+        break
+      fi
+      sleep 5
+    done
+    if [ "${status:0:1}" != "2" ]; then
+      echo "The new key still gets $status from GET /me after two minutes; revoking it." >&2
+      api DELETE "/me/api-keys/$KEY_ID" "$TOKEN" "" 404 > /dev/null
+      exit 1
+    fi
+
     {
       echo "grn-key=$KEY"
       echo "key-id=$KEY_ID"

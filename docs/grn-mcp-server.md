@@ -111,6 +111,11 @@ Logs name a call by its operation id and route template (`getSharedGarden`,
 credential, such as a garden share token, or a grower's ids. Keys are logged
 only as a short hash.
 
+A brand-new key can take up to a minute to start working, while API Gateway
+activates the usage-plan key behind it. Until then the server answers 401 and
+says to try again shortly. Failed checks aren't cached, so the next request
+after that tries again.
+
 The key is checked when a request arrives by asking the GRN API who it belongs
 to (`GET /me`). A key the API refuses gets 401 at once; if the API can't be
 asked, the answer is 503. A good result is remembered for a minute per
@@ -154,6 +159,9 @@ the GRN spec changes) fails if the committed file is out of date.
     authorization together. The key is revoked when the job ends, pass or
     fail. With `requireKey` set, a missing key fails the run rather than
     skipping it.
+  - The mint step waits until the new key works against the GRN API before
+    the tests run, so a failure there means the MCP path is broken, not that
+    the key wasn't active yet.
   - Runs share the seeded grower but never each other's keys. Each run names
     its key after its run id, and the clean-up before minting only revokes
     smoke-test keys over an hour old, so jobs from different PRs can overlap.
