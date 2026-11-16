@@ -244,6 +244,24 @@ describe('validation', () => {
     assert.ok(malformed.some((error) => /plant is required/.test(error)), malformed.join('\n'));
   });
 
+  test('published photos need responsive variants once the manifest exists', async () => {
+    const manifestPath = join(publicRoot, 'images', 'responsive', 'manifest.json');
+    mkdirSync(dirname(manifestPath), { recursive: true });
+    const variants = { avif: [{ width: 480, path: 'images/responsive/okra/olivia-okra-480.avif', bytes: 1 }] };
+    try {
+      writeFileSync(manifestPath, JSON.stringify({ images: {} }));
+      const { errors } = await validate(readFixture('example-okra-guide'), readFixture('example-related-guide'));
+      assert.ok(errors.some((error) => /heroImage \/images\/okra\/olivia-okra\.jpg has no responsive variants\. Run: .*--only=okra/.test(error)), errors.join('\n'));
+      assert.ok(errors.some((error) => /blocks\[\d+\] image \/images\/okra\/olivia-okra\.jpg has no responsive variants/.test(error)), errors.join('\n'));
+
+      writeFileSync(manifestPath, JSON.stringify({ images: { 'okra/olivia-okra.jpg': { width: 978, height: 1304, variants } } }));
+      const ok = await validate(readFixture('example-okra-guide'), readFixture('example-related-guide'));
+      assert.deepEqual(ok.errors.filter((error) => /responsive variants/.test(error)), []);
+    } finally {
+      rmSync(join(publicRoot, 'images', 'responsive'), { recursive: true, force: true });
+    }
+  });
+
   test('structural problems are errors even for drafts', async () => {
     const guide = { ...readFixture('example-related-guide'), status: 'draft', slug: 'submissions' };
     guide.sections = [{ id: 'Bad Id', title: '', blocks: [{ type: 'video' }] }];
@@ -290,6 +308,15 @@ describe('structured data and fallback HTML', () => {
     assert.equal(new Set(photos.map((photo) => photo.src)).size, photos.length, 'no repeats');
     const withExtra = { ...guide, sections: [...guide.sections, { id: 'more', title: 'More', blocks: [{ type: 'image', src: '/images/okra/other.jpg', alt: 'Another okra photo for the test' }] }] };
     assert.deepEqual(guidePhotos(withExtra).map((photo) => photo.src), [guide.heroImage.src, '/images/okra/other.jpg']);
+  });
+
+  test('image URLs get a slash even when a guide path leaves it out', () => {
+    const slashless = { ...guide, heroImage: { ...guide.heroImage, src: guide.heroImage.src.replace(/^\//, '') } };
+    const article = buildGuideArticleJsonLd(slashless, siteUrl);
+    assert.equal(article.image[0].url, `${siteUrl}/images/okra/olivia-okra.jpg`);
+    assert.ok(article.image.every((image) => image.url.startsWith(`${siteUrl}/`)), JSON.stringify(article.image));
+    const entry = buildEntry({ path: '/okra/example', sitemap: { images: ['images/okra/olivia-okra.jpg'] } });
+    assert.match(entry, /<image:loc>https:\/\/oliviasgarden\.org\/images\/okra\/olivia-okra\.jpg<\/image:loc>/);
   });
 
   test('the sitemap lists a page\'s photos with the image extension', () => {

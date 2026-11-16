@@ -90,6 +90,32 @@ function publicFilePath(src, root) {
   return join(root, src.replace(/^\/+/, ''));
 }
 
+/** The responsive image manifest, or null when it hasn't been generated (e.g. test fixtures). */
+function readResponsiveManifest(root) {
+  const path = join(root, 'images', 'responsive', 'manifest.json');
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')).images ?? {};
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Photos need an entry in the responsive manifest: its size lets the page
+ * reserve space before the photo loads, and its AVIF variants keep downloads
+ * small. Without one the page falls back to the full-size original.
+ */
+function checkResponsiveVariants(src, manifest, report, label) {
+  if (!manifest) return;
+  const key = src.replace(/^\/+/, '').replace(/^images\//, '');
+  const entry = manifest[key];
+  if (!entry?.width || !entry?.height || !(entry.variants?.avif?.length > 0)) {
+    const folder = dirname(key);
+    report(`${label} ${src} has no responsive variants. Run: npm --workspace @olivias/web run images:generate -- --only=${folder === '.' ? key : folder}`);
+  }
+}
+
 function checkDescriptiveFilename(src, report, label) {
   const name = basename(src, extname(src));
   if (GENERIC_FILENAME_PATTERN.test(name) || !/[a-z]+-[a-z]+/.test(name)) {
@@ -135,6 +161,7 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
   }
 
   const socialImageOwners = new Map();
+  const responsiveManifest = readResponsiveManifest(root);
   const knownPathSet = new Set([...knownPaths, ...[...slugs.keys()].map(guidePath)]);
 
   for (const { file, guide } of entries) {
@@ -264,6 +291,8 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
             } else {
               if (!existsSync(publicFilePath(block.src, root))) {
                 publishing(`${blockWhere}.src ${block.src} does not exist under public/.`);
+              } else {
+                checkResponsiveVariants(block.src, responsiveManifest, publishing, `${blockWhere} image`);
               }
               checkDescriptiveFilename(block.src, publishing, `${blockWhere} image`);
             }
@@ -314,6 +343,8 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
       }
       if (!existsSync(heroPath)) {
         publishing(`heroImage ${guide.heroImage.src} does not exist under public/.`);
+      } else {
+        checkResponsiveVariants(guide.heroImage.src, responsiveManifest, publishing, 'heroImage');
       }
       checkDescriptiveFilename(guide.heroImage.src, publishing, 'heroImage');
       checkAltText(guide.heroImage, publishing, 'heroImage');

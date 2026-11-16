@@ -33,7 +33,8 @@ function escapeXml(value) {
 }
 
 function absoluteImageUrl(src) {
-  return src.startsWith('http://') || src.startsWith('https://') ? src : `${siteUrl}${src}`;
+  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  return `${siteUrl}${src.startsWith('/') ? '' : '/'}${src}`;
 }
 
 export function buildEntry(route) {

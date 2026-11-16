@@ -97,7 +97,9 @@ function blockTexts(block) {
 }
 
 function absoluteUrl(siteUrl, path) {
-  return path.startsWith('http://') || path.startsWith('https://') ? path : `${siteUrl}${path}`;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Guide paths are written like /images/..., but tolerate a missing leading slash.
+  return `${siteUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 export function guidePageTitle(guide) {
