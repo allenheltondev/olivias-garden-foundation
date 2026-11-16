@@ -223,6 +223,35 @@ body {
 /* ── Mobile: persistent three-destination bottom navigation ───────── */
 
 @media (max-width: 799px) {
+  /* Account controls stay directly reachable after leaving the bottom bar. */
+  .grn-app-shell .og-site-header__utility {
+    display: flex;
+  }
+
+  .grn-app-shell .og-auth-menu__popover {
+    position: fixed;
+    top: calc(4.5rem + env(safe-area-inset-top, 0px));
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    max-height: calc(100dvh - 9.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-padding-block: 0.35rem;
+  }
+
+  .grn-app-shell .og-auth-menu__popover > * {
+    flex-shrink: 0;
+  }
+
+  .grn-app-shell .og-auth-menu__item {
+    min-height: 2.75rem;
+  }
+
+  .grn-app-shell .og-site-header__menu-toggle,
+  .grn-app-shell .og-site-header__nav,
+  .grn-app-shell .og-site-header__eyebrow {
+    display: none;
+  }
+
   /* Drop the desktop body-level-scroll model on mobile. With it, the
      viewport is locked at 100vh and only .grn-shell-main scrolls
      internally — which means the footer stays glued to the bottom of
@@ -260,8 +289,8 @@ body {
     position: fixed;
     inset: auto 0 0;
     z-index: 50;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
     min-height: 4.5rem;
     padding: 0.35rem max(0.5rem, env(safe-area-inset-right, 0px))
       calc(0.35rem + env(safe-area-inset-bottom, 0px))
@@ -274,6 +303,7 @@ body {
 
   .grn-bottom-nav__link {
     display: flex;
+    flex: 1 1 0;
     min-width: 0;
     min-height: 3.5rem;
     align-items: center;
@@ -283,10 +313,11 @@ body {
     padding: 0.3rem 0.4rem;
     border-radius: 0.75rem;
     color: rgba(79, 56, 37, 0.78);
-    font-size: 0.76rem;
+    font-size: 0.8rem;
     font-weight: 700;
     line-height: 1;
     text-decoration: none;
+    white-space: nowrap;
     touch-action: manipulation;
   }
 
@@ -308,8 +339,8 @@ body {
 
   .grn-bottom-nav__icon {
     display: inline-flex;
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.5rem;
+    height: 1.5rem;
     align-items: center;
     justify-content: center;
   }

@@ -7,6 +7,7 @@ import type { UserProfile } from '../types/user';
 import { createLogger } from '../utils/logging';
 import {
   PRIMARY_NAVIGATION,
+  MOBILE_NAVIGATION,
   isPrimaryDestinationActive,
   type PrimaryDestinationId,
 } from './navigation';
@@ -219,7 +220,7 @@ export function AppShell({ user, children }: AppShellProps) {
       </div>
 
       <nav className="grn-bottom-nav" aria-label="Primary navigation">
-        {PRIMARY_NAVIGATION.map((item) => {
+        {MOBILE_NAVIGATION.map((item) => {
           const isActive = isPrimaryDestinationActive(item.id, location.pathname);
           return (
             <Link
