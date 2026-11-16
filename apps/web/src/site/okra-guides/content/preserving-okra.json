@@ -45,7 +45,7 @@
         {
           "type": "list",
           "items": [
-            "Fresh: refrigerate unwashed and use within a few days",
+            "Fresh: refrigerate unwashed at 40°F or colder and use within a few days",
             "Freeze: blanch small pods 3 minutes, large pods 4",
             "Pickle: follow a tested recipe and process the jars",
             "Can plain okra: pressure canner only"
@@ -59,7 +59,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Fresh okra keeps best at [45°F to 50°F in a moist environment](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/). Don't wash the pods until you're ready to use them, since washing speeds up decay. Clemson Extension says well-handled pods can last up to seven days in the refrigerator, but they're at their best in the first few days, so preserve extras soon after picking."
+          "text": "Refrigerate fresh okra at [40°F or colder](https://www.fda.gov/food/buy-store-serve-safe-food/selecting-and-serving-produce-safely), and don't wash the pods until you're ready to use them, since washing speeds up decay. Clemson Extension says well-handled pods can last up to seven days in the refrigerator, but they're at their best in the first few days, so preserve extras soon after picking."
         }
       ]
     },
@@ -95,7 +95,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "This is the [National Center for Home Food Preservation's tested Pickled Dilled Okra recipe](https://nchfp.uga.edu/how/pickle/vegetable-pickles/pickled-dilled-okra/), processed in a boiling-water canner. It makes 8 to 9 pints."
+          "text": "This is the [National Center for Home Food Preservation's tested Pickled Dilled Okra recipe](https://nchfp.uga.edu/how/pickle/vegetable-pickles/pickled-dilled-okra/), processed in a boiling-water canner. It makes 8 to 9 pints. Before you start, read the National Center's [instructions for using a boiling-water canner](https://nchfp.uga.edu/how/can/using-boiling-water-canners/)."
         },
         {
           "type": "list",
@@ -142,6 +142,10 @@
           ]
         },
         {
+          "type": "paragraph",
+          "text": "Keep the jars covered by at least 1 inch of water. Start the timer only once the water is at a full, vigorous boil, and keep the canner covered. If the water stops boiling at any point, bring it back to a vigorous boil and [start the full processing time over](https://nchfp.uga.edu/how/can/using-boiling-water-canners/)."
+        },
+        {
           "type": "tip",
           "title": "From Olivia's garden",
           "text": "We water-bath can our pickled okra, and our brine is equal parts water and 5% vinegar, the same ratio the tested recipe uses."
@@ -159,7 +163,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Plain okra, without vinegar, isn't acidic enough for a boiling-water canner. It has to be [processed in a pressure canner](https://nchfp.uga.edu/how/can/canning-vegetables-and-vegetable-products/okra/), following the National Center's times for your canner type and elevation. If you don't have a pressure canner, freeze or pickle it instead."
+          "text": "Plain okra, without vinegar, isn't acidic enough for a boiling-water canner. It has to be processed in a pressure canner. Follow the National Center's [full tested recipe for canning okra](https://nchfp.uga.edu/how/can/canning-vegetables-and-vegetable-products/okra/), and use the processing time for your jar size and the pressure for your gauge type and elevation. If you don't have a pressure canner, freeze or pickle it instead."
         }
       ]
     }
