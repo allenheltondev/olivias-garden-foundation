@@ -247,6 +247,7 @@ export const prerenderRoutes = routes.filter((route) => route.prerender);
 
 export const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://grn.oliviasgarden.org';
 export const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.oliviasgarden.org';
+export const storeUrl = import.meta.env.VITE_STORE_URL || 'https://store.oliviasgarden.org';
 export const instagramUrl = 'https://instagram.com/oliviasgardentx';
 export const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
 export const candidProfileUrl = 'https://app.candid.org/profile/16182978/olivias-garden-foundation/?pkId=35b25f41-ab7c-4561-8c50-493d5bbb7532&isActive=true';

@@ -24,12 +24,33 @@ describe('resolveAuthRedirect', () => {
     assert.equal(resolveAuthRedirect('https://admin.oliviasgarden.org/', options)?.crossOrigin, true);
   });
 
-  test('allows https sibling subdomains such as the store', () => {
-    assert.equal(resolveAuthRedirect('https://store.oliviasgarden.org/cart', options)?.crossOrigin, true);
-    assert.equal(
-      resolveAuthRedirect('https://store.oliviasgarden.org/', { ...options, currentOrigin: 'https://www.oliviasgarden.org' })?.crossOrigin,
-      true,
-    );
+  test('rejects sibling subdomains that are not listed apps', () => {
+    for (const target of [
+      'https://store.oliviasgarden.org/cart',
+      'https://blog.oliviasgarden.org/',
+      'https://grn.oliviasgarden.org.evil.example/',
+    ]) {
+      assert.equal(resolveAuthRedirect(target, options), null, target);
+    }
+  });
+
+  test('allows the store only once its exact origin is listed', () => {
+    const withStore = { ...options, trustedOrigins: [...options.trustedOrigins, 'https://store.oliviasgarden.org'] };
+    assert.equal(resolveAuthRedirect('https://store.oliviasgarden.org/cart', withStore)?.crossOrigin, true);
+    assert.equal(resolveAuthRedirect('https://shop.oliviasgarden.org/cart', withStore), null);
+  });
+
+  test('supports distinct preview hosts for the store and the foundation site', () => {
+    const preview = {
+      currentOrigin: 'https://d2pdwa1n3q9r03.cloudfront.net',
+      trustedOrigins: ['https://d3u21hyzscb0pn.cloudfront.net', 'https://d35utbcke05dm8.cloudfront.net/'],
+    };
+    assert.deepEqual(resolveAuthRedirect('https://d35utbcke05dm8.cloudfront.net/products/okra', preview), {
+      url: 'https://d35utbcke05dm8.cloudfront.net/products/okra',
+      crossOrigin: true,
+    });
+    assert.equal(resolveAuthRedirect('https://d999999999.cloudfront.net/', preview), null);
+    assert.equal(resolveAuthRedirect('/donate', preview)?.crossOrigin, false);
   });
 
   test('rejects other sites, lookalikes, and downgraded subdomains', () => {
@@ -37,7 +58,7 @@ describe('resolveAuthRedirect', () => {
       'https://evil.example/',
       'https://oliviasgarden.org.evil.example/',
       'https://evil-oliviasgarden.org/',
-      'http://store.oliviasgarden.org/',
+      'http://grn.oliviasgarden.org/',
       '//evil.example/path',
       'https://user:pass@grn.oliviasgarden.org/',
     ]) {

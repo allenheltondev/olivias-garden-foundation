@@ -1,8 +1,10 @@
 // Pure rules for where /login may send someone after they sign in.
 //
 // A cross-origin redirect carries the user's tokens in the URL fragment, so
-// the target must be one of our own apps. Anything else (another site, a
-// javascript: URL, a protocol-relative //host path) falls back to home.
+// the target must be the exact origin of one of our apps that consumes that
+// fragment (planner, admin, store). Anything else, including other
+// subdomains of our own domain, a javascript: URL, or a protocol-relative
+// //host path, falls back to home.
 // Kept as plain .mjs so `node --test` can exercise it without a TS build.
 
 const AUTH_MODES = new Set(['login', 'signup']);
@@ -41,16 +43,6 @@ export function resolveAuthRedirect(redirectTo, { currentOrigin, trustedOrigins 
 
   const trusted = new Set(trustedOrigins.map(originOf).filter(Boolean));
   if (trusted.has(target.origin)) {
-    return { url: target.href, crossOrigin: true };
-  }
-
-  // Sibling apps on our own domain (e.g. store.oliviasgarden.org) over HTTPS.
-  const siteHost = current.hostname.replace(/^www\./, '');
-  if (
-    target.protocol === 'https:'
-    && siteHost.includes('.')
-    && target.hostname.endsWith(`.${siteHost}`)
-  ) {
     return { url: target.href, crossOrigin: true };
   }
 

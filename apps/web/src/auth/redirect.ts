@@ -1,5 +1,5 @@
 import { trackEvent } from '../observability/analytics';
-import { adminUrl, goodRootsNetworkUrl } from '../site/routes';
+import { adminUrl, goodRootsNetworkUrl, storeUrl } from '../site/routes';
 import { buildLoginPath, readAuthMode, resolveAuthRedirect, type AuthMode } from './redirect-policy.mjs';
 import type { AuthSession } from './session';
 
@@ -11,8 +11,11 @@ export function readAuthModeFromSearch(search = window.location.search): AuthMod
   return readAuthMode(search);
 }
 
+// Exact origins of the apps that read the #session fragment. Each comes from
+// the deployed stack at build time (VITE_GRN_URL, VITE_ADMIN_URL,
+// VITE_STORE_URL), with production defaults.
 function trustedAppOrigins() {
-  return [goodRootsNetworkUrl, adminUrl];
+  return [goodRootsNetworkUrl, adminUrl, storeUrl];
 }
 
 function resolveRedirect(redirectTo: string | null) {
