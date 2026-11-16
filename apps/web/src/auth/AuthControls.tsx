@@ -19,7 +19,7 @@ export function AuthControls({
   onSignup,
   onLogout,
 }: AuthControlsProps) {
-  const displayName = session?.user.name ?? session?.user.email ?? 'Good Roots Network member';
+  const displayName = session?.user.name ?? session?.user.email ?? "Olivia's Garden member";
 
   return (
     <div className="auth-controls" aria-live="polite">
@@ -38,7 +38,7 @@ export function AuthControls({
           <>
             <div className="auth-controls__summary">
               <span className="auth-controls__eyebrow">Optional login</span>
-              <span className="auth-controls__name">Use one Good Roots Network account across experiences.</span>
+              <span className="auth-controls__name">Use one Olivia's Garden account across experiences.</span>
             </div>
             <button type="button" className="auth-controls__action auth-controls__action--secondary" onClick={onLogin} disabled={busy}>
               Log in

@@ -1,13 +1,13 @@
 {
-  "name": "Good Roots Network",
-  "short_name": "GRN",
-  "description": "Local food. Grown with care. Connect growers and searchers in your community.",
+  "name": "Good Roots Garden Planner",
+  "short_name": "Good Roots",
+  "description": "Good Roots is a free garden planner. Lay out your beds, choose crops, get watering and harvest reminders, and share extra produce with neighbors.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F7F5EF",
   "theme_color": "#3F7D3A",
   "orientation": "portrait-primary",
-  "categories": ["food", "lifestyle", "social"],
+  "categories": ["lifestyle", "food", "productivity"],
   "icons": [
     {
       "src": "/icons/android-chrome-192x192.png",

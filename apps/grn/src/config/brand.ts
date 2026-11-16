@@ -1,5 +1,5 @@
 /**
- * Brand Configuration for Good Roots Network
+ * Brand Configuration for the Good Roots garden planner
  *
  * This file contains all branding-related configuration including
  * names, taglines, colors, and asset paths.
@@ -42,10 +42,10 @@ export interface BrandConfig {
 
 export const brandConfig: BrandConfig = {
   name: {
-    full: "Good Roots Network",
-    short: "GRN",
+    full: "Good Roots Garden Planner",
+    short: "Good Roots",
   },
-  tagline: "Local food. Grown with care",
+  tagline: "A free garden planner",
   assets: {
     logo: {
       // Using PNG logo files
@@ -61,10 +61,9 @@ export const brandConfig: BrandConfig = {
       appleTouchIcon: "/icons/apple-touch-icon.png",
     },
     social: {
-      // TODO: User will provide social sharing image (1200x630px)
-      // Place in apps/grn/public/images/
-      ogImage: "/images/social-share.png",
-      ogImageAlt: "Good Roots Network - Connecting local food growers with their communities",
+      // Shares the marketing site's Good Roots social card.
+      ogImage: "https://oliviasgarden.org/images/social/good-roots.png",
+      ogImageAlt: "The Good Roots garden bed planner beside a garden photo, with the headline: Plan a garden you can keep up with.",
     },
   },
   colors: {
@@ -73,8 +72,7 @@ export const brandConfig: BrandConfig = {
     themeColor: "#3F7D3A",
   },
   urls: {
-    // TODO: Update with actual production domain
-    canonical: "https://goodroots.network",
-    domain: "goodroots.network",
+    canonical: "https://grn.oliviasgarden.org",
+    domain: "grn.oliviasgarden.org",
   },
 };

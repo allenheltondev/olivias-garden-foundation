@@ -41,7 +41,7 @@ export const routes: AppRoute[] = [
     path: '/login',
     label: 'Login',
     title: 'Log in',
-    description: "Use one Good Roots Network account across Olivia's Garden experiences.",
+    description: "Use one Olivia's Garden account across the website, garden planner, and store.",
     allowIndex: false,
   },
   {
@@ -78,10 +78,10 @@ export const routes: AppRoute[] = [
   },
   {
     path: '/good-roots',
-    label: 'Good Roots Network',
+    label: 'Garden Planner',
     showInNav: true,
-    title: 'Good Roots Network',
-    description: "Plan your garden beds, choose crops, and keep up with watering and harvest reminders. Try Good Roots Network free and share extra produce with neighbors.",
+    title: 'Free garden planner',
+    description: "Good Roots is a free garden planner: lay out your beds, choose crops, and keep up with watering and harvest reminders. Share extra produce with neighbors.",
     seoImage: '/images/social/good-roots.png',
     seoImageAlt: "The Good Roots garden bed planner in a browser frame beside a garden photo, with the headline: Plan a garden you can keep up with.",
     allowIndex: false,

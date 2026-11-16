@@ -193,7 +193,7 @@ function SharedGardenView({ snapshot }: { snapshot: SharedGardenSnapshot }) {
       <header className="grn-shared-page__header">
         <h1 className="grn-shared-page__title">A shared garden</h1>
         <p className="grn-shared-page__subtitle">
-          Made with the Good Roots Network garden designer
+          Made with the free Good Roots garden planner
         </p>
       </header>
       <div className="mp-explorer grn-shared-page__map">

@@ -7,7 +7,7 @@ describe('BrandHeader', () => {
   it('should render logo and tagline by default', () => {
     render(<BrandHeader />);
 
-    expect(screen.getByAltText('Good Roots Network logo')).toBeInTheDocument();
+    expect(screen.getByAltText('Good Roots logo')).toBeInTheDocument();
     expect(screen.getByText(brandConfig.name.full)).toBeInTheDocument();
     expect(screen.getByText(brandConfig.tagline)).toBeInTheDocument();
   });

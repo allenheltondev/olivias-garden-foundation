@@ -125,7 +125,7 @@ export function ApiReferencePage() {
     <section className="grn-section grn-api-reference">
       <SectionHeading
         title="API reference"
-        body="Every endpoint the Good Roots Network API serves. Combine the base URL below with any path, and send your key in the Authorization header."
+        body="Every endpoint the Good Roots API serves. Combine the base URL below with any path, and send your key in the Authorization header."
       />
 
       {baseUrl ? (

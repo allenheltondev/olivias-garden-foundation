@@ -84,7 +84,7 @@ describe('SharedGardenPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/a shared garden/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/made with the good roots network garden designer/i)
+      screen.getByText(/made with the free good roots garden planner/i)
     ).toBeInTheDocument();
   });
 

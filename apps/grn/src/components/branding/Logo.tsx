@@ -38,7 +38,7 @@ export const Logo: React.FC<LogoProps> = ({
       <div
         className={`logo-fallback flex items-center justify-center ${sizeMap[size]} ${className}`}
         role="img"
-        aria-label="Good Roots Network logo"
+        aria-label="Good Roots logo"
       >
         <span className="text-primary-600 font-bold text-2xl">GRN</span>
       </div>
@@ -48,7 +48,7 @@ export const Logo: React.FC<LogoProps> = ({
   return (
     <img
       src={getLogoPath()}
-      alt="Good Roots Network logo"
+      alt="Good Roots logo"
       className={`${sizeMap[size]} w-auto object-contain ${className}`}
       onError={() => {
         console.warn(`Failed to load logo variant: ${variant}`);

@@ -38,7 +38,7 @@ const PARTNER_AUDIENCES = [
   },
   {
     title: 'Nonprofits and food access groups',
-    body: 'Food pantries, community gardens, and faith communities can become local sharing spots for free okra seeds, and can use the Good Roots Network to organize shared gardens.',
+    body: 'Food pantries, community gardens, and faith communities can become local sharing spots for free okra seeds, and can use the Good Roots garden planner to organize shared gardens.',
   },
   {
     title: 'Local businesses',
