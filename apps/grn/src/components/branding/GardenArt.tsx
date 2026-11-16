@@ -5,7 +5,7 @@ import './GardenArt.css';
 
 const illustratedCrops = new Set<CropIconKey>([
   'basil', 'broccoli', 'carrot', 'cucumber', 'kale', 'lettuce',
-  'onion', 'pea', 'pepper', 'radish', 'strawberry', 'tomato',
+  'okra', 'onion', 'pea', 'pepper', 'radish', 'strawberry', 'tomato',
 ]);
 
 interface CropArtworkProps {

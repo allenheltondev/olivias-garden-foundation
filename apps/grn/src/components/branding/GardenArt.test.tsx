@@ -11,8 +11,13 @@ describe('Garden artwork', () => {
   });
 
   it('uses existing silhouettes for crops without an illustration', () => {
+    render(<CropArtwork iconKey="asparagus" title="Asparagus" />);
+    expect(screen.getByRole('img', { name: 'Asparagus' }).tagName.toLowerCase()).toBe('svg');
+  });
+
+  it('uses the botanical illustration for okra', () => {
     render(<CropArtwork iconKey="okra" title="Okra" />);
-    expect(screen.getByRole('img', { name: 'Okra' }).tagName.toLowerCase()).toBe('svg');
+    expect(screen.getByRole('img', { name: 'Okra' })).toHaveAttribute('src', '/images/botanical/crops/okra.svg');
   });
 
   it('recovers from a failed image and tries the next crop independently', () => {
