@@ -105,13 +105,13 @@
     },
     {
       "id": "good-roots-network",
-      "title": "Good Roots Network",
+      "title": "Garden planner",
       "items": [
         {
           "id": "what-is-grn",
-          "question": "What is the Good Roots Network?",
-          "answer": "It's a free garden planning app from the foundation. It helps you decide what to plant, lay out your beds, and keep up with watering and harvest, and it makes it easy to share extra harvest with neighbors.",
-          "link": { "href": "/good-roots", "label": "Learn about the Good Roots Network" }
+          "question": "What is Good Roots?",
+          "answer": "Good Roots is our free online garden planner. It's an app that works in your browser and on your phone, not a printable worksheet, so your plan stays up to date as the season goes. It helps you decide what to plant, lay out your beds, and keep up with watering and harvest, and it makes it easy to share extra harvest with neighbors.",
+          "link": { "href": "/good-roots", "label": "Try the free garden planner" }
         }
       ]
     },

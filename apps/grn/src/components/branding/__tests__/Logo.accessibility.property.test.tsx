@@ -9,7 +9,7 @@ import fc from 'fast-check';
  * **Validates: Requirements 7.1, 7.3**
  *
  * For any logo instance rendered in the application, the image SHALL have
- * appropriate accessibility attributes (alt text describing "Good Roots Network logo"
+ * appropriate accessibility attributes (alt text describing "Good Roots logo"
  * for meaningful logos, or aria-hidden for decorative instances).
  */
 describe('Property 1: Logo Accessibility', () => {
@@ -34,10 +34,10 @@ describe('Property 1: Logo Accessibility', () => {
 
           if (img) {
             // Image should have meaningful alt text
-            expect(img.getAttribute('alt')).toBe('Good Roots Network logo');
+            expect(img.getAttribute('alt')).toBe('Good Roots logo');
           } else if (fallback) {
             // Fallback should have aria-label
-            expect(fallback.getAttribute('aria-label')).toBe('Good Roots Network logo');
+            expect(fallback.getAttribute('aria-label')).toBe('Good Roots logo');
           } else {
             throw new Error('Logo must render either an img or an element with role="img"');
           }

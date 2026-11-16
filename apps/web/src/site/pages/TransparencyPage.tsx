@@ -110,7 +110,7 @@ export function TransparencyPage() {
             preparation, animal care, food preservation, and related practical skills.
           </li>
           <li>
-            <strong>The Good Roots Network</strong> &mdash; a garden planning app that
+            <strong>Good Roots</strong> &mdash; a free online garden planner that
             helps home gardeners plan and grow more food, with neighbor-to-neighbor
             food sharing built in.
           </li>
@@ -162,7 +162,7 @@ export function TransparencyPage() {
           <li>Feed, bedding, and veterinary care for chickens, turkeys, geese, goats, bees, and guineas</li>
           <li>Supplies and materials for workshops</li>
           <li>Shipping costs for the free okra seed program</li>
-          <li>Software, hosting, and operational costs for the Good Roots Network platform and the foundation website</li>
+          <li>Software, hosting, and operational costs for the Good Roots garden planner and the foundation website</li>
         </ul>
         <p>
           We have no paid staff, no office lease, and no fundraising contractors. The

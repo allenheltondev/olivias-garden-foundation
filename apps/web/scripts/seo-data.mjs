@@ -195,7 +195,7 @@ export const seoRoutes = [
       <h2>Programs and ways to take part</h2>
       <ul>
         <li><a href="/okra">The Okra Project</a> &mdash; request free okra seeds from Olivia's own seed line, and add your garden to the project map.</li>
-        <li><a href="/good-roots">Good Roots Network</a> &mdash; a garden planning app for deciding what to plant, designing your beds, and staying on top of the season, with neighbor-to-neighbor food sharing built in.</li>
+        <li><a href="/good-roots">Good Roots garden planner</a> &mdash; a free garden planning app for deciding what to plant, designing your beds, and staying on top of the season, with neighbor-to-neighbor food sharing built in.</li>
         <li><a href="/get-involved">Get involved</a> &mdash; request seeds, add your garden to the map, or tell us you&rsquo;d like to help in person once we open.</li>
         <li><a href="/donate">Donate</a> &mdash; one-time gifts and Garden Club recurring support, with a permanent named marker placed in the memorial garden for every donor.</li>
         <li><a href="/about">About Olivia's Garden</a> &mdash; the story behind the foundation and the family who runs it.</li>
@@ -313,7 +313,7 @@ export const seoRoutes = [
       </ol>
 ${renderGuideListHtml(okraGuides)}
       <p>
-        See related work at <a href="/good-roots">Good Roots Network</a>, learn the
+        Plan your own beds with the free <a href="/good-roots">Good Roots garden planner</a>, learn the
         <a href="/about">story behind the foundation</a>, or <a href="/donate">support the
         program</a>.
       </p>
@@ -435,18 +435,18 @@ ${renderGuideListHtml(okraGuides)}
   },
   {
     path: '/good-roots',
-    title: 'Good Roots Network',
+    title: 'Free online garden planner',
     description:
-      "Plan your garden beds, choose crops, and keep up with watering and harvest reminders. Try Good Roots Network free and share extra produce with neighbors.",
+      "Good Roots is a free online garden planner for your browser and phone. Lay out your beds, choose crops, and get watering and harvest reminders. Nothing to download.",
     seoImage: '/images/social/good-roots.png',
     seoImageAlt: "The Good Roots garden bed planner in a browser frame beside a garden photo, with the headline: Plan a garden you can keep up with.",
-    allowIndex: false,
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.6 },
     bodyFallback: `
-      <h1>Good Roots Network</h1>
+      <h1>Good Roots: a free online garden planner</h1>
       <p>
-        Good Roots Network is part of Olivia's Garden Foundation. It's a garden planning app that
+        Good Roots is a free online garden planner from Olivia's Garden Foundation. It's an
+        interactive app that runs in your browser or on your phone, not a printable worksheet. It
         helps home gardeners decide what to plant, design their beds, and keep up with the season.
         When your garden gives you more than you can use, sharing the extra with neighbors is built in.
       </p>
@@ -620,8 +620,8 @@ ${renderGuideListHtml(okraGuides)}
       <p>
         The foundation teaches individuals and families how to grow food, care for animals,
         preserve what they produce, and build practical self-sufficiency. Programs include The
-        Okra Project (free seeds and a public garden map) and the Good Roots Network online
-        platform. Hands-on workshops and in-person volunteer days are planned for the future.
+        Okra Project (free seeds and a public garden map) and the Good Roots free garden
+        planner. Hands-on workshops and in-person volunteer days are planned for the future.
       </p>
       <h2>Non-discrimination policy</h2>
       <p>

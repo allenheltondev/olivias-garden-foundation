@@ -245,7 +245,7 @@ export function AppShell({ session, children }: AppShellProps) {
               label={session.displayName || session.email || 'Administrator'}
               appLinks={[
                 { id: 'foundation', label: 'Foundation home', href: foundationHomeUrl },
-                { id: 'grn', label: 'Good Roots Network', href: grnUrl },
+                { id: 'grn', label: 'Garden Planner', href: grnUrl },
               ]}
               onLogout={handleLogout}
             />

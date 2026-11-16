@@ -20,7 +20,7 @@ export function SettingsPage({ user, refreshUser }: SettingsPageProps) {
     <section className="grn-section">
       <SectionHeading
         title="Settings"
-        body="Manage your profile, membership, and programmatic access to Good Roots Network."
+        body="Manage your profile, membership, and programmatic access to Good Roots."
       />
 
       {user ? (

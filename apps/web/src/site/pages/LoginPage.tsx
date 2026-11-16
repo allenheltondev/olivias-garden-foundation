@@ -1,6 +1,7 @@
 import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { FormFeedback, Input } from '@olivias/ui';
-import { redirectAfterAuth } from '../../auth/redirect';
+import { authDestination, readAuthModeFromSearch, redirectAfterAuth } from '../../auth/redirect';
+import { trackEvent } from '../../observability/analytics';
 import type { AuthSession } from '../../auth/session';
 
 function isValidEmail(value: string) {
@@ -174,7 +175,10 @@ export function LoginPage({
   onConfirmPasswordReset: (email: string, code: string, password: string) => Promise<void>;
   onNavigate: (path: string) => void;
 }) {
-  const [mode, setMode] = useState<'login' | 'signup' | 'verify' | 'forgot'>(defaultMode);
+  const [mode, setMode] = useState<'login' | 'signup' | 'verify' | 'forgot'>(() => readAuthModeFromSearch() ?? defaultMode);
+  // Held only in memory between "Create account" and "Verify" so a new
+  // member is signed straight in instead of being asked to log in again.
+  const pendingSignupRef = useRef<{ email: string; password: string } | null>(null);
   const redirectedRef = useRef(false);
   const [forgotStep, setForgotStep] = useState<'request' | 'confirm'>('request');
   const [firstName, setFirstName] = useState('');
@@ -189,7 +193,7 @@ export function LoginPage({
   const [showPasswordHint, setShowPasswordHint] = useState(false);
 
   useEffect(() => {
-    setMode(defaultMode);
+    setMode(readAuthModeFromSearch() ?? defaultMode);
     setForgotStep('request');
     setLocalError(null);
     setStatusMessage(null);
@@ -203,7 +207,17 @@ export function LoginPage({
     redirectAfterAuth(authSession, onNavigate);
   }, [authEnabled, authBusy, authSession, onNavigate]);
 
+  const startSocialAuth = (
+    provider: 'google' | 'facebook',
+    start: (mode: 'login' | 'signup') => void,
+  ) => {
+    const authMode = mode === 'signup' ? 'signup' : 'login';
+    trackEvent('social_auth_started', { provider, mode: authMode, destination: authDestination() });
+    start(authMode);
+  };
+
   const handleModeChange = (nextMode: 'login' | 'signup') => {
+    pendingSignupRef.current = null;
     setMode(nextMode);
     setForgotStep('request');
     setLocalError(null);
@@ -249,6 +263,24 @@ export function LoginPage({
       setStatusMessage('A new verification code is on the way.');
     } catch (error) {
       setLocalError(error instanceof Error ? error.message : 'Unable to resend the code.');
+    }
+  };
+
+  // Signs a just-created account in with the password they typed moments ago.
+  // Returns false (and the caller falls back to "You can log in now") when
+  // there's nothing pending for this email or the login doesn't go through.
+  const signInNewMember = async (forEmail: string) => {
+    const pending = pendingSignupRef.current;
+    pendingSignupRef.current = null;
+    if (!pending || pending.email !== forEmail) return false;
+
+    try {
+      const session = await onSubmitLogin(pending.email, pending.password);
+      redirectedRef.current = true;
+      redirectAfterAuth(session, onNavigate);
+      return true;
+    } catch {
+      return false;
     }
   };
 
@@ -342,12 +374,15 @@ export function LoginPage({
           lastName.trim(),
           newsletterOptIn,
         );
+        trackEvent('sign_up', { method: 'email', destination: authDestination() });
+        pendingSignupRef.current = { email: trimmedEmail, password };
         setFirstName('');
         setLastName('');
         setPassword('');
         setConfirmPassword('');
         setNewsletterOptIn(false);
         if (result.userConfirmed) {
+          if (await signInNewMember(trimmedEmail)) return;
           setMode('login');
           setStatusMessage('Account created. You can log in now.');
         } else {
@@ -358,6 +393,8 @@ export function LoginPage({
 
       if (mode === 'verify') {
         await onConfirmSignup(trimmedEmail, normalizeVerificationCode(resetCode));
+        trackEvent('sign_up_verified', { method: 'email', destination: authDestination() });
+        if (await signInNewMember(trimmedEmail)) return;
         setMode('login');
         setResetCode('');
         setStatusMessage('Email verified. You can log in now.');
@@ -587,7 +624,7 @@ export function LoginPage({
                       <button
                         type="button"
                         className="og-login-page__provider-button"
-                        onClick={() => onStartGoogleLogin(mode === 'signup' ? 'signup' : 'login')}
+                        onClick={() => startSocialAuth('google', onStartGoogleLogin)}
                         disabled={authBusy}
                         aria-label="Continue with Google"
                         title="Continue with Google"
@@ -598,7 +635,7 @@ export function LoginPage({
                       <button
                         type="button"
                         className="og-login-page__provider-button"
-                        onClick={() => onStartFacebookLogin(mode === 'signup' ? 'signup' : 'login')}
+                        onClick={() => startSocialAuth('facebook', onStartFacebookLogin)}
                         disabled={authBusy}
                         aria-label="Continue with Facebook"
                         title="Continue with Facebook"

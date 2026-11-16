@@ -83,7 +83,7 @@ export function SiteHeader({
     // people who don't have an account yet. Once someone is signed in they've
     // already "learned" what the network is, so the same nav item launches them
     // straight into the app instead of showing marketing copy again. This keeps
-    // "Good Roots Network" meaning exactly one thing within a given auth state
+    // "Garden Planner" meaning exactly one thing within a given auth state
     // and matches the app launcher in the account menu.
     if (route.path === '/good-roots' && authSession) {
       return {
@@ -126,7 +126,7 @@ export function SiteHeader({
         },
         {
           id: 'grn-app',
-          label: 'Good Roots Network',
+          label: 'Garden Planner',
           href: buildCrossAppUrl(goodRootsNetworkUrl, authSession),
           mobileOnly: true,
           sectionLabel: 'Apps',
@@ -183,7 +183,7 @@ export function SiteHeader({
                   { id: 'okra-submissions', label: 'My okra submissions', href: '/okra/submissions' },
                 ]}
                 appLinks={[
-                  { id: 'grn', label: 'Good Roots Network', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
+                  { id: 'grn', label: 'Garden Planner', href: buildCrossAppUrl(goodRootsNetworkUrl, authSession) },
                   ...(authSession.user.isAdmin
                     ? [{ id: 'admin', label: 'Admin', href: buildCrossAppUrl(adminUrl, authSession) }]
                     : []),

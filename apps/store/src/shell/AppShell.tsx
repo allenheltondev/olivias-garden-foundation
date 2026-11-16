@@ -125,7 +125,7 @@ export function AppShell({ session, onSignIn, children }: AppShellProps) {
                 appLinks={[
                   { id: 'orders', label: 'My orders', href: '/orders' },
                   { id: 'foundation', label: 'Foundation home', href: foundationHomeUrl },
-                  { id: 'grn', label: 'Good Roots Network', href: grnUrl },
+                  { id: 'grn', label: 'Garden Planner', href: grnUrl },
                   ...(session.isAdmin
                     ? [{ id: 'admin', label: 'Admin', href: adminUrl }]
                     : []),

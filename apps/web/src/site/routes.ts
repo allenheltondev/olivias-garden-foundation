@@ -41,7 +41,7 @@ export const routes: AppRoute[] = [
     path: '/login',
     label: 'Login',
     title: 'Log in',
-    description: "Use one Good Roots Network account across Olivia's Garden experiences.",
+    description: "Use one Olivia's Garden account across the website, garden planner, and store.",
     allowIndex: false,
   },
   {
@@ -78,13 +78,12 @@ export const routes: AppRoute[] = [
   },
   {
     path: '/good-roots',
-    label: 'Good Roots Network',
+    label: 'Garden Planner',
     showInNav: true,
-    title: 'Good Roots Network',
-    description: "Plan your garden beds, choose crops, and keep up with watering and harvest reminders. Try Good Roots Network free and share extra produce with neighbors.",
+    title: 'Free online garden planner',
+    description: "Good Roots is a free online garden planner for your browser and phone. Lay out your beds, choose crops, and get watering and harvest reminders. Nothing to download.",
     seoImage: '/images/social/good-roots.png',
     seoImageAlt: "The Good Roots garden bed planner in a browser frame beside a garden photo, with the headline: Plan a garden you can keep up with.",
-    allowIndex: false,
     prerender: true,
   },
   {
@@ -248,6 +247,7 @@ export const prerenderRoutes = routes.filter((route) => route.prerender);
 
 export const goodRootsNetworkUrl = import.meta.env.VITE_GRN_URL || 'https://grn.oliviasgarden.org';
 export const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.oliviasgarden.org';
+export const storeUrl = import.meta.env.VITE_STORE_URL || 'https://store.oliviasgarden.org';
 export const instagramUrl = 'https://instagram.com/oliviasgardentx';
 export const facebookUrl = 'https://www.facebook.com/profile.php?id=100087146659606#';
 export const candidProfileUrl = 'https://app.candid.org/profile/16182978/olivias-garden-foundation/?pkId=35b25f41-ab7c-4561-8c50-493d5bbb7532&isActive=true';

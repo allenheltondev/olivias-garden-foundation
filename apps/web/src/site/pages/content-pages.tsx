@@ -1,6 +1,8 @@
 import { Button, Card, FormFeedback, GardenIcon, Input, Select, Textarea } from '@olivias/ui';
 import { lazy, Suspense, useState, type FormEvent, type MouseEvent } from 'react';
+import { plannerSignupPath } from '../../auth/redirect';
 import type { AuthSession } from '../../auth/session';
+import { trackEvent } from '../../observability/analytics';
 import {
   buildCrossAppUrl,
   CtaButton,
@@ -184,19 +186,16 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
             }} variant="secondary">Donate</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
-            <h3>Follow along</h3>
+            <h3>Plan your own garden</h3>
             <p>
-              Instagram is the best place to see what is growing, what is being built, and what the
-              day-to-day work actually looks like.
+              Good Roots is our free online garden planner. Lay out your beds, pick what to plant,
+              and get watering and harvest reminders, right in your browser.
             </p>
-            <a
-              className="home-action-link home-action-link--secondary"
-              href="https://instagram.com/oliviasgardentx"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Follow us
-            </a>
+            <CtaButton href="/good-roots" onClick={(event) => {
+              event?.preventDefault?.();
+              trackEvent('planner_promo_click', { location: 'home' });
+              onNavigate('/good-roots');
+            }} variant="secondary">Try the planner</CtaButton>
           </article>
         </div>
       </Section>
@@ -1113,7 +1112,7 @@ const ORG_TYPE_OPTIONS = [
 interface GoodRootsHeroCopy {
   title: string;
   body: string;
-  primary: { label: string; href: string; signup?: boolean; internal?: boolean };
+  primary: { label: string; href: string; internal?: boolean };
   secondary?: { label: string; href: string; internal?: boolean };
 }
 
@@ -1121,8 +1120,8 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
   if (!session) {
     return {
       title: 'Plan a garden you can actually keep up with.',
-      body: 'The Good Roots Network helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
-      primary: { label: 'Create your account', href: '/login', signup: true, internal: true },
+      body: 'Good Roots is a free garden planning app that works in your browser and on your phone. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
+      primary: { label: 'Start planning for free', href: plannerSignupPath(), internal: true },
       secondary: { label: 'See how it works', href: '#how-it-works', internal: true },
     };
   }
@@ -1131,8 +1130,8 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
 
   return {
     title: 'Plan a garden you can actually keep up with.',
-    body: 'The Good Roots Network helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
-    primary: { label: 'Open the Good Roots Network', href: appHref },
+    body: 'Good Roots is a free garden planning app that works in your browser and on your phone. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
+    primary: { label: 'Open your garden planner', href: appHref },
   };
 }
 
@@ -1311,7 +1310,7 @@ function OrganizationInquiryForm() {
 
       setFeedback({
         type: 'success',
-        message: "Thanks. We'll be in touch within a few days to help you get your organization set up in the Good Roots Network.",
+        message: "Thanks. We'll be in touch within a few days to help you get your organization set up in Good Roots.",
       });
       setOrgName('');
       setContactName('');
@@ -1410,17 +1409,23 @@ export function GoodRootsPage({
 }) {
   const hero = heroForSession(authSession);
   const tier = authSession?.user.tier ?? null;
-  const handleInternalClick = (href: string) => (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+  const signupPath = plannerSignupPath();
+  const appHref = authSession ? buildCrossAppUrl(goodRootsNetworkUrl, authSession) : null;
+  // Every planner CTA on this page reports where it sat, so GA4 can show which
+  // part of the page actually moves people into the planner.
+  const trackPlannerCta = (location: string) => {
+    trackEvent('planner_cta_click', { location, signed_in: Boolean(authSession) });
+  };
+  const handleInternalClick = (href: string, ctaLocation?: string) => (
+    event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+  ) => {
     event.preventDefault();
+    if (ctaLocation) trackPlannerCta(ctaLocation);
     if (href.startsWith('#')) {
       const target = document.querySelector(href);
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      return;
-    }
-    if (href === '/login') {
-      onNavigate('/login');
       return;
     }
     onNavigate(href);
@@ -1435,7 +1440,7 @@ export function GoodRootsPage({
         body={hero.body}
         aside={(
           <figure className="good-roots-product-preview">
-            <div className="good-roots-product-preview__bar"><span>Good Roots Network</span><span>Sample garden</span></div>
+            <div className="good-roots-product-preview__bar"><span>Good Roots Garden Planner</span><span>Sample garden</span></div>
             <ResponsiveImage
               src="/images/good-roots/app-garden-map.jpg"
               width="1616"
@@ -1445,14 +1450,16 @@ export function GoodRootsPage({
               loading="eager"
               fetchPriority="high"
             />
-            <figcaption>Your garden, bed by bed. Plan your first one for free.</figcaption>
+            <figcaption>Drag your beds into place, right in the browser. Nothing to download or print.</figcaption>
           </figure>
         )}
-        actions={!authSession ? (
+        actions={(
           <>
             <CtaButton
               href={hero.primary.href}
-              onClick={hero.primary.internal ? handleInternalClick(hero.primary.href) : undefined}
+              onClick={hero.primary.internal
+                ? handleInternalClick(hero.primary.href, 'hero')
+                : () => trackPlannerCta('hero')}
             >
               {hero.primary.label}
             </CtaButton>
@@ -1466,7 +1473,7 @@ export function GoodRootsPage({
               </CtaButton>
             ) : null}
           </>
-        ) : null}
+        )}
       />
 
       <section className="home-mission-band good-roots-mission" aria-label="Mission">
@@ -1474,7 +1481,7 @@ export function GoodRootsPage({
           <p className="home-mission-band__eyebrow">What it is</p>
           <h2>Everything you need to plan and grow a better garden.</h2>
           <p>
-            The Good Roots Network gives you one place to plan each season, design your beds, track what
+            Good Roots gives you one place to plan each season, design your beds, track what
             you've planted, and get reminders so nothing slips through the cracks. Because it's built
             around real gardens run by real people near you, you can see what grows well in your area and
             carry those lessons into next year. And when a crop comes in heavy, passing the extra along to
@@ -1513,7 +1520,7 @@ export function GoodRootsPage({
           <AppScreenshot
             className="good-roots-persona__media"
             src="/images/good-roots/app-garden-map.jpg"
-            alt="The Good Roots Network garden map showing raised beds for tomatoes, peppers, salad greens, beans, herbs, and squash laid out on a lawn."
+            alt="The Good Roots garden map showing raised beds for tomatoes, peppers, salad greens, beans, herbs, and squash laid out on a lawn."
             caption="Your beds, laid out the way they really sit in the yard."
             path="/garden"
             sizes="(min-width: 960px) 34rem, 100vw"
@@ -1524,8 +1531,8 @@ export function GoodRootsPage({
             <p className="page-eyebrow">Plan your season</p>
             <h2>Know what to plant, and where.</h2>
             <p>
-              Most gardens start with good intentions and a pile of seed packets. The Good Roots Network
-              helps you turn that into an actual plan: pick crops that fit your space and your climate, lay
+              Most gardens start with good intentions and a pile of seed packets. Good Roots helps
+              you turn that into an actual plan: pick crops that fit your space and your climate, lay
               them out bed by bed, and keep track of everything from "thinking about it" to "in the ground."
             </p>
             <ul className="site-list">
@@ -1541,7 +1548,7 @@ export function GoodRootsPage({
           <AppScreenshot
             className="good-roots-persona__media"
             src="/images/good-roots/app-today.jpg"
-            alt="The Today view in the Good Roots Network with a late-spring season summary, crops that are good to plant now, and reminders to water tomatoes, feed peppers, and harvest lettuce."
+            alt="The Today view in Good Roots with a late-spring season summary, crops that are good to plant now, and reminders to water tomatoes, feed peppers, and harvest lettuce."
             caption="Open the app and see exactly what your garden needs today."
             path="/"
             sizes="(min-width: 960px) 34rem, 100vw"
@@ -1552,7 +1559,7 @@ export function GoodRootsPage({
             <p className="page-eyebrow">Keep it going</p>
             <h2>Stay on top of the day-to-day.</h2>
             <p>
-              A garden is a hundred small tasks spread across a season. The Good Roots Network keeps them
+              A garden is a hundred small tasks spread across a season. Good Roots keeps them
               from slipping: reminders for the things that matter, a journal for what you've harvested and
               learned, and a simple daily view of what needs doing. And if you end up with more than you
               need, sharing it with a neighbor is only a tap away.
@@ -1575,7 +1582,7 @@ export function GoodRootsPage({
         <AppScreenshot
           className="good-roots-map-shot"
           src="/images/good-roots/app-local-context.jpg"
-          alt="Example of local planting context in the Good Roots Network, shown with sample data: guidance that neighbors nearby are asking for tomatoes and okra while zucchini is plentiful, with lists of crops to consider planting and crops already covered."
+          alt="Example of local planting context in Good Roots, shown with sample data: guidance that neighbors nearby are asking for tomatoes and okra while zucchini is plentiful, with lists of crops to consider planting and crops already covered."
           caption="Illustrative example with sample data. In the app, this guidance is built from what gardens near you are actually growing and what neighbors are asking for."
           path="/garden/plan/recommendations"
           sizes="(min-width: 1200px) 72rem, 100vw"
@@ -1583,16 +1590,16 @@ export function GoodRootsPage({
           height={653}
         />
         <div className="good-roots-map-cta">
-          {authSession ? (
-            <CtaButton href={buildCrossAppUrl(goodRootsNetworkUrl, authSession)}>
+          {appHref ? (
+            <CtaButton href={appHref} onClick={() => trackPlannerCta('local_context')}>
               See what grows near you
             </CtaButton>
           ) : (
-            <CtaButton href="/login" onClick={handleInternalClick('/login')}>
+            <CtaButton href={signupPath} onClick={handleInternalClick(signupPath, 'local_context')}>
               Start your free garden plan
             </CtaButton>
           )}
-          <p>Free for home gardeners. Set up your first bed in a few minutes.</p>
+          <p>Free for home gardeners. Works in your browser and on your phone, with nothing to download. Set up your first bed in a few minutes.</p>
         </div>
       </Section>
 
@@ -1629,11 +1636,11 @@ export function GoodRootsPage({
       <Section
         id="organizations"
         title="Gardening as a group?"
-        intro="Community gardens, schools, churches, and other groups can use the Good Roots Network to plan shared plots, keep track of who's tending what, and stay organized across a season with a lot of hands. If your group grows more than it needs, sharing the surplus locally comes built in."
+        intro="Community gardens, schools, churches, and other groups can use Good Roots to plan shared plots, keep track of who's tending what, and stay organized across a season with a lot of hands. If your group grows more than it needs, sharing the surplus locally comes built in."
         className="good-roots-orgs-section"
       >
         <div className="good-roots-orgs">
-          <Card title="How groups use the Good Roots Network" className="good-roots-orgs__perks">
+          <Card title="How groups use Good Roots" className="good-roots-orgs__perks">
             <ul className="site-list">
               <li>Plan and design shared gardens and community plots</li>
               <li>Keep track of who is growing what across your group</li>
@@ -1645,7 +1652,7 @@ export function GoodRootsPage({
           <Card title="Apply for organization access" className="good-roots-orgs__form">
             <p className="contact-card__eyebrow">Tell us about your group</p>
             <p>
-              Share a few details and we'll reach out to help your group get set up in the Good Roots Network.
+              Share a few details and we'll reach out to help your group get set up in Good Roots.
             </p>
             <OrganizationInquiryForm />
           </Card>
@@ -1656,23 +1663,17 @@ export function GoodRootsPage({
         <div className="good-roots-closing__copy">
           <h2>Roots grow where hands meet dirt.</h2>
           <p>
-            Whether you have a half-acre or a few pots on a balcony, the Good Roots Network helps you plan
+            Whether you have a half-acre or a few pots on a balcony, Good Roots helps you plan
             it, grow it, and make the most of everything it gives you. Start with a single bed and let it
             grow from there.
           </p>
-          {authSession ? (
-            <CtaButton href={buildCrossAppUrl(goodRootsNetworkUrl, authSession)}>
-              Open the Good Roots Network
+          {appHref ? (
+            <CtaButton href={appHref} onClick={() => trackPlannerCta('closing')}>
+              Open your garden planner
             </CtaButton>
           ) : (
-            <CtaButton
-              href="/login"
-              onClick={(event) => {
-                event?.preventDefault?.();
-                onNavigate('/login');
-              }}
-            >
-              Create your account
+            <CtaButton href={signupPath} onClick={handleInternalClick(signupPath, 'closing')}>
+              Start planning for free
             </CtaButton>
           )}
         </div>
