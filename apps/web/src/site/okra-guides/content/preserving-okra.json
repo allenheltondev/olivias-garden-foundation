@@ -1,6 +1,6 @@
 {
   "slug": "preserving-okra",
-  "status": "draft",
+  "status": "published",
   "title": "How to preserve okra",
   "seoTitle": "How to Freeze, Pickle and Can Okra Safely",
   "description": "Freeze okra after a 3 or 4 minute blanch, pickle it with a tested dilled okra recipe, or pressure can it. Safe, tested steps for your harvest.",
@@ -12,6 +12,12 @@
   "socialImage": {
     "src": "/images/social/okra-guides/preserving-okra.jpg",
     "alt": "How to preserve okra card with a photo of a jar of homemade pickled okra."
+  },
+  "datePublished": "2026-11-16",
+  "dateModified": "2026-11-16",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-16"
   },
   "targetQueries": [
     "how to freeze okra",
