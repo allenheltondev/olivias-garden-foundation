@@ -33,7 +33,7 @@
   ],
   "order": 12,
   "intro": [
-    "No garden bed? Okra still works. Our family grew a prolific okra plant in a single 5-gallon bucket, with plenty of sun and water.",
+    "No garden bed? Okra still works. Olivia's grandparents grew a prolific plant from the project's seed in a single 5-gallon bucket of potting mix, about 15 miles from our garden in North Texas.",
     "Need seeds? Start with [free okra seeds](/okra/free-okra-seeds) from Olivia's garden."
   ],
   "sections": [
@@ -51,20 +51,6 @@
             "At least 5 hours of direct sun, and 8 to 10 is better",
             "Check the soil every day in summer"
           ]
-        }
-      ]
-    },
-    {
-      "id": "our-bucket",
-      "title": "Our family's bucket okra",
-      "blocks": [
-        {
-          "type": "paragraph",
-          "text": "Olivia's grandparents grew Clemson Spineless from the project's seed in a 5-gallon bucket with drainage holes, filled with potting mix, about 15 miles from our garden in North Texas. They watered it every 2 days."
-        },
-        {
-          "type": "paragraph",
-          "text": "It grew to about 4 feet tall, compared with over 6 feet for our plants in the ground. It started producing about 2 months later than our in-ground okra, but once it got going it was prolific."
         }
       ]
     },
