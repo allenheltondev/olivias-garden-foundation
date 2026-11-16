@@ -207,7 +207,7 @@ export function DashboardPage({ user }: DashboardPageProps) {
         </ol>
       )}
 
-      {isNewGarden ? (
+      {cropsQuery.isSuccess ? (
         <FirstStepsPanel
           userId={user?.id}
           homeZone={user?.growerProfile?.homeZone}

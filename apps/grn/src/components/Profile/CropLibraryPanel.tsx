@@ -55,9 +55,9 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     queryFn: listMyBeds,
   });
 
+  // A bed carried between views is navigation context, not an assignment.
+  // Explicit add-to-bed flows supply bedId themselves.
   const addCropParams = new URLSearchParams({ returnTo: `${location.pathname}${location.search}` });
-  const contextBed = searchParams.get('bed') ?? searchParams.get('bedId');
-  if (contextBed) addCropParams.set('bedId', contextBed);
   const addCropPath = `/garden/plants/new?${addCropParams}`;
   const linkedCropId = searchParams.get('crop');
   const linkedAction = searchParams.get('action');
@@ -436,7 +436,14 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/garden?${new URLSearchParams({ bed: crop.bedId!, crop: crop.id })}`)}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams);
+                        params.set('bed', crop.bedId!);
+                        params.set('crop', crop.id);
+                        params.delete('action');
+                        params.delete('harvest');
+                        navigate(`/garden?${params}`);
+                      }}
                     >
                       View on Map
                     </Button>

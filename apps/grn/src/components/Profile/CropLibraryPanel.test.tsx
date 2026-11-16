@@ -271,6 +271,30 @@ function renderJourney(path: string, cachedCrops?: Awaited<ReturnType<typeof lis
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><CropLibraryPanel /><LocationDisplay /></MemoryRouter></QueryClientProvider>);
 }
 describe('plant journey', () => {
+  it.each(['bed-1', 'removed-bed'])('does not lock generic crop entry to carried bed %s', async (bed) => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValue([journeyCrop]);
+    renderJourney(`/garden/plants?bed=${bed}&season=fall&tier=4`);
+    await userEvent.click(await screen.findByRole('button', { name: '+ Add crop' }));
+    const target = new URL(screen.getByTestId('location').textContent ?? '', 'https://garden.invalid');
+    expect(target.searchParams.has('bedId')).toBe(false);
+    expect(target.searchParams.get('returnTo')).toBe(`/garden/plants?bed=${bed}&season=fall&tier=4`);
+  });
+  it('preserves planning context on the map and clears plant modal parameters', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValue([journeyCrop]);
+    renderJourney('/garden/plants?crop=crop-journey&season=fall&tier=4&harvest=old');
+    await userEvent.click(await screen.findByRole('button', { name: 'View on Map' }));
+    const target = new URL(screen.getByTestId('location').textContent ?? '', 'https://garden.invalid');
+    expect(target.pathname).toBe('/garden');
+    expect(target.searchParams.get('season')).toBe('fall');
+    expect(target.searchParams.get('tier')).toBe('4');
+    expect(target.searchParams.get('bed')).toBe('bed-1');
+    expect(target.searchParams.get('crop')).toBe('crop-journey');
+    expect(target.searchParams.has('action')).toBe(false);
+    expect(target.searchParams.has('harvest')).toBe(false);
+  });
+
   it('opens one plant with its notes, care reminder, journal, and map context', async () => {
     vi.mocked(listMyBeds).mockResolvedValue([]);
     vi.mocked(listMyCrops).mockResolvedValue([journeyCrop, { ...journeyCrop, id: 'other', cropName: 'Bean', nickname: null }]);
@@ -280,7 +304,7 @@ describe('plant journey', () => {
     expect(screen.getByRole('link', { name: 'Open garden journal' })).toHaveAttribute('href', '/garden/journal');
     expect(screen.getByRole('link', { name: 'Add a care reminder' })).toHaveAttribute('href', '/today/reminders?new=true&title=Check+Patio+tomatoes&type=custom');
     await userEvent.click(screen.getByRole('button', { name: 'View on Map' }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/garden?bed=bed-1&crop=crop-journey');
+    expect(screen.getByTestId('location')).toHaveTextContent('/garden?crop=crop-journey&bed=bed-1');
   });
   it('preserves bed and season when opening a plant record and clears old modal context', async () => {
     vi.mocked(listMyBeds).mockResolvedValue([]);

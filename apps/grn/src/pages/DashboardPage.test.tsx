@@ -141,12 +141,14 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('heading', { name: 'Garden at a glance' })).not.toBeInTheDocument();
   });
 
-  it('keeps established gardens focused on tending rather than setup', async () => {
+  it('keeps unfinished setup available after the first plant', async () => {
     mockListMyCrops.mockResolvedValue([crop({ surplusEnabled: true })]);
     renderPage();
 
     expect(await screen.findByRole('heading', { name: 'Garden at a glance' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Getting started' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Getting started' })).toBeInTheDocument();
+    const actions = screen.getByRole('list', { name: /top actions today/i });
+    expect(actions.compareDocumentPosition(screen.getByRole('heading', { name: 'Getting started' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText('Sharing enabled')).toBeInTheDocument();
     expect(screen.queryByText('Ready to share')).not.toBeInTheDocument();
     expect(screen.getByText(/Your next useful step/)).toBeInTheDocument();

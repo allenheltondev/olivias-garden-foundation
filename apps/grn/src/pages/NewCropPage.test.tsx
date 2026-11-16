@@ -17,7 +17,7 @@ vi.mock('../components/CropPlanner/CropForm', () => ({
 }));
 function Location() {
   const location = useLocation();
-  return <output data-testid="location">{location.pathname}{location.search}{location.hash}</output>;
+  return <><output data-testid="save-state">{location.state?.savedCropId}</output><output data-testid="location">{location.pathname}{location.search}{location.hash}</output></>;
 }
 function setup(query = '') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -37,6 +37,7 @@ describe('NewCropPage context', () => {
     setup(`?returnTo=${encodeURIComponent('/garden/plan?season=2026')}`);
     await userEvent.click(await screen.findByRole('button', { name: 'Save crop' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/garden/plan?season=2026&crop=new-crop');
+    expect(screen.getByTestId('save-state')).toHaveTextContent('new-crop');
   });
   it('clears an old plant modal when opening a newly saved plant', async () => {
     setup(`?returnTo=${encodeURIComponent('/garden/plants?season=fall&crop=old&action=harvest&harvest=old-harvest')}`);

@@ -46,13 +46,13 @@ function crop(id: string, cropName: string, pyramidTier?: number | null): Grower
   };
 }
 
-function renderPage(initialEntry = '/') {
+function renderPage(initialEntry = '/', state: { savedCropId: string } | null = null) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
+      <MemoryRouter initialEntries={[{ pathname: initialEntry.split('?')[0], search: initialEntry.includes('?') ? '?' + initialEntry.split('?')[1] : '', state }]}>
         <PlannerPage />
         <LocationDisplay />
       </MemoryRouter>
@@ -66,6 +66,23 @@ function LocationDisplay() {
 }
 
 describe('PlannerPage', () => {
+  it('confirms a saved plant from another layer without changing the selected layer', async () => {
+    mockGetMe.mockResolvedValue(growerProfile);
+    mockListMyCrops.mockResolvedValue([crop('new-crop', 'Tomato', 2)]);
+    renderPage('/garden/plan?tier=4&season=fall&crop=new-crop', { savedCropId: 'new-crop' });
+    expect(await screen.findByText(/Plant saved to your garden/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Flavor' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View saved plant' })).toHaveAttribute('href', '/garden/plants?tier=4&season=fall&crop=new-crop');
+    expect(screen.getByTestId('location')).toHaveTextContent('tier=4&season=fall');
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss confirmation' }));
+    expect(screen.queryByText(/Plant saved to your garden/)).not.toBeInTheDocument();
+  });
+  it('does not claim an ordinary linked plant was just saved', async () => {
+    renderPage('/garden/plan?crop=existing&tier=4');
+    await screen.findByTestId('pyramid-band-foundation');
+    expect(screen.queryByText(/Plant saved to your garden/)).not.toBeInTheDocument();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetMe.mockResolvedValue(growerProfile);

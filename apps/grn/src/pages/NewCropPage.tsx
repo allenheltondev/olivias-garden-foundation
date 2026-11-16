@@ -113,7 +113,10 @@ export function NewCropPage() {
           if (destination.pathname === '/garden' && created.bedId) {
             destination.searchParams.set('bed', created.bedId);
           }
-          navigate(`${destination.pathname}${destination.search}${destination.hash}`, { replace: true });
+          navigate(`${destination.pathname}${destination.search}${destination.hash}`, {
+            replace: true,
+            state: destination.pathname === '/garden/plan' ? { savedCropId: created.id } : null,
+          });
         }}
       />
     </section>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Panel, SectionHeading } from '@olivias/ui';
 import { getMe, listMyCrops } from '../services/api';
@@ -29,6 +29,11 @@ export function PlannerPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const savedCropId = typeof location.state?.savedCropId === 'string' ? location.state.savedCropId : null;
+  const savedPlantParams = new URLSearchParams(searchParams);
+  if (savedCropId) savedPlantParams.set('crop', savedCropId);
+  savedPlantParams.delete('action');
+  savedPlantParams.delete('harvest');
   const requestedTier = parseTier(searchParams.get('tier'));
   const [activeTier, setActiveTier] = useState<PyramidTier>(requestedTier);
 
@@ -117,6 +122,16 @@ export function PlannerPage() {
         title="Plan"
         body="Use the garden pyramid to see what is covered and choose a practical next layer."
       />
+
+      {savedCropId ? (
+        <Panel role="status">
+          <p>Plant saved to your garden. Your selected planning layer is unchanged.</p>
+          <Link to={`/garden/plants?${savedPlantParams}`}>View saved plant</Link>
+          <Button variant="ghost" size="sm" onClick={() => navigate(`${location.pathname}${location.search}`, { replace: true, state: null })}>
+            Dismiss confirmation
+          </Button>
+        </Panel>
+      ) : null}
 
       <Card padding="6" className="grn-planner__workspace">
         <div className="grn-planner__health">
