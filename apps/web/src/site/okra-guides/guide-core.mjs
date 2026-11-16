@@ -335,7 +335,8 @@ export function renderGuideFallbackHtml(guide, relatedGuides = []) {
   const parts = [
     `<h1>${escapeHtml(guide.title)}</h1>`,
     `<p>${inlineToHtml(guide.summary)}</p>`,
-    guide.heroImage ? `<img src="${escapeHtml(rootRelative(guide.heroImage.src))}" alt="${escapeHtml(guide.heroImage.alt)}" />` : '',
+    // Drafts can leave the photo out until it exists, so only render a real src.
+    typeof guide.heroImage?.src === 'string' && guide.heroImage.src.trim() ? `<img src="${escapeHtml(rootRelative(guide.heroImage.src))}" alt="${escapeHtml(guide.heroImage.alt)}" />` : '',
     ...guide.intro.map((paragraph) => `<p>${inlineToHtml(paragraph)}</p>`),
     ...guide.sections.flatMap((section) => [
       `<h2 id="${escapeHtml(section.id)}">${escapeHtml(section.title)}</h2>`,

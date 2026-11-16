@@ -334,6 +334,18 @@ describe('structured data and fallback HTML', () => {
     assert.match(entry, /<image:loc>https:\/\/oliviasgarden\.org\/images\/okra\/olivia-okra\.jpg<\/image:loc>/);
   });
 
+  test('a draft whose hero photo is still pending renders fallback HTML without an image', () => {
+    const draft = { ...guide, status: 'draft', heroImage: { alt: 'A photo to be added before publication' } };
+    const html = renderGuideFallbackHtml(draft);
+    assert.match(html, /<h1>Example okra guide<\/h1>/);
+    assert.doesNotMatch(html, /<img src="(undefined)?"/);
+    assert.ok(guidePhotos(draft).every((photo) => photo.src.startsWith('/')));
+    const withoutHero = { ...guide, status: 'draft' };
+    delete withoutHero.heroImage;
+    assert.doesNotThrow(() => renderGuideFallbackHtml(withoutHero));
+    assert.doesNotThrow(() => buildGuideArticleJsonLd(draft, siteUrl));
+  });
+
   test('the same photo with and without a leading slash is listed once, root-relative', () => {
     const mixed = {
       ...guide,
