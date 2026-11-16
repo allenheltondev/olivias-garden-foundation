@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Panel, SectionHeading } from '@olivias/ui';
 import { getMe, listMyCrops } from '../services/api';
@@ -27,6 +27,7 @@ function parseTier(value: string | null): PyramidTier {
 
 export function PlannerPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTier = parseTier(searchParams.get('tier'));
   const [activeTier, setActiveTier] = useState<PyramidTier>(requestedTier);
@@ -180,7 +181,7 @@ export function PlannerPage() {
               isLoading={isLoadingCrops}
               hasError={isCropsError}
               onRetry={() => void refetchCrops()}
-              onAddCrop={() => navigate('/garden/plants/new')}
+              onAddCrop={() => navigate(`/garden/plants/new?${new URLSearchParams({ returnTo: `${location.pathname}${location.search}` })}`)}
             />
           </section>
         </div>

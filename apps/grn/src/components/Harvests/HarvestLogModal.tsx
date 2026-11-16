@@ -248,8 +248,11 @@ export function HarvestLogModal({
         {savedHarvest && onShareHarvest ? (
           <div className="rounded-base border border-primary-200 bg-primary-50 px-4 py-3" role="status">
             <p className="font-medium text-primary-900">Harvest saved.</p>
+            <p className="mt-1 text-sm text-primary-900">
+              {savedHarvest.amount}{savedHarvest.unit ? ` ${savedHarvest.unit}` : ''} of {cropName} added to your garden story.
+            </p>
             <p className="mt-1 text-sm text-primary-800">
-              Have extra? You decide whether and how much to make available.
+              Have extra? Choose how much to offer. You can review everything before sharing.
             </p>
             <Button
               className="mt-3"
@@ -257,6 +260,9 @@ export function HarvestLogModal({
               onClick={() => onShareHarvest(savedHarvest)}
             >
               Share some food
+            </Button>
+            <Button className="mt-3" variant="ghost" onClick={() => setSavedHarvest(null)}>
+              Keep for my household
             </Button>
           </div>
         ) : null}

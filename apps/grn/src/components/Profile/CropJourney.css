@@ -1,0 +1,13 @@
+/* Focused plant view keeps care and history beside the growing record. */
+.grn-crop-library--focused .grn-crop-grid { grid-template-columns: minmax(0, 1fr); max-width: 48rem; margin-inline: auto; }
+.grn-crop-library--focused .grn-crop-card__header { min-height: 6rem; }
+.grn-crop-card__name a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+.grn-crop-card__name a:hover { color: var(--color-primary-700); }
+.grn-crop-journey__context { margin-block: 0 1rem; }
+.grn-crop-journey__notes { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; border-inline-start: 3px solid var(--color-primary-300); background: var(--color-primary-50); border-radius: .25rem; }
+.grn-crop-journey__links { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-block: 1rem; }
+.grn-crop-journey__links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary-700); font-weight: 600; text-underline-offset: .2em; }
+.grn-crop-library--focused .grn-crop-card__footer { flex-wrap: wrap; }
+.grn-crop-library--focused .grn-crop-card__footer button { min-height: 44px; }
+
+.grn-crop-journey__notice { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; padding: .75rem 1rem; margin-bottom: 1rem; background: var(--color-accent-50); border: 1px solid var(--color-accent-300); border-radius: .75rem; }

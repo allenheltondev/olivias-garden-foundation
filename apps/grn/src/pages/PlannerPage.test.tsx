@@ -150,6 +150,15 @@ describe('PlannerPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/garden/plan?tier=5&season=fall');
   });
 
+  it('carries the selected season and layer into the add-crop return path', async () => {
+    renderPage('/garden/plan?tier=4&season=fall');
+    await userEvent.click(await screen.findByRole('button', { name: /add a crop to flavor/i }));
+    const location = screen.getByTestId('location').textContent ?? '';
+    const destination = new URL(location, 'https://garden.invalid');
+    expect(destination.pathname).toBe('/garden/plants/new');
+    expect(destination.searchParams.get('returnTo')).toBe('/garden/plan?tier=4&season=fall');
+  });
+
   it('explains that local recommendations are optional context', async () => {
     renderPage('/garden/plan');
 

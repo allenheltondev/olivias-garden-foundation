@@ -129,6 +129,29 @@ describe('DashboardPage', () => {
     });
   });
 
+  it('puts the next action before setup and seasonal exploration', async () => {
+    renderPage();
+
+    const actions = await screen.findByRole('list', { name: /top actions today/i });
+    const setup = await screen.findByRole('heading', { name: 'Getting started' });
+    const season = screen.getByRole('heading', { name: 'Make Today local to your garden' });
+    expect(actions.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(setup.compareDocumentPosition(season) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(/One plant is enough to begin/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Garden at a glance' })).not.toBeInTheDocument();
+  });
+
+  it('keeps established gardens focused on tending rather than setup', async () => {
+    mockListMyCrops.mockResolvedValue([crop({ surplusEnabled: true })]);
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Garden at a glance' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Getting started' })).not.toBeInTheDocument();
+    expect(screen.getByText('Sharing enabled')).toBeInTheDocument();
+    expect(screen.queryByText('Ready to share')).not.toBeInTheDocument();
+    expect(screen.getByText(/Your next useful step/)).toBeInTheDocument();
+  });
+
   it('ranks no more than three record-linked actions and preserves the harvest deep link', async () => {
     mockListMyCrops.mockResolvedValue([
       crop({ id: 'crop-ready', nickname: 'Cherry tomatoes', expectedHarvestDate: '2000-01-01' }),

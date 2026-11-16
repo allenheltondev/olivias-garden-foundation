@@ -257,3 +257,72 @@ describe('CropLibraryPanel deep links', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/share/listings?crop=crop-1');
   });
 });
+
+const journeyCrop = {
+  id: 'crop-journey', userId: 'grower-1', canonicalId: null, cropName: 'Tomato', varietyId: null,
+  status: 'growing', visibility: 'private', surplusEnabled: false, nickname: 'Patio tomatoes',
+  defaultUnit: 'lb', notes: 'Keep the soil evenly moist.', bedId: 'bed-1', bedName: 'Kitchen bed',
+  plantingDate: null, expectedHarvestDate: null, plantCount: null, spacingInches: null, pyramidTier: null,
+  createdAt: '2026-07-01T00:00:00Z', updatedAt: '2026-07-01T00:00:00Z',
+} as Awaited<ReturnType<typeof listMyCrops>>[number];
+function renderJourney(path: string, cachedCrops?: Awaited<ReturnType<typeof listMyCrops>>) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (cachedCrops) client.setQueryData(['myCrops'], cachedCrops);
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><CropLibraryPanel /><LocationDisplay /></MemoryRouter></QueryClientProvider>);
+}
+describe('plant journey', () => {
+  it('opens one plant with its notes, care reminder, journal, and map context', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValue([journeyCrop, { ...journeyCrop, id: 'other', cropName: 'Bean', nickname: null }]);
+    renderJourney('/garden/plants?crop=crop-journey');
+    expect(await screen.findByText('Keep the soil evenly moist.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Bean' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open garden journal' })).toHaveAttribute('href', '/garden/journal');
+    expect(screen.getByRole('link', { name: 'Add a care reminder' })).toHaveAttribute('href', '/today/reminders?new=true&title=Check+Patio+tomatoes&type=custom');
+    await userEvent.click(screen.getByRole('button', { name: 'View on Map' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/garden?bed=bed-1&crop=crop-journey');
+  });
+  it('preserves bed and season when opening a plant record and clears old modal context', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValue([journeyCrop]);
+    renderJourney('/garden/plants?bed=bed-1&season=fall&action=timing&harvest=old');
+    const link = await screen.findByRole('link', { name: 'Patio tomatoes' });
+    const target = new URL(link.getAttribute('href') ?? '', 'https://garden.invalid');
+    expect(target.searchParams.get('bed')).toBe('bed-1');
+    expect(target.searchParams.get('season')).toBe('fall');
+    expect(target.searchParams.get('crop')).toBe('crop-journey');
+    expect(target.searchParams.has('action')).toBe(false);
+    expect(target.searchParams.has('harvest')).toBe(false);
+  });
+  it('returns from a focused plant to the full collection and preserves season', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValue([journeyCrop, { ...journeyCrop, id: 'other', cropName: 'Bean', nickname: null }]);
+    renderJourney('/garden/plants?crop=crop-journey&season=2026');
+    await userEvent.click(await screen.findByRole('button', { name: 'Back to all plants' }));
+    expect(screen.getByRole('link', { name: 'Bean' })).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/garden/plants?season=2026');
+  });
+  it('explains a deleted plant link and keeps the collection available', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValue([journeyCrop]);
+    renderJourney('/garden/plants?crop=deleted');
+    expect(await screen.findByText(/That plant is no longer in your garden/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Patio tomatoes' })).toBeInTheDocument();
+  });
+  it('keeps cached plant records visible when a background refresh fails', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockRejectedValue(new Error('Offline'));
+    renderJourney('/garden/plants?crop=crop-journey', [journeyCrop]);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Showing the last saved garden information');
+    expect(screen.getByRole('link', { name: 'Patio tomatoes' })).toBeInTheDocument();
+    expect(screen.getByText('Keep the soil evenly moist.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+  it('does not present a failed request as an empty garden', async () => {
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockRejectedValue(new Error('Unavailable'));
+    renderJourney('/garden/plants');
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not refresh your plants');
+    expect(screen.queryByText('Your garden is a blank slate')).not.toBeInTheDocument();
+  });
+});

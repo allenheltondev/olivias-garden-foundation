@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import type { UserProfile } from '../../types/user';
 import { GrowerWizard } from './GrowerWizard';
@@ -17,10 +17,11 @@ export interface OnboardingFlowProps {
  * after setup, not a mode picked up front.
  *
  * Receives the user from OnboardingGuard so there's a single source of truth;
- * on completion we refresh and drop the user onto the dashboard.
+ * on completion we refresh and continue the intended journey or help a new grower add a first plant.
  */
-export function OnboardingFlow({ refreshUser }: OnboardingFlowProps) {
+export function OnboardingFlow({ user, refreshUser }: OnboardingFlowProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { submitGrowerProfile } = useOnboarding();
 
   return (
@@ -28,7 +29,9 @@ export function OnboardingFlow({ refreshUser }: OnboardingFlowProps) {
       onComplete={async (data) => {
         await submitGrowerProfile(data);
         await refreshUser();
-        navigate('/');
+        if (location.pathname === '/' && !user?.growerProfile) {
+          navigate('/garden/plants/new', { replace: true });
+        }
       }}
     />
   );
