@@ -1,0 +1,40 @@
+$kind: http-request
+name: Revoke Leftover Keys
+description: |-
+  Start from no live keys. Keys are self-serve and capped at five per user, so
+  keys left behind by an interrupted earlier run would otherwise push this
+  long-lived test user to the cap and turn every later run red for the wrong
+  reason. Lists the user's live keys and revokes each one.
+method: GET
+url: '{{baseUrl}}/me/api-keys'
+order: 900
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const items = (pm.response.json().items || []).map((item) => item.id);
+      const baseUrl = pm.collectionVariables.get("baseUrl") || pm.environment.get("baseUrl");
+      const token = pm.collectionVariables.get("authToken") || pm.environment.get("authToken");
+
+      function revokeNext(index) {
+          if (index >= items.length) return;
+          pm.sendRequest({
+              url: baseUrl + "/me/api-keys/" + items[index],
+              method: "DELETE",
+              header: { Authorization: "Bearer " + token }
+          }, function (err, res) {
+              pm.test("Revoked leftover key " + items[index], function () {
+                  pm.expect(err).to.equal(null);
+                  pm.expect(res.code).to.be.oneOf([204, 404]);
+              });
+              revokeNext(index + 1);
+          });
+      }
+      revokeNext(0);

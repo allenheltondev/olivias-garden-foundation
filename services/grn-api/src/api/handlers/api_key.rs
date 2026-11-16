@@ -18,6 +18,14 @@ use uuid::Uuid;
 const API_KEY_PREFIX: &str = "grnk_";
 const MAX_KEY_NAME_LEN: usize = 100;
 
+/// Most live keys one grower may hold at once.
+///
+/// Keys are self-serve: any grower can create one, for an integration or for
+/// an AI assistant through the grower MCP server. Each is still backed by its
+/// own API Gateway key on the integration usage plan, so it is throttled and
+/// metered like any other; the cap stops one account accumulating them.
+pub const MAX_ACTIVE_KEYS: i64 = 5;
+
 pub async fn list_api_keys(
     request: &Request,
     correlation_id: &str,
@@ -84,18 +92,7 @@ pub async fn create_api_key(
     let payload: UpsertApiKeyRequest = parse_json_body(request)?;
     let name = validate_name(&payload.name)?;
 
-    // Keys are approval-gated: minting one consumes an approved request that
-    // has not already produced a key. Without that, anyone could self-issue a
-    // credential that a usage plan is meant to meter.
     let mut client = db::connect().await?;
-    let Some(access_request_id) = claimable_request(&client, user_id).await? else {
-        return json_response(
-            403,
-            &ErrorResponse {
-                error: "API access must be approved before a key can be created".to_string(),
-            },
-        );
-    };
 
     // Generate the secret. Two UUIDv4s give ~244 bits of entropy; the stored
     // prefix is non-secret and only used to identify the key in the UI.
@@ -110,10 +107,20 @@ pub async fn create_api_key(
     // is an API Gateway key nobody holds the secret for.
     let transaction = client.transaction().await.map_err(|e| db_error(&e))?;
 
-    // Claim the approval before provisioning. The unique index on
-    // access_request_id is what makes one approval mint one key: two concurrent
-    // creates both pass the check above, and the loser must fall out here
-    // rather than after it has already provisioned a second credential.
+    if let Some(refusal) = refuse_over_key_cap(&transaction, user_id).await? {
+        return refusal;
+    }
+
+    // Keys are self-serve. An approved access request that has not produced a
+    // key yet is still linked to the new key, so earlier approvals keep their
+    // provenance, but none is required. Read under the grower's row lock, so
+    // concurrent creates cannot both reach for the same approval.
+    let access_request_id = claimable_request(&transaction, user_id).await?;
+
+    // Insert before provisioning. When an approval is linked, the unique index
+    // on access_request_id still guarantees one approval links one key; the row
+    // lock above means a conflict should not happen, but if it does the loser
+    // falls out here rather than after provisioning a second credential.
     let claimed = transaction
         .query_opt(
             "insert into api_keys (user_id, name, key_prefix, key_hash, access_request_id)
@@ -141,7 +148,10 @@ pub async fn create_api_key(
     // API Gateway key value, so nothing extra has to be stored or looked up.
     let provisioned = api_gateway_keys::provision(
         &format!("grn-{user_id}-{key_prefix}"),
-        &format!("GRN API access for request {access_request_id}"),
+        &access_request_id.map_or_else(
+            || format!("GRN API key for grower {user_id}"),
+            |id| format!("GRN API access for request {id}"),
+        ),
         &key_hash,
     )
     .await?;
@@ -260,6 +270,45 @@ pub async fn delete_api_key(
         .map_err(|e| lambda_http::Error::from(e.to_string()))
 }
 
+/// A 409 when the grower already holds [`MAX_ACTIVE_KEYS`] live keys.
+///
+/// Locks the grower's row first, so two concurrent creates are serialised:
+/// the second counts the first's key once it commits, and cannot slip past
+/// the cap on a stale count.
+async fn refuse_over_key_cap(
+    transaction: &tokio_postgres::Transaction<'_>,
+    user_id: Uuid,
+) -> Result<Option<Result<Response<Body>, lambda_http::Error>>, lambda_http::Error> {
+    transaction
+        .execute("select 1 from users where id = $1 for update", &[&user_id])
+        .await
+        .map_err(|e| db_error(&e))?;
+    let active: i64 = transaction
+        .query_one(
+            "select count(*) from api_keys where user_id = $1 and revoked_at is null",
+            &[&user_id],
+        )
+        .await
+        .map_err(|e| db_error(&e))?
+        .get(0);
+    if !at_key_cap(active) {
+        return Ok(None);
+    }
+    Ok(Some(json_response(
+        409,
+        &ErrorResponse {
+            error: format!(
+                "You already have {MAX_ACTIVE_KEYS} active API keys. Revoke one before creating another."
+            ),
+        },
+    )))
+}
+
+/// Whether a grower holding `active` live keys may not create another.
+const fn at_key_cap(active: i64) -> bool {
+    active >= MAX_ACTIVE_KEYS
+}
+
 /// Write the API Gateway identifiers against the claimed row and commit.
 ///
 /// Split out so both failure modes — the update and the commit — share one
@@ -376,7 +425,17 @@ fn db_error(error: &tokio_postgres::Error) -> lambda_http::Error {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
-    use super::{generate_api_key, sha256_hex, validate_name, API_KEY_PREFIX};
+    use super::{
+        at_key_cap, generate_api_key, sha256_hex, validate_name, API_KEY_PREFIX, MAX_ACTIVE_KEYS,
+    };
+
+    #[test]
+    fn key_cap_allows_up_to_the_limit_and_refuses_beyond() {
+        assert!(!at_key_cap(0));
+        assert!(!at_key_cap(MAX_ACTIVE_KEYS - 1));
+        assert!(at_key_cap(MAX_ACTIVE_KEYS));
+        assert!(at_key_cap(MAX_ACTIVE_KEYS + 3));
+    }
 
     #[test]
     fn generated_key_has_prefix_and_expected_length() {

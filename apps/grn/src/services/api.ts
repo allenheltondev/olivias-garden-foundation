@@ -1555,38 +1555,3 @@ export async function deleteApiKey(apiKeyId: string): Promise<void> {
 }
 
 export default apiFetch;
-
-export type ApiAccessRequestStatus = 'pending' | 'approved' | 'denied';
-
-export interface ApiAccessRequestItem {
-  id: string;
-  status: ApiAccessRequestStatus;
-  integrationName: string;
-  intendedUse: string;
-  contactEmail: string | null;
-  decisionNote: string | null;
-  decidedAt: string | null;
-  createdAt: string;
-  /** Set once a key has been created against this request. */
-  apiKeyId: string | null;
-}
-
-export interface CreateApiAccessRequestInput {
-  integrationName: string;
-  intendedUse: string;
-  contactEmail?: string;
-}
-
-export async function listApiAccessRequests(): Promise<ApiAccessRequestItem[]> {
-  const response = await apiFetch<{ items: ApiAccessRequestItem[] }>('/me/api-access-requests');
-  return response.items;
-}
-
-export async function createApiAccessRequest(
-  input: CreateApiAccessRequestInput
-): Promise<ApiAccessRequestItem> {
-  return apiFetch<ApiAccessRequestItem>('/me/api-access-requests', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
-}

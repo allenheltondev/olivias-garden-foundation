@@ -1,0 +1,33 @@
+$kind: http-request
+name: Second Key Is Self-Serve
+description: |-
+  API keys need no approval. With one key already live, creating another
+  succeeds straight away: no access request, no reviewer.
+method: POST
+url: '{{baseUrl}}/me/api-keys'
+order: 2500
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Postman second key"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Returns a new key, distinct from the first", function () {
+          const body = pm.response.json();
+          pm.expect(body.key).to.be.a("string").and.match(/^grnk_/);
+          pm.expect(body.id).to.not.eql(pm.collectionVariables.get("apiKeyId"));
+          pm.collectionVariables.set("secondApiKeyId", body.id);
+      });

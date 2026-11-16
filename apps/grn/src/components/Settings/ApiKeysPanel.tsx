@@ -4,11 +4,13 @@ import { Button } from '@olivias/ui';
 import {
   createApiKey,
   deleteApiKey,
-  listApiAccessRequests,
   listApiKeys,
   renameApiKey,
   type CreatedApiKey,
 } from '../../services/api';
+
+/** Live keys a grower may hold at once; the API refuses a sixth with 409. */
+export const MAX_API_KEYS = 5;
 
 function formatTimestamp(value: string | null): string {
   if (!value) return 'never';
@@ -31,27 +33,10 @@ export function ApiKeysPanel() {
     staleTime: 30_000,
   });
 
-  // Keys are approval-gated, so the form is only usable with an approved
-  // request that has not already produced one. Without this the button would
-  // just relay a 403 from the API.
-  const requestsQuery = useQuery({
-    queryKey: ['apiAccessRequests'],
-    queryFn: listApiAccessRequests,
-    staleTime: 60 * 1000,
-  });
-
-  const canCreateKey = (requestsQuery.data ?? []).some(
-    (request) => request.status === 'approved' && !request.apiKeyId
-  );
-
   const createMutation = useMutation({
     mutationFn: (keyName: string) => createApiKey(keyName),
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: ['api-keys'] });
-      // Creating a key spends the approval. Both panels read that from this
-      // query, so without refetching it they keep offering a create the API
-      // will now refuse.
-      void queryClient.invalidateQueries({ queryKey: ['apiAccessRequests'] });
       setCreatedKey(created);
       setCopied(false);
       setName('');
@@ -79,6 +64,10 @@ export function ApiKeysPanel() {
   });
 
   const keys = keysQuery.data?.items ?? [];
+  // Keys are self-serve up to the cap. Until the list has loaded the count is
+  // unknown, so the form waits rather than offering a create the API refuses.
+  const atKeyCap = keys.length >= MAX_API_KEYS;
+  const canCreateKey = keysQuery.isSuccess && !atKeyCap;
 
   const submitCreate = () => {
     if (!name.trim()) {
@@ -120,9 +109,10 @@ export function ApiKeysPanel() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900">Your keys</h3>
         <p className="text-sm text-gray-600 mt-1">
-          A key acts as you, so treat it like a password. Send it as{' '}
-          <code>Authorization: Bearer &lt;key&gt;</code>. Keys are issued once your API access
-          request is approved.
+          A key acts as you, so treat it like a password. Use it in your own scripts as{' '}
+          <code>Authorization: Bearer &lt;key&gt;</code>, or give it to an AI assistant (see
+          below). You can have up to {MAX_API_KEYS} keys; revoke one you no longer use to make
+          room.
         </p>
       </div>
 
@@ -164,6 +154,12 @@ export function ApiKeysPanel() {
             {createMutation.isPending ? 'Creating...' : 'Create key'}
           </Button>
         </div>
+      ) : null}
+
+      {keysQuery.isSuccess && atKeyCap ? (
+        <p className="text-sm text-gray-700" role="status">
+          You have {MAX_API_KEYS} keys, the most you can hold. Revoke one to create another.
+        </p>
       ) : null}
 
       {formError ? <p className="text-sm text-red-600">{formError}</p> : null}

@@ -79,6 +79,9 @@ variables:
   - key: apiKeyId
     value: ''
     description: Captured API key ID for follow-up key lifecycle requests
+  - key: secondApiKeyId
+    value: ''
+    description: The self-serve second key, revoked by the key cap check
   - key: apiKeyIssued
     value: 'false'
     description: Set once the run has minted a key, so later requests can tell the lifecycle started
