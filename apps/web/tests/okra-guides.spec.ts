@@ -77,9 +77,13 @@ test.describe('published okra guides', () => {
       await gotoAndWait(page, '/okra');
       // Scope to the guides list: the same title can also appear as a footer link.
       const guideList = page.getByRole('region', { name: 'Okra growing guides' });
-      // Anchor on the title: another guide's description can mention this one.
-      const title = guide.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await expect(guideList.getByRole('link', { name: new RegExp(`^${title}`) })).toHaveAttribute('href', path);
+      // Find the link by its URL, then check its title. Matching on the title
+      // alone is ambiguous: one guide's title can start with another's
+      // ("How to grow okra" / "How to grow okra in containers"), and
+      // descriptions can mention other guides.
+      const link = guideList.locator(`a[href="${path}"]`);
+      await expect(link).toHaveCount(1);
+      await expect(link).toContainText(guide.title);
     });
 
     if (guide.showInFooter) {

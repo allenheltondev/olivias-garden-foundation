@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T22:34:03.595Z",
+  "generatedAt": "2026-11-16T01:13:08.689Z",
   "widths": [
     480,
     768,
@@ -725,6 +725,30 @@
             "width": 1201,
             "path": "images/responsive/okra/guides/clemson-spineless-okra/young-clemson-spineless-pod-on-plant-1201.avif",
             "bytes": 109686
+          }
+        ]
+      }
+    },
+    "okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket.jpg": {
+      "original": "okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket.jpg",
+      "width": 900,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket-480.avif",
+            "bytes": 123542
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket-768.avif",
+            "bytes": 245414
+          },
+          {
+            "width": 900,
+            "path": "images/responsive/okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket-900.avif",
+            "bytes": 300869
           }
         ]
       }
