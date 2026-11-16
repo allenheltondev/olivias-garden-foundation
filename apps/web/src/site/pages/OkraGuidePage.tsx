@@ -418,8 +418,9 @@ export function OkraGuidePage({
 
       <div className="okra-guide__layout">
         <aside className="okra-guide__rail" aria-label="About this guide">
-          {/* Published guides always have a photo (the validator requires it). Drafts may not yet. */}
-          {summary.heroImage ? (
+          {/* Published guides always have a photo (the validator requires it). Drafts
+              may not yet, or may have only its alt text, so check for a real src. */}
+          {summary.heroImage?.src?.trim() ? (
             <figure className="page-photo okra-guide__hero-photo">
               <ResponsiveImage
                 src={summary.heroImage.src}
