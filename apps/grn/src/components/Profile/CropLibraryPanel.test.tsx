@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { CropLibraryPanel } from './CropLibraryPanel';
@@ -272,6 +272,28 @@ function renderJourney(path: string, cachedCrops?: Awaited<ReturnType<typeof lis
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><CropLibraryPanel /><LocationDisplay /></MemoryRouter></QueryClientProvider>);
 }
 describe('plant journey', () => {
+  it('keeps newly saved timing when notes are saved during a pending list refresh', async () => {
+    const updated = { ...journeyCrop, plantingDate: '2026-05-01', expectedHarvestDate: '2026-07-01' };
+    vi.mocked(listMyBeds).mockResolvedValue([]);
+    vi.mocked(listMyCrops).mockResolvedValueOnce([journeyCrop]).mockImplementation(() => new Promise(() => undefined));
+    vi.mocked(updateMyCrop).mockReset();
+    vi.mocked(updateMyCrop).mockResolvedValueOnce(updated).mockResolvedValueOnce({ ...updated, notes: 'New observation' });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/garden/plants?crop=crop-journey&action=timing']}><CropLibraryPanel /></MemoryRouter></QueryClientProvider>);
+    await screen.findByRole('dialog', { name: 'Timing for Patio tomatoes' });
+    fireEvent.change(screen.getByLabelText('Planting date'), { target: { value: '2026-05-01' } });
+    fireEvent.change(screen.getByLabelText('Expected first harvest'), { target: { value: '2026-07-01' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Save timing' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(client.isFetching({ queryKey: ['myCrops'] })).toBe(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Edit notes' }));
+    await userEvent.clear(screen.getByRole('textbox'));
+    await userEvent.type(screen.getByRole('textbox'), 'New observation');
+    await userEvent.click(screen.getByRole('button', { name: 'Save notes' }));
+    await waitFor(() => expect(updateMyCrop).toHaveBeenLastCalledWith('crop-journey', expect.objectContaining({
+      plantingDate: '2026-05-01', expectedHarvestDate: '2026-07-01', notes: 'New observation',
+    })));
+  });
   it.each(['bed-1', 'removed-bed'])('does not lock generic crop entry to carried bed %s', async (bed) => {
     vi.mocked(listMyBeds).mockResolvedValue([]);
     vi.mocked(listMyCrops).mockResolvedValue([journeyCrop]);

@@ -137,7 +137,12 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
         plantingDate,
         expectedHarvestDate,
       }),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      // Publish the authoritative dates before closing the editor. A note
+      // save can begin while the subsequent list refresh is still pending.
+      queryClient.setQueryData<GrowerCropItem[]>(['myCrops'], (items) =>
+        items?.map((item) => item.id === updated.id ? updated : item)
+      );
       logger.info('Updated crop timing');
       setTimingCrop(null);
       if (activeTimingCrop?.id === linkedCropId) {
