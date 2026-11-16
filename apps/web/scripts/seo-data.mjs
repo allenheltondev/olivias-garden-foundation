@@ -435,18 +435,19 @@ ${renderGuideListHtml(okraGuides)}
   },
   {
     path: '/good-roots',
-    title: 'Free garden planner',
+    title: 'Free online garden planner',
     description:
-      "Good Roots is a free garden planner: lay out your beds, choose crops, and keep up with watering and harvest reminders. Share extra produce with neighbors.",
+      "Good Roots is a free online garden planner for your browser and phone. Lay out your beds, choose crops, and get watering and harvest reminders. Nothing to download.",
     seoImage: '/images/social/good-roots.png',
     seoImageAlt: "The Good Roots garden bed planner in a browser frame beside a garden photo, with the headline: Plan a garden you can keep up with.",
     allowIndex: false,
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.6 },
     bodyFallback: `
-      <h1>Good Roots: a free garden planner</h1>
+      <h1>Good Roots: a free online garden planner</h1>
       <p>
-        Good Roots is a free garden planner from Olivia's Garden Foundation. It
+        Good Roots is a free online garden planner from Olivia's Garden Foundation. It's an
+        interactive app that runs in your browser or on your phone, not a printable worksheet. It
         helps home gardeners decide what to plant, design their beds, and keep up with the season.
         When your garden gives you more than you can use, sharing the extra with neighbors is built in.
       </p>

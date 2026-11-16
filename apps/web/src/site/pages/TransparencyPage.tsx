@@ -110,7 +110,7 @@ export function TransparencyPage() {
             preparation, animal care, food preservation, and related practical skills.
           </li>
           <li>
-            <strong>Good Roots</strong> &mdash; a free garden planner that
+            <strong>Good Roots</strong> &mdash; a free online garden planner that
             helps home gardeners plan and grow more food, with neighbor-to-neighbor
             food sharing built in.
           </li>

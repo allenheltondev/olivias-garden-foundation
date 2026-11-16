@@ -45,7 +45,7 @@ export const brandConfig: BrandConfig = {
     full: "Good Roots Garden Planner",
     short: "Good Roots",
   },
-  tagline: "A free garden planner",
+  tagline: "A free online garden planner",
   assets: {
     logo: {
       // Using PNG logo files

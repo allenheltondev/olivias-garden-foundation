@@ -1,7 +1,7 @@
 {
   "name": "Good Roots Garden Planner",
   "short_name": "Good Roots",
-  "description": "Good Roots is a free garden planner. Lay out your beds, choose crops, get watering and harvest reminders, and share extra produce with neighbors.",
+  "description": "Good Roots is a free online garden planner for your browser and phone. Lay out your beds, choose crops, and get watering and harvest reminders. Nothing to download.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F7F5EF",

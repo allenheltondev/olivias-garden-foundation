@@ -1121,7 +1121,7 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
   if (!session) {
     return {
       title: 'Plan a garden you can actually keep up with.',
-      body: 'Good Roots is a free garden planner. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
+      body: 'Good Roots is a free garden planning app that works in your browser and on your phone. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
       primary: { label: 'Start planning for free', href: '/login', signup: true, internal: true },
       secondary: { label: 'See how it works', href: '#how-it-works', internal: true },
     };
@@ -1131,7 +1131,7 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
 
   return {
     title: 'Plan a garden you can actually keep up with.',
-    body: 'Good Roots is a free garden planner. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
+    body: 'Good Roots is a free garden planning app that works in your browser and on your phone. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
     primary: { label: 'Open your garden planner', href: appHref },
   };
 }
@@ -1445,7 +1445,7 @@ export function GoodRootsPage({
               loading="eager"
               fetchPriority="high"
             />
-            <figcaption>Your garden, bed by bed. Plan your first one for free.</figcaption>
+            <figcaption>Drag your beds into place, right in the browser. Nothing to download or print.</figcaption>
           </figure>
         )}
         actions={!authSession ? (
@@ -1592,7 +1592,7 @@ export function GoodRootsPage({
               Start your free garden plan
             </CtaButton>
           )}
-          <p>Free for home gardeners. Set up your first bed in a few minutes.</p>
+          <p>Free for home gardeners. Works in your browser and on your phone, with nothing to download. Set up your first bed in a few minutes.</p>
         </div>
       </Section>
 
