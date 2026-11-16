@@ -8,9 +8,14 @@ description: |-
 method: POST
 url: '{{baseUrl}}/me/api-keys'
 order: 1100
+# Its own auth: without it the request inherits the collection's bearer
+# {{authToken}} (the session), which overrides an Authorization header.
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{apiKeySecret}}'
 headers:
-  - key: Authorization
-    value: 'Bearer {{apiKeySecret}}'
   - key: Content-Type
     value: application/json
 body:
