@@ -105,4 +105,31 @@ test.describe('analytics key events', () => {
       expect(await gaEvents(page, 'donation_completed')).toEqual([]);
     });
   });
+
+  test.describe('garden planner funnel', () => {
+    test('planner CTA reports its location and opens Sign up headed for the planner', async ({ page }) => {
+      await gotoAndWait(page, '/good-roots');
+
+      await page.getByRole('link', { name: 'Start planning for free' }).first().click();
+      await page.waitForURL(/\/login\?/);
+
+      const url = new URL(page.url());
+      expect(url.searchParams.get('mode')).toBe('signup');
+      expect(url.searchParams.get('redirect')).toBeTruthy();
+      expect(await gaEvents(page, 'planner_cta_click')).toEqual([{ location: 'hero', signed_in: false }]);
+
+      const signupTab = page.getByRole('tab', { name: 'Sign up' });
+      if (await signupTab.count()) {
+        await expect(signupTab).toHaveAttribute('aria-selected', 'true');
+      }
+    });
+
+    test('homepage planner card reports a promo click', async ({ page }) => {
+      await gotoAndWait(page, '/');
+
+      await page.getByRole('link', { name: 'Try the planner' }).click();
+      await page.waitForURL(/\/good-roots$/);
+      expect(await gaEvents(page, 'planner_promo_click')).toEqual([{ location: 'home' }]);
+    });
+  });
 });

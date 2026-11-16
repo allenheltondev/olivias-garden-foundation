@@ -14,6 +14,7 @@ import { ZoneLookup } from '../okra-guides/ZoneLookup';
 import { ResponsiveImage } from '../responsive-images';
 import { siteUrl } from '../routes';
 import { ensureStructuredData, removeStructuredData } from '../seo';
+import { trackEvent } from '../../observability/analytics';
 import { NotFoundPage } from './NotFoundPage';
 import '../../okra/buttons.css';
 
@@ -479,6 +480,20 @@ export function OkraGuidePage({
                 See where Olivia&apos;s okra is growing
               </a>
             </div>
+            <p className="okra-guide__planner-note">
+              Planning the rest of the garden too?{' '}
+              <a
+                href="/good-roots"
+                onClick={(event) => {
+                  event.preventDefault();
+                  trackEvent('planner_promo_click', { location: 'okra_guide' });
+                  onNavigate('/good-roots');
+                }}
+              >
+                Lay out your beds in Good Roots
+              </a>
+              , our free online garden planner.
+            </p>
             {related.length > 0 ? (
               <nav aria-label="Related okra guides">
                 <ul className="okra-guide__related">

@@ -440,7 +440,6 @@ ${renderGuideListHtml(okraGuides)}
       "Good Roots is a free online garden planner for your browser and phone. Lay out your beds, choose crops, and get watering and harvest reminders. Nothing to download.",
     seoImage: '/images/social/good-roots.png',
     seoImageAlt: "The Good Roots garden bed planner in a browser frame beside a garden photo, with the headline: Plan a garden you can keep up with.",
-    allowIndex: false,
     prerender: true,
     sitemap: { changefreq: 'weekly', priority: 0.6 },
     bodyFallback: `

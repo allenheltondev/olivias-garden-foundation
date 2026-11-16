@@ -4727,6 +4727,11 @@ html {
   text-decoration: none;
 }
 
+.okra-guide__planner-note {
+  margin: 0;
+  color: var(--site-muted);
+}
+
 .okra-guide__related,
 .okra-guide-hub__list {
   display: grid;

@@ -1,6 +1,8 @@
 import { Button, Card, FormFeedback, GardenIcon, Input, Select, Textarea } from '@olivias/ui';
 import { lazy, Suspense, useState, type FormEvent, type MouseEvent } from 'react';
+import { plannerSignupPath } from '../../auth/redirect';
 import type { AuthSession } from '../../auth/session';
+import { trackEvent } from '../../observability/analytics';
 import {
   buildCrossAppUrl,
   CtaButton,
@@ -184,19 +186,16 @@ export function HomePage({ onNavigate }: { onNavigate: (path: string) => void; }
             }} variant="secondary">Donate</CtaButton>
           </article>
           <article className="home-editorial-block home-editorial-block--action">
-            <h3>Follow along</h3>
+            <h3>Plan your own garden</h3>
             <p>
-              Instagram is the best place to see what is growing, what is being built, and what the
-              day-to-day work actually looks like.
+              Good Roots is our free online garden planner. Lay out your beds, pick what to plant,
+              and get watering and harvest reminders, right in your browser.
             </p>
-            <a
-              className="home-action-link home-action-link--secondary"
-              href="https://instagram.com/oliviasgardentx"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Follow us
-            </a>
+            <CtaButton href="/good-roots" onClick={(event) => {
+              event?.preventDefault?.();
+              trackEvent('planner_promo_click', { location: 'home' });
+              onNavigate('/good-roots');
+            }} variant="secondary">Try the planner</CtaButton>
           </article>
         </div>
       </Section>
@@ -1113,7 +1112,7 @@ const ORG_TYPE_OPTIONS = [
 interface GoodRootsHeroCopy {
   title: string;
   body: string;
-  primary: { label: string; href: string; signup?: boolean; internal?: boolean };
+  primary: { label: string; href: string; internal?: boolean };
   secondary?: { label: string; href: string; internal?: boolean };
 }
 
@@ -1122,7 +1121,7 @@ function heroForSession(session: AuthSession | null): GoodRootsHeroCopy {
     return {
       title: 'Plan a garden you can actually keep up with.',
       body: 'Good Roots is a free garden planning app that works in your browser and on your phone. It helps you decide what to plant, lay out your beds, and stay on top of watering and harvest all season long. When your garden gives you more than you can use, sharing it with neighbors is built right in.',
-      primary: { label: 'Start planning for free', href: '/login', signup: true, internal: true },
+      primary: { label: 'Start planning for free', href: plannerSignupPath(), internal: true },
       secondary: { label: 'See how it works', href: '#how-it-works', internal: true },
     };
   }
@@ -1410,17 +1409,23 @@ export function GoodRootsPage({
 }) {
   const hero = heroForSession(authSession);
   const tier = authSession?.user.tier ?? null;
-  const handleInternalClick = (href: string) => (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+  const signupPath = plannerSignupPath();
+  const appHref = authSession ? buildCrossAppUrl(goodRootsNetworkUrl, authSession) : null;
+  // Every planner CTA on this page reports where it sat, so GA4 can show which
+  // part of the page actually moves people into the planner.
+  const trackPlannerCta = (location: string) => {
+    trackEvent('planner_cta_click', { location, signed_in: Boolean(authSession) });
+  };
+  const handleInternalClick = (href: string, ctaLocation?: string) => (
+    event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+  ) => {
     event.preventDefault();
+    if (ctaLocation) trackPlannerCta(ctaLocation);
     if (href.startsWith('#')) {
       const target = document.querySelector(href);
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      return;
-    }
-    if (href === '/login') {
-      onNavigate('/login');
       return;
     }
     onNavigate(href);
@@ -1448,11 +1453,13 @@ export function GoodRootsPage({
             <figcaption>Drag your beds into place, right in the browser. Nothing to download or print.</figcaption>
           </figure>
         )}
-        actions={!authSession ? (
+        actions={(
           <>
             <CtaButton
               href={hero.primary.href}
-              onClick={hero.primary.internal ? handleInternalClick(hero.primary.href) : undefined}
+              onClick={hero.primary.internal
+                ? handleInternalClick(hero.primary.href, 'hero')
+                : () => trackPlannerCta('hero')}
             >
               {hero.primary.label}
             </CtaButton>
@@ -1466,7 +1473,7 @@ export function GoodRootsPage({
               </CtaButton>
             ) : null}
           </>
-        ) : null}
+        )}
       />
 
       <section className="home-mission-band good-roots-mission" aria-label="Mission">
@@ -1583,12 +1590,12 @@ export function GoodRootsPage({
           height={653}
         />
         <div className="good-roots-map-cta">
-          {authSession ? (
-            <CtaButton href={buildCrossAppUrl(goodRootsNetworkUrl, authSession)}>
+          {appHref ? (
+            <CtaButton href={appHref} onClick={() => trackPlannerCta('local_context')}>
               See what grows near you
             </CtaButton>
           ) : (
-            <CtaButton href="/login" onClick={handleInternalClick('/login')}>
+            <CtaButton href={signupPath} onClick={handleInternalClick(signupPath, 'local_context')}>
               Start your free garden plan
             </CtaButton>
           )}
@@ -1660,18 +1667,12 @@ export function GoodRootsPage({
             it, grow it, and make the most of everything it gives you. Start with a single bed and let it
             grow from there.
           </p>
-          {authSession ? (
-            <CtaButton href={buildCrossAppUrl(goodRootsNetworkUrl, authSession)}>
+          {appHref ? (
+            <CtaButton href={appHref} onClick={() => trackPlannerCta('closing')}>
               Open your garden planner
             </CtaButton>
           ) : (
-            <CtaButton
-              href="/login"
-              onClick={(event) => {
-                event?.preventDefault?.();
-                onNavigate('/login');
-              }}
-            >
+            <CtaButton href={signupPath} onClick={handleInternalClick(signupPath, 'closing')}>
               Start planning for free
             </CtaButton>
           )}
