@@ -1,0 +1,144 @@
+{
+  "slug": "cooking-okra",
+  "status": "draft",
+  "title": "How to cook okra",
+  "seoTitle": "Crispy Cornmeal Fried Okra and How to Make Okra Less Slimy",
+  "description": "A simple cornmeal fried okra recipe, plus easy ways to cut down on okra slime. How we cook the okra from our garden.",
+  "summary": "Slice fresh okra, dip it in buttermilk, coat it in seasoned cornmeal and shallow fry it at 350°F until golden. To keep okra from getting slimy, cook small, dry pods whole or in a cornmeal coating, cook them hot and fast, or add an acid like tomatoes or vinegar.",
+  "datePublished": "2026-11-16",
+  "dateModified": "2026-11-16",
+  "targetQueries": [
+    "fried okra recipe",
+    "cornmeal fried okra",
+    "how to cook okra",
+    "how to make okra not slimy",
+    "why is okra slimy"
+  ],
+  "related": [
+    "how-to-harvest-okra",
+    "preserving-okra",
+    "how-to-grow-okra"
+  ],
+  "order": 19,
+  "intro": [
+    "Fried okra is one of our favorite ways to eat the harvest. A crisp cornmeal crust turns young pods into something even okra skeptics go back for.",
+    "The best okra for cooking is young and tender, picked at 2 to 5 inches long. For picking and storing pods, see [how to harvest okra](/okra/how-to-harvest-okra)."
+  ],
+  "sections": [
+    {
+      "id": "at-a-glance",
+      "title": "Cooking okra at a glance",
+      "placement": "aside",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "Use young pods, 2 to 5 inches long",
+            "Rinse just before cooking, then dry well",
+            "Fry in a cornmeal coating at 350°F",
+            "Cook hot and fast, or add an acid, to cut the slime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fried-okra",
+      "title": "Cornmeal fried okra recipe",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This is a Southern-style fried okra with a buttermilk dip and a cornmeal coating. A little flour helps the cornmeal stick, and a shallow fry in a heavy skillet keeps it simple. It serves 4 as a side."
+        },
+        {
+          "type": "list",
+          "items": [
+            "1 pound fresh okra, about 4 cups sliced",
+            "1 cup buttermilk",
+            "1 cup fine or medium yellow cornmeal",
+            "1/3 cup all-purpose flour",
+            "1 teaspoon salt, plus more for finishing",
+            "1/2 teaspoon black pepper",
+            "1/2 teaspoon garlic powder",
+            "1/4 teaspoon cayenne pepper, optional",
+            "Vegetable or peanut oil for frying"
+          ]
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Rinse the okra and pat it completely dry. Trim off the stems and slice the pods crosswise into 1/2 inch rounds.",
+            "Pour the buttermilk into a bowl and add the okra. Stir to coat and let it sit while you mix the coating.",
+            "In a second bowl, mix the cornmeal, flour, salt, pepper, garlic powder and cayenne.",
+            "Pour about 1/2 inch of oil into a cast iron or other heavy skillet and heat it to 350°F.",
+            "Lift a handful of okra out of the buttermilk, let the extra drip off, and toss it in the cornmeal mix until every piece is coated.",
+            "Fry in a single layer without crowding the pan, turning once, until golden brown and crisp, about 3 to 4 minutes.",
+            "Drain on a wire rack or paper towels and sprinkle with a little salt while hot. Repeat with the rest of the okra, letting the oil come back to 350°F between batches."
+          ]
+        },
+        {
+          "type": "tip",
+          "title": "Keep it crisp",
+          "text": "Fry in small batches. Too much okra at once drops the oil temperature, and the coating soaks up oil instead of crisping. Serve it right away."
+        },
+        {
+          "type": "paragraph",
+          "text": "Hot oil needs care. Keep a lid nearby, never leave the pan unattended, and never put water on a grease fire. Let the oil cool completely before you strain or throw it out."
+        },
+        {
+          "type": "paragraph",
+          "text": "If you froze sliced okra coated in cornmeal, it can go straight from the freezer into the hot oil without thawing. It may need an extra minute. See [how to preserve okra](/okra/preserving-okra) for freezing it that way."
+        }
+      ]
+    },
+    {
+      "id": "less-slimy",
+      "title": "How to make okra less slimy",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Okra's slime comes from mucilage, the natural sugars and soluble fiber in the pods. Clemson Extension notes that it [thickens soups, stews and gumbos](https://hgic.clemson.edu/okra-pickles-and-cornbread/), but not everyone likes it. The way you prepare and cook okra makes a big difference."
+        },
+        {
+          "type": "list",
+          "items": [
+            "Pick young pods. Older, larger pods are tougher and stringier.",
+            "Rinse right before cooking and dry the pods well. Wet okra steams instead of searing.",
+            "Cook small pods whole. The less you cut, the less mucilage gets out.",
+            "Cook hot and fast. Frying, roasting, grilling or a quick stir-fry keeps the pods crisp.",
+            "Use a cornmeal coating or batter, as in fried okra, hushpuppies, fritters or skillet cornbread.",
+            "Add an acid. Clemson lists pickling as one way to tame the slime, and tomatoes or a splash of vinegar help in a stew."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "other-ways",
+      "title": "Other ways we eat okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Fried okra isn't the only way we eat it. Young pods are good fresh from the garden after a rinse. We also stir-fry okra with other summer vegetables and pickle a lot of it. For a tested pickled okra recipe, see [how to preserve okra](/okra/preserving-okra)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "Why is okra slimy?",
+      "answer": "Okra pods contain mucilage, a mix of natural sugars and soluble fiber that turns gooey when the pods are cut and cooked in liquid. It's what makes okra a good thickener for gumbo."
+    },
+    {
+      "question": "How do you keep fried okra from getting slimy?",
+      "answer": "Dry the okra well before coating it, fry it in oil that is fully heated to about 350°F, and cook it in small batches so the oil stays hot. A crisp cornmeal crust keeps the slime in check."
+    },
+    {
+      "question": "Can you fry frozen okra?",
+      "answer": "Yes. Okra that was blanched, sliced, coated in cornmeal and frozen can go straight into the hot oil without thawing. It may take a minute longer to brown."
+    },
+    {
+      "question": "Can you eat okra raw?",
+      "answer": "Yes. Young, tender pods are good raw. Rinse them under running water first."
+    }
+  ]
+}
