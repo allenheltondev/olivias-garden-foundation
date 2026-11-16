@@ -101,20 +101,29 @@ case "${1:-}" in
     echo "::add-mask::$KEY"
 
     # A new key is backed by a new API Gateway key on the usage plan, which can
-    # take a little while to be honoured; until then the API answers 403. Wait
-    # until the key itself works against the GRN API, so a failure in the MCP
-    # tests means the MCP path, not a key that was not live yet.
+    # take a little while to be honoured, and reaches the gateway's nodes one
+    # by one: for a while one request works and the next gets 403. Wait until
+    # the key has worked against the GRN API several times in a row, so a
+    # failure in the MCP tests means the MCP path, not a key that was not live
+    # everywhere yet.
     status=""
-    for attempt in $(seq 1 24); do
+    streak=0
+    for attempt in $(seq 1 60); do
       status="$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/me" -H "Authorization: Bearer $KEY" -H 'Accept: application/json' || echo 000)"
       if [ "${status:0:1}" = "2" ]; then
-        echo "The new key works against the GRN API (attempt $attempt)."
-        break
+        streak=$((streak + 1))
+        if [ "$streak" -ge 5 ]; then
+          echo "The new key has worked 5 times in a row against the GRN API (attempt $attempt)."
+          break
+        fi
+        sleep 2
+      else
+        streak=0
+        sleep 5
       fi
-      sleep 5
     done
-    if [ "${status:0:1}" != "2" ]; then
-      echo "The new key still gets $status from GET /me after two minutes; revoking it." >&2
+    if [ "$streak" -lt 5 ]; then
+      echo "The new key is still not reliably accepted (last status $status) after several minutes; revoking it." >&2
       api DELETE "/me/api-keys/$KEY_ID" "$TOKEN" "" 404 > /dev/null
       exit 1
     fi

@@ -159,9 +159,11 @@ the GRN spec changes) fails if the committed file is out of date.
     authorization together. The key is revoked when the job ends, pass or
     fail. With `requireKey` set, a missing key fails the run rather than
     skipping it.
-  - The mint step waits until the new key works against the GRN API before
-    the tests run, so a failure there means the MCP path is broken, not that
-    the key wasn't active yet.
+  - The mint step waits until the new key has worked against the GRN API
+    five times in a row before the tests run. A new key reaches API Gateway's
+    nodes one by one, so a single success doesn't mean it's live everywhere.
+    A failure in the tests then means the MCP path is broken, not that the key
+    wasn't active yet.
   - Runs share the seeded grower but never each other's keys. Each run names
     its key after its run id, and the clean-up before minting only revokes
     smoke-test keys over an hour old, so jobs from different PRs can overlap.
