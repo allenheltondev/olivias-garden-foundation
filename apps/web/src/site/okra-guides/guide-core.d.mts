@@ -137,3 +137,4 @@ export function formatGuideDate(isoDate: string | undefined): string;
 export const ZONE_LOOKUP_HEADERS: string[];
 export function zoneRowLabel(zones: number[]): string;
 export function guidePhotos(guide: Pick<OkraGuide, 'heroImage' | 'sections'>): GuideImage[];
+export function rootRelative(path: string): string;

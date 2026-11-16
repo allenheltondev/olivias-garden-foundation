@@ -96,6 +96,12 @@ function blockTexts(block) {
   }
 }
 
+/** A local image path as root-relative (/images/...); external URLs pass through. */
+export function rootRelative(path) {
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
+  return `/${path}`;
+}
+
 function absoluteUrl(siteUrl, path) {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   // Guide paths are written like /images/..., but tolerate a missing leading slash.
@@ -158,11 +164,14 @@ export function guidePhotos(guide) {
     .filter((block) => block.type === 'image' && block.src)
     .map((block) => ({ src: block.src, alt: block.alt, caption: block.caption })));
   const seen = new Set();
-  return [guide.heroImage, ...body].filter((image) => {
-    if (!image?.src || seen.has(image.src)) return false;
-    seen.add(image.src);
-    return true;
-  });
+  return [guide.heroImage, ...body]
+    .filter((image) => image?.src)
+    .map((image) => ({ ...image, src: rootRelative(image.src) }))
+    .filter((image) => {
+      if (seen.has(image.src)) return false;
+      seen.add(image.src);
+      return true;
+    });
 }
 
 function imageObject(siteUrl, image) {
@@ -312,7 +321,7 @@ function blockToHtml(block) {
         rows: block.rows.map((row) => [zoneRowLabel(row.zones), row.plant]),
       });
     case 'image':
-      return `<figure><img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" />${block.caption ? `<figcaption>${inlineToHtml(block.caption)}</figcaption>` : ''}</figure>`;
+      return `<figure><img src="${escapeHtml(rootRelative(block.src))}" alt="${escapeHtml(block.alt)}" />${block.caption ? `<figcaption>${inlineToHtml(block.caption)}</figcaption>` : ''}</figure>`;
     default:
       return '';
   }
@@ -326,7 +335,7 @@ export function renderGuideFallbackHtml(guide, relatedGuides = []) {
   const parts = [
     `<h1>${escapeHtml(guide.title)}</h1>`,
     `<p>${inlineToHtml(guide.summary)}</p>`,
-    guide.heroImage ? `<img src="${escapeHtml(guide.heroImage.src)}" alt="${escapeHtml(guide.heroImage.alt)}" />` : '',
+    guide.heroImage ? `<img src="${escapeHtml(rootRelative(guide.heroImage.src))}" alt="${escapeHtml(guide.heroImage.alt)}" />` : '',
     ...guide.intro.map((paragraph) => `<p>${inlineToHtml(paragraph)}</p>`),
     ...guide.sections.flatMap((section) => [
       `<h2 id="${escapeHtml(section.id)}">${escapeHtml(section.title)}</h2>`,
