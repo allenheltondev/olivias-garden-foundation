@@ -77,7 +77,8 @@ Descriptions add what an assistant needs to know:
 - Operations that take an `Idempotency-Key` header **require** `idempotencyKey`,
   even where the API leaves it optional (`create_listing`, `create_request`,
   `update_reminder_status`). It's a new value per change and the same one on retry, so an assistant
-  retrying after a lost response never posts the same listing twice.
+  retrying after a lost response never posts the same listing twice. A blank or
+  whitespace-only key is refused, since the API would treat it as missing.
 
 ### Excluded
 
@@ -153,3 +154,6 @@ the GRN spec changes) fails if the committed file is out of date.
     authorization together. The key is revoked when the job ends, pass or
     fail. With `requireKey` set, a missing key fails the run rather than
     skipping it.
+  - Runs share the seeded grower but never each other's keys. Each run names
+    its key after its run id, and the clean-up before minting only revokes
+    smoke-test keys over an hour old, so jobs from different PRs can overlap.

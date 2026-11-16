@@ -11,11 +11,20 @@
 # Keys can only be managed from a signed-in session, so this uses the
 # grower's session token, never a key.
 #
+# Runs share one seeded grower but never each other's keys: a run names its
+# key after its own run id, and the clean-up before minting only revokes
+# smoke-test keys over an hour old (left by an interrupted run), never one a
+# job that is still running could be using. Jobs from different PRs can
+# therefore overlap safely.
+#
 # Required env: AWS_REGION, GRN_STACK_NAME; for revoke also KEY_ID, AUTH_TOKEN.
 set -euo pipefail
 
 : "${AWS_REGION:?}" "${GRN_STACK_NAME:?}"
 GROWER="mcp-smoke-grower"
+KEY_PREFIX="MCP staging smoke"
+KEY_NAME="$KEY_PREFIX ${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+STALE_AFTER_SECONDS=3600
 
 stack_output() {
   aws cloudformation describe-stacks \
@@ -33,15 +42,16 @@ if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
 fi
 
 api() {
-  # api METHOD PATH TOKEN [BODY] → body on stdout; fails on a non-2xx status.
-  local method="$1" path="$2" token="$3" body="${4:-}"
+  # api METHOD PATH TOKEN [BODY] [OK_STATUS] → body on stdout; fails on a
+  # non-2xx status other than OK_STATUS.
+  local method="$1" path="$2" token="$3" body="${4:-}" also_ok="${5:-}"
   local args=(-sS -X "$method" "$API_URL$path" -H "Authorization: Bearer $token" -H 'Accept: application/json' -w '\n%{http_code}')
   if [ -n "$body" ]; then args+=(-H 'Content-Type: application/json' --data "$body"); fi
   local out status
   out="$(curl "${args[@]}")"
   status="${out##*$'\n'}"
   out="${out%$'\n'*}"
-  if [ "${status:0:1}" != "2" ]; then
+  if [ "${status:0:1}" != "2" ] && [ "$status" != "$also_ok" ]; then
     echo "$method $path answered $status" >&2
     exit 1
   fi
@@ -73,12 +83,19 @@ case "${1:-}" in
 
     USER_ID="$(api GET /me "$TOKEN" | jq -r '.id')"
 
-    # Keys are capped at five per grower: clear any an interrupted run left.
-    for id in $(api GET /me/api-keys "$TOKEN" | jq -r '.items[]?.id'); do
-      api DELETE "/me/api-keys/$id" "$TOKEN" > /dev/null
+    # Keys are capped at five per grower. Clear smoke-test keys an interrupted
+    # run left behind, but only stale ones: a key minted in the last hour may
+    # belong to a job that is still running.
+    STALE="$(api GET /me/api-keys "$TOKEN" | jq -r --arg prefix "$KEY_PREFIX" --argjson age "$STALE_AFTER_SECONDS" '
+      .items[]?
+      | select(.name | startswith($prefix))
+      | select((.createdAt | sub("\\.[0-9]+"; "") | sub("(\\+00:00|Z)$"; "Z") | fromdateiso8601) < (now - $age))
+      | .id')"
+    for id in $STALE; do
+      api DELETE "/me/api-keys/$id" "$TOKEN" "" 404 > /dev/null
     done
 
-    CREATED="$(api POST /me/api-keys "$TOKEN" '{"name":"MCP staging smoke test"}')"
+    CREATED="$(api POST /me/api-keys "$TOKEN" "$(jq -cn --arg name "$KEY_NAME" '{name: $name}')")"
     KEY="$(printf '%s' "$CREATED" | jq -r '.key')"
     KEY_ID="$(printf '%s' "$CREATED" | jq -r '.id')"
     echo "::add-mask::$KEY"
@@ -92,7 +109,8 @@ case "${1:-}" in
     ;;
   revoke)
     : "${KEY_ID:?}" "${AUTH_TOKEN:?}"
-    api DELETE "/me/api-keys/$KEY_ID" "$AUTH_TOKEN" > /dev/null
+    # 404: already gone (revoked as stale by a later run); nothing left to do.
+    api DELETE "/me/api-keys/$KEY_ID" "$AUTH_TOKEN" "" 404 > /dev/null
     echo "Revoked smoke-test key $KEY_ID."
     ;;
   *)

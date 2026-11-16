@@ -77,8 +77,12 @@ export function inputSchemaFor(operation) {
   const properties = {};
   const required = [];
   for (const parameter of operation.parameters) {
+    const idempotency = parameter.in === 'header' && parameter.argument === 'idempotencyKey';
     properties[parameter.argument] = {
       ...parameter.schema,
+      // The API trims the header and treats a blank one as missing, which would
+      // skip deduplication; so a key must have a non-space character.
+      ...(idempotency ? { minLength: 1, pattern: '\\S' } : {}),
       ...(parameter.description ? { description: parameter.description } : {})
     };
     if (parameter.required || (parameter.in === 'header' && parameter.argument === 'idempotencyKey')) {

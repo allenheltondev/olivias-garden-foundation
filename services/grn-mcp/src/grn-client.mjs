@@ -35,7 +35,11 @@ export function buildRequest(operation, args = {}) {
     } else if (parameter.in === 'query') {
       for (const item of Array.isArray(value) ? value : [value]) query.append(parameter.name, String(item));
     } else {
-      headers[parameter.name] = String(value);
+      const header = String(value).trim();
+      // A blank header is treated by the API as absent; refuse rather than send
+      // a write that looks deduplicated but is not.
+      if (!header) throw new ToolError(`${parameter.argument} must not be blank.`);
+      headers[parameter.name] = header;
     }
   }
   const search = query.toString();

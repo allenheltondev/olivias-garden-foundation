@@ -340,6 +340,28 @@ describe('the endpoint', () => {
     assert.equal(all.includes(KEY), false);
   });
 
+  it('refuses a blank or whitespace-only idempotency key before calling the API', async () => {
+    routes['POST /listings'] = () => [201, { id: 'listing-1' }];
+    const body = {
+      title: 'Zucchini',
+      cropId: '0a0b0c0d-0000-4000-8000-000000000001',
+      quantityTotal: 10,
+      unit: 'lb',
+      availableStart: '2026-07-01T00:00:00Z',
+      availableEnd: '2026-07-08T00:00:00Z'
+    };
+    for (const idempotencyKey of ['', '   ', '\t\n']) {
+      const result = await call('create_listing', { idempotencyKey, body });
+      assert.equal(result.isError, true, JSON.stringify(idempotencyKey));
+      assert.match(result.content[0].text, /idempotencyKey/);
+    }
+    assert.equal(calls.some((c) => c.path === '/listings'), false);
+    // The client refuses one too, should anything reach it.
+    assert.throws(() => buildRequest(op('createListing'), { idempotencyKey: '  ', body }), /must not be blank/);
+    // Surrounding spaces are trimmed, not sent.
+    assert.equal(buildRequest(op('createListing'), { idempotencyKey: ' k-1 ', body }).headers['Idempotency-Key'], 'k-1');
+  });
+
   it('rejects arguments that do not fit the spec without calling the API', async () => {
     const missing = await rpc(KEY, 'tools/call', { name: 'get_my_crop', arguments: {} });
     assert.ok(missing.body.error || missing.body.result.isError);
