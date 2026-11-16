@@ -11,11 +11,9 @@ export interface PrimaryNavigationItem {
  * Feature pages remain nested beneath these paths instead of becoming
  * additional top-level menu choices.
  *
- * Settings earns a slot rather than living only behind the avatar: people
- * looking for their profile, address, or API keys went hunting in the nav
- * and did not think to open an avatar menu to find them. Everything under
- * settings — API keys included — is still reached from the Settings page
- * itself, so the rail does not grow a slot per account concern.
+ * The desktop rail includes Settings. On phones, the bottom bar is reserved
+ * for the three everyday garden journeys; account controls stay in the
+ * profile menu so the bar remains a single, comfortable row.
  */
 export const PRIMARY_NAVIGATION: readonly PrimaryNavigationItem[] = [
   { id: 'today', label: 'Today', path: '/' },
@@ -23,6 +21,8 @@ export const PRIMARY_NAVIGATION: readonly PrimaryNavigationItem[] = [
   { id: 'share', label: 'Share', path: '/share' },
   { id: 'settings', label: 'Settings', path: '/settings' },
 ];
+
+export const MOBILE_NAVIGATION: readonly PrimaryNavigationItem[] = PRIMARY_NAVIGATION.filter((item) => item.id !== 'settings');
 
 export const LEGACY_ROUTE_REDIRECTS = {
   '/crops': '/garden/plants',

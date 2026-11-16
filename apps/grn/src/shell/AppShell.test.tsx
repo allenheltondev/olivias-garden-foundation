@@ -36,21 +36,17 @@ describe('AppShell navigation', () => {
     window.localStorage.clear();
   });
 
-  it('renders the same four primary destinations in the desktop rail and mobile bar', () => {
+  it('keeps three everyday destinations in the mobile bar and settings in the desktop rail', () => {
     renderShell();
 
     const navigationRegions = screen.getAllByRole('navigation', { name: 'Primary navigation' });
     expect(navigationRegions).toHaveLength(2);
 
-    for (const navigation of navigationRegions) {
-      const links = within(navigation).getAllByRole('link');
-      expect(links.map((link) => link.textContent?.trim())).toEqual([
-        'Today',
-        'Garden',
-        'Share',
-        'Settings',
-      ]);
-    }
+    expect(within(navigationRegions[0]).getAllByRole('link').map((link) => link.textContent?.trim()))
+      .toEqual(['Today', 'Garden', 'Share', 'Settings']);
+    expect(within(navigationRegions[1]).getAllByRole('link').map((link) => link.textContent?.trim()))
+      .toEqual(['Today', 'Garden', 'Share']);
+    expect(within(navigationRegions[1]).queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
 
     expect(screen.queryByRole('link', { name: 'Planner' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /open sections/i })).not.toBeInTheDocument();
@@ -67,7 +63,7 @@ describe('AppShell navigation', () => {
     renderShell(pathname);
 
     const currentLinks = screen.getAllByRole('link', { current: 'page' });
-    expect(currentLinks).toHaveLength(2);
+    expect(currentLinks).toHaveLength(activeLabel === 'Settings' ? 1 : 2);
     expect(currentLinks.every((link) => link.textContent?.trim() === activeLabel)).toBe(true);
   });
 

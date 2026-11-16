@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   LEGACY_ROUTE_REDIRECTS,
   PRIMARY_NAVIGATION,
+  MOBILE_NAVIGATION,
   isPrimaryDestinationActive,
 } from './navigation';
 
 describe('primary navigation', () => {
-  it('exposes the four grower destinations', () => {
-    // Settings is a primary destination rather than an avatar-menu-only
-    // link: people looking for their profile or API keys searched the nav
-    // for it and did not find it behind the avatar.
+  it('reserves the phone bar for the three everyday grower journeys', () => {
+    expect(MOBILE_NAVIGATION.map((item) => item.id)).toEqual(['today', 'garden', 'share']);
+  });
+  it('keeps Settings available in the desktop rail', () => {
     expect(PRIMARY_NAVIGATION).toEqual([
       { id: 'today', label: 'Today', path: '/' },
       { id: 'garden', label: 'Garden', path: '/garden' },
