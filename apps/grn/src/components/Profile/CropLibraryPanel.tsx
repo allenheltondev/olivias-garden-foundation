@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listMyCrops,
   deleteMyCrop,
   listMyBeds,
   updateMyCrop,
   type HarvestItem,
-  type UpsertGrowerCropRequest,
 } from '../../services/api';
 import type { GrowerCropItem } from '../../types/listing';
 import { Button, Card } from '@olivias/ui';
@@ -18,6 +17,8 @@ import { HarvestLogModal } from '../Harvests/HarvestLogModal';
 import { daysUntil, formatDate, harvestProgress } from '../../utils/cropTiming';
 import { CropTimingModal } from './CropTimingModal';
 import './CropJourney.css';
+import { PlantRecord } from './PlantRecord';
+import { cropUpdatePayload } from '../../services/cropUpdatePayload';
 
 const logger = createLogger('crop-library');
 
@@ -60,6 +61,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
   const addCropParams = new URLSearchParams({ returnTo: `${location.pathname}${location.search}` });
   const addCropPath = `/garden/plants/new?${addCropParams}`;
   const linkedCropId = searchParams.get('crop');
+  const recordSaving = useIsMutating({ mutationKey: ['crop-record', linkedCropId] }) > 0;
   const linkedAction = searchParams.get('action');
   const linkedHarvestId = searchParams.get('harvest');
 
@@ -379,7 +381,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                     </div>
                   ) : null}
 
-                  {focusedCrop && crop.notes ? <p className="grn-crop-journey__notes">{crop.notes}</p> : null}
+
                   {focusedCrop ? (
                     <nav className="grn-crop-journey__links" aria-label={`Care for ${crop.nickname || crop.cropName}`}>
                       <Link to={`/today/reminders?${new URLSearchParams({ new: 'true', title: `Check ${crop.nickname || crop.cropName}`, type: 'custom' })}`}>Add a care reminder</Link>
@@ -392,7 +394,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                     <select
                       value={crop.bedId ?? ''}
                       aria-label={`Bed assignment for ${crop.nickname || crop.cropName}`}
-                      disabled={bedMutation.isPending}
+                      disabled={bedMutation.isPending || recordSaving}
                       onChange={(event) =>
                         bedMutation.mutate({ crop, bedId: event.target.value || null })
                       }
@@ -405,6 +407,9 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                       ))}
                     </select>
                   </label>
+                  {focusedCrop ? (
+                    <PlantRecord key={crop.id} crop={crop} writesBlocked={bedMutation.isPending || timingMutation.isPending || deleteMutation.isPending} onOpenHarvests={() => setHarvestCrop(crop)} onShareHarvest={(harvest) => openShareDraft(crop, harvest)} />
+                  ) : null}
                 </div>
 
                 <footer className="grn-crop-card__footer">
@@ -425,6 +430,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={recordSaving}
                     onClick={() => {
                       timingMutation.reset();
                       setTimingCrop(crop);
@@ -452,7 +458,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDelete(crop)}
-                    disabled={deleteMutation.isPending}
+                    disabled={deleteMutation.isPending || recordSaving}
                     className="grn-crop-card__remove"
                   >
                     Remove
@@ -509,26 +515,4 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
       ) : null}
     </div>
   );
-}
-
-function cropUpdatePayload(
-  crop: GrowerCropItem,
-  bedId: string | null
-): UpsertGrowerCropRequest {
-  return {
-    canonicalId: crop.canonicalId ?? undefined,
-    cropName: crop.cropName,
-    varietyId: crop.varietyId ?? undefined,
-    status: crop.status,
-    visibility: crop.visibility,
-    surplusEnabled: crop.surplusEnabled,
-    nickname: crop.nickname ?? undefined,
-    defaultUnit: crop.defaultUnit ?? undefined,
-    notes: crop.notes ?? undefined,
-    bedId,
-    plantingDate: crop.plantingDate,
-    expectedHarvestDate: crop.expectedHarvestDate,
-    plantCount: crop.plantCount,
-    spacingInches: crop.spacingInches,
-  };
 }

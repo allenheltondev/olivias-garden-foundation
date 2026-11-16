@@ -8,6 +8,7 @@ import { listMyBeds, listMyCrops, updateMyCrop } from '../../services/api';
 
 vi.mock('../../services/api', () => ({
   deleteMyCrop: vi.fn(),
+  listHarvests: vi.fn().mockResolvedValue({ harvests: [], harvestCount: 0, totalHarvested: '0' }),
   listMyBeds: vi.fn(),
   listMyCrops: vi.fn(),
   updateMyCrop: vi.fn(),
