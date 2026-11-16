@@ -1,6 +1,6 @@
 {
   "slug": "growing-okra-in-containers",
-  "status": "draft",
+  "status": "published",
   "title": "How to grow okra in containers",
   "seoTitle": "Growing Okra in Containers: Pot Size, Soil and Water",
   "description": "Yes, okra grows in containers. Use at least a 5-gallon pot with drainage holes, potting mix and full sun, and water often. What to expect from the harvest.",
@@ -12,6 +12,12 @@
   "socialImage": {
     "src": "/images/social/okra-guides/growing-okra-in-containers.jpg",
     "alt": "Growing okra in containers card with a photo of an okra plant in a blue 5-gallon bucket."
+  },
+  "datePublished": "2026-11-16",
+  "dateModified": "2026-11-16",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-16"
   },
   "targetQueries": [
     "growing okra in containers",
@@ -54,7 +60,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Olivia's grandfather grew Clemson Spineless from the project's seed in a 5-gallon bucket with drainage holes, filled with potting mix, about 15 miles from our garden in North Texas. He watered it every 2 days."
+          "text": "Olivia's grandparents grew Clemson Spineless from the project's seed in a 5-gallon bucket with drainage holes, filled with potting mix, about 15 miles from our garden in North Texas. They watered it every 2 days."
         },
         {
           "type": "paragraph",
@@ -68,7 +74,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Extension guides don't list okra by name, but Texas A&M AgriLife says [5-gallon containers are the most suitable size](https://aggie-horticulture.tamu.edu/wp-content/uploads/sites/10/2013/09/EHT-062.pdf) for fruiting crops like tomatoes, peppers and eggplant. Okra is a big plant, so treat 5 gallons as the minimum for one plant. A bigger container holds more water and needs it less often."
+          "text": "Extension guides don't list okra by name, but Texas A&M AgriLife says [5-gallon containers are the most suitable size](https://aggie-horticulture.tamu.edu/wp-content/uploads/sites/10/2013/09/EHT-062.pdf) for fruiting crops like tomatoes, peppers and eggplant. Okra is a big plant, so treat 5 gallons as the minimum for one plant."
         },
         {
           "type": "paragraph",
@@ -133,7 +139,7 @@
     },
     {
       "question": "What size pot does okra need?",
-      "answer": "At least 5 gallons for one plant. Bigger is better, since a larger container holds more water and dries out more slowly."
+      "answer": "At least 5 gallons for one plant. Our family's Clemson Spineless grew to about 4 feet and was prolific in a 5-gallon bucket."
     },
     {
       "question": "How tall does okra get in a container?",
