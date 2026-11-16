@@ -79,6 +79,9 @@ variables:
   - key: apiKeyId
     value: ''
     description: Captured API key ID for follow-up key lifecycle requests
+  - key: apiKeySecret
+    value: ''
+    description: The first key's secret, used once to check a key cannot manage keys; unset on revoke
   - key: secondApiKeyId
     value: ''
     description: The self-serve second key, revoked by the key cap check

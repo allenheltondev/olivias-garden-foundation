@@ -47,5 +47,7 @@ scripts:
               return;
           }
           pm.collectionVariables.set("apiKeyId", body.id);
+          // Used once, by "An API Key Cannot Manage Keys", then revoked with the key.
+          pm.collectionVariables.set("apiKeySecret", body.key);
           pm.collectionVariables.set("apiKeyIssued", "true");
       });

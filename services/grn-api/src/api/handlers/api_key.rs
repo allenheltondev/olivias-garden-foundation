@@ -1,4 +1,4 @@
-use crate::auth::extract_auth_context;
+use crate::auth::{authenticated_with_api_key, extract_auth_context};
 use crate::db;
 use crate::handlers::api_access_request::claimable_request;
 use crate::models::api_key::{
@@ -376,7 +376,19 @@ fn row_to_item(row: &Row) -> ApiKeyItem {
     }
 }
 
+/// The signed-in grower managing their keys.
+///
+/// Key management needs a session: an API key may not list, create, rename or
+/// revoke keys. Otherwise a leaked key could mint further keys that outlive
+/// its own revocation. Every handler here goes through this function, and
+/// the `Forbidden:` prefix is what the router maps to 403.
 fn extract_user_id(request: &Request) -> Result<Uuid, lambda_http::Error> {
+    if authenticated_with_api_key(request) {
+        return Err(lambda_http::Error::from(
+            "Forbidden: API keys can only be managed from a signed-in session, not with an API key"
+                .to_string(),
+        ));
+    }
     let auth = extract_auth_context(request)?;
     Uuid::parse_str(&auth.user_id).map_err(|_| lambda_http::Error::from("Invalid user ID format"))
 }
@@ -428,6 +440,38 @@ mod tests {
     use super::{
         at_key_cap, generate_api_key, sha256_hex, validate_name, API_KEY_PREFIX, MAX_ACTIVE_KEYS,
     };
+
+    fn request_as(fields: &[(&str, &str)]) -> lambda_http::Request {
+        use lambda_http::request::RequestContext;
+        use lambda_http::RequestExt;
+        let mut context = aws_lambda_events::apigw::ApiGatewayProxyRequestContext::default();
+        for (key, value) in fields {
+            context.authorizer.fields.insert(
+                (*key).to_string(),
+                serde_json::Value::String((*value).to_string()),
+            );
+        }
+        lambda_http::http::Request::builder()
+            .body(lambda_http::Body::Empty)
+            .unwrap()
+            .with_request_context(RequestContext::ApiGatewayV1(context))
+    }
+
+    const USER: &str = "6d1c2a52-6b8f-4a7e-9a55-1f2b3c4d5e6f";
+
+    #[test]
+    fn a_signed_in_session_may_manage_keys() {
+        let session = request_as(&[("userId", USER), ("isAdmin", "false")]);
+        assert_eq!(super::extract_user_id(&session).unwrap().to_string(), USER);
+    }
+
+    #[test]
+    fn an_api_key_may_not_manage_keys() {
+        let key = request_as(&[("userId", USER), ("authMethod", "api_key")]);
+        let error = super::extract_user_id(&key).unwrap_err().to_string();
+        assert!(error.starts_with("Forbidden:"), "{error}");
+        assert!(error.contains("signed-in session"), "{error}");
+    }
 
     #[test]
     fn key_cap_allows_up_to_the_limit_and_refuses_beyond() {

@@ -75,13 +75,29 @@ describe('the catalog', () => {
     assert.equal(byName.list_my_crops.annotations.readOnlyHint, true);
     assert.equal(byName.delete_my_crop.annotations.destructiveHint, true);
     assert.equal(byName.create_listing.annotations.readOnlyHint, false);
-    assert.equal(byName.create_listing.annotations.idempotentHint, true);
+    assert.equal(byName.put_me.annotations.idempotentHint, true);
+    // A POST with no idempotency key makes a new record each time.
+    assert.equal(byName.create_my_crop.annotations.idempotentHint, false);
+    assert.equal(byName.create_claim.annotations.idempotentHint, false);
+  });
+
+  it('requires an idempotency key wherever the API accepts one, even if the API makes it optional', () => {
+    const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+    // createListing and createRequest leave the header optional in the spec.
+    for (const id of ['createListing', 'createRequest']) {
+      assert.equal(op(id).parameters.find((p) => p.argument === 'idempotencyKey').required, false, id);
+    }
+    for (const name of ['create_listing', 'create_request', 'update_reminder_status', 'create_journal_note']) {
+      assert.ok(byName[name].inputSchema.required.includes('idempotencyKey'), name);
+      assert.equal(byName[name].annotations.idempotentHint, true, name);
+      assert.match(byName[name].description, /idempotencyKey is required/, name);
+    }
   });
 
   it('tells the assistant when other people will see a change, and how to retry safely', () => {
     const listing = tools.find((t) => t.name === 'create_listing');
     assert.match(listing.description, /Other growers can see the result/);
-    assert.match(listing.description, /idempotencyKey/);
+    assert.match(listing.description, /same value when retrying/);
     assert.doesNotMatch(tools.find((t) => t.name === 'discover_listings').description, /Other growers can see/);
   });
 
@@ -264,6 +280,64 @@ describe('the endpoint', () => {
     const failed = await call('get_journal');
     assert.equal(failed.isError, true);
     assert.doesNotMatch(failed.content[0].text, /secret detail/);
+  });
+
+  it('refuses a listing without an idempotency key, so a retry cannot post it twice', async () => {
+    routes['POST /listings'] = () => [201, { id: 'listing-1' }];
+    const result = await call('create_listing', {
+      body: {
+        title: 'Zucchini',
+        cropId: '0a0b0c0d-0000-4000-8000-000000000001',
+        quantityTotal: 10,
+        unit: 'lb',
+        availableStart: '2026-07-01T00:00:00Z',
+        availableEnd: '2026-07-08T00:00:00Z'
+      }
+    });
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /idempotencyKey/);
+    assert.equal(calls.some((c) => c.path === '/listings'), false);
+  });
+
+  it('never logs the filled-in path: a shared garden token stays out of the logs', async () => {
+    const lines = [];
+    const capture = { info: (l) => lines.push(l), warn: (l) => lines.push(l), error: (l) => lines.push(l) };
+    const token = '5f2a9c0e7b14d3a6e8c1f09b2d47a6e3';
+    const logged = grnMcpEndpoint({
+      grnApiUrl: API,
+      logger: capture,
+      fetch: async (url) => {
+        if (url.endsWith('/me')) return new Response('{"id":"grower-1"}', { status: 200 });
+        if (url.includes('/gardens/')) return new Response('{"name":"A garden"}', { status: 200 });
+        throw new TypeError('fetch failed');
+      }
+    });
+    const send = (name, args) => logged(new Request('https://api.example.org/grn-mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        'mcp-protocol-version': VERSION,
+        'mcp-method': 'tools/call',
+        'mcp-name': name,
+        authorization: `Bearer ${KEY}`
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name, arguments: args, _meta: { 'io.modelcontextprotocol/protocolVersion': VERSION, 'io.modelcontextprotocol/clientCapabilities': {} } }
+      })
+    }));
+    const ok = await (await send('get_shared_garden', { token })).json();
+    assert.equal(ok.result.structuredContent.name, 'A garden');
+    // The network-error branch too.
+    await (await send('list_my_crops', {})).json();
+    const all = lines.join('\n');
+    assert.ok(all.includes('getSharedGarden') && all.includes('/gardens/{token}'));
+    assert.ok(all.includes('GRN API unreachable'));
+    assert.equal(all.includes(token), false);
+    assert.equal(all.includes(KEY), false);
   });
 
   it('rejects arguments that do not fit the spec without calling the API', async () => {

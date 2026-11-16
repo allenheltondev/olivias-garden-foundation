@@ -1,0 +1,52 @@
+$kind: http-request
+name: An API Key Cannot Manage Keys
+description: |-
+  Key management needs a signed-in session. Authenticated with the key the
+  run just created (not the session token), creating another key is refused
+  with 403 and no secret comes back. Otherwise a leaked key could mint keys
+  that outlive its own revocation.
+method: POST
+url: '{{baseUrl}}/me/api-keys'
+order: 1100
+headers:
+  - key: Authorization
+    value: 'Bearer {{apiKeySecret}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Minted by a key"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.test("The first key's secret was captured", function () {
+          pm.expect(pm.collectionVariables.get("apiKeySecret")).to.match(/^grnk_/);
+      });
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 403", function () {
+          pm.response.to.have.status(403);
+      });
+
+      pm.test("Says a signed-in session is needed, and returns no key", function () {
+          const body = pm.response.json();
+          pm.expect(JSON.stringify(body)).to.match(/signed-in session/);
+          pm.expect(body).to.not.have.property("key");
+      });
+
+      // Listing with the key is refused too.
+      pm.sendRequest({
+          url: pm.variables.get("baseUrl") + "/me/api-keys",
+          method: "GET",
+          header: { Authorization: "Bearer " + pm.collectionVariables.get("apiKeySecret") }
+      }, function (err, res) {
+          pm.test("Listing keys with a key is refused with 403", function () {
+              pm.expect(err).to.equal(null);
+              pm.expect(res.code).to.eql(403);
+          });
+      });

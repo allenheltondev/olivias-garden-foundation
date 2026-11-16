@@ -36,3 +36,4 @@ scripts:
 
       pm.collectionVariables.unset("apiKeyId");
       pm.collectionVariables.unset("apiKeyIssued");
+      pm.collectionVariables.unset("apiKeySecret");

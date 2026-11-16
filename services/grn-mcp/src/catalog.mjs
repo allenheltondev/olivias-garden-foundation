@@ -40,6 +40,15 @@ export const EXCLUDED = {
 const SHARED_TAGS = new Set(['Listings', 'Requests', 'Claims']);
 const DESCRIPTION_LIMIT = 1500;
 
+/**
+ * Operations that accept an Idempotency-Key header. The MCP schema requires
+ * the key for them even where the API leaves it optional: without one, a
+ * retry after a lost response would post the same listing or request twice.
+ */
+export function takesIdempotencyKey(operation) {
+  return operation.parameters.some((p) => p.in === 'header' && p.argument === 'idempotencyKey');
+}
+
 /** `listMyCrops` → `list_my_crops`. */
 export function toolName(operationId) {
   return operationId
@@ -56,8 +65,8 @@ function describe(operation) {
   if (operation.method !== 'GET' && operation.tags.some((t) => SHARED_TAGS.has(t))) {
     notes.push('Other growers can see the result: confirm the details with the person first.');
   }
-  if (operation.parameters.some((p) => p.argument === 'idempotencyKey')) {
-    notes.push('Pass the same idempotencyKey when retrying so the change happens once.');
+  if (takesIdempotencyKey(operation)) {
+    notes.push('idempotencyKey is required: a new unique value for each change, and the same value when retrying it, so a retry never repeats the change.');
   }
   const text = [operation.summary, operation.description, notes.join(' ')].filter(Boolean).join('\n\n');
   return text.length > DESCRIPTION_LIMIT ? `${text.slice(0, DESCRIPTION_LIMIT - 1)}…` : text;
@@ -72,7 +81,9 @@ export function inputSchemaFor(operation) {
       ...parameter.schema,
       ...(parameter.description ? { description: parameter.description } : {})
     };
-    if (parameter.required) required.push(parameter.argument);
+    if (parameter.required || (parameter.in === 'header' && parameter.argument === 'idempotencyKey')) {
+      required.push(parameter.argument);
+    }
   }
   if (operation.body) {
     properties.body = {
@@ -84,12 +95,23 @@ export function inputSchemaFor(operation) {
   return { type: 'object', properties, ...(required.length ? { required } : {}) };
 }
 
+/**
+ * idempotentHint promises that repeating a call has no further effect. That
+ * holds for reads, deletes, writes that require an idempotency key (see
+ * takesIdempotencyKey), and PUTs the spec tags Idempotent. A POST is not
+ * idempotent on a tag alone: without a key the API makes a new record each time.
+ */
 function annotationsFor(operation) {
   const read = operation.method === 'GET';
+  const idempotent =
+    read ||
+    operation.method === 'DELETE' ||
+    takesIdempotencyKey(operation) ||
+    (operation.method === 'PUT' && operation.tags.includes('Idempotent'));
   return {
     readOnlyHint: read,
     destructiveHint: operation.method === 'DELETE',
-    idempotentHint: read || operation.method === 'DELETE' || operation.tags.includes('Idempotent'),
+    idempotentHint: idempotent,
     openWorldHint: false
   };
 }

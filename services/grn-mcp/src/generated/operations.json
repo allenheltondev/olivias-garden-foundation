@@ -195,7 +195,7 @@
       "method": "POST",
       "path": "/me/api-keys",
       "summary": "Create an API key",
-      "description": "Creates a new API key for the current user and returns the full secret\nexactly once. The key authenticates as the owning user when sent as\n`Authorization: Bearer <key>`, both on this API and on the grower MCP\nserver.\n\nKeys are self-serve: no approved access request is needed. Each key is\nmetered on the integration usage plan, and a user may hold at most five\nlive keys; creating a sixth returns 409 until one is revoked. An\napproved access request that has not produced a key yet is linked to\nthe new key for its history.",
+      "description": "Creates a new API key for the current user and returns the full secret\nexactly once. The key authenticates as the owning user when sent as\n`Authorization: Bearer <key>`, both on this API and on the grower MCP\nserver.\n\nKeys are self-serve: no approved access request is needed. Each key is\nmetered on the integration usage plan, and a user may hold at most five\nlive keys; creating a sixth returns 409 until one is revoked. An\napproved access request that has not produced a key yet is linked to\nthe new key for its history.\n\nEvery `/me/api-keys` operation needs a signed-in session: called with an\nAPI key it returns 403, so a key can never mint, list, rename or revoke\nkeys.",
       "tags": [
         "API Keys"
       ],

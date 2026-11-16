@@ -51,7 +51,12 @@ export function buildRequest(operation, args = {}) {
 export function createGrnClient({ baseUrl, key, correlationId, fetch: fetcher = fetch, logger = console }) {
   const root = baseUrl.replace(/\/+$/, '');
 
-  async function send(method, path, { headers = {}, body } = {}) {
+  /**
+   * `label` names the call in logs: an operation id and route template, never
+   * the filled-in path, which can carry a credential (a garden share token is
+   * the path of get_shared_garden) or a grower's ids.
+   */
+  async function send(method, path, { headers = {}, body, label = { operation: null, route: null } } = {}) {
     const started = Date.now();
     let response;
     try {
@@ -68,7 +73,7 @@ export function createGrnClient({ baseUrl, key, correlationId, fetch: fetcher = 
         signal: AbortSignal.timeout(TIMEOUT_MS)
       });
     } catch (error) {
-      logger.warn?.(JSON.stringify({ level: 'WARN', msg: 'GRN API unreachable', correlationId, method, path, error: error?.name }));
+      logger.warn?.(JSON.stringify({ level: 'WARN', msg: 'GRN API unreachable', correlationId, method, ...label, error: error?.name }));
       throw new ToolError('The Good Roots Network API did not answer. Try again shortly.');
     }
     const text = await response.text();
@@ -78,7 +83,7 @@ export function createGrnClient({ baseUrl, key, correlationId, fetch: fetcher = 
     } catch {
       parsed = null;
     }
-    logger.info?.(JSON.stringify({ level: 'INFO', msg: 'GRN API call', correlationId, method, path: path.split('?')[0], status: response.status, ms: Date.now() - started }));
+    logger.info?.(JSON.stringify({ level: 'INFO', msg: 'GRN API call', correlationId, method, ...label, status: response.status, ms: Date.now() - started }));
     return { status: response.status, body: parsed };
   }
 
@@ -86,7 +91,10 @@ export function createGrnClient({ baseUrl, key, correlationId, fetch: fetcher = 
     send,
     async call(operation, args) {
       const request = buildRequest(operation, args);
-      const { status, body } = await send(request.method, request.path, request);
+      const { status, body } = await send(request.method, request.path, {
+        ...request,
+        label: { operation: operation.operationId, route: operation.path }
+      });
       if (status >= 200 && status < 300) {
         if (body === null) return { ok: true, status };
         return Array.isArray(body) ? { items: body } : body;

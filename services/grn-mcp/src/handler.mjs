@@ -64,7 +64,9 @@ export function grnMcpEndpoint(deps) {
   async function check(key, client, keyId) {
     const cached = verified.get(keyId);
     if (cached && cached > now()) return 'valid';
-    const { status } = await client.send('GET', '/me').catch(() => ({ status: 0 }));
+    const { status } = await client
+      .send('GET', '/me', { label: { operation: 'getMe', route: '/me' } })
+      .catch(() => ({ status: 0 }));
     // 404 is a valid key whose grower has not set up a profile yet.
     if ((status >= 200 && status < 300) || status === 404) {
       if (verified.size >= VERIFIED_LIMIT) verified.delete(verified.keys().next().value);

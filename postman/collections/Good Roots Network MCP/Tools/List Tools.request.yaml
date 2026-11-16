@@ -24,7 +24,13 @@ scripts:
   - type: beforeRequest
     language: text/javascript
     code: |-
-      if (!pm.collectionVariables.get("grnKey") && !pm.environment.get("grnKey")) {
+      if (!pm.variables.get("grnKey")) {
+          // CI sets requireKey: there a missing key is a broken setup, not a skip.
+          if (pm.variables.get("requireKey") === "true") {
+              pm.test("A grower key is supplied", function () {
+                  pm.expect.fail("requireKey is true but grnKey is empty");
+              });
+          }
           console.log("grnKey not set; skipping authenticated MCP request.");
           pm.execution.skipRequest();
       }

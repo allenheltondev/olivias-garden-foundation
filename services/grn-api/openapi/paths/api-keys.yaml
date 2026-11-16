@@ -29,6 +29,10 @@
       live keys; creating a sixth returns 409 until one is revoked. An
       approved access request that has not produced a key yet is linked to
       the new key for its history.
+
+      Every `/me/api-keys` operation needs a signed-in session: called with an
+      API key it returns 403, so a key can never mint, list, rename or revoke
+      keys.
     operationId: createApiKey
     requestBody:
       required: true
@@ -47,6 +51,12 @@
         $ref: '../schemas/_responses.yaml#/ErrorResponse'
       '401':
         $ref: '../schemas/_responses.yaml#/ErrorResponse'
+      '403':
+        description: Called with an API key rather than a signed-in session
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/_responses.yaml#/ErrorSchema'
       '409':
         description: The user already holds five live keys; revoke one first
         content:

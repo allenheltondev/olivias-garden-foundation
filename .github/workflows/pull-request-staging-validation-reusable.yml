@@ -1707,10 +1707,28 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-staging-grn-mcp]
     if: always() && !cancelled() && needs.deploy-staging-grn-mcp.result == 'success'
+    environment:
+      name: staging
+    env:
+      AWS_REGION: us-east-1
+      GRN_STACK_NAME: ogf-grn-staging
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          role-to-assume: ${{ secrets.aws_staging_role_arn }}
+          role-session-name: GitHubActions-GRN-MCP-Smoke-PR-${{ inputs.pr_number }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # A dedicated seeded grower and a key minted for this run only, from
+      # the grower's session (keys cannot manage keys). Revoked at the end.
+      - name: Mint a short-lived grower key
+        id: smoke-key
+        run: ./services/grn-mcp/scripts/staging-smoke-key.sh mint
 
       - name: Setup Postman CLI
         uses: ./.github/actions/setup-postman-cli
@@ -1720,11 +1738,21 @@ jobs:
           set -o pipefail
           postman collection run "postman/collections/Good Roots Network MCP" \
             --env-var "mcpUrl=${{ needs.deploy-staging-grn-mcp.outputs.mcp-url }}" \
+            --env-var "grnKey=${{ steps.smoke-key.outputs.grn-key }}" \
+            --env-var "expectedUserId=${{ steps.smoke-key.outputs.user-id }}" \
+            --env-var "requireKey=true" \
             | tee /tmp/grn-mcp-postman.txt
           if grep -qE "^\|[[:space:]]+requests[[:space:]]+\|[[:space:]]+0[[:space:]]+\|" /tmp/grn-mcp-postman.txt; then
             echo "The Good Roots Network MCP collection executed zero requests."
             exit 1
           fi
+
+      - name: Revoke the grower key
+        if: always() && steps.smoke-key.outputs.key-id != ''
+        env:
+          KEY_ID: ${{ steps.smoke-key.outputs.key-id }}
+          AUTH_TOKEN: ${{ steps.smoke-key.outputs.auth-token }}
+        run: ./services/grn-mcp/scripts/staging-smoke-key.sh revoke
 
   staging-validation-summary:
     name: Shared Staging Validation Summary

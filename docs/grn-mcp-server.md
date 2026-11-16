@@ -40,6 +40,11 @@ API keys are **self-serve**: any grower can create one, with no access request
 or approval. A grower may hold five live keys at once, and each key is
 throttled and metered on the integration usage plan.
 
+Keys are managed **only from a signed-in session**. The GRN API refuses every
+`/me/api-keys` call made with an API key (403). The MCP server has no
+key-management tools either. So a leaked key can't mint more keys that would
+outlive its own revocation.
+
 ## Tools
 
 Every GRN API operation is a tool unless it is excluded below. The tools are
@@ -63,11 +68,16 @@ spec's schemas. The SDK validates arguments against them before any call is made
 Annotations come from the spec:
 - `GET` is read-only.
 - `DELETE` is destructive.
-- Operations tagged `Idempotent` say so.
+- `idempotentHint` is set for reads, deletes, writes that take an idempotency
+  key, and `PUT`s the spec tags `Idempotent`. A `POST` without a key creates a
+  new record each time, so a tag alone isn't enough.
 
 Descriptions add what an assistant needs to know:
 - Listings, requests and claims are seen by other growers, so it should confirm the details with the grower first.
-- Operations that take an `Idempotency-Key` header take `idempotencyKey`, to pass again on retry.
+- Operations that take an `Idempotency-Key` header **require** `idempotencyKey`,
+  even where the API leaves it optional (`create_listing`, `create_request`,
+  `update_reminder_status`). It's a new value per change and the same one on retry, so an assistant
+  retrying after a lost response never posts the same listing twice.
 
 ### Excluded
 
@@ -94,6 +104,11 @@ authorizer checks the key, the key's usage plan throttles and meters it, and
 every ownership and tier check in grn-api applies. The MCP server holds no
 credentials and no data of its own; its IAM role only writes logs. Each call
 carries an `x-correlation-id`, which is also returned to the MCP client.
+
+Logs name a call by its operation id and route template (`getSharedGarden`,
+`/gardens/{token}`), never by the filled-in path. That path can hold a
+credential, such as a garden share token, or a grower's ids. Keys are logged
+only as a short hash.
 
 The key is checked when a request arrives by asking the GRN API who it belongs
 to (`GET /me`). A key the API refuses gets 401 at once; if the API can't be
@@ -128,6 +143,13 @@ the GRN spec changes) fails if the committed file is out of date.
 - Unit tests: `npm --workspace services/grn-mcp test`. They cover the catalog
   and its exclusions, request building, key checks, error mapping and argument
   validation, through the real SDK against a fake GRN API.
-- API tests: `postman/collections/Good Roots Network MCP`. The Auth folder runs
-  on every staging validation; the Tools folder runs when `grnKey` is set to a
-  live staging key.
+- API tests: `postman/collections/Good Roots Network MCP`, on every staging
+  validation:
+  - The Auth folder checks the refusals.
+  - The Tools folder calls real tools on the deployed stack. The job runs
+    `scripts/staging-smoke-key.sh` to seed a dedicated grower, mint a
+    short-lived key from its session and pass it in. `get_me` must return that
+    grower's id, which proves the mapping, the bearer forwarding and upstream
+    authorization together. The key is revoked when the job ends, pass or
+    fail. With `requireKey` set, a missing key fails the run rather than
+    skipping it.
