@@ -120,7 +120,7 @@ function GuideBlockView({ block, onNavigate, imageSizes = IMAGE_SIZES_FULL }: { 
     case 'image':
       return (
         <figure className="okra-guide__figure">
-          <ResponsiveImage src={block.src} alt={block.alt} sizes={imageSizes} loading="lazy" />
+          <ResponsiveImage src={block.src} alt={block.alt} sizes={imageSizes} loading="lazy" reserveSpace />
           {block.caption ? (
             <figcaption><InlineText text={block.caption} onNavigate={onNavigate} /></figcaption>
           ) : null}
@@ -425,6 +425,7 @@ export function OkraGuidePage({
                 src={summary.heroImage.src}
                 alt={summary.heroImage.alt}
                 sizes="(max-width: 959px) 100vw, 22rem"
+                reserveSpace
                 loading="eager"
                 fetchPriority="high"
               />

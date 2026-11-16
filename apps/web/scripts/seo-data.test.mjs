@@ -23,7 +23,7 @@ test('published guides become prerendered, indexable article routes', () => {
   assert.equal(route.ogType, 'article');
   assert.equal(route.seoImage, '/images/social/okra-guides/example-okra-guide.jpg');
   assert.ok(route.seoImageAlt);
-  assert.deepEqual(route.sitemap, { changefreq: 'monthly', priority: 0.7, lastmod: '2026-11-15' });
+  assert.deepEqual(route.sitemap, { changefreq: 'monthly', priority: 0.7, lastmod: '2026-11-15', images: ['/images/okra/olivia-okra.jpg'] });
   assert.deepEqual(route.extraJsonLd.map((block) => block.id), ['okra-guide-article', 'okra-guide-breadcrumbs', 'okra-guide-faq']);
   assert.match(route.bodyFallback, /<h2 id="images">Images<\/h2>/);
   assert.match(route.bodyFallback, /Example related guide/);

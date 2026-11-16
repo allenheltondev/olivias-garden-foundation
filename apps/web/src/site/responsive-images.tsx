@@ -93,9 +93,22 @@ export function buildResponsiveBackgroundImage(imagePath: string, width = 1600) 
   return `image-set(url("/${selectedVariant.path}") type("image/avif"), url("${normalizeImagePath(imagePath)}") type("${originalMimeTypeFor(imagePath)}"))`;
 }
 
+/** The original's pixel size from the manifest, when it's known. */
+export function getIntrinsicSize(imagePath: string): { width: number; height: number } | null {
+  const { relativePath } = parseImagePath(imagePath);
+  const entry = manifest.images[relativePath];
+  return entry?.width && entry?.height ? { width: entry.width, height: entry.height } : null;
+}
+
 type ResponsiveImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'srcSet'> & {
   src: string;
   sizes: string;
+  /**
+   * Set width and height from the manifest so the browser reserves the
+   * photo's space before it loads (no layout shift). Only use where CSS
+   * sizes the image with `height: auto` or a fixed aspect ratio.
+   */
+  reserveSpace?: boolean;
 };
 
 export function ResponsiveImage({
@@ -104,9 +117,11 @@ export function ResponsiveImage({
   sizes,
   loading = 'lazy',
   decoding = 'async',
+  reserveSpace = false,
   ...imgProps
 }: ResponsiveImageProps) {
   const avifSrcSet = buildResponsiveSrcSet(src);
+  const intrinsic = reserveSpace ? getIntrinsicSize(src) : null;
 
   return (
     <picture>
@@ -118,6 +133,7 @@ export function ResponsiveImage({
         />
       ) : null}
       <img
+        {...(intrinsic ? { width: intrinsic.width, height: intrinsic.height } : {})}
         {...imgProps}
         src={normalizeImagePath(src)}
         alt={alt ?? ''}

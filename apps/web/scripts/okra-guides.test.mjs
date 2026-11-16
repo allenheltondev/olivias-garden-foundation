@@ -10,6 +10,7 @@ import {
   buildGuideBreadcrumbJsonLd,
   buildGuideFaqJsonLd,
   buildGuideJsonLdBlocks,
+  guidePhotos,
   collectGuideLinks,
   formatGuideDate,
   guideRouteMeta,
@@ -22,6 +23,7 @@ import {
 import { layoutHeadline, layoutPageHeadline, renderSocialCard } from './generate-guide-social-card.mjs';
 import { withGuideSection } from './generate-llms.mjs';
 import { loadOkraGuides, readGuideFiles, validateOkraGuides } from './okra-guides.mjs';
+import { buildEntry, buildSitemapXml } from './generate-sitemap.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixtureDir = join(__dirname, '__fixtures__', 'okra-guides');
@@ -266,11 +268,36 @@ describe('structured data and fallback HTML', () => {
     assert.equal(article.url, `${siteUrl}/okra/example-okra-guide`);
     assert.equal(article.datePublished, '2026-11-14');
     assert.equal(article.dateModified, '2026-11-15');
-    assert.deepEqual(article.image, [
+    // Each photo once (the fixture reuses its hero in the body), then the
+    // social card, each as a described ImageObject.
+    assert.deepEqual(article.image.map((image) => image.url), [
       `${siteUrl}/images/okra/olivia-okra.jpg`,
       `${siteUrl}/images/social/okra-guides/example-okra-guide.jpg`,
     ]);
+    for (const image of article.image) {
+      assert.equal(image['@type'], 'ImageObject');
+      assert.equal(image.contentUrl, image.url);
+      assert.ok(image.description, `${image.url} needs a description`);
+    }
+    assert.doesNotMatch(JSON.stringify(article.image), /\*\*|\]\(/, 'captions are plain text');
     assert.equal(article.publisher['@id'], `${siteUrl}/#organization`);
+  });
+
+  test('guide photos are the hero then in-body images, without the social card', () => {
+    const photos = guidePhotos(guide);
+    assert.equal(photos[0].src, guide.heroImage.src);
+    assert.ok(photos.every((photo) => !photo.src.includes('/images/social/')));
+    assert.equal(new Set(photos.map((photo) => photo.src)).size, photos.length, 'no repeats');
+    const withExtra = { ...guide, sections: [...guide.sections, { id: 'more', title: 'More', blocks: [{ type: 'image', src: '/images/okra/other.jpg', alt: 'Another okra photo for the test' }] }] };
+    assert.deepEqual(guidePhotos(withExtra).map((photo) => photo.src), [guide.heroImage.src, '/images/okra/other.jpg']);
+  });
+
+  test('the sitemap lists a page\'s photos with the image extension', () => {
+    const entry = buildEntry({ path: '/okra/example', sitemap: { lastmod: '2026-11-16', images: ['/images/okra/a & b.jpg'] } });
+    assert.match(entry, /<loc>https:\/\/oliviasgarden\.org\/okra\/example<\/loc>/);
+    assert.match(entry, /<image:image><image:loc>https:\/\/oliviasgarden\.org\/images\/okra\/a &amp; b\.jpg<\/image:loc><\/image:image>/);
+    assert.doesNotMatch(buildEntry({ path: '/about' }), /image:image/);
+    assert.match(buildSitemapXml([]), /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
   });
 
   test('breadcrumbs go Home > The Okra Project > guide', () => {

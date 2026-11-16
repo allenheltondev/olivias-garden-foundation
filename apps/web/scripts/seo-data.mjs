@@ -17,6 +17,7 @@
 import faqContent from '../src/site/faq-content.json' with { type: 'json' };
 import {
   buildGuideJsonLdBlocks,
+  guidePhotos,
   guideRouteMeta,
   renderGuideFallbackHtml,
   renderGuideListHtml,
@@ -131,7 +132,12 @@ function buildOkraGuideSeoRoute(guide) {
 
   return {
     ...guideRouteMeta(guide),
-    sitemap: { changefreq: 'monthly', priority: 0.7, lastmod: guide.dateModified ?? guide.datePublished },
+    sitemap: {
+      changefreq: 'monthly',
+      priority: 0.7,
+      lastmod: guide.dateModified ?? guide.datePublished,
+      images: guidePhotos(guide).map((image) => image.src),
+    },
     bodyFallback: renderGuideFallbackHtml(guide, related),
     extraJsonLd: buildGuideJsonLdBlocks(guide, siteUrl),
   };
@@ -148,7 +154,7 @@ function buildOkraGuideSeoRoute(guide) {
  * @property {boolean} [allowIndex]
  * @property {boolean} [prerender]
  * @property {string} [canonicalPath] - When set, the canonical link points here instead of `path`. Used for redirect/alias routes.
- * @property {{ changefreq?: string, priority?: number, lastmod?: string }} [sitemap]
+ * @property {{ changefreq?: string, priority?: number, lastmod?: string, images?: string[] }} [sitemap]
  * @property {string} [bodyFallback] - HTML injected inside a <noscript> tag in the body so non-JS crawlers see real content.
  * @property {{ id: string, data: Record<string, unknown> }[]} [extraJsonLd] - Additional page-specific JSON-LD blocks (e.g. FAQPage).
  */
@@ -282,7 +288,7 @@ export const seoRoutes = [
     seoImage: '/images/social/okra.png',
     seoImageAlt: "Green okra pods beside a seed packet, with the headline: Free okra seeds from Olivia's garden.",
     prerender: true,
-    sitemap: { changefreq: 'weekly', priority: 0.9 },
+    sitemap: { changefreq: 'weekly', priority: 0.9, images: ['/images/okra/olivia-okra.jpg'] },
     bodyFallback: `
       <h1>The Okra Project</h1>
       <p>

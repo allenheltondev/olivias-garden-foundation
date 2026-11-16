@@ -146,11 +146,41 @@ export function sortGuides(guides) {
 
 // --- Structured data -------------------------------------------------------
 
+/**
+ * The guide's photos in page order, without repeats: the hero, then any
+ * in-body image blocks.
+ * The social card is left out, since it's a designed card, not a photo.
+ */
+export function guidePhotos(guide) {
+  const body = (guide.sections ?? []).flatMap((section) => (section.blocks ?? [])
+    .filter((block) => block.type === 'image' && block.src)
+    .map((block) => ({ src: block.src, alt: block.alt, caption: block.caption })));
+  const seen = new Set();
+  return [guide.heroImage, ...body].filter((image) => {
+    if (!image?.src || seen.has(image.src)) return false;
+    seen.add(image.src);
+    return true;
+  });
+}
+
+function imageObject(siteUrl, image) {
+  const url = absoluteUrl(siteUrl, image.src);
+  return {
+    '@type': 'ImageObject',
+    url,
+    contentUrl: url,
+    ...(image.caption ? { caption: stripInline(image.caption) } : {}),
+    ...(image.alt ? { description: image.alt } : {}),
+  };
+}
+
 export function buildGuideArticleJsonLd(guide, siteUrl) {
   const url = absoluteUrl(siteUrl, guidePath(guide.slug));
-  const images = [guide.heroImage?.src, guide.socialImage?.src]
-    .filter(Boolean)
-    .map((src) => absoluteUrl(siteUrl, src));
+  // Every photo on the page, described, then the 1200x630 social card.
+  const images = [
+    ...guidePhotos(guide).map((image) => imageObject(siteUrl, image)),
+    ...(guide.socialImage?.src ? [imageObject(siteUrl, guide.socialImage)] : []),
+  ];
   const organizationRef = { '@id': `${siteUrl}/#organization` };
 
   const article = {
