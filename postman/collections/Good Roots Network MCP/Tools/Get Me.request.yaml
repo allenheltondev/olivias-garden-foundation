@@ -1,0 +1,50 @@
+$kind: http-request
+name: Get Me
+description: |-
+  get_me calls GET /me on the GRN API as the key's grower and returns their
+  profile, the same answer the app gets.
+method: POST
+url: '{{mcpUrl}}'
+order: 2010
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: 'application/json, text/event-stream'
+  - key: MCP-Protocol-Version
+    value: '{{protocolVersion}}'
+  - key: Mcp-Method
+    value: tools/call
+  - key: Mcp-Name
+    value: get_me
+  - key: Authorization
+    value: 'Bearer {{grnKey}}'
+body:
+  type: json
+  content: |-
+    {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_me", "arguments": {}, "_meta": {"io.modelcontextprotocol/protocolVersion": "{{protocolVersion}}", "io.modelcontextprotocol/clientCapabilities": {}}}}
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get("grnKey") && !pm.environment.get("grnKey")) {
+          console.log("grnKey not set; skipping authenticated MCP request.");
+          pm.execution.skipRequest();
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Returns the grower's profile", function () {
+          const result = pm.response.json().result;
+          pm.expect(result.isError).to.not.eql(true);
+          pm.expect(result.structuredContent).to.be.an("object");
+          pm.expect(result.structuredContent).to.have.property("id");
+      });
+
+      pm.test("Carries a correlation id", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });

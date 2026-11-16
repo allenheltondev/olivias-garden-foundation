@@ -1,0 +1,54 @@
+$kind: http-request
+name: List Tools
+description: |-
+  With a live grower key, tools/list returns the grower tools, each annotated, and none of the excluded ones.
+method: POST
+url: '{{mcpUrl}}'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: 'application/json, text/event-stream'
+  - key: MCP-Protocol-Version
+    value: '{{protocolVersion}}'
+  - key: Mcp-Method
+    value: tools/list
+  - key: Authorization
+    value: 'Bearer {{grnKey}}'
+body:
+  type: json
+  content: |-
+    {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "{{protocolVersion}}", "io.modelcontextprotocol/clientCapabilities": {}}}}
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get("grnKey") && !pm.environment.get("grnKey")) {
+          console.log("grnKey not set; skipping authenticated MCP request.");
+          pm.execution.skipRequest();
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Lists the grower tools and annotates every one", function () {
+          const tools = pm.response.json().result.tools;
+          const names = tools.map((t) => t.name);
+          pm.expect(names).to.include.members(["get_me", "list_my_crops", "create_listing", "discover_listings"]);
+          // AI, agent-task and key-management operations are never offered.
+          ["generate_weekly_plan", "generate_garden_review", "get_derived_feed", "create_agent_task", "create_api_key"].forEach(function (excluded) {
+              pm.expect(names).to.not.include(excluded);
+          });
+          tools.forEach((tool) => {
+              pm.expect(tool.inputSchema, tool.name).to.be.an("object");
+              pm.expect(tool.annotations.readOnlyHint, tool.name).to.be.a("boolean");
+          });
+      });
+
+      pm.test("Carries a correlation id", function () {
+          pm.expect(pm.response.headers.get("x-correlation-id")).to.be.a("string").and.not.empty;
+      });

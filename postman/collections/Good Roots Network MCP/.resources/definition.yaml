@@ -1,0 +1,21 @@
+$kind: collection
+name: Good Roots Network MCP
+description: |-
+  The grower MCP server (services/grn-mcp, docs/grn-mcp-server.md): JSON-RPC
+  over Streamable HTTP at https://api.<domain>/grn-mcp, authenticated with a
+  grower's own GRN API key.
+
+  The Auth folder needs no key and runs on every staging validation: requests
+  with no key, a malformed key or a key the GRN API does not recognise are all
+  refused with 401. The Tools folder runs only when `grnKey` is set to a live
+  staging GRN key (Settings → API keys in the staging app).
+variables:
+  - key: mcpUrl
+    value: 'https://api.example.com/grn-mcp'
+    description: The MCP endpoint (McpServerUrl output of the ogf-grn-mcp-<env> stack)
+  - key: grnKey
+    value: ''
+    description: Optional live grnk_ key; without one the Tools folder is skipped
+  - key: protocolVersion
+    value: '2026-07-28'
+    description: MCP protocol revision the server serves
