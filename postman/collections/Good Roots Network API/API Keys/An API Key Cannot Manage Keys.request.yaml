@@ -31,6 +31,31 @@ scripts:
       pm.test("The first key's secret was captured", function () {
           pm.expect(pm.collectionVariables.get("apiKeySecret")).to.match(/^grnk_/);
       });
+
+      // A new key is backed by a new API Gateway usage-plan key, which can take
+      // a little while to be honoured; until then the gateway itself answers
+      // 403 {"message":"Forbidden"}. Wait until the key works (GET /me), so the
+      // 403 asserted below comes from the API's own refusal.
+      const deadline = Date.now() + 120000;
+      (function waitForKey(attempt) {
+          pm.sendRequest({
+              url: pm.variables.get("baseUrl") + "/me",
+              method: "GET",
+              header: { Authorization: "Bearer " + pm.collectionVariables.get("apiKeySecret") }
+          }, function (err, res) {
+              if (!err && res.code >= 200 && res.code < 300) {
+                  console.log("The new key works (attempt " + attempt + ").");
+                  return;
+              }
+              if (Date.now() > deadline) {
+                  pm.test("The new key goes live within two minutes", function () {
+                      pm.expect.fail("GET /me with the key still answers " + (err ? err.message : res.code));
+                  });
+                  return;
+              }
+              setTimeout(function () { waitForKey(attempt + 1); }, 5000);
+          });
+      })(1);
   - type: afterResponse
     language: text/javascript
     code: |-
