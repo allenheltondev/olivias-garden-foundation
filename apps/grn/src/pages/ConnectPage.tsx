@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, Card, GardenIcon, SectionHeading, type GardenIconName } from '@olivias/ui';
+import { GardenScene } from '../components/branding/GardenArt';
+import './ConnectPage.css';
 
 interface ConnectOption {
   id: string;
@@ -53,9 +55,9 @@ function ConnectCard({ option, action }: { option: ConnectOption; action: () => 
   return (
     <Card padding="6" className="grn-connect-card">
       <GardenIcon name={option.icon} />
-      <h3 className="grn-connect-card__title">{option.title}</h3>
+      <h2 className="grn-connect-card__title">{option.title}</h2>
       <p className="grn-connect-card__body">{option.body}</p>
-      <Button variant="secondary" size="md" onClick={action}>
+      <Button variant={option.id === 'share' ? 'primary' : 'secondary'} size="md" onClick={action}>
         {option.cta}
       </Button>
     </Card>
@@ -66,16 +68,35 @@ export function ConnectPage() {
   const navigate = useNavigate();
 
   return (
-    <section className="grn-section">
-      <SectionHeading
-        title="Share with people nearby"
-        body="Share what you have, find what you need, and stay in touch with your local food community. It is always optional."
-      />
+    <section className="grn-section grn-share-home">
+      <div className="grn-share-home__intro">
+        <SectionHeading
+          title="Share with people nearby"
+          body="A little extra from your garden can make someone's day. Offer a harvest or see what neighbors have to share."
+        />
+        <GardenScene name="neighbor-harvest" className="grn-share-home__art" />
+      </div>
       <div className="grn-connect-grid">
-        {options.map((option) => (
+        {options.slice(0, 2).map((option) => (
           <ConnectCard key={option.id} option={option} action={() => navigate(option.to)} />
         ))}
       </div>
+      <p className="grn-share-home__reassurance">You choose what to offer and when. Nothing is shared automatically.</p>
+      <section className="grn-share-explore" aria-labelledby="share-explore-heading">
+        <h2 id="share-explore-heading">More ways to connect</h2>
+        <div className="grn-share-explore__links">
+          {options.slice(2).map((option) => (
+            <Link key={option.id} to={option.to} className="grn-share-explore__link">
+              <GardenIcon name={option.icon} />
+              <span>
+                <strong>{option.title}</strong>
+                <span>{option.body}</span>
+              </span>
+              <span aria-hidden="true">→</span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }

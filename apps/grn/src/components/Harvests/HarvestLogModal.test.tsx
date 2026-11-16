@@ -114,7 +114,10 @@ describe('HarvestLogModal', () => {
     await screen.findByTestId('harvest-total');
     await userEvent.type(screen.getByPlaceholderText('3.5'), '2');
     await userEvent.click(screen.getByRole('button', { name: /log harvest/i }));
-    await userEvent.click(await screen.findByRole('button', { name: /share some food/i }));
+    await screen.findByRole('button', { name: /share some food/i });
+    expect(onShareHarvest).not.toHaveBeenCalled();
+    expect(screen.getByText(/2 lb of.*added to your garden story/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /share some food/i }));
 
     expect(onShareHarvest).toHaveBeenCalledWith(savedHarvest);
   });
@@ -182,4 +185,16 @@ describe('HarvestLogModal', () => {
     await waitFor(() => expect(deleteHarvest).toHaveBeenCalledWith('crop-1', 'h1'));
     confirmSpy.mockRestore();
   });
+  it('lets a grower keep a saved harvest without starting a share', async () => {
+    const onShareHarvest = vi.fn();
+    recordHarvest.mockResolvedValue({ harvest: { id: 'h2', growerCropId: 'crop-1', amount: '2', unit: 'lb', harvestedOn: '2026-06-22', notes: null, createdAt: '2026-06-22T00:00:00Z' }, totalHarvested: '5.5', harvestCount: 2 });
+    renderModal(onShareHarvest);
+    await userEvent.type(screen.getByPlaceholderText('3.5'), '2');
+    await userEvent.click(screen.getByRole('button', { name: /log harvest/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /keep for my household/i }));
+    expect(screen.queryByRole('button', { name: /share some food/i })).not.toBeInTheDocument();
+    expect(onShareHarvest).not.toHaveBeenCalled();
+    expect(recordHarvest).toHaveBeenCalledTimes(1);
+  });
+
 });

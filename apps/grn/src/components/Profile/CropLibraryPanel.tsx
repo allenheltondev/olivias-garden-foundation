@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listMyCrops,
@@ -13,10 +13,11 @@ import type { GrowerCropItem } from '../../types/listing';
 import { Button, Card } from '@olivias/ui';
 import { createLogger } from '../../utils/logging';
 import { visualForCrop } from '../CropPlanner/cropVisuals';
-import { CropIcon } from '../CropPlanner/cropIcons';
+import { CropArtwork, GardenScene } from '../branding/GardenArt';
 import { HarvestLogModal } from '../Harvests/HarvestLogModal';
 import { daysUntil, formatDate, harvestProgress } from '../../utils/cropTiming';
 import { CropTimingModal } from './CropTimingModal';
+import './CropJourney.css';
 
 const logger = createLogger('crop-library');
 
@@ -34,7 +35,8 @@ const STATUS_LABELS: Record<string, { label: string; emoji: string; tone: string
 export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
   void viewerUserId;
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'growing' | 'planning' | 'interested'>('all');
   const [harvestCrop, setHarvestCrop] = useState<GrowerCropItem | null>(null);
@@ -43,7 +45,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
   const [dismissedLinkedTimingId, setDismissedLinkedTimingId] = useState<string | null>(null);
   const [bedUpdateError, setBedUpdateError] = useState<string | null>(null);
 
-  const { data: myCrops, isLoading: isLoadingCrops } = useQuery({
+  const { data: myCrops, isLoading: isLoadingCrops, isError: cropsError, refetch: retryCrops } = useQuery({
     queryKey: ['myCrops'],
     queryFn: listMyCrops,
   });
@@ -53,6 +55,10 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     queryFn: listMyBeds,
   });
 
+  // A bed carried between views is navigation context, not an assignment.
+  // Explicit add-to-bed flows supply bedId themselves.
+  const addCropParams = new URLSearchParams({ returnTo: `${location.pathname}${location.search}` });
+  const addCropPath = `/garden/plants/new?${addCropParams}`;
   const linkedCropId = searchParams.get('crop');
   const linkedAction = searchParams.get('action');
   const linkedHarvestId = searchParams.get('harvest');
@@ -141,11 +147,13 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     },
   });
 
+  const focusedCrop = myCrops?.find((crop) => crop.id === linkedCropId);
   const filteredCrops = useMemo(() => {
     if (!myCrops) return [];
+    if (focusedCrop) return [focusedCrop];
     if (filter === 'all') return myCrops;
     return myCrops.filter((crop) => crop.status === filter);
-  }, [myCrops, filter]);
+  }, [myCrops, filter, focusedCrop]);
 
   const handleDelete = (crop: GrowerCropItem) => {
     if (
@@ -178,6 +186,17 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     );
   }
 
+  if (cropsError && myCrops === undefined) {
+    return (
+      <Card padding="6">
+        <div role="alert">
+          <p>We could not refresh your plants. Try again to see your garden.</p>
+          <Button onClick={() => { void retryCrops(); }}>Try again</Button>
+        </div>
+      </Card>
+    );
+  }
+
   const counts = {
     all: myCrops?.length ?? 0,
     growing: myCrops?.filter((c) => c.status === 'growing').length ?? 0,
@@ -189,12 +208,12 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     return (
       <Card padding="6">
         <div className="grn-crop-empty">
-          <span className="grn-crop-empty__emoji" aria-hidden="true">🌱</span>
+          <GardenScene name="first-garden" className="grn-crop-empty__art" />
           <h3>Your garden is a blank slate</h3>
           <p>
             Add your first crop and start mapping out beds, planting dates, and what you&apos;d like to grow.
           </p>
-          <Button variant="primary" size="md" onClick={() => navigate('/garden/plants/new')}>
+          <Button variant="primary" size="md" onClick={() => navigate(addCropPath)}>
             Add a crop
           </Button>
           {beds.length === 0 ? (
@@ -208,22 +227,40 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
   }
 
   return (
-    <div className="grn-crop-library">
+    <div className={`grn-crop-library ${focusedCrop ? 'grn-crop-library--focused' : ''}`}>
+      {cropsError ? (
+        <div className="grn-crop-journey__notice" role="alert">
+          <p>We could not refresh your plants. Showing the last saved garden information.</p>
+          <Button variant="ghost" size="sm" onClick={() => { void retryCrops(); }}>Try again</Button>
+        </div>
+      ) : null}
       <Card padding="6">
         <div className="grn-crop-library__head">
           <div>
-            <h3 className="grn-crop-library__title">My garden</h3>
+            <h3 className="grn-crop-library__title">{focusedCrop ? focusedCrop.nickname || focusedCrop.cropName : 'My garden'}</h3>
             <p className="grn-crop-library__subtitle">
-              {counts.all} crop{counts.all === 1 ? '' : 's'} tracked
+              {focusedCrop ? 'Plant details · timing, harvests, and care in one place' : `${counts.all} crop${counts.all === 1 ? '' : 's'} tracked`}
               {beds.length ? ` · ${beds.length} bed${beds.length === 1 ? '' : 's'}` : ''}
             </p>
           </div>
-          <Button variant="primary" size="sm" onClick={() => navigate('/garden/plants/new')}>
+          <Button variant="primary" size="sm" onClick={() => navigate(addCropPath)}>
             + Add crop
           </Button>
         </div>
 
-        <div className="grn-crop-library__filters" role="tablist" aria-label="Filter crops by status">
+        {linkedCropId ? (
+          <div className="grn-crop-journey__context">
+            {!focusedCrop ? <p role="status">That plant is no longer in your garden. Your other plants are shown below.</p> : null}
+            <Button variant="ghost" size="sm" onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              ['crop', 'action', 'harvest'].forEach((key) => next.delete(key));
+              setFilter('all');
+              setSearchParams(next);
+            }}>Back to all plants</Button>
+          </div>
+        ) : null}
+
+        {!focusedCrop ? <div className="grn-crop-library__filters" role="tablist" aria-label="Filter crops by status">
           {([
             { id: 'all', label: 'All', count: counts.all },
             { id: 'growing', label: 'Growing', count: counts.growing },
@@ -242,10 +279,15 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
               <span className="grn-crop-library__tab-count">{tab.count}</span>
             </button>
           ))}
-        </div>
+        </div> : null}
 
+        {filteredCrops.length === 0 ? <p role="status">No plants in this stage yet. Choose another filter to see the rest of your garden.</p> : null}
         <div className="grn-crop-grid">
           {filteredCrops.map((crop) => {
+            const plantParams = new URLSearchParams(searchParams);
+            plantParams.set('crop', crop.id);
+            plantParams.delete('action');
+            plantParams.delete('harvest');
             const visual = visualForCrop(crop.cropName, null);
             const status = STATUS_LABELS[crop.status] ?? STATUS_LABELS.interested;
             const planted = formatDate(crop.plantingDate);
@@ -262,7 +304,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                   }}
                 >
                   <span className="grn-crop-card__emoji" aria-hidden="true">
-                    <CropIcon iconKey={visual.iconKey} color={visual.accent} size="2.4rem" />
+                    <CropArtwork iconKey={visual.iconKey} color={visual.accent} size="3.5rem" />
                   </span>
                   <span className={`grn-crop-card__status grn-crop-card__status--${status.tone}`}>
                     <span aria-hidden="true">{status.emoji}</span>
@@ -272,7 +314,9 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
 
                 <div className="grn-crop-card__body">
                   <h4 className="grn-crop-card__name">
-                    {crop.nickname || crop.cropName}
+                    <Link to={{ pathname: '/garden/plants', search: `?${plantParams}` }}>
+                      {crop.nickname || crop.cropName}
+                    </Link>
                   </h4>
                   {crop.nickname ? (
                     <p className="grn-crop-card__subname">{crop.cropName}</p>
@@ -335,6 +379,14 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                     </div>
                   ) : null}
 
+                  {focusedCrop && crop.notes ? <p className="grn-crop-journey__notes">{crop.notes}</p> : null}
+                  {focusedCrop ? (
+                    <nav className="grn-crop-journey__links" aria-label={`Care for ${crop.nickname || crop.cropName}`}>
+                      <Link to={`/today/reminders?${new URLSearchParams({ new: 'true', title: `Check ${crop.nickname || crop.cropName}`, type: 'custom' })}`}>Add a care reminder</Link>
+                      <Link to="/garden/journal">Open garden journal</Link>
+                    </nav>
+                  ) : null}
+
                   <label className="grn-crop-card__bed-field">
                     <span>Bed assignment</span>
                     <select
@@ -384,7 +436,14 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/garden?bed=${crop.bedId}&crop=${crop.id}`)}
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams);
+                        params.set('bed', crop.bedId!);
+                        params.set('crop', crop.id);
+                        params.delete('action');
+                        params.delete('harvest');
+                        navigate(`/garden?${params}`);
+                      }}
                     >
                       View on Map
                     </Button>

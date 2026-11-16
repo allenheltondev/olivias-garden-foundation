@@ -13,7 +13,7 @@ export interface GrowerWizardProps {
   onBack?: () => void;
 }
 
-type WizardStep = 'welcome' | 'location' | 'zone' | 'preferences';
+type WizardStep = 'welcome' | 'location' | 'zone';
 
 /**
  * What a new grower can expect, in the order it happens. Setting expectations
@@ -59,6 +59,8 @@ interface ValidationErrors {
 export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStep>('welcome');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [zoneAutoFilled, setZoneAutoFilled] = useState(false);
   const [formData, setFormData] = useState<FormData>(() => ({
@@ -181,10 +183,6 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
       if (validateLocation()) {
         setCurrentStep('zone');
       }
-    } else if (currentStep === 'zone') {
-      if (validateZone()) {
-        setCurrentStep('preferences');
-      }
     }
   };
 
@@ -193,15 +191,16 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
       setCurrentStep('welcome');
     } else if (currentStep === 'zone') {
       setCurrentStep('location');
-    } else if (currentStep === 'preferences') {
-      setCurrentStep('zone');
     } else if (onBack) {
       onBack();
     }
   };
 
   const handleSubmit = async () => {
+    setSubmitError(null);
+    if (!validateZone()) return;
     if (!validatePreferences()) {
+      setPreferencesOpen(true);
       return;
     }
 
@@ -227,13 +226,14 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
       await onComplete(profileData);
     } catch (error) {
       logger.error('Failed to submit grower profile', error as Error);
+      setSubmitError(error instanceof Error ? error.message : 'Could not finish setup. Please try again.');
       setIsSubmitting(false);
     }
   };
 
   // The welcome screen is orientation rather than a form step, so it sits
   // outside the numbered progress.
-  const steps: WizardStep[] = ['location', 'zone', 'preferences'];
+  const steps: WizardStep[] = ['location', 'zone'];
   const currentStepIndex = steps.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
@@ -251,6 +251,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
                 className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
                 role="progressbar"
+                aria-label="Garden setup progress"
                 aria-valuenow={progress}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -289,7 +290,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
             </ol>
 
             <p className="text-sm text-neutral-500">
-              Setup takes about two minutes. Your address, growing zone, and sharing preferences can
+              Two questions, then add your first plant. Your address, growing zone, and preferences can
               be updated later in Settings, so nothing here is permanent.
             </p>
           </div>
@@ -302,7 +303,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
                 Where are you growing?
               </h2>
               <p className="text-neutral-600">
-                Share your address so nearby neighbors can coordinate pickup safely.
+                Your growing location helps us provide local planting guidance. Sharing food is optional.
               </p>
             </div>
 
@@ -385,141 +386,150 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
           </div>
         )}
 
-        {currentStep === 'preferences' && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-neutral-900 mb-2">
-                Set your preferences
-              </h2>
-              <p className="text-neutral-600">
-                Last step. Nothing is shared until you create a listing yourself — this only sets
-                how far it would reach when you do.
-              </p>
-            </div>
+        {currentStep === 'zone' && (
+          <details
+            className="mt-6 rounded-base border border-neutral-200 p-4"
+            open={preferencesOpen}
+            onToggle={(event) => setPreferencesOpen(event.currentTarget.open)}
+          >
+            <summary className="cursor-pointer font-medium text-primary-800">Optional preferences and organization details</summary>
+            <div className="space-y-4 mt-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-neutral-900 mb-2">
+                  Make it yours
+                </h2>
+                <p className="text-neutral-600">
+                  Start with a 5-mile sharing radius and units based on your device language.
+                  Adjust these now or later in Settings. Nothing is shared until you create an offer.
+                </p>
+              </div>
 
-            <div className="space-y-4">
-              <div className="rounded-base border border-neutral-200 bg-white p-4">
-                <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.isOrganization}
+              <div className="space-y-4">
+                <div className="rounded-base border border-neutral-200 bg-white p-4">
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={formData.isOrganization}
+                      onChange={(e) => {
+                        const isOrganization = e.target.checked;
+                        setFormData((prev) => ({
+                          ...prev,
+                          isOrganization,
+                          organizationName: isOrganization ? prev.organizationName : '',
+                        }));
+                        if (errors.organizationName) {
+                          setErrors((prev) => ({ ...prev, organizationName: undefined }));
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-neutral-900">
+                        We are growing as an organization
+                      </span>
+                      <span className="block text-sm text-neutral-600">
+                        Use this for community gardens, schools, churches, food pantries, and other groups sharing surplus together.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                {formData.isOrganization && (
+                  <Input
+                    label="Organization name"
+                    type="text"
+                    value={formData.organizationName}
                     onChange={(e) => {
-                      const isOrganization = e.target.checked;
                       setFormData((prev) => ({
                         ...prev,
-                        isOrganization,
-                        organizationName: isOrganization ? prev.organizationName : '',
+                        organizationName: e.target.value,
                       }));
                       if (errors.organizationName) {
                         setErrors((prev) => ({ ...prev, organizationName: undefined }));
                       }
                     }}
-                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600"
+                    placeholder="North Austin Community Garden"
+                    error={errors.organizationName}
+                    required
                   />
-                  <span>
-                    <span className="block text-sm font-medium text-neutral-900">
-                      We are growing as an organization
-                    </span>
-                    <span className="block text-sm text-neutral-600">
-                      Use this for community gardens, schools, churches, food pantries, and other groups sharing surplus together.
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              {formData.isOrganization && (
-                <Input
-                  label="Organization name"
-                  type="text"
-                  value={formData.organizationName}
-                  onChange={(e) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      organizationName: e.target.value,
-                    }));
-                    if (errors.organizationName) {
-                      setErrors((prev) => ({ ...prev, organizationName: undefined }));
-                    }
-                  }}
-                  placeholder="North Austin Community Garden"
-                  error={errors.organizationName}
-                  required
-                />
-              )}
-
-              <div>
-                <label className="text-sm font-medium text-neutral-700 mb-2 block">
-                  Share Radius
-                  <span className="text-error ml-1" aria-label="required">*</span>
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min="1"
-                    max="50"
-                    step="1"
-                    value={formData.shareRadiusMiles}
-                    onChange={(e) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        shareRadiusMiles: parseInt(e.target.value, 10),
-                      }));
-                      if (errors.shareRadiusMiles) {
-                        setErrors((prev) => ({ ...prev, shareRadiusMiles: undefined }));
-                      }
-                    }}
-                    className="flex-1"
-                    aria-label="Share radius in miles"
-                  />
-                  <span className="text-neutral-700 font-medium min-w-[4rem] text-right">
-                    {formData.shareRadiusMiles} mi
-                  </span>
-                </div>
-                {errors.shareRadiusMiles && (
-                  <p className="text-sm text-error mt-1" role="alert">
-                    {errors.shareRadiusMiles}
-                  </p>
                 )}
-                <p className="text-sm text-neutral-500 mt-1">
-                  How far away neighbors will see your listings
-                </p>
-              </div>
 
-              <div>
-                <label className="text-sm font-medium text-neutral-700 mb-2 block">
-                  Units
-                  <span className="text-error ml-1" aria-label="required">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, units: 'metric' }))}
-                    className={`flex-1 px-4 py-2 rounded-base border-2 transition-all ${
-                      formData.units === 'metric'
-                        ? 'border-primary-600 bg-primary-50 text-primary-700'
-                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
-                    }`}
-                    aria-pressed={formData.units === 'metric'}
-                  >
-                    Metric
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, units: 'imperial' }))}
-                    className={`flex-1 px-4 py-2 rounded-base border-2 transition-all ${
-                      formData.units === 'imperial'
-                        ? 'border-primary-600 bg-primary-50 text-primary-700'
-                        : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
-                    }`}
-                    aria-pressed={formData.units === 'imperial'}
-                  >
-                    Imperial
-                  </button>
+                <div>
+                  <label className="text-sm font-medium text-neutral-700 mb-2 block">
+                    Share Radius
+                    <span className="text-error ml-1" aria-label="required">*</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="1"
+                      max="50"
+                      step="1"
+                      value={formData.shareRadiusMiles}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          shareRadiusMiles: parseInt(e.target.value, 10),
+                        }));
+                        if (errors.shareRadiusMiles) {
+                          setErrors((prev) => ({ ...prev, shareRadiusMiles: undefined }));
+                        }
+                      }}
+                      className="flex-1"
+                      aria-label="Share radius in miles"
+                    />
+                    <span className="text-neutral-700 font-medium min-w-[4rem] text-right">
+                      {formData.shareRadiusMiles} mi
+                    </span>
+                  </div>
+                  {errors.shareRadiusMiles && (
+                    <p className="text-sm text-error mt-1" role="alert">
+                      {errors.shareRadiusMiles}
+                    </p>
+                  )}
+                  <p className="text-sm text-neutral-500 mt-1">
+                    How far away neighbors will see your listings
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-neutral-700 mb-2 block">
+                    Units
+                    <span className="text-error ml-1" aria-label="required">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, units: 'metric' }))}
+                      className={`flex-1 px-4 py-2 rounded-base border-2 transition-all ${
+                        formData.units === 'metric'
+                          ? 'border-primary-600 bg-primary-50 text-primary-700'
+                          : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
+                      }`}
+                      aria-pressed={formData.units === 'metric'}
+                    >
+                      Metric
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, units: 'imperial' }))}
+                      className={`flex-1 px-4 py-2 rounded-base border-2 transition-all ${
+                        formData.units === 'imperial'
+                          ? 'border-primary-600 bg-primary-50 text-primary-700'
+                          : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
+                      }`}
+                      aria-pressed={formData.units === 'imperial'}
+                    >
+                      Imperial
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </details>
         )}
+
+        {submitError ? <p className="mt-4 text-sm text-error" role="alert">{submitError}</p> : null}
 
         <div className="flex gap-3 mt-8">
           {currentStep !== 'welcome' || onBack ? (
@@ -533,7 +543,7 @@ export function GrowerWizard({ onComplete, onBack }: GrowerWizardProps) {
             </Button>
           ) : null}
 
-          {currentStep !== 'preferences' ? (
+          {currentStep !== 'zone' ? (
             <Button
               variant="primary"
               onClick={handleNext}

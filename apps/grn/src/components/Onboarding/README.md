@@ -12,7 +12,8 @@ surplus is an opt-in layer available to anyone after setup.
    while the profile loads, renders `OnboardingFlow` when onboarding is
    incomplete, and otherwise renders the app.
 2. **OnboardingFlow** — owns `useOnboarding`, submits the grower profile,
-   refreshes the user, and drops the grower on Today.
+   refreshes the user, and opens first-plant entry for new growers who started
+   on Today. Existing profiles and intended deep links retain their destination.
 3. **GrowerWizard** — the setup itself:
    - a **welcome screen** that says what Good Roots is for and what happens
      next (set location → add a plant → check Today → share only if you want
@@ -20,9 +21,11 @@ surplus is an opt-in layer available to anyone after setup.
      a form step.
    - **Step 1 – location**, with optional geolocation and reverse geocoding.
    - **Step 2 – zone**, auto-filled from the postcode when possible.
-   - **Step 3 – preferences**: organization flag, share radius, and units.
-     Copy here is explicit that nothing is shared until the grower creates a
-     listing themselves.
+     Organization details, share radius, and units are available in an optional
+     disclosure on this step, with defaults of an individual grower, a 5-mile
+     radius, and units based on device language. These can be changed in Settings.
+     Nothing is shared until the grower creates an offer.
+   - Failed saves keep the answers and show an error so setup can be retried.
 
 ## After the wizard
 

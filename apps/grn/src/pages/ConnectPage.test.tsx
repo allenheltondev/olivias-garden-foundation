@@ -42,4 +42,13 @@ describe('ConnectPage', () => {
       expect(screen.getByTestId('location')).toHaveTextContent('/share/find');
     });
   });
+
+  it('keeps garden sharing and insights available as secondary links', async () => {
+    renderPage();
+    expect(screen.getByText(/nothing is shared automatically/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /what neighbors need/i }))
+      .toHaveAttribute('href', '/garden/plan/recommendations');
+    await userEvent.click(screen.getByRole('link', { name: /share your garden/i }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/garden');
+  });
 });

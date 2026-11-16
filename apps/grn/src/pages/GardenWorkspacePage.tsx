@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import './GardenWorkspacePage.css';
 
 const GARDEN_VIEWS = [
   {

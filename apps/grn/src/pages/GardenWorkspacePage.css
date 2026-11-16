@@ -1,0 +1,42 @@
+/* Five views of one garden, kept in a single predictable navigation row. */
+.grn-garden-views {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  background: #f5f3eb;
+  box-shadow: none;
+}
+
+.grn-garden-views__link {
+  min-width: 0;
+  color: #594c3e;
+}
+
+.grn-garden-views__link.is-active {
+  background: #fffdf8;
+  color: #31592f;
+  box-shadow: inset 0 -3px #426b3f, 0 1px 3px #4f382514;
+}
+
+.grn-garden-views__description {
+  color: #594c3e;
+}
+
+@media (max-width: 800px) {
+  .grn-garden-views {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 0.4rem;
+  }
+
+  .grn-garden-views__link {
+    flex: 1 0 auto;
+    min-height: 3rem;
+    min-width: 4.5rem;
+    padding: 0.7rem;
+    place-items: center;
+  }
+
+  .grn-garden-views__description {
+    display: none;
+  }
+}

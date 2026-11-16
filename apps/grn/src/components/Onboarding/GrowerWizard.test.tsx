@@ -56,7 +56,7 @@ describe('GrowerWizard', () => {
     renderAtSetup();
 
     expect(screen.getByText('Where are you growing?')).toBeInTheDocument();
-    expect(screen.getByText('Step 1 of 3')).toBeInTheDocument();
+    expect(screen.getByText('Step 1 of 2')).toBeInTheDocument();
   });
 
   it('can step back from the first question to the welcome screen', () => {
@@ -113,8 +113,6 @@ describe('GrowerWizard', () => {
 
     const zoneInput = await screen.findByLabelText(/USDA Hardiness Zone/i);
     fireEvent.change(zoneInput, { target: { value: '8a' } });
-    fireEvent.click(screen.getByRole('button', { name: /next/i }));
-
     fireEvent.click(await screen.findByRole('button', { name: /complete setup/i }));
 
     await waitFor(() => {
@@ -140,8 +138,7 @@ describe('GrowerWizard', () => {
     fireEvent.change(await screen.findByLabelText(/USDA Hardiness Zone/i), {
       target: { value: '8a' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /next/i }));
-
+    fireEvent.click(screen.getByText('Optional preferences and organization details'));
     fireEvent.click(screen.getByLabelText(/We are growing as an organization/i));
     fireEvent.click(await screen.findByRole('button', { name: /complete setup/i }));
 
@@ -160,8 +157,7 @@ describe('GrowerWizard', () => {
     fireEvent.change(await screen.findByLabelText(/USDA Hardiness Zone/i), {
       target: { value: '8a' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /next/i }));
-
+    fireEvent.click(screen.getByText('Optional preferences and organization details'));
     fireEvent.click(screen.getByLabelText(/We are growing as an organization/i));
     fireEvent.change(screen.getByLabelText(/Organization name/i), {
       target: { value: 'North Austin Community Garden' },
@@ -177,4 +173,36 @@ describe('GrowerWizard', () => {
       );
     });
   });
+  it('finishes after two questions without opening optional preferences', async () => {
+    renderAtSetup();
+    fireEvent.change(screen.getByLabelText(/Address/i), { target: { value: '123 Main St, Springfield, IL' } });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(screen.getByText('Step 2 of 2')).toBeInTheDocument();
+    expect(screen.getByText('Optional preferences and organization details').closest('details')).not.toHaveAttribute('open');
+    fireEvent.change(screen.getByLabelText(/USDA Hardiness Zone/i), { target: { value: '8a' } });
+    fireEvent.click(screen.getByRole('button', { name: /complete setup/i }));
+    await waitFor(() => expect(mockOnComplete).toHaveBeenCalledWith(expect.objectContaining({ shareRadiusMiles: 5, isOrganization: false })));
+  });
+
+  it('validates the growing zone before finishing', () => {
+    renderAtSetup();
+    fireEvent.change(screen.getByLabelText(/Address/i), { target: { value: '123 Main St, Springfield, IL' } });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /complete setup/i }));
+    expect(screen.getByText('Growing zone is required')).toBeInTheDocument();
+    expect(mockOnComplete).not.toHaveBeenCalled();
+  });
+
+  it('keeps entered answers and shows a retryable save error', async () => {
+    mockOnComplete.mockRejectedValueOnce(new Error('Connection interrupted. Please try again.'));
+    renderAtSetup();
+    fireEvent.change(screen.getByLabelText(/Address/i), { target: { value: '123 Main St, Springfield, IL' } });
+    fireEvent.click(screen.getByRole('button', { name: /next/i }));
+    fireEvent.change(screen.getByLabelText(/USDA Hardiness Zone/i), { target: { value: '8a' } });
+    fireEvent.click(screen.getByRole('button', { name: /complete setup/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Connection interrupted');
+    expect(screen.getByDisplayValue('8a')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /complete setup/i })).toBeEnabled();
+  });
+
 });
