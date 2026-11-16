@@ -14,10 +14,10 @@
     "alt": "How to harvest okra card with a photo of freshly picked okra pods lined up on a towel."
   },
   "datePublished": "2026-11-15",
-  "dateModified": "2026-11-15",
+  "dateModified": "2026-11-16",
   "review": {
     "reviewedBy": "Allen Helton",
-    "reviewedOn": "2026-11-15"
+    "reviewedOn": "2026-11-16"
   },
   "targetQueries": [
     "how to harvest okra",
@@ -29,7 +29,8 @@
   "related": [
     "how-to-grow-okra",
     "saving-okra-seeds",
-    "free-okra-seeds"
+    "free-okra-seeds",
+    "preserving-okra"
   ],
   "order": 15,
   "intro": [
@@ -125,7 +126,7 @@
       "blocks": [
         {
           "type": "paragraph",
-          "text": "Fresh okra doesn't keep long. Texas A&M AgriLife says it lasts [3 to 5 days in the refrigerator](https://agrilifeextension.tamu.edu/library/gardening/okra/), and ours is best within about 3 days of picking, so pick close to when you'll eat it. Don't wash the pods until you're ready to use them, since washing [speeds up decay](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/)."
+          "text": "Fresh okra doesn't keep long. Texas A&M AgriLife says it lasts [3 to 5 days in the refrigerator](https://agrilifeextension.tamu.edu/library/gardening/okra/), and ours is best within about 3 days of picking, so pick close to when you'll eat it. Don't wash the pods until you're ready to use them, since washing [speeds up decay](https://hgic.clemson.edu/factsheet/how-to-grow-okra-in-south-carolina-including-planting-dates-watering-fertilizing-ratooning-pest-management-and-harvesting-tips-for-healthy-pod-production/). To keep okra longer, see [how to preserve okra](/okra/preserving-okra)."
         },
         {
           "type": "paragraph",

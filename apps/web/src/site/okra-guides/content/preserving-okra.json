@@ -1,0 +1,184 @@
+{
+  "slug": "preserving-okra",
+  "status": "published",
+  "title": "How to preserve okra",
+  "seoTitle": "How to Freeze, Pickle and Can Okra Safely",
+  "description": "Freeze okra after a 3 or 4 minute blanch, pickle it with a tested dilled okra recipe, or pressure can it. Safe, tested steps for your harvest.",
+  "summary": "Freeze okra after blanching it for 3 to 4 minutes, or pickle it with a tested recipe and a boiling-water canner. Plain okra can only be canned in a pressure canner. Fresh pods keep only a few days, so preserve them soon after picking.",
+  "heroImage": {
+    "src": "/images/okra/guides/preserving-okra/jar-of-pickled-okra.jpg",
+    "alt": "A hand holding a wide-mouth glass jar packed with whole pickled okra pods in brine, with garlic at the bottom."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/preserving-okra.jpg",
+    "alt": "How to preserve okra card with a photo of a jar of homemade pickled okra."
+  },
+  "datePublished": "2026-11-16",
+  "dateModified": "2026-11-16",
+  "review": {
+    "reviewedBy": "Allen Helton",
+    "reviewedOn": "2026-11-16"
+  },
+  "targetQueries": [
+    "how to freeze okra",
+    "pickled okra recipe",
+    "how to store fresh okra",
+    "can you can okra",
+    "how to preserve okra"
+  ],
+  "related": [
+    "how-to-harvest-okra",
+    "how-to-grow-okra",
+    "free-okra-seeds"
+  ],
+  "order": 18,
+  "intro": [
+    "A healthy okra patch can give you more pods than you can eat. Freezing and pickling keep that summer harvest going all year.",
+    "For picking and storing fresh pods, start with [how to harvest okra](/okra/how-to-harvest-okra)."
+  ],
+  "sections": [
+    {
+      "id": "at-a-glance",
+      "title": "Preserving okra at a glance",
+      "placement": "aside",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "Fresh: refrigerate unwashed at 40°F or colder and use within a few days",
+            "Freeze: blanch small pods 3 minutes, large pods 4",
+            "Pickle: follow a tested recipe and process the jars",
+            "Can plain okra: pressure canner only"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storing-fresh",
+      "title": "Storing fresh okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Refrigerate fresh okra at [40°F or colder](https://www.fda.gov/food/buy-store-serve-safe-food/selecting-and-serving-produce-safely), and don't wash the pods until you're ready to use them, since washing speeds up decay. Clemson Extension says well-handled pods can last up to seven days in the refrigerator, but they're at their best in the first few days, so preserve extras soon after picking."
+        }
+      ]
+    },
+    {
+      "id": "freezing",
+      "title": "How to freeze okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Freezing is the simplest way to keep okra. These steps follow the [National Center for Home Food Preservation](https://nchfp.uga.edu/how/freeze/vegetable/freezing-okra/)."
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Pick young, tender pods. Sort them into small pods, 4 inches or under, and large pods.",
+            "Wash the pods and trim off the stems, without cutting into the seed cells.",
+            "Blanch in boiling water: 3 minutes for small pods, 4 minutes for large pods.",
+            "Cool the pods promptly and drain.",
+            "Leave them whole or slice them crosswise, pack into freezer containers or bags with 1/2 inch of headspace, seal and freeze."
+          ]
+        },
+        {
+          "type": "tip",
+          "title": "Freezing okra for frying",
+          "text": "After blanching and cooling, slice the pods crosswise and coat the slices in cornmeal or flour. Spread them in a single layer on a tray and freeze just until firm, then pack them into containers with 1/2 inch of headspace. They go straight from the freezer to the pan."
+        }
+      ]
+    },
+    {
+      "id": "pickled-okra",
+      "title": "Pickled okra recipe",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "This is the [National Center for Home Food Preservation's tested Pickled Dilled Okra recipe](https://nchfp.uga.edu/how/pickle/vegetable-pickles/pickled-dilled-okra/), processed in a boiling-water canner. It makes 8 to 9 pints. We water-bath can our own pickled okra too, with a brine of equal parts water and 5% vinegar, the same ratio this recipe uses. Before you start, read the National Center's [instructions for using a boiling-water canner](https://nchfp.uga.edu/how/can/using-boiling-water-canners/)."
+        },
+        {
+          "type": "list",
+          "items": [
+            "7 pounds small okra pods",
+            "6 small hot peppers",
+            "4 teaspoons dill seed",
+            "8 to 9 garlic cloves",
+            "2/3 cup canning or pickling salt",
+            "6 cups water",
+            "6 cups vinegar (5% acidity)"
+          ]
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Wash and trim the okra. Pack the pods firmly into clean pint jars, leaving 1/2 inch of headspace, and add 1 garlic clove to each jar.",
+            "Bring the salt, hot peppers, dill seed, water and vinegar to a boil in a large saucepan.",
+            "Pour the hot brine over the okra, leaving 1/2 inch of headspace.",
+            "Put on the lids and process the jars in a boiling-water canner for the time below."
+          ]
+        },
+        {
+          "type": "table",
+          "caption": "Boiling-water canner processing time for pint jars",
+          "headers": [
+            "Elevation",
+            "Time"
+          ],
+          "rows": [
+            [
+              "0 to 1,000 feet",
+              "10 minutes"
+            ],
+            [
+              "1,001 to 6,000 feet",
+              "15 minutes"
+            ],
+            [
+              "Above 6,000 feet",
+              "20 minutes"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Keep the jars covered by at least 1 inch of water. Start the timer only once the water is at a full, vigorous boil, and keep the canner covered. If the water stops boiling at any point, bring it back to a vigorous boil and [start the full processing time over](https://nchfp.uga.edu/how/can/using-boiling-water-canners/)."
+        },
+        {
+          "type": "tip",
+          "title": "Keep it safe",
+          "text": "Don't change the amounts of vinegar, water or okra, and only use vinegar labeled 5% acidity. The National Center notes that a [tested, uniform level of acid](https://nchfp.uga.edu/how/pickle/general-information-pickling/general-information-on-pickling/) is what keeps pickles safe. The tested recipe gives times for pint jars only."
+        }
+      ]
+    },
+    {
+      "id": "canning-plain-okra",
+      "title": "Canning plain okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Plain okra, without vinegar, isn't acidic enough for a boiling-water canner. It has to be processed in a pressure canner. Follow the National Center's [full tested recipe for canning okra](https://nchfp.uga.edu/how/can/canning-vegetables-and-vegetable-products/okra/), and use the processing time for your jar size and the pressure for your gauge type and elevation. If you don't have a pressure canner, freeze or pickle it instead."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "Do you have to blanch okra before freezing?",
+      "answer": "Yes. The National Center for Home Food Preservation blanches small pods for 3 minutes and large pods for 4, then cools them right away before packing and freezing."
+    },
+    {
+      "question": "Can you can okra in a water bath?",
+      "answer": "Only as pickles. A tested pickled okra recipe uses enough vinegar for a boiling-water canner. Plain okra has to be pressure canned."
+    },
+    {
+      "question": "How long does fresh okra last in the fridge?",
+      "answer": "Up to about a week if it's stored unwashed, but it's best in the first few days. Preserve extra pods soon after picking."
+    },
+    {
+      "question": "Can I use quart jars for pickled okra?",
+      "answer": "The tested Pickled Dilled Okra recipe only gives processing times for pint jars, so use pints when canning it."
+    }
+  ]
+}

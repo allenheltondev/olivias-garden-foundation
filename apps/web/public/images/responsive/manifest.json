@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-16T01:13:08.689Z",
+  "generatedAt": "2026-11-16T01:43:46.613Z",
   "widths": [
     480,
     768,
@@ -749,6 +749,30 @@
             "width": 900,
             "path": "images/responsive/okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket-900.avif",
             "bytes": 300869
+          }
+        ]
+      }
+    },
+    "okra/guides/preserving-okra/jar-of-pickled-okra.jpg": {
+      "original": "okra/guides/preserving-okra/jar-of-pickled-okra.jpg",
+      "width": 1205,
+      "height": 1600,
+      "variants": {
+        "avif": [
+          {
+            "width": 480,
+            "path": "images/responsive/okra/guides/preserving-okra/jar-of-pickled-okra-480.avif",
+            "bytes": 16954
+          },
+          {
+            "width": 768,
+            "path": "images/responsive/okra/guides/preserving-okra/jar-of-pickled-okra-768.avif",
+            "bytes": 37139
+          },
+          {
+            "width": 1205,
+            "path": "images/responsive/okra/guides/preserving-okra/jar-of-pickled-okra-1205.avif",
+            "bytes": 75027
           }
         ]
       }
