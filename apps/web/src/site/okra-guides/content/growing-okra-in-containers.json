@@ -1,0 +1,147 @@
+{
+  "slug": "growing-okra-in-containers",
+  "status": "draft",
+  "title": "How to grow okra in containers",
+  "seoTitle": "Growing Okra in Containers: Pot Size, Soil and Water",
+  "description": "Yes, okra grows in containers. Use at least a 5-gallon pot with drainage holes, potting mix and full sun, and water often. What to expect from the harvest.",
+  "summary": "Okra grows well in a container. Use at least a 5-gallon bucket with drainage holes, fill it with potting mix, give it full sun and water it often. Expect a shorter plant that starts producing later than okra in the ground.",
+  "heroImage": {
+    "src": "/images/okra/guides/growing-okra-in-containers/okra-plant-in-5-gallon-bucket.jpg",
+    "alt": "A bushy young okra plant with large lobed leaves growing in a blue 5-gallon bucket on the lawn beside a wooden planter."
+  },
+  "socialImage": {
+    "src": "/images/social/okra-guides/growing-okra-in-containers.jpg",
+    "alt": "Growing okra in containers card with a photo of an okra plant in a blue 5-gallon bucket."
+  },
+  "targetQueries": [
+    "growing okra in containers",
+    "can you grow okra in a pot",
+    "okra in 5 gallon bucket",
+    "best pot size for okra",
+    "container okra"
+  ],
+  "related": [
+    "how-to-grow-okra",
+    "when-to-plant-okra",
+    "free-okra-seeds"
+  ],
+  "order": 12,
+  "intro": [
+    "No garden bed? Okra still works. A single plant in a 5-gallon bucket can keep you in pods through the summer, as long as it gets plenty of sun and water.",
+    "Need seeds? Start with [free okra seeds](/okra/free-okra-seeds) from Olivia's garden."
+  ],
+  "sections": [
+    {
+      "id": "at-a-glance",
+      "title": "Container okra at a glance",
+      "placement": "aside",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "One plant per 5-gallon container or larger",
+            "Drainage holes in the bottom",
+            "Potting mix, not garden soil",
+            "At least 5 hours of direct sun, and 8 to 10 is better",
+            "Check the soil every day in summer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "our-bucket",
+      "title": "Our family's bucket okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Olivia's grandfather grew Clemson Spineless from the project's seed in a 5-gallon bucket with drainage holes, filled with potting mix, about 15 miles from our garden in North Texas. He watered it every 2 days."
+        },
+        {
+          "type": "paragraph",
+          "text": "It grew to about 4 feet tall, compared with over 6 feet for our plants in the ground. It started producing about 2 months later than our in-ground okra, but once it got going it was prolific."
+        }
+      ]
+    },
+    {
+      "id": "container-size",
+      "title": "What size container okra needs",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Extension guides don't list okra by name, but Texas A&M AgriLife says [5-gallon containers are the most suitable size](https://aggie-horticulture.tamu.edu/wp-content/uploads/sites/10/2013/09/EHT-062.pdf) for fruiting crops like tomatoes, peppers and eggplant. Okra is a big plant, so treat 5 gallons as the minimum for one plant. A bigger container holds more water and needs it less often."
+        },
+        {
+          "type": "paragraph",
+          "text": "Whatever you use, it needs [holes in the bottom for drainage](https://hgic.clemson.edu/factsheet/container-vegetable-gardening/) so the roots never sit in water. A bucket with a few holes drilled in the bottom works well."
+        }
+      ]
+    },
+    {
+      "id": "soil",
+      "title": "The best soil for container okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Use potting mix. Clemson Extension notes that [soil straight from the garden is usually too heavy](https://hgic.clemson.edu/factsheet/container-vegetable-gardening/) for a container, while packaged potting soil makes a good container medium."
+        }
+      ]
+    },
+    {
+      "id": "sun-and-water",
+      "title": "Sun and water",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Put the container in your sunniest spot. Vegetables grown for their fruit need [at least 5 hours of direct sun, and do better with 8 to 10](https://hgic.clemson.edu/factsheet/container-vegetable-gardening/)."
+        },
+        {
+          "type": "paragraph",
+          "text": "Containers dry out much faster than garden beds. Clemson Extension suggests checking them [at least once a day, and twice on hot, dry or windy days](https://hgic.clemson.edu/factsheet/container-vegetable-gardening/). Water until it runs out of the drainage holes."
+        },
+        {
+          "type": "tip",
+          "title": "From Olivia's garden",
+          "text": "Our family's bucket okra got water every 2 days in a North Texas summer. Feel the soil a couple of inches down, and water whenever it's dry."
+        }
+      ]
+    },
+    {
+      "id": "feeding",
+      "title": "Feeding okra in a container",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "If your potting mix has fertilizer in it, Clemson Extension says it should carry plants for [8 to 10 weeks](https://hgic.clemson.edu/factsheet/container-vegetable-gardening/). After that, use a water-soluble fertilizer at the label rate every 2 to 3 weeks, and never more than the label says."
+        }
+      ]
+    },
+    {
+      "id": "when-to-plant",
+      "title": "When to plant container okra",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "The same timing as okra in the ground: plant once the soil is at least 65°F, about 2 to 3 weeks after your last frost. See [when to plant okra](/okra/when-to-plant-okra) for your hardiness zone. For growing tips that apply to every okra plant, see [how to grow okra](/okra/how-to-grow-okra)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "question": "Can you grow okra in a pot?",
+      "answer": "Yes. Our family grew a prolific Clemson Spineless plant in a 5-gallon bucket with drainage holes and potting mix. Give it full sun and check the soil every day in summer."
+    },
+    {
+      "question": "What size pot does okra need?",
+      "answer": "At least 5 gallons for one plant. Bigger is better, since a larger container holds more water and dries out more slowly."
+    },
+    {
+      "question": "How tall does okra get in a container?",
+      "answer": "Shorter than in the ground. Our family's bucket okra reached about 4 feet, compared with over 6 feet for the same variety in our garden beds."
+    },
+    {
+      "question": "Does container okra produce as much as okra in the ground?",
+      "answer": "In our experience it starts later, about 2 months behind our in-ground plants, but it was prolific once it got going."
+    }
+  ]
+}
