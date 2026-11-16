@@ -46,6 +46,7 @@ jobs:
       store_backend: ${{ steps.filter.outputs.store_backend }}
       store_frontend: ${{ steps.filter.outputs.store_frontend }}
       mcp_backend: ${{ steps.filter.outputs.mcp_backend }}
+      grn_mcp: ${{ steps.filter.outputs.grn_mcp }}
 
     steps:
       - name: Checkout code
@@ -88,6 +89,13 @@ jobs:
             mcp_backend:
               - 'services/mcp-api/**'
               - 'postman/collections/Operator MCP/**'
+            grn_mcp:
+              - 'services/grn-mcp/**'
+              - 'postman/collections/Good Roots Network MCP/**'
+              # Its tools are generated from the GRN spec, so a spec change
+              # must re-run the drift check.
+              - 'services/grn-api/openapi.yaml'
+              - 'services/grn-api/openapi/**'
 
   backend-static:
     name: GRN Backend Static Checks
@@ -782,6 +790,64 @@ jobs:
       - name: Run MCP API tests
         run: npm --workspace services/mcp-api run test
 
+  grn-mcp-static:
+    name: GRN MCP Static Checks
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_mcp == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install GRN MCP dependencies
+        run: npm ci --workspace services/grn-mcp --include-workspace-root=false --ignore-scripts
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Install esbuild
+        run: npm install -g esbuild
+
+      - name: Run GRN MCP lint (includes the spec drift check)
+        run: npm --workspace services/grn-mcp run lint
+
+      - name: Build GRN MCP backend
+        working-directory: services/grn-mcp
+        run: npm run build
+
+  grn-mcp-tests:
+    name: GRN MCP Tests
+    if: github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_mcp == 'true')
+    needs: [changes]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install GRN MCP dependencies
+        run: npm ci --workspace services/grn-mcp --include-workspace-root=false --ignore-scripts
+
+      - name: Run GRN MCP tests
+        run: npm --workspace services/grn-mcp run test
+
   ci-summary:
     name: Platform CI Summary
     runs-on: ubuntu-latest
@@ -813,6 +879,8 @@ jobs:
       - notifications-backend-static
       - mcp-backend-static
       - mcp-backend-tests
+      - grn-mcp-static
+      - grn-mcp-tests
     if: always() && github.event.action != 'closed'
 
     steps:
@@ -853,6 +921,8 @@ jobs:
           check_result "notifications-backend-static" "${{ needs.notifications-backend-static.result }}"
           check_result "mcp-backend-static" "${{ needs.mcp-backend-static.result }}"
           check_result "mcp-backend-tests" "${{ needs.mcp-backend-tests.result }}"
+          check_result "grn-mcp-static" "${{ needs.grn-mcp-static.result }}"
+          check_result "grn-mcp-tests" "${{ needs.grn-mcp-tests.result }}"
 
           echo "All applicable platform CI checks passed"
 
@@ -866,7 +936,7 @@ jobs:
     # changes outputs then never gets a chance to evaluate. Gating on
     # ci-summary's explicit result preserves the "ci must pass before deploy"
     # semantic while letting the path-filtered skips through.
-    if: always() && needs.ci-summary.result == 'success' && github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true' || needs.changes.outputs.notifications_backend == 'true' || needs.changes.outputs.store_backend == 'true' || needs.changes.outputs.store_frontend == 'true' || needs.changes.outputs.mcp_backend == 'true')
+    if: always() && needs.ci-summary.result == 'success' && github.event.action != 'closed' && (needs.changes.outputs.shared_all == 'true' || needs.changes.outputs.grn_backend == 'true' || needs.changes.outputs.grn_frontend == 'true' || needs.changes.outputs.admin_backend == 'true' || needs.changes.outputs.admin_frontend == 'true' || needs.changes.outputs.okra_backend == 'true' || needs.changes.outputs.notifications_backend == 'true' || needs.changes.outputs.store_backend == 'true' || needs.changes.outputs.store_frontend == 'true' || needs.changes.outputs.mcp_backend == 'true' || needs.changes.outputs.grn_mcp == 'true')
     uses: ./.github/workflows/pull-request-staging-validation-reusable.yml
     with:
       shared_all: ${{ needs.changes.outputs.shared_all }}
@@ -879,6 +949,7 @@ jobs:
       store_backend: ${{ needs.changes.outputs.store_backend }}
       store_frontend: ${{ needs.changes.outputs.store_frontend }}
       mcp_backend: ${{ needs.changes.outputs.mcp_backend }}
+      grn_mcp: ${{ needs.changes.outputs.grn_mcp }}
       stripe_event_bus_name_staging: ${{ vars.STRIPE_EVENT_BUS_NAME_STAGING || '' }}
       pr_number: ${{ github.event.pull_request.number }}
     secrets:

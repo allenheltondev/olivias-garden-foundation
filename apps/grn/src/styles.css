@@ -6068,95 +6068,6 @@ body {
   }
 }
 
-/* ===== API access request ===== */
-.grn-api-access {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  padding: clamp(1rem, 2vw, 1.4rem);
-  border: 1px solid rgba(79, 56, 37, 0.13);
-  border-radius: 1.25rem;
-  background: linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(244, 239, 224, 0.94));
-}
-
-.grn-api-access h3 {
-  margin: 0;
-  color: var(--og-color-soil);
-  font-size: 1.15rem;
-  letter-spacing: normal;
-}
-
-.grn-api-access__intro,
-.grn-api-access__status {
-  margin: 0;
-  max-width: 62ch;
-  color: rgba(79, 56, 37, 0.75);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-/*
- * The shared Input and Textarea render `.og-input` / `.og-textarea` wrappers,
- * and neither carries a width. In a flex column with `align-items: flex-start`
- * that collapses them to fit-content, which is what made these fields look
- * scrunched up — `.og-input__field { width: 100% }` was resolving against an
- * already-collapsed box.
- *
- * The previous rule here targeted `> label` and `> .og-form-field`, neither of
- * which those components render, so it silently matched nothing. These are the
- * wrapper classes they actually emit; widening this to `> *` would stretch the
- * buttons across the panel too.
- */
-.grn-api-access > .og-input,
-.grn-api-access > .og-textarea {
-  width: 100%;
-  max-width: 42rem;
-}
-
-.grn-api-access__field-help {
-  margin: -0.35rem 0 0;
-  color: rgba(79, 56, 37, 0.7);
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-
-.grn-api-access__approved,
-.grn-api-access__pending,
-.grn-api-access__denied,
-.grn-api-access__error {
-  margin: 0;
-  padding: 0.5rem 0.7rem;
-  border-radius: 0.7rem;
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-.grn-api-access__approved {
-  background: rgba(66, 107, 63, 0.12);
-  color: #35542f;
-}
-
-.grn-api-access__pending {
-  background: rgba(225, 181, 83, 0.18);
-  color: #6d521d;
-}
-
-.grn-api-access__denied {
-  background: rgba(79, 56, 37, 0.08);
-  color: var(--og-color-soil);
-}
-
-.grn-api-access__denied p {
-  margin: 0 0 0.35rem;
-}
-
-.grn-api-access__error {
-  background: rgba(168, 104, 31, 0.16);
-  color: #7a3f10;
-}
-
 .grn-settings-link {
   display: inline-block;
   margin-top: 0.75rem;
@@ -6168,29 +6079,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.grn-api-access__actions {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.grn-api-access__actions > * {
-  flex: 0 0 auto;
-}
-
-/* Give the "why do you need a key" answer room to actually be written in. */
-.grn-api-access .og-textarea__field {
-  min-height: 8.5rem;
-  resize: vertical;
-}
-
-.grn-api-access h2 {
-  margin: 0;
-  color: var(--og-color-soil);
-  font-size: 1.15rem;
-  letter-spacing: normal;
 }
 
 /* ===== API reference ===== */

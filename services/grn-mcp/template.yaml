@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Good Roots Network MCP server: lets growers' AI assistants use their garden,
+  listings and reminders with the grower's own API key (docs/grn-mcp-server.md).
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+      - pr
+  GrnApiUrl:
+    Type: String
+    Description: ApiUrl output of the Good Roots Network stack, e.g. https://api.<domain>/grn
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Optional root domain; the server is then at https://api.<domain>/grn-mcp
+  DomainHostedZoneId:
+    Type: String
+    Default: ""
+    Description: Optional Route 53 hosted zone id (the shared API domain must already exist)
+
+Conditions:
+  DeploySharedApiBasePathMapping: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref DomainHostedZoneId, ""]]
+
+Globals:
+  Function:
+    Tracing: Disabled
+    Runtime: nodejs24.x
+    Architectures: [arm64]
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+
+Resources:
+  # No API Gateway authorizer: the function checks the grower's GRN key by
+  # asking the GRN API, whose own authorizer and usage plan then apply to
+  # every tool call. The stage throttle bounds what any caller can send here.
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "Good Roots Network MCP (${EnvironmentName})"
+      StageName: api
+      TracingEnabled: false
+      MethodSettings:
+        - MetricsEnabled: true
+          ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: ERROR
+          ThrottlingRateLimit: 50
+          ThrottlingBurstLimit: 100
+
+  SharedApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeploySharedApiBasePathMapping
+    DependsOn:
+      - ApiapiStage
+    Properties:
+      DomainName: !Sub "api.${DomainName}"
+      RestApiId: !Ref Api
+      Stage: api
+      BasePath: grn-mcp
+
+  McpFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: esm
+        Minify: true
+        OutExtension:
+          - .js=.mjs
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/handlers/mcp.mjs
+        Banner:
+          - js=import { createRequire } from 'module'; const require = createRequire(import.meta.url);
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/mcp.handler
+      Description: Good Roots Network MCP server for growers' AI assistants
+      MemorySize: 512
+      # API Gateway waits 29s at most; each tool is one GRN API call (25s timeout).
+      Timeout: 29
+      Environment:
+        Variables:
+          GRN_API_URL: !Ref GrnApiUrl
+      Policies:
+        # Nothing else: the function calls the public GRN API with the
+        # grower's own key and holds no credentials of its own.
+        - AWSLambdaBasicExecutionRole
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /
+            Method: ANY
+        Proxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  McpServerUrl:
+    Description: The Good Roots Network MCP endpoint
+    Value: !If
+      - DeploySharedApiBasePathMapping
+      - !Sub "https://api.${DomainName}/grn-mcp"
+      - !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/api/"

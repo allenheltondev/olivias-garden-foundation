@@ -1,0 +1,3193 @@
+{
+  "source": "services/grn-api/openapi.yaml",
+  "version": "2.0.0",
+  "operations": [
+    {
+      "operationId": "adminApproveApiAccessRequest",
+      "method": "POST",
+      "path": "/admin/api-access-requests/{requestId}/approve",
+      "summary": "Approve an access request",
+      "description": "Records the approval. No credential is created here. Keys are\nself-serve, so an approval no longer gates them; it is linked to the\nrequester's next key for its history.\n\nRepeating the same decision returns 200 without re-emitting the\nnotification; the opposite decision on an already-decided request\nreturns 409.",
+      "tags": [
+        "API Access",
+        "Admin",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "requestId",
+          "argument": "requestId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": false,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "title": "ApiAccessDecisionRequest",
+          "properties": {
+            "note": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "Optional note recorded with the decision."
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "adminDenyApiAccessRequest",
+      "method": "POST",
+      "path": "/admin/api-access-requests/{requestId}/deny",
+      "summary": "Deny an access request",
+      "description": "Records the refusal, with an optional note shown to the requester. The\nsame idempotency rules as approval apply.",
+      "tags": [
+        "API Access",
+        "Admin",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "requestId",
+          "argument": "requestId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": false,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "title": "ApiAccessDecisionRequest",
+          "properties": {
+            "note": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "Optional note recorded with the decision."
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "adminListApiAccessRequests",
+      "method": "GET",
+      "path": "/admin/api-access-requests",
+      "summary": "List the access request queue",
+      "description": "Reviewer-only view of outstanding and decided requests.",
+      "tags": [
+        "API Access",
+        "Admin",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "status",
+          "argument": "status",
+          "in": "query",
+          "required": false,
+          "description": "Which slice of the queue to return. Defaults to `pending` — omitting\nit does not mean \"all\". Any other value is a 400.",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "denied"
+            ],
+            "default": "pending"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "createAgentTask",
+      "method": "POST",
+      "path": "/agent-tasks",
+      "summary": "Create an agent task",
+      "description": null,
+      "tags": [
+        "Agent Tasks",
+        "Pro"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "name",
+            "scheduleCron",
+            "instruction"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "scheduleCron": {
+              "type": "string"
+            },
+            "instruction": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createApiAccessRequest",
+      "method": "POST",
+      "path": "/me/api-access-requests",
+      "summary": "Request API access",
+      "description": "Opens a request for programmatic access. API keys no longer need an\napproval (`POST /me/api-keys` is self-serve), so this is optional: it\ntells the foundation about an integration. An approved request that has\nnot produced a key yet is linked to the next key the requester creates.\n\nOnly one request may be open at a time; asking again while one is pending\nreturns 409.",
+      "tags": [
+        "API Access"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "title": "CreateApiAccessRequest",
+          "required": [
+            "integrationName",
+            "intendedUse"
+          ],
+          "properties": {
+            "integrationName": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "intendedUse": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createApiKey",
+      "method": "POST",
+      "path": "/me/api-keys",
+      "summary": "Create an API key",
+      "description": "Creates a new API key for the current user and returns the full secret\nexactly once. The key authenticates as the owning user when sent as\n`Authorization: Bearer <key>`, both on this API and on the grower MCP\nserver.\n\nKeys are self-serve: no approved access request is needed. Each key is\nmetered on the integration usage plan, and a user may hold at most five\nlive keys; creating a sixth returns 409 until one is revoked. An\napproved access request that has not produced a key yet is linked to\nthe new key for its history.\n\nEvery `/me/api-keys` operation needs a signed-in session: called with an\nAPI key it returns 403, so a key can never mint, list, rename or revoke\nkeys.",
+      "tags": [
+        "API Keys"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create a new API key or rename an existing one.",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "A human-friendly label so the owner can identify the key."
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createCheckoutSession",
+      "method": "POST",
+      "path": "/billing/checkout-session",
+      "summary": "Create a Stripe checkout session for pro upgrade",
+      "description": null,
+      "tags": [
+        "Billing"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "successUrl",
+            "cancelUrl"
+          ],
+          "properties": {
+            "successUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "cancelUrl": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createClaim",
+      "method": "POST",
+      "path": "/claims",
+      "summary": "Create a claim on a listing",
+      "description": null,
+      "tags": [
+        "Claims"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "listingId",
+            "quantityClaimed"
+          ],
+          "properties": {
+            "listingId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "requestId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "quantityClaimed": {
+              "type": "number",
+              "format": "double",
+              "exclusiveMinimum": 0
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createGardenBackgroundUploadUrl",
+      "method": "POST",
+      "path": "/garden/background-upload-url",
+      "summary": "Issue a presigned PUT URL for a garden background image",
+      "description": "Returns a 15-minute presigned URL the browser can PUT the image to.\nThe caller persists the returned `s3_key` on the canvas via\n`PUT /garden` once the upload completes.",
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "contentType",
+            "contentLength"
+          ],
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+              ]
+            },
+            "contentLength": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8388608,
+              "description": "Size of the file in bytes (max 8 MB)."
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createJournalNote",
+      "method": "POST",
+      "path": "/journal/notes",
+      "summary": "Add a journal note",
+      "description": null,
+      "tags": [
+        "Journal",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "argument": "idempotencyKey",
+          "in": "header",
+          "required": true,
+          "description": "Required. Retrying with the same key returns the original result\ninstead of creating a second entry. Omitting it is a 400.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "title": "CreateNoteRequest",
+          "required": [
+            "occurredOn",
+            "title"
+          ],
+          "properties": {
+            "occurredOn": {
+              "type": "string",
+              "format": "date",
+              "description": "The day the note is about."
+            },
+            "title": {
+              "type": "string",
+              "description": "Short label for the entry."
+            },
+            "body": {
+              "type": "string",
+              "description": "Optional longer text."
+            },
+            "photoKey": {
+              "type": "string",
+              "description": "Key returned by the photo upload intent, if a photo is attached."
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createJournalPhotoUploadUrl",
+      "method": "POST",
+      "path": "/journal/photo-upload-url",
+      "summary": "Get an upload URL for a journal photo",
+      "description": "Returns a short-lived presigned URL. Upload the photo with the returned\nmethod and headers, then reference the key when creating the note.",
+      "tags": [
+        "Journal"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "title": "PhotoUploadRequest",
+          "required": [
+            "contentType",
+            "contentLength"
+          ],
+          "properties": {
+            "contentType": {
+              "type": "string"
+            },
+            "contentLength": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createListing",
+      "method": "POST",
+      "path": "/listings",
+      "summary": "Create a surplus listing",
+      "description": null,
+      "tags": [
+        "Listings",
+        "Idempotent",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "argument": "idempotencyKey",
+          "in": "header",
+          "required": false,
+          "description": "Optional. Retrying with the same key returns the original result\nrather than creating a duplicate; reusing a key for different\ncontent is the 409 below.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create or update a surplus listing. Either `cropId` or `growerCropId`\nmust be provided. User-defined crops use `growerCropId` without a\ncatalog `cropId`.\n",
+          "required": [
+            "title",
+            "quantityTotal",
+            "unit",
+            "availableStart",
+            "availableEnd"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "cropId"
+              ]
+            },
+            {
+              "required": [
+                "growerCropId"
+              ]
+            }
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "cropId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "growerCropId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "varietyId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "quantityTotal": {
+              "type": "number",
+              "format": "double",
+              "exclusiveMinimum": 0
+            },
+            "unit": {
+              "type": "string"
+            },
+            "availableStart": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "availableEnd": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "pickupLocationText": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pickupAddress": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pickupDisclosurePolicy": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "immediate",
+                "after_confirmed",
+                "after_accepted",
+                null
+              ]
+            },
+            "pickupNotes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contactPref": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "app_message",
+                "phone",
+                "knock",
+                null
+              ]
+            },
+            "status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "active",
+                "pending",
+                "claimed",
+                "expired",
+                "completed",
+                null
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createMyAnnotation",
+      "method": "POST",
+      "path": "/annotations",
+      "summary": "Create a garden annotation",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "label"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "icon": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "shape": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "rect",
+                "circle",
+                "polygon",
+                "line",
+                null
+              ]
+            },
+            "position_x": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position_y": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "length_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "width_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "rotation_deg": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": -360,
+              "maximum": 360
+            },
+            "points": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "integer"
+                  },
+                  "y": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "color": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "sort_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createMyBed",
+      "method": "POST",
+      "path": "/beds",
+      "summary": "Create a garden bed",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create or update a garden bed. Accepts both snake_case and camelCase\naliases for compatibility with existing clients (sunExposure, soilType,\nlengthInches, widthInches, locationNotes, sortOrder, bedType,\npositionX, positionY, rotationDeg).\n",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sun_exposure": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "full_sun",
+                "partial_sun",
+                "partial_shade",
+                "full_shade",
+                "mixed",
+                null
+              ]
+            },
+            "soil_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "length_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "width_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "location_notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sort_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "bed_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "in_ground",
+                "raised",
+                "mound",
+                null
+              ]
+            },
+            "shape": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "rect",
+                "circle",
+                "polygon",
+                null
+              ]
+            },
+            "position_x": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position_y": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "rotation_deg": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": -360,
+              "maximum": 360
+            },
+            "points": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "integer"
+                  },
+                  "y": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "color": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createMyCrop",
+      "method": "POST",
+      "path": "/crops",
+      "summary": "Create a crop library entry",
+      "description": null,
+      "tags": [
+        "Crop Library"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create or update a grower crop-library record.\n\nThe request is valid when either `canonical_id` or `crop_name` is provided.\nThe API also accepts the compatibility aliases `canonicalId`, `crop_id`, `cropId`,\n`cropName`, `surplusEnabled`, and `defaultUnit`.\n",
+          "required": [
+            "status",
+            "visibility",
+            "surplus_enabled"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "canonical_id"
+              ]
+            },
+            {
+              "required": [
+                "crop_name"
+              ]
+            }
+          ],
+          "properties": {
+            "canonical_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid",
+              "description": "Optional link to catalog crop"
+            },
+            "crop_name": {
+              "type": "string",
+              "description": "The crop name to display and use for this entry"
+            },
+            "variety_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "interested",
+                "planning",
+                "growing",
+                "paused"
+              ]
+            },
+            "visibility": {
+              "type": "string",
+              "enum": [
+                "private",
+                "local",
+                "public"
+              ]
+            },
+            "surplus_enabled": {
+              "type": "boolean"
+            },
+            "nickname": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "default_unit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createMyGardenShareLink",
+      "method": "POST",
+      "path": "/garden/share",
+      "summary": "Create (or return) the caller's garden share link",
+      "description": "Idempotent: an active link is returned unchanged; a revoked or\nmissing one gets a freshly minted token so a previously leaked URL\nstays dead.",
+      "tags": [
+        "Garden"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "createReminder",
+      "method": "POST",
+      "path": "/reminders",
+      "summary": "Create a deterministic reminder",
+      "description": null,
+      "tags": [
+        "Reminders"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "title",
+            "reminderType",
+            "cadenceDays",
+            "startDate"
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "reminderType": {
+              "type": "string",
+              "enum": [
+                "watering",
+                "harvest",
+                "checkin",
+                "custom"
+              ]
+            },
+            "cadenceDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "startDate": {
+              "type": "string",
+              "format": "date"
+            },
+            "timezone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "createRequest",
+      "method": "POST",
+      "path": "/requests",
+      "summary": "Create a food request",
+      "description": null,
+      "tags": [
+        "Requests",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "argument": "idempotencyKey",
+          "in": "header",
+          "required": false,
+          "description": "Optional. Retrying with the same key returns the original result\nrather than creating a duplicate; reusing a key for different\ncontent is the 409 below.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "cropId",
+            "quantity",
+            "neededBy"
+          ],
+          "properties": {
+            "cropId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "varietyId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "quantity": {
+              "type": "number",
+              "format": "double",
+              "exclusiveMinimum": 0
+            },
+            "neededBy": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "open",
+                "matched",
+                "closed",
+                null
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "deleteApiKey",
+      "method": "DELETE",
+      "path": "/me/api-keys/{apiKeyId}",
+      "summary": "Revoke an API key",
+      "description": "Revokes (soft-deletes) the key so it can no longer authenticate.",
+      "tags": [
+        "API Keys"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "apiKeyId",
+          "argument": "apiKeyId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "deleteCropHarvest",
+      "method": "DELETE",
+      "path": "/crops/{cropLibraryId}/harvests/{harvestId}",
+      "summary": "Delete a logged harvest",
+      "description": "Permanently removes one harvest entry. The running total is recomputed on the next read.",
+      "tags": [
+        "Crop Library"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "harvestId",
+          "argument": "harvestId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "deleteJournalNote",
+      "method": "DELETE",
+      "path": "/journal/notes/{noteId}",
+      "summary": "Delete a journal note",
+      "description": null,
+      "tags": [
+        "Journal"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "noteId",
+          "argument": "noteId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "deleteMyAnnotation",
+      "method": "DELETE",
+      "path": "/annotations/{annotationId}",
+      "summary": "Archive (soft-delete) a garden annotation",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "annotationId",
+          "argument": "annotationId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "deleteMyBed",
+      "method": "DELETE",
+      "path": "/beds/{bedId}",
+      "summary": "Archive (soft-delete) a garden bed",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "bedId",
+          "argument": "bedId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "deleteMyCrop",
+      "method": "DELETE",
+      "path": "/crops/{cropLibraryId}",
+      "summary": "Delete one crop library entry",
+      "description": null,
+      "tags": [
+        "Crop Library"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "discoverListings",
+      "method": "GET",
+      "path": "/listings/discover",
+      "summary": "Discover listings by geo context",
+      "description": null,
+      "tags": [
+        "Listings",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "geoKey",
+          "argument": "geoKey",
+          "in": "query",
+          "required": true,
+          "description": "Geohash prefix for geographic scoping",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "radiusMiles",
+          "argument": "radiusMiles",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "number",
+            "format": "double",
+            "exclusiveMinimum": 0
+          }
+        },
+        {
+          "name": "status",
+          "argument": "status",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "active"
+            ],
+            "default": "active"
+          }
+        },
+        {
+          "name": "limit",
+          "argument": "limit",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        {
+          "name": "offset",
+          "argument": "offset",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "generateGardenReview",
+      "method": "POST",
+      "path": "/almanac/garden-review",
+      "summary": "Generate an AI garden review for the caller's garden",
+      "description": null,
+      "tags": [
+        "AI",
+        "Pro"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "generateWeeklyPlan",
+      "method": "POST",
+      "path": "/almanac/weekly-plan",
+      "summary": "Generate AI weekly grow plan",
+      "description": null,
+      "tags": [
+        "AI",
+        "Pro"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "geoKey"
+          ],
+          "properties": {
+            "geoKey": {
+              "type": "string",
+              "minLength": 4
+            },
+            "windowDays": {
+              "type": "integer",
+              "enum": [
+                7,
+                14,
+                30
+              ],
+              "default": 7
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "getApiKey",
+      "method": "GET",
+      "path": "/me/api-keys/{apiKeyId}",
+      "summary": "Get one API key's metadata",
+      "description": null,
+      "tags": [
+        "API Keys",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "apiKeyId",
+          "argument": "apiKeyId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getDerivedFeed",
+      "method": "GET",
+      "path": "/feed/derived",
+      "summary": "Get derived feed with signals, AI summary, and guidance",
+      "description": null,
+      "tags": [
+        "Feed",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "geoKey",
+          "argument": "geoKey",
+          "in": "query",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "windowDays",
+          "argument": "windowDays",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "enum": [
+              7,
+              14,
+              30
+            ],
+            "default": 7
+          }
+        },
+        {
+          "name": "limit",
+          "argument": "limit",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        {
+          "name": "offset",
+          "argument": "offset",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getJournal",
+      "method": "GET",
+      "path": "/journal",
+      "summary": "Read your garden journal",
+      "description": "Builds the private journal for a season from the grower's own records.\nDefaults to the current season when `season` is omitted.",
+      "tags": [
+        "Journal",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "season",
+          "argument": "season",
+          "in": "query",
+          "required": false,
+          "description": "Four-digit year. Defaults to the current season.",
+          "schema": {
+            "type": "integer"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getMe",
+      "method": "GET",
+      "path": "/me",
+      "summary": "Get current user profile",
+      "description": null,
+      "tags": [
+        "Profile",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "getMyCrop",
+      "method": "GET",
+      "path": "/crops/{cropLibraryId}",
+      "summary": "Get one crop library entry",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getMyEntitlements",
+      "method": "GET",
+      "path": "/me/entitlements",
+      "summary": "Get current user entitlements snapshot",
+      "description": null,
+      "tags": [
+        "Entitlements",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "getMyGardenCanvas",
+      "method": "GET",
+      "path": "/garden",
+      "summary": "Get the current grower's garden canvas",
+      "description": "Auto-creates a default canvas (360 in × 240 in, opacity 60) on first\naccess so the designer UI can render immediately without a separate\nprovisioning call.",
+      "tags": [
+        "Crop Library",
+        "Grower Only",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "getMyGardenShareLink",
+      "method": "GET",
+      "path": "/garden/share",
+      "summary": "Get the caller's active garden share link",
+      "description": null,
+      "tags": [
+        "Garden",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "getMyListing",
+      "method": "GET",
+      "path": "/my/listings/{listingId}",
+      "summary": "Get one of current user's listings",
+      "description": null,
+      "tags": [
+        "Listings",
+        "Idempotent",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "listingId",
+          "argument": "listingId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getProKpis",
+      "method": "GET",
+      "path": "/analytics/pro/kpis",
+      "summary": "Get pro analytics KPIs",
+      "description": null,
+      "tags": [
+        "Analytics",
+        "Pro",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "days",
+          "argument": "days",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "default": 7
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getPublicUser",
+      "method": "GET",
+      "path": "/users/{userId}",
+      "summary": "Get public user profile",
+      "description": null,
+      "tags": [
+        "Profile",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "userId",
+          "argument": "userId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "getSharedGarden",
+      "method": "GET",
+      "path": "/gardens/{token}",
+      "summary": "Public read-only view of a shared garden",
+      "description": "Unauthenticated. Returns a privacy-trimmed snapshot of the garden:\ncanvas dimensions, bed and annotation geometry, and the names of\nnon-private crops. No user identity, free-text notes, or contact\ndata. Unknown and revoked tokens both return a constant 404.",
+      "tags": [
+        "Garden",
+        "Public",
+        "Idempotent"
+      ],
+      "public": true,
+      "parameters": [
+        {
+          "name": "token",
+          "argument": "token",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "handleStripeWebhook",
+      "method": "POST",
+      "path": "/billing/webhook",
+      "summary": "Receive Stripe webhook events",
+      "description": null,
+      "tags": [
+        "Billing",
+        "Idempotent",
+        "Public"
+      ],
+      "public": true,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    {
+      "operationId": "listAgentTasks",
+      "method": "GET",
+      "path": "/agent-tasks",
+      "summary": "List agent tasks",
+      "description": null,
+      "tags": [
+        "Agent Tasks",
+        "Pro",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listApiKeys",
+      "method": "GET",
+      "path": "/me/api-keys",
+      "summary": "List the current user's API keys",
+      "description": "Returns non-secret metadata for the user's active API keys. Secrets are never returned here.",
+      "tags": [
+        "API Keys",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listCatalogCrops",
+      "method": "GET",
+      "path": "/catalog/crops",
+      "summary": "List catalog crops",
+      "description": null,
+      "tags": [
+        "Catalog",
+        "Idempotent",
+        "Public"
+      ],
+      "public": true,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listCatalogVarieties",
+      "method": "GET",
+      "path": "/catalog/crops/{cropId}/varieties",
+      "summary": "List catalog varieties for a crop",
+      "description": null,
+      "tags": [
+        "Catalog",
+        "Idempotent",
+        "Public"
+      ],
+      "public": true,
+      "parameters": [
+        {
+          "name": "cropId",
+          "argument": "cropId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "listClaims",
+      "method": "GET",
+      "path": "/claims",
+      "summary": "List claims (filterable by listing or request)",
+      "description": null,
+      "tags": [
+        "Claims",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "listingId",
+          "argument": "listingId",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "requestId",
+          "argument": "requestId",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "status",
+          "argument": "status",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "completed",
+              "cancelled",
+              "no_show"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "argument": "limit",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        {
+          "name": "offset",
+          "argument": "offset",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "listCropHarvests",
+      "method": "GET",
+      "path": "/crops/{cropLibraryId}/harvests",
+      "summary": "List harvests logged for one crop",
+      "description": "Returns the private harvest log for a single crop: the running total\nbrought in, the number of entries, and every logged harvest newest-first.\nThis is personal bookkeeping and is separate from surplus listings.",
+      "tags": [
+        "Crop Library",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "listMyAnnotations",
+      "method": "GET",
+      "path": "/annotations",
+      "summary": "List the current grower's garden annotations",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listMyApiAccessRequests",
+      "method": "GET",
+      "path": "/me/api-access-requests",
+      "summary": "List your API access requests",
+      "description": "Returns this user's access requests, newest first, so the requester can\nsee whether a decision has been made and whether a key has been claimed\nagainst an approval.",
+      "tags": [
+        "API Access",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listMyBeds",
+      "method": "GET",
+      "path": "/beds",
+      "summary": "List the current grower's garden beds",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listMyCrops",
+      "method": "GET",
+      "path": "/crops",
+      "summary": "List current user's crop library entries",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "listMyListings",
+      "method": "GET",
+      "path": "/my/listings",
+      "summary": "List current user's listings",
+      "description": null,
+      "tags": [
+        "Listings",
+        "Idempotent",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "status",
+          "argument": "status",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "completed"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "argument": "limit",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        {
+          "name": "offset",
+          "argument": "offset",
+          "in": "query",
+          "required": false,
+          "description": null,
+          "schema": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        }
+      ],
+      "body": null
+    },
+    {
+      "operationId": "listReminders",
+      "method": "GET",
+      "path": "/reminders",
+      "summary": "List current user's reminders",
+      "description": null,
+      "tags": [
+        "Reminders",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "putMe",
+      "method": "PUT",
+      "path": "/me",
+      "summary": "Update user profile and role-specific configuration",
+      "description": null,
+      "tags": [
+        "Profile",
+        "Idempotent"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "displayName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "userType": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "grower",
+                null
+              ]
+            },
+            "growerProfile": {
+              "type": "object",
+              "required": [
+                "homeZone",
+                "address",
+                "shareRadiusMiles",
+                "units",
+                "locale"
+              ],
+              "properties": {
+                "homeZone": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "shareRadiusMiles": {
+                  "type": "number",
+                  "format": "double",
+                  "exclusiveMinimum": 0
+                },
+                "isOrganization": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "organizationName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "units": {
+                  "type": "string",
+                  "enum": [
+                    "imperial",
+                    "metric"
+                  ]
+                },
+                "locale": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "recordCropHarvest",
+      "method": "POST",
+      "path": "/crops/{cropLibraryId}/harvests",
+      "summary": "Log a harvest for one crop",
+      "description": "Records how much was brought in for this crop and returns the new entry\nplus the updated running total. When `unit` is omitted it falls back to\nthe crop's `default_unit`; when `harvestedOn` is omitted it defaults to\ntoday.",
+      "tags": [
+        "Crop Library"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Log a harvest against a crop in the user's library.",
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "amount": {
+              "type": "number",
+              "format": "double",
+              "description": "How much was brought in. Must be greater than 0."
+            },
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Unit for the amount (e.g. \"lb\", \"bunch\"). Falls back to the crop's default_unit when omitted."
+            },
+            "harvestedOn": {
+              "type": "string",
+              "format": "date",
+              "description": "Date the harvest was brought in (YYYY-MM-DD). Defaults to today when omitted."
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "revokeMyGardenShareLink",
+      "method": "DELETE",
+      "path": "/garden/share",
+      "summary": "Revoke the caller's garden share link",
+      "description": null,
+      "tags": [
+        "Garden"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": null
+    },
+    {
+      "operationId": "trackProEvent",
+      "method": "POST",
+      "path": "/analytics/pro/events",
+      "summary": "Track a pro analytics event",
+      "description": null,
+      "tags": [
+        "Analytics",
+        "Pro"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "eventName"
+          ],
+          "properties": {
+            "eventName": {
+              "type": "string",
+              "enum": [
+                "paywall_view",
+                "checkout_start",
+                "subscribe",
+                "cancel"
+              ]
+            },
+            "metadata": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "transitionClaim",
+      "method": "PUT",
+      "path": "/claims/{claimId}",
+      "summary": "Transition claim status",
+      "description": null,
+      "tags": [
+        "Claims"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "claimId",
+          "argument": "claimId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "confirmed",
+                "completed",
+                "cancelled",
+                "no_show"
+              ]
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateAgentTaskStatus",
+      "method": "PUT",
+      "path": "/agent-tasks/{taskId}",
+      "summary": "Update agent task status",
+      "description": null,
+      "tags": [
+        "Agent Tasks",
+        "Pro"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "taskId",
+          "argument": "taskId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateApiKey",
+      "method": "PUT",
+      "path": "/me/api-keys/{apiKeyId}",
+      "summary": "Rename an API key",
+      "description": null,
+      "tags": [
+        "API Keys"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "apiKeyId",
+          "argument": "apiKeyId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create a new API key or rename an existing one.",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "A human-friendly label so the owner can identify the key."
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateCropHarvest",
+      "method": "PUT",
+      "path": "/crops/{cropLibraryId}/harvests/{harvestId}",
+      "summary": "Edit a logged harvest",
+      "description": "Updates one harvest entry and returns it plus the recomputed running\ntotal. When `harvestedOn` is omitted the existing date is kept; when\n`unit` is omitted it falls back to the crop's `default_unit`.",
+      "tags": [
+        "Crop Library"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "harvestId",
+          "argument": "harvestId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Log a harvest against a crop in the user's library.",
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "amount": {
+              "type": "number",
+              "format": "double",
+              "description": "How much was brought in. Must be greater than 0."
+            },
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Unit for the amount (e.g. \"lb\", \"bunch\"). Falls back to the crop's default_unit when omitted."
+            },
+            "harvestedOn": {
+              "type": "string",
+              "format": "date",
+              "description": "Date the harvest was brought in (YYYY-MM-DD). Defaults to today when omitted."
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateListing",
+      "method": "PUT",
+      "path": "/listings/{listingId}",
+      "summary": "Update a surplus listing",
+      "description": null,
+      "tags": [
+        "Listings",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "listingId",
+          "argument": "listingId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create or update a surplus listing. Either `cropId` or `growerCropId`\nmust be provided. User-defined crops use `growerCropId` without a\ncatalog `cropId`.\n",
+          "required": [
+            "title",
+            "quantityTotal",
+            "unit",
+            "availableStart",
+            "availableEnd"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "cropId"
+              ]
+            },
+            {
+              "required": [
+                "growerCropId"
+              ]
+            }
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "cropId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "growerCropId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "varietyId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "quantityTotal": {
+              "type": "number",
+              "format": "double",
+              "exclusiveMinimum": 0
+            },
+            "unit": {
+              "type": "string"
+            },
+            "availableStart": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "availableEnd": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "pickupLocationText": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pickupAddress": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "pickupDisclosurePolicy": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "immediate",
+                "after_confirmed",
+                "after_accepted",
+                null
+              ]
+            },
+            "pickupNotes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contactPref": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "app_message",
+                "phone",
+                "knock",
+                null
+              ]
+            },
+            "status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "active",
+                "pending",
+                "claimed",
+                "expired",
+                "completed",
+                null
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateMyAnnotation",
+      "method": "PUT",
+      "path": "/annotations/{annotationId}",
+      "summary": "Update a garden annotation",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "annotationId",
+          "argument": "annotationId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "label"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "icon": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "shape": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "rect",
+                "circle",
+                "polygon",
+                "line",
+                null
+              ]
+            },
+            "position_x": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position_y": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "length_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "width_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "rotation_deg": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": -360,
+              "maximum": 360
+            },
+            "points": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "integer"
+                  },
+                  "y": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "color": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "sort_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateMyBed",
+      "method": "PUT",
+      "path": "/beds/{bedId}",
+      "summary": "Update a garden bed",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "bedId",
+          "argument": "bedId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create or update a garden bed. Accepts both snake_case and camelCase\naliases for compatibility with existing clients (sunExposure, soilType,\nlengthInches, widthInches, locationNotes, sortOrder, bedType,\npositionX, positionY, rotationDeg).\n",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sun_exposure": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "full_sun",
+                "partial_sun",
+                "partial_shade",
+                "full_shade",
+                "mixed",
+                null
+              ]
+            },
+            "soil_type": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "length_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "width_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "location_notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sort_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "bed_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "in_ground",
+                "raised",
+                "mound",
+                null
+              ]
+            },
+            "shape": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "rect",
+                "circle",
+                "polygon",
+                null
+              ]
+            },
+            "position_x": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position_y": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "rotation_deg": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": -360,
+              "maximum": 360
+            },
+            "points": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "integer"
+                  },
+                  "y": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
+            "color": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateMyCrop",
+      "method": "PUT",
+      "path": "/crops/{cropLibraryId}",
+      "summary": "Update one crop library entry",
+      "description": null,
+      "tags": [
+        "Crop Library"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "cropLibraryId",
+          "argument": "cropLibraryId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Create or update a grower crop-library record.\n\nThe request is valid when either `canonical_id` or `crop_name` is provided.\nThe API also accepts the compatibility aliases `canonicalId`, `crop_id`, `cropId`,\n`cropName`, `surplusEnabled`, and `defaultUnit`.\n",
+          "required": [
+            "status",
+            "visibility",
+            "surplus_enabled"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "canonical_id"
+              ]
+            },
+            {
+              "required": [
+                "crop_name"
+              ]
+            }
+          ],
+          "properties": {
+            "canonical_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid",
+              "description": "Optional link to catalog crop"
+            },
+            "crop_name": {
+              "type": "string",
+              "description": "The crop name to display and use for this entry"
+            },
+            "variety_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "interested",
+                "planning",
+                "growing",
+                "paused"
+              ]
+            },
+            "visibility": {
+              "type": "string",
+              "enum": [
+                "private",
+                "local",
+                "public"
+              ]
+            },
+            "surplus_enabled": {
+              "type": "boolean"
+            },
+            "nickname": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "default_unit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateMyGardenCanvas",
+      "method": "PUT",
+      "path": "/garden",
+      "summary": "Update the current grower's garden canvas",
+      "description": null,
+      "tags": [
+        "Crop Library",
+        "Grower Only"
+      ],
+      "public": false,
+      "parameters": [],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "description": "Update the user's canvas. Any field omitted is left unchanged, except\n`background_image_key` which is treated as a write-through value:\nsending null clears the background, sending a valid key sets it.\n",
+          "properties": {
+            "width_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 12,
+              "maximum": 12000
+            },
+            "height_inches": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 12,
+              "maximum": 12000
+            },
+            "background_image_key": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "S3 object key under garden-backgrounds/, or null to clear."
+            },
+            "background_opacity": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            },
+            "north_offset_deg": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": -360,
+              "maximum": 360
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateReminderStatus",
+      "method": "PUT",
+      "path": "/reminders/{reminderId}",
+      "summary": "Update reminder status (active/paused)",
+      "description": null,
+      "tags": [
+        "Reminders"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "reminderId",
+          "argument": "reminderId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "argument": "idempotencyKey",
+          "in": "header",
+          "required": false,
+          "description": "Required when setting `status` to `completed`, which is the only\ntransition that records a completion — that case returns 400\nwithout it. Not needed for active/paused.",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "paused"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "operationId": "updateRequest",
+      "method": "PUT",
+      "path": "/requests/{requestId}",
+      "summary": "Update a food request",
+      "description": null,
+      "tags": [
+        "Requests"
+      ],
+      "public": false,
+      "parameters": [
+        {
+          "name": "requestId",
+          "argument": "requestId",
+          "in": "path",
+          "required": true,
+          "description": null,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "body": {
+        "required": true,
+        "contentType": "application/json",
+        "description": null,
+        "schema": {
+          "type": "object",
+          "required": [
+            "cropId",
+            "quantity",
+            "neededBy"
+          ],
+          "properties": {
+            "cropId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "varietyId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            },
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "quantity": {
+              "type": "number",
+              "format": "double",
+              "exclusiveMinimum": 0
+            },
+            "neededBy": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "open",
+                "matched",
+                "closed",
+                null
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

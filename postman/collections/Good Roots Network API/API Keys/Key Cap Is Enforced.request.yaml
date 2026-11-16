@@ -1,0 +1,89 @@
+$kind: http-request
+name: Key Cap Is Enforced
+description: |-
+  A user may hold at most five live keys. Two are live by now (the first key
+  and the self-serve second key); this creates three more, which must
+  succeed, then a sixth, which must be refused with 409 and no secret. Then
+  it revokes the second key and the three created here, leaving only the
+  first key for the requests that follow.
+method: GET
+url: '{{baseUrl}}/me/api-keys'
+order: 2600
+headers:
+  - key: Authorization
+    value: 'Bearer {{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const baseUrl = pm.variables.get("baseUrl");
+      const token = pm.variables.get("authToken");
+      const live = (pm.response.json().items || []).length;
+
+      pm.test("Two keys are live before the cap check", function () {
+          pm.expect(live).to.eql(2);
+      });
+
+      const created = [];
+      const secondKey = pm.collectionVariables.get("secondApiKeyId");
+
+      function create(name, callback) {
+          pm.sendRequest({
+              url: baseUrl + "/me/api-keys",
+              method: "POST",
+              header: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+              body: { mode: "raw", raw: JSON.stringify({ name: name }) }
+          }, callback);
+      }
+
+      function revoke(ids, index, done) {
+          if (index >= ids.length) return done();
+          pm.sendRequest({
+              url: baseUrl + "/me/api-keys/" + ids[index],
+              method: "DELETE",
+              header: { Authorization: "Bearer " + token }
+          }, function (err, res) {
+              pm.test("Revoked " + ids[index], function () {
+                  pm.expect(err).to.equal(null);
+                  pm.expect(res.code).to.eql(204);
+              });
+              revoke(ids, index + 1, done);
+          });
+      }
+
+      function cleanUp() {
+          const ids = created.slice();
+          if (secondKey) ids.push(secondKey);
+          revoke(ids, 0, function () {
+              pm.collectionVariables.unset("secondApiKeyId");
+          });
+      }
+
+      function fillTo(count) {
+          if (live + created.length >= 5) return tryOneMore();
+          create("Postman cap key " + count, function (err, res) {
+              pm.test("Key " + (live + created.length + 1) + " of 5 is created", function () {
+                  pm.expect(err).to.equal(null);
+                  pm.expect(res.code).to.eql(201);
+              });
+              if (err || res.code !== 201) return cleanUp();
+              created.push(res.json().id);
+              fillTo(count + 1);
+          });
+      }
+
+      function tryOneMore() {
+          create("Postman key over the cap", function (err, res) {
+              pm.test("A sixth live key is refused with 409 and no secret", function () {
+                  pm.expect(err).to.equal(null);
+                  pm.expect(res.code).to.eql(409);
+                  const body = res.json();
+                  pm.expect(body.error).to.match(/5 active API keys/);
+                  pm.expect(body).to.not.have.property("key");
+              });
+              if (res && res.code === 201) created.push(res.json().id);
+              cleanUp();
+          });
+      }
+
+      fillTo(1);

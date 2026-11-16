@@ -1,0 +1,45 @@
+$kind: http-request
+name: Malformed Key - 401
+description: |-
+  A bearer value that is not a grnk_ key is refused before the GRN API is asked.
+method: POST
+url: '{{mcpUrl}}'
+order: 1010
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: 'application/json, text/event-stream'
+  - key: MCP-Protocol-Version
+    value: '{{protocolVersion}}'
+  - key: Mcp-Method
+    value: tools/list
+  - key: Authorization
+    value: 'Bearer not-a-real-key'
+body:
+  type: json
+  content: |-
+    {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "{{protocolVersion}}", "io.modelcontextprotocol/clientCapabilities": {}}}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 401", function () {
+          pm.response.to.have.status(401);
+      });
+
+      pm.test("Asks for a bearer key", function () {
+          // API Gateway REST APIs pass a Lambda's WWW-Authenticate on as
+          // x-amzn-Remapped-WWW-Authenticate.
+          const challenge = pm.response.headers.get("WWW-Authenticate")
+              || pm.response.headers.get("x-amzn-Remapped-WWW-Authenticate");
+          pm.expect(challenge).to.eql("Bearer");
+      });
+
+      pm.test("Answers with a JSON-RPC error that says a key is needed", function () {
+          const body = pm.response.json();
+          pm.expect(body.jsonrpc).to.eql("2.0");
+          pm.expect(body.error.code).to.eql(-32000);
+          pm.expect(body.error.message).to.match(/API key/);
+          pm.expect(body).to.not.have.property("result");
+      });

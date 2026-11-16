@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# A short-lived GRN API key for the staging MCP smoke test
+# (docs/grn-mcp-server.md, "Deploying and testing").
+#
+#   staging-smoke-key.sh mint     seeds the dedicated grower, revokes any keys
+#                                 it holds, mints a fresh one, and writes
+#                                 grn-key, key-id, user-id and auth-token to
+#                                 $GITHUB_OUTPUT (the key and token masked)
+#   staging-smoke-key.sh revoke   revokes KEY_ID with AUTH_TOKEN
+#
+# Keys can only be managed from a signed-in session, so this uses the
+# grower's session token, never a key.
+#
+# Runs share one seeded grower but never each other's keys: a run names its
+# key after its own run id, and the clean-up before minting only revokes
+# smoke-test keys over an hour old (left by an interrupted run), never one a
+# job that is still running could be using. Jobs from different PRs can
+# therefore overlap safely.
+#
+# Required env: AWS_REGION, GRN_STACK_NAME; for revoke also KEY_ID, AUTH_TOKEN.
+set -euo pipefail
+
+: "${AWS_REGION:?}" "${GRN_STACK_NAME:?}"
+GROWER="mcp-smoke-grower"
+KEY_PREFIX="MCP staging smoke"
+KEY_NAME="$KEY_PREFIX ${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+STALE_AFTER_SECONDS=3600
+
+stack_output() {
+  aws cloudformation describe-stacks \
+    --stack-name "$GRN_STACK_NAME" \
+    --region "$AWS_REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue | [0]" \
+    --output text
+}
+
+API_URL="$(stack_output ApiUrl)"
+API_URL="${API_URL%/}"
+if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+  echo "Stack $GRN_STACK_NAME has no ApiUrl output." >&2
+  exit 1
+fi
+
+api() {
+  # api METHOD PATH TOKEN [BODY] [OK_STATUS] → body on stdout; fails on a
+  # non-2xx status other than OK_STATUS.
+  local method="$1" path="$2" token="$3" body="${4:-}" also_ok="${5:-}"
+  local args=(-sS -X "$method" "$API_URL$path" -H "Authorization: Bearer $token" -H 'Accept: application/json' -w '\n%{http_code}')
+  if [ -n "$body" ]; then args+=(-H 'Content-Type: application/json' --data "$body"); fi
+  local out status
+  out="$(curl "${args[@]}")"
+  status="${out##*$'\n'}"
+  out="${out%$'\n'*}"
+  if [ "${status:0:1}" != "2" ] && [ "$status" != "$also_ok" ]; then
+    echo "$method $path answered $status" >&2
+    exit 1
+  fi
+  printf '%s' "$out"
+}
+
+case "${1:-}" in
+  mint)
+    # Never print the key or token: outputs go to the step's GITHUB_OUTPUT only.
+    : "${GITHUB_OUTPUT:?mint writes the key to GITHUB_OUTPUT; run it in a GitHub Actions step}"
+    FUNCTION_NAME="$(stack_output CiAuthSeedUsersFunctionName)"
+    if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+      echo "Stack $GRN_STACK_NAME has no CiAuthSeedUsersFunctionName output." >&2
+      exit 1
+    fi
+    aws lambda invoke \
+      --function-name "$FUNCTION_NAME" \
+      --region "$AWS_REGION" \
+      --payload "{\"users\":[{\"name\":\"$GROWER\",\"role\":\"grower\",\"tier\":\"free\"}]}" \
+      --cli-binary-format raw-in-base64-out \
+      seed-response.json > /dev/null
+    TOKEN="$(jq -r --arg u "$GROWER" '(if (.body | type) == "string" then (.body | fromjson) else (.body // .) end).users[$u].access_token' seed-response.json)"
+    rm -f seed-response.json
+    if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+      echo "Seeding $GROWER returned no access token." >&2
+      exit 1
+    fi
+    echo "::add-mask::$TOKEN"
+
+    USER_ID="$(api GET /me "$TOKEN" | jq -r '.id')"
+
+    # Keys are capped at five per grower. Clear smoke-test keys an interrupted
+    # run left behind, but only stale ones: a key minted in the last hour may
+    # belong to a job that is still running.
+    STALE="$(api GET /me/api-keys "$TOKEN" | jq -r --arg prefix "$KEY_PREFIX" --argjson age "$STALE_AFTER_SECONDS" '
+      .items[]?
+      | select(.name | startswith($prefix))
+      | select((.createdAt | sub("\\.[0-9]+"; "") | sub("(\\+00:00|Z)$"; "Z") | fromdateiso8601) < (now - $age))
+      | .id')"
+    for id in $STALE; do
+      api DELETE "/me/api-keys/$id" "$TOKEN" "" 404 > /dev/null
+    done
+
+    CREATED="$(api POST /me/api-keys "$TOKEN" "$(jq -cn --arg name "$KEY_NAME" '{name: $name}')")"
+    KEY="$(printf '%s' "$CREATED" | jq -r '.key')"
+    KEY_ID="$(printf '%s' "$CREATED" | jq -r '.id')"
+    echo "::add-mask::$KEY"
+
+    # A new key is backed by a new API Gateway key on the usage plan, which can
+    # take a little while to be honoured, and reaches the gateway's nodes one
+    # by one: for a while one request works and the next gets 403. Wait until
+    # the key has worked against the GRN API several times in a row, so a
+    # failure in the MCP tests means the MCP path, not a key that was not live
+    # everywhere yet.
+    status=""
+    streak=0
+    for attempt in $(seq 1 60); do
+      status="$(curl -sS -o /dev/null -w '%{http_code}' "$API_URL/me" -H "Authorization: Bearer $KEY" -H 'Accept: application/json' || echo 000)"
+      if [ "${status:0:1}" = "2" ]; then
+        streak=$((streak + 1))
+        if [ "$streak" -ge 5 ]; then
+          echo "The new key has worked 5 times in a row against the GRN API (attempt $attempt)."
+          break
+        fi
+        sleep 2
+      else
+        streak=0
+        sleep 5
+      fi
+    done
+    if [ "$streak" -lt 5 ]; then
+      echo "The new key is still not reliably accepted (last status $status) after several minutes; revoking it." >&2
+      api DELETE "/me/api-keys/$KEY_ID" "$TOKEN" "" 404 > /dev/null
+      exit 1
+    fi
+
+    {
+      echo "grn-key=$KEY"
+      echo "key-id=$KEY_ID"
+      echo "user-id=$USER_ID"
+      echo "auth-token=$TOKEN"
+    } >> "$GITHUB_OUTPUT"
+    echo "Minted smoke-test key $KEY_ID for grower $USER_ID."
+    ;;
+  revoke)
+    : "${KEY_ID:?}" "${AUTH_TOKEN:?}"
+    # 404: already gone (revoked as stale by a later run); nothing left to do.
+    api DELETE "/me/api-keys/$KEY_ID" "$AUTH_TOKEN" "" 404 > /dev/null
+    echo "Revoked smoke-test key $KEY_ID."
+    ;;
+  *)
+    echo "usage: staging-smoke-key.sh mint|revoke" >&2
+    exit 2
+    ;;
+esac

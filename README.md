@@ -9,6 +9,7 @@ Today it contains:
 - `packages/ui`: shared UI primitives and brand tokens
 - `packages/auth`: shared frontend auth helpers
 - `services/mcp-api`: the operator MCP server for running the back office from an AI agent ([docs/mcp-server.md](docs/mcp-server.md))
+- `services/grn-mcp`: the Good Roots Network MCP server, so growers' AI assistants can use the app for them ([docs/grn-mcp-server.md](docs/grn-mcp-server.md))
 
 The long-term platform plan lives in [docs/plans/platform_plan.md](docs/plans/platform_plan.md).
 

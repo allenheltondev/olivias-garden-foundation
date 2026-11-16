@@ -149,7 +149,7 @@
       "method": "POST",
       "operationId": "adminApproveApiAccessRequest",
       "summary": "Approve an access request",
-      "description": "Records the approval. No credential is created here — approval only\nunlocks the requester's ability to mint one key for themselves.\n\nRepeating the same decision returns 200 without re-emitting the\nnotification; the opposite decision on an already-decided request\nreturns 409.\n",
+      "description": "Records the approval. No credential is created here. Keys are\nself-serve, so an approval no longer gates them; it is linked to the\nrequester's next key for its history.\n\nRepeating the same decision returns 200 without re-emitting the\nnotification; the opposite decision on an already-decided request\nreturns 409.\n",
       "tags": [
         "API Access",
         "Admin",
@@ -2398,7 +2398,7 @@
       "method": "POST",
       "operationId": "createApiAccessRequest",
       "summary": "Request API access",
-      "description": "Opens a request for programmatic access. Approval is manual, and a key is\nnot minted here — once approved, the requester claims the secret\nthemselves via `POST /me/api-keys` so it never passes through a reviewer.\n\nOnly one request may be open at a time; asking again while one is pending\nreturns 409.\n",
+      "description": "Opens a request for programmatic access. API keys no longer need an\napproval (`POST /me/api-keys` is self-serve), so this is optional: it\ntells the foundation about an integration. An approved request that has\nnot produced a key yet is linked to the next key the requester creates.\n\nOnly one request may be open at a time; asking again while one is pending\nreturns 409.\n",
       "tags": [
         "API Access"
       ],
@@ -2473,7 +2473,7 @@
       "method": "POST",
       "operationId": "createApiKey",
       "summary": "Create an API key",
-      "description": "Creates a new API key for the current user and returns the full secret\nexactly once. The key authenticates as the owning user when sent as\n`Authorization: Bearer <key>`.\n",
+      "description": "Creates a new API key for the current user and returns the full secret\nexactly once. The key authenticates as the owning user when sent as\n`Authorization: Bearer <key>`, both on this API and on the grower MCP\nserver.\n\nKeys are self-serve: no approved access request is needed. Each key is\nmetered on the integration usage plan, and a user may hold at most five\nlive keys; creating a sixth returns 409 until one is revoked. An\napproved access request that has not produced a key yet is linked to\nthe new key for its history.\n\nEvery `/me/api-keys` operation needs a signed-in session: called with an\nAPI key it returns 403, so a key can never mint, list, rename or revoke\nkeys.\n",
       "tags": [
         "API Keys"
       ],
@@ -2498,6 +2498,16 @@
         {
           "status": "401",
           "description": "Error payload",
+          "shape": "object"
+        },
+        {
+          "status": "403",
+          "description": "Called with an API key rather than a signed-in session",
+          "shape": "object"
+        },
+        {
+          "status": "409",
+          "description": "The user already holds five live keys; revoke one first",
           "shape": "object"
         },
         {

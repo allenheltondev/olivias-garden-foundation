@@ -1,0 +1,30 @@
+$kind: collection
+name: Good Roots Network MCP
+description: |-
+  The grower MCP server (services/grn-mcp, docs/grn-mcp-server.md): JSON-RPC
+  over Streamable HTTP at https://api.<domain>/grn-mcp, authenticated with a
+  grower's own GRN API key.
+
+  The Auth folder needs no key and runs on every staging validation: requests
+  with no key, a malformed key or a key the GRN API does not recognise are all
+  refused with 401. The Tools folder calls real tools with a live grower key:
+  CI mints a short-lived one for a seeded grower
+  (services/grn-mcp/scripts/staging-smoke-key.sh), passes `expectedUserId`,
+  and sets `requireKey` so a missing key fails rather than skips. Locally,
+  set `grnKey` to a staging key (Settings → API keys) or the folder skips.
+variables:
+  - key: mcpUrl
+    value: 'https://api.example.com/grn-mcp'
+    description: The MCP endpoint (McpServerUrl output of the ogf-grn-mcp-<env> stack)
+  - key: grnKey
+    value: ''
+    description: A live grnk_ key; without one the Tools folder skips, unless requireKey is true
+  - key: expectedUserId
+    value: ''
+    description: Optional; when set, get_me must return this grower id (CI sets it for the seeded smoke-test grower)
+  - key: requireKey
+    value: 'false'
+    description: CI sets true, so a missing grnKey fails the run instead of skipping the Tools folder
+  - key: protocolVersion
+    value: '2026-07-28'
+    description: MCP protocol revision the server serves

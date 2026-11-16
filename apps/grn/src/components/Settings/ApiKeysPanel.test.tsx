@@ -2,13 +2,12 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiKeysPanel } from './ApiKeysPanel';
+import { ApiKeysPanel, MAX_API_KEYS } from './ApiKeysPanel';
 
 const listApiKeys = vi.hoisted(() => vi.fn());
 const createApiKey = vi.hoisted(() => vi.fn());
 const renameApiKey = vi.hoisted(() => vi.fn());
 const deleteApiKey = vi.hoisted(() => vi.fn());
-const listApiAccessRequests = vi.hoisted(() => vi.fn());
 
 vi.mock('../../services/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../services/api')>();
@@ -18,7 +17,6 @@ vi.mock('../../services/api', async (importOriginal) => {
     createApiKey,
     renameApiKey,
     deleteApiKey,
-    listApiAccessRequests,
   };
 });
 
@@ -37,20 +35,6 @@ describe('ApiKeysPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listApiKeys.mockResolvedValue({ items: [] });
-    // An approved, unclaimed request is what unlocks key creation.
-    listApiAccessRequests.mockResolvedValue([
-      {
-        id: 'request-1',
-        status: 'approved',
-        integrationName: 'Harvest Sync',
-        intendedUse: 'Mirror my harvest log',
-        contactEmail: null,
-        decisionNote: null,
-        decidedAt: '2026-08-02T00:00:00Z',
-        createdAt: '2026-08-01T00:00:00Z',
-        apiKeyId: null,
-      },
-    ]);
   });
 
   it('lists existing keys without exposing secrets', async () => {
@@ -97,28 +81,6 @@ describe('ApiKeysPanel', () => {
     ).toBeInTheDocument();
   });
 
-  it('refetches the approval after creating a key, since creation spends it', async () => {
-    createApiKey.mockResolvedValue({
-      id: 'key-2',
-      name: 'New key',
-      keyPrefix: 'grnk_99887766',
-      key: 'grnk_99887766aabbccddeeff00112233445566778899aabbccddeeff0011',
-      lastUsedAt: null,
-      createdAt: '2026-06-22T00:00:00Z',
-    });
-
-    renderPanel();
-    await screen.findByText(/no api keys yet/i);
-    await waitFor(() => expect(listApiAccessRequests).toHaveBeenCalledTimes(1));
-
-    await userEvent.type(screen.getByLabelText(/key name/i), 'New key');
-    await userEvent.click(screen.getByRole('button', { name: /create key/i }));
-
-    // Without this the panel keeps offering a create the API now refuses,
-    // because the approval it read is stale.
-    await waitFor(() => expect(listApiAccessRequests.mock.calls.length).toBeGreaterThan(1));
-  });
-
   it('validates that a name is required before creating', async () => {
     renderPanel();
     await screen.findByText(/no api keys yet/i);
@@ -163,32 +125,46 @@ describe('ApiKeysPanel', () => {
     );
   });
 
-  it('offers no key form until access has been approved', async () => {
-    listApiAccessRequests.mockResolvedValue([]);
+  it('offers the key form with no access request: keys are self-serve', async () => {
     renderPanel();
 
-    expect(await screen.findByText(/issued once your API access request is approved/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /create key/i })).not.toBeInTheDocument();
-    expect(createApiKey).not.toHaveBeenCalled();
+    await screen.findByText(/no api keys yet/i);
+    expect(screen.getByRole('button', { name: /create key/i })).toBeInTheDocument();
+    expect(screen.queryByText(/approv/i)).not.toBeInTheDocument();
   });
 
-  it('offers no key form once the approval has been claimed', async () => {
-    listApiAccessRequests.mockResolvedValue([
-      {
-        id: 'request-1',
-        status: 'approved',
-        integrationName: 'Harvest Sync',
-        intendedUse: 'Mirror my harvest log',
-        contactEmail: null,
-        decisionNote: null,
-        decidedAt: '2026-08-02T00:00:00Z',
-        createdAt: '2026-08-01T00:00:00Z',
-        apiKeyId: 'key-1',
-      },
-    ]);
+  it('hides the form at the key limit and says how to make room', async () => {
+    listApiKeys.mockResolvedValue({
+      items: Array.from({ length: MAX_API_KEYS }, (_, i) => ({
+        id: `key-${i}`,
+        name: `Key ${i}`,
+        keyPrefix: `grnk_0000000${i}`,
+        lastUsedAt: null,
+        createdAt: '2026-06-22T00:00:00Z',
+      })),
+    });
     renderPanel();
 
-    await waitFor(() => expect(listApiAccessRequests).toHaveBeenCalled());
+    expect(await screen.findByText(/the most you can hold/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /create key/i })).not.toBeInTheDocument();
+  });
+
+  it('offers no form until the key list has loaded', async () => {
+    listApiKeys.mockReturnValue(new Promise(() => {}));
+    renderPanel();
+
+    expect(await screen.findByText(/loading keys/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /create key/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the API\'s refusal when a create is refused', async () => {
+    createApiKey.mockRejectedValue(new Error('You already have 5 active API keys. Revoke one before creating another.'));
+    renderPanel();
+    await screen.findByText(/no api keys yet/i);
+
+    await userEvent.type(screen.getByLabelText(/key name/i), 'One too many');
+    await userEvent.click(screen.getByRole('button', { name: /create key/i }));
+
+    expect(await screen.findByText(/already have 5 active api keys/i)).toBeInTheDocument();
   });
 });

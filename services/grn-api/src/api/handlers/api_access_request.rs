@@ -330,7 +330,7 @@ async fn replay_decision(
 
 /// The approved, unclaimed request a grower may mint a key against, if any.
 pub async fn claimable_request(
-    client: &tokio_postgres::Client,
+    client: &(impl tokio_postgres::GenericClient + Sync),
     user_id: Uuid,
 ) -> Result<Option<Uuid>, lambda_http::Error> {
     // Deliberately counts revoked keys too. An approval authorises one key; if

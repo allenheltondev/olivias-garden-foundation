@@ -124,6 +124,13 @@ pub fn require_admin(ctx: &AuthContext) -> Result<(), Error> {
     }
 }
 
+/// Whether the caller authenticated with a GRN API key rather than a signed-in
+/// session. The authorizer stamps `authMethod: api_key` on key callers only.
+pub fn authenticated_with_api_key(request: &Request) -> bool {
+    extract_authorizer_field(request, "authMethod")
+        .is_some_and(|method| method.eq_ignore_ascii_case("api_key"))
+}
+
 fn extract_authorizer_field(request: &Request, field_name: &str) -> Option<String> {
     request
         .request_context()
@@ -144,6 +151,30 @@ fn parse_user_type(s: &str) -> Option<UserType> {
 #[allow(clippy::unwrap_used)] // unwrap is acceptable in tests
 mod tests {
     use super::*;
+
+    fn request_with_authorizer(fields: &[(&str, &str)]) -> Request {
+        use lambda_http::request::RequestContext;
+        use lambda_http::RequestExt;
+        let mut context = aws_lambda_events::apigw::ApiGatewayProxyRequestContext::default();
+        for (key, value) in fields {
+            context.authorizer.fields.insert(
+                (*key).to_string(),
+                serde_json::Value::String((*value).to_string()),
+            );
+        }
+        lambda_http::http::Request::builder()
+            .body(lambda_http::Body::Empty)
+            .unwrap()
+            .with_request_context(RequestContext::ApiGatewayV1(context))
+    }
+
+    #[test]
+    fn api_key_callers_are_told_apart_from_sessions() {
+        let session = request_with_authorizer(&[("userId", "u-1")]);
+        let key = request_with_authorizer(&[("userId", "u-1"), ("authMethod", "api_key")]);
+        assert!(!authenticated_with_api_key(&session));
+        assert!(authenticated_with_api_key(&key));
+    }
 
     #[test]
     fn parse_user_type_grower() {

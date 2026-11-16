@@ -22,9 +22,10 @@
     tags: [API Access]
     summary: Request API access
     description: |
-      Opens a request for programmatic access. Approval is manual, and a key is
-      not minted here — once approved, the requester claims the secret
-      themselves via `POST /me/api-keys` so it never passes through a reviewer.
+      Opens a request for programmatic access. API keys no longer need an
+      approval (`POST /me/api-keys` is self-serve), so this is optional: it
+      tells the foundation about an integration. An approved request that has
+      not produced a key yet is linked to the next key the requester creates.
 
       Only one request may be open at a time; asking again while one is pending
       returns 409.
@@ -108,8 +109,9 @@
     tags: [API Access, Admin, Idempotent]
     summary: Approve an access request
     description: |
-      Records the approval. No credential is created here — approval only
-      unlocks the requester's ability to mint one key for themselves.
+      Records the approval. No credential is created here. Keys are
+      self-serve, so an approval no longer gates them; it is linked to the
+      requester's next key for its history.
 
       Repeating the same decision returns 200 without re-emitting the
       notification; the opposite decision on an already-decided request

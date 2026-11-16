@@ -1,13 +1,11 @@
 $kind: http-request
 name: Create API Key
 description: |-
-  Mint a key against the approval granted in the API Access folder. This is the
-  success path end to end: the gate opens, an API Gateway key is provisioned
-  onto the integration usage plan, the identifiers are persisted, and the
-  secret comes back exactly once.
-
-  A 403 here means the approval did not land — that is a failure, not an
-  alternative outcome, so it is asserted as one.
+  Create a key. Keys are self-serve, so no approval is needed; the approval
+  granted in the API Access folder, if any, is linked to this key for its
+  history. This is the success path end to end: an API Gateway key is
+  provisioned onto the integration usage plan, the identifiers are persisted,
+  and the secret comes back exactly once.
 method: POST
 url: '{{baseUrl}}/me/api-keys'
 order: 1000
@@ -27,11 +25,6 @@ scripts:
     language: text/javascript
     code: |-
       pm.test("Status code is 201", function () {
-          if (pm.response.code === 403) {
-              pm.expect.fail(
-                  "Approval did not take effect: " + pm.response.text()
-              );
-          }
           pm.response.to.have.status(201);
       });
 
@@ -54,5 +47,7 @@ scripts:
               return;
           }
           pm.collectionVariables.set("apiKeyId", body.id);
+          // Used once, by "An API Key Cannot Manage Keys", then revoked with the key.
+          pm.collectionVariables.set("apiKeySecret", body.key);
           pm.collectionVariables.set("apiKeyIssued", "true");
       });
