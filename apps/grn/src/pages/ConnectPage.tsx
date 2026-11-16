@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Card, GardenIcon, SectionHeading, type GardenIconName } from '@olivias/ui';
+import { GardenScene } from '../components/branding/GardenArt';
 import './ConnectPage.css';
 
 interface ConnectOption {
@@ -68,10 +69,13 @@ export function ConnectPage() {
 
   return (
     <section className="grn-section grn-share-home">
-      <SectionHeading
-        title="Share with people nearby"
-        body="A little extra from your garden can make someone's day. Offer a harvest or see what neighbors have to share."
-      />
+      <div className="grn-share-home__intro">
+        <SectionHeading
+          title="Share with people nearby"
+          body="A little extra from your garden can make someone's day. Offer a harvest or see what neighbors have to share."
+        />
+        <GardenScene name="neighbor-harvest" className="grn-share-home__art" />
+      </div>
       <div className="grn-connect-grid">
         {options.slice(0, 2).map((option) => (
           <ConnectCard key={option.id} option={option} action={() => navigate(option.to)} />

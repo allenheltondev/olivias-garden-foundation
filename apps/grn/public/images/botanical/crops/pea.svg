@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" stroke="#4f573b" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round">
+<title>Pea</title>
+<path d="M19 56c3-20 17-37 45-42 4 21-8 41-29 49-9 4-15 3-16-7Z" fill="#8fa264"/>
+<path d="M22 57c3-15 19-31 38-37-1 19-12 31-28 39-4 2-8 2-10-2Z" fill="#c1c78b"/>
+<circle cx="32" cy="52" r="6" fill="#7f9959"/><circle cx="43" cy="41" r="6.5" fill="#7f9959"/><circle cx="53" cy="29" r="6" fill="#7f9959"/>
+<path d="M63 15c3-8-4-11-7-7s1 9 6 5M21 59l-5 8" fill="none" stroke="#667f49"/>
+<path d="m30 49 2-1m9-10 2-1m8-11 2-1" stroke="#e0dcae"/>
+</svg>

@@ -2,7 +2,7 @@ import { useMemo, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@olivias/ui';
 import type { GrowerCropItem } from '../../types/listing';
-import { CropIcon } from '../CropPlanner/cropIcons';
+import { CropArtwork } from '../branding/GardenArt';
 import { visualForCrop } from '../CropPlanner/cropVisuals';
 import { createLogger } from '../../utils/logging';
 import {
@@ -140,7 +140,7 @@ function HarvestCrop({ item, onOpen }: { item: HarvestTimelineItem; onOpen: () =
       style={{ '--harvest-crop-accent': visual.accent } as CSSProperties}
     >
       <div className="grn-harvest-crop__icon" aria-hidden="true">
-        <CropIcon iconKey={visual.iconKey} size={28} />
+        <CropArtwork iconKey={visual.iconKey} size={32} />
       </div>
       <div className="grn-harvest-crop__copy">
         <h4>{name}</h4>

@@ -1,4 +1,6 @@
 /* Focused plant view keeps care and history beside the growing record. */
+.grn-crop-empty__art { display: block; width: 16rem; margin: 0 auto 1rem; }
+.grn-crop-library .grn-crop-card__emoji { display: grid; place-items: center; }
 .grn-crop-library--focused .grn-crop-grid { grid-template-columns: minmax(0, 1fr); max-width: 48rem; margin-inline: auto; }
 .grn-crop-library--focused .grn-crop-card__header { min-height: 6rem; }
 .grn-crop-card__name a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: .2em; }

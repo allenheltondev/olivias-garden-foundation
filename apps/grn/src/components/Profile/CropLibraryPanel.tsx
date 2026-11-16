@@ -13,7 +13,7 @@ import type { GrowerCropItem } from '../../types/listing';
 import { Button, Card } from '@olivias/ui';
 import { createLogger } from '../../utils/logging';
 import { visualForCrop } from '../CropPlanner/cropVisuals';
-import { CropIcon } from '../CropPlanner/cropIcons';
+import { CropArtwork, GardenScene } from '../branding/GardenArt';
 import { HarvestLogModal } from '../Harvests/HarvestLogModal';
 import { daysUntil, formatDate, harvestProgress } from '../../utils/cropTiming';
 import { CropTimingModal } from './CropTimingModal';
@@ -208,7 +208,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
     return (
       <Card padding="6">
         <div className="grn-crop-empty">
-          <span className="grn-crop-empty__emoji" aria-hidden="true">🌱</span>
+          <GardenScene name="first-garden" className="grn-crop-empty__art" />
           <h3>Your garden is a blank slate</h3>
           <p>
             Add your first crop and start mapping out beds, planting dates, and what you&apos;d like to grow.
@@ -304,7 +304,7 @@ export function CropLibraryPanel({ viewerUserId }: CropLibraryPanelProps) {
                   }}
                 >
                   <span className="grn-crop-card__emoji" aria-hidden="true">
-                    <CropIcon iconKey={visual.iconKey} color={visual.accent} size="2.4rem" />
+                    <CropArtwork iconKey={visual.iconKey} color={visual.accent} size="3.5rem" />
                   </span>
                   <span className={`grn-crop-card__status grn-crop-card__status--${status.tone}`}>
                     <span aria-hidden="true">{status.emoji}</span>

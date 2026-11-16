@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" stroke="#4f573b" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round">
+<title>Lettuce</title>
+<path d="M38 68C20 67 10 52 13 39c-5-11 6-24 15-21 5-11 18-12 25-4 12-3 22 7 19 17 8 12 0 31-13 34-8 5-14 6-21 3Z" fill="#9cad6d"/>
+<path d="M40 65C21 60 18 45 26 35c-3-9 11-17 18-11 13-5 25 8 19 18 2 12-10 21-23 23Z" fill="#bdc58a"/>
+<path d="M40 65V35m0 18L29 43m11 15 13-13m-13 20-8 5m8-5 10 4" fill="none" stroke="#73864e"/>
+<path d="M32 33c4-4 9-4 13-1m10 2 3 5" fill="none" stroke="#e0dfb4" stroke-width="3"/>
+</svg>

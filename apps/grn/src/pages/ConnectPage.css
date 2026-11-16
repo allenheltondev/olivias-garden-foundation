@@ -1,3 +1,25 @@
+.grn-share-home__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14rem;
+  align-items: center;
+  gap: 1rem;
+}
+
+.grn-share-home__art {
+  width: 14rem;
+}
+
+@media (max-width: 600px) {
+  .grn-share-home__intro {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .grn-share-home__art {
+    width: 10rem;
+    justify-self: center;
+  }
+}
+
 .grn-share-home .grn-connect-grid {
   margin-top: 0;
   gap: 1.25rem;

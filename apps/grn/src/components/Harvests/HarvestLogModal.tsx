@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@olivias/ui';
 import { completeTodayAction } from '../../utils/todayActionTracking';
+import { CropArtwork } from '../branding/GardenArt';
+import { visualForCrop } from '../CropPlanner/cropVisuals';
 import {
   deleteHarvest,
   listHarvests,
@@ -247,6 +249,9 @@ export function HarvestLogModal({
 
         {savedHarvest && onShareHarvest ? (
           <div className="rounded-base border border-primary-200 bg-primary-50 px-4 py-3" role="status">
+            <span className="grn-harvest-saved-art" aria-hidden="true">
+              <CropArtwork iconKey={visualForCrop(cropName, null).iconKey} size={48} />
+            </span>
             <p className="font-medium text-primary-900">Harvest saved.</p>
             <p className="mt-1 text-sm text-primary-900">
               {savedHarvest.amount}{savedHarvest.unit ? ` ${savedHarvest.unit}` : ''} of {cropName} added to your garden story.

@@ -1,0 +1,14 @@
+.grn-harvest-saved-art {
+  float: right;
+  margin-inline-start: 0.75rem;
+  animation: grn-harvest-art-arrive 240ms ease-out;
+}
+
+@keyframes grn-harvest-art-arrive {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grn-harvest-saved-art { animation: none; }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" stroke="#4f573b" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round">
+<title>Tomato</title>
+<path d="M40 24C22 16 10 30 14 48c3 17 19 22 26 17 10 6 27-2 28-18 2-17-13-28-28-23Z" fill="#cb5941"/>
+<path d="M40 28c-9 6-13 20-8 31M49 29c9 5 13 16 9 25" fill="none" stroke="#ae4836"/>
+<path d="m40 28-13-9 12 2 4-10 3 11 13-2-11 8 5 9-13-7-10 7Z" fill="#698348"/>
+<path d="M41 23c-1-9 2-13 6-15" fill="none" stroke="#52683c"/>
+<path d="M23 35c-3 4-4 8-3 12" fill="none" stroke="#ef9b76" stroke-width="3"/>
+</svg>

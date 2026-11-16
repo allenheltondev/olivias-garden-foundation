@@ -16,6 +16,21 @@
   flex-wrap: wrap;
 }
 
+.grn-first-steps__art {
+  width: 9rem;
+  flex: 0 0 auto;
+}
+
+.grn-first-steps__copy {
+  flex: 1 1 16rem;
+}
+
+@media (max-width: 480px) {
+  .grn-first-steps__art {
+    display: none;
+  }
+}
+
 .grn-first-steps__copy h2 {
   margin: 0;
   color: var(--og-color-soil);

@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GrowerCropItem } from '../../types/listing';
 import type { GrowerProfile } from '../../types/user';
-import { CropIcon } from '../CropPlanner/cropIcons';
+import { CropArtwork } from '../branding/GardenArt';
 import { visualForCrop } from '../CropPlanner/cropVisuals';
 import { createLogger } from '../../utils/logging';
 import { buildSeasonalGuide } from './seasonality';
@@ -84,7 +84,7 @@ export function SeasonalGuide({ growerProfile, crops = [], now }: SeasonalGuideP
                   style={{ '--season-crop-accent': visual.accent } as CSSProperties}
                   aria-hidden="true"
                 >
-                  <CropIcon iconKey={visual.iconKey} size={32} />
+                  <CropArtwork iconKey={visual.iconKey} size={40} />
                 </div>
                 <div className="grn-season-crop__copy">
                   <div className="grn-season-crop__topline">

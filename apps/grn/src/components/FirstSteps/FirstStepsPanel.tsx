@@ -4,6 +4,7 @@ import { Button } from '@olivias/ui';
 import type { GrowerCropItem } from '../../types/listing';
 import { createLogger } from '../../utils/logging';
 import { buildFirstSteps, type FirstStep } from './firstSteps';
+import { GardenScene } from '../branding/GardenArt';
 import './FirstStepsPanel.css';
 
 const HIDDEN_STORAGE_PREFIX = 'og-grn-first-steps-hidden';
@@ -99,6 +100,7 @@ export function FirstStepsPanel({
             any order, at whatever pace suits you.
           </p>
         </div>
+        {crops.length === 0 ? <GardenScene name="first-garden" className="grn-first-steps__art" /> : null}
         <div className="grn-first-steps__progress">
           <span className="grn-first-steps__progress-count">
             {summary.completedCount} of {summary.totalCount} done
