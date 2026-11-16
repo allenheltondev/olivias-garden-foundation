@@ -120,7 +120,7 @@ function GuideBlockView({ block, onNavigate, imageSizes = IMAGE_SIZES_FULL }: { 
     case 'image':
       return (
         <figure className="okra-guide__figure">
-          <ResponsiveImage src={block.src} alt={block.alt} sizes={imageSizes} loading="lazy" />
+          <ResponsiveImage src={block.src} alt={block.alt} sizes={imageSizes} loading="lazy" reserveSpace />
           {block.caption ? (
             <figcaption><InlineText text={block.caption} onNavigate={onNavigate} /></figcaption>
           ) : null}
@@ -418,13 +418,15 @@ export function OkraGuidePage({
 
       <div className="okra-guide__layout">
         <aside className="okra-guide__rail" aria-label="About this guide">
-          {/* Published guides always have a photo (the validator requires it). Drafts may not yet. */}
-          {summary.heroImage ? (
+          {/* Published guides always have a photo (the validator requires it). Drafts
+              may not yet, or may have only its alt text, so check for a real src. */}
+          {summary.heroImage?.src?.trim() ? (
             <figure className="page-photo okra-guide__hero-photo">
               <ResponsiveImage
                 src={summary.heroImage.src}
                 alt={summary.heroImage.alt}
                 sizes="(max-width: 959px) 100vw, 22rem"
+                reserveSpace
                 loading="eager"
                 fetchPriority="high"
               />

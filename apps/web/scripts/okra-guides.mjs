@@ -90,6 +90,39 @@ function publicFilePath(src, root) {
   return join(root, src.replace(/^\/+/, ''));
 }
 
+/** The responsive image manifest, or null when it hasn't been generated (e.g. test fixtures). */
+function readResponsiveManifest(root) {
+  const path = join(root, 'images', 'responsive', 'manifest.json');
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')).images ?? {};
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Photos need an entry in the responsive manifest: its size lets the page
+ * reserve space before the photo loads, and its AVIF variants keep downloads
+ * small. Without one the page falls back to the full-size original.
+ */
+function checkResponsiveVariants(src, manifest, report, label, root) {
+  if (!manifest) return;
+  const key = src.replace(/^\/+/, '').replace(/^images\//, '');
+  const entry = manifest[key];
+  const folder = dirname(key);
+  const fix = `Run: npm --workspace @olivias/web run images:generate -- --only=${folder === '.' ? key : folder}`;
+  if (!entry?.width || !entry?.height || !(entry.variants?.avif?.length > 0)) {
+    report(`${label} ${src} has no responsive variants. ${fix}`);
+    return;
+  }
+  // Browsers fetch whichever variant fits, so every listed file must ship.
+  const missing = entry.variants.avif.filter((variant) => !existsSync(publicFilePath(String(variant?.path ?? ''), root)));
+  if (missing.length > 0) {
+    report(`${label} ${src} lists responsive variants that don't exist under public/: ${missing.map((variant) => variant.path).join(', ')}. ${fix}`);
+  }
+}
+
 function checkDescriptiveFilename(src, report, label) {
   const name = basename(src, extname(src));
   if (GENERIC_FILENAME_PATTERN.test(name) || !/[a-z]+-[a-z]+/.test(name)) {
@@ -135,6 +168,7 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
   }
 
   const socialImageOwners = new Map();
+  const responsiveManifest = readResponsiveManifest(root);
   const knownPathSet = new Set([...knownPaths, ...[...slugs.keys()].map(guidePath)]);
 
   for (const { file, guide } of entries) {
@@ -262,8 +296,13 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
             if (!isNonEmptyString(block.src)) {
               structural(`${blockWhere}.src is required.`);
             } else {
+              if (!block.src.startsWith('/')) {
+                structural(`${blockWhere}.src must start with "/" (for example /images/okra/guides/<slug>/<photo>.jpg).`);
+              }
               if (!existsSync(publicFilePath(block.src, root))) {
                 publishing(`${blockWhere}.src ${block.src} does not exist under public/.`);
+              } else {
+                checkResponsiveVariants(block.src, responsiveManifest, publishing, `${blockWhere} image`, root);
               }
               checkDescriptiveFilename(block.src, publishing, `${blockWhere} image`);
             }
@@ -308,12 +347,17 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
     if (!guide.heroImage || !isNonEmptyString(guide.heroImage.src)) {
       publishing('heroImage.src is required: every guide needs its own photo.');
     } else {
+      if (!guide.heroImage.src.startsWith('/')) {
+        structural('heroImage.src must start with "/" (for example /images/okra/guides/<slug>/<photo>.jpg).');
+      }
       const heroPath = publicFilePath(guide.heroImage.src, root);
       if (!IMAGE_EXTENSIONS.has(extname(guide.heroImage.src).toLowerCase())) {
         publishing(`heroImage must be a .jpg, .png, or .webp file (got ${guide.heroImage.src}).`);
       }
       if (!existsSync(heroPath)) {
         publishing(`heroImage ${guide.heroImage.src} does not exist under public/.`);
+      } else {
+        checkResponsiveVariants(guide.heroImage.src, responsiveManifest, publishing, 'heroImage', root);
       }
       checkDescriptiveFilename(guide.heroImage.src, publishing, 'heroImage');
       checkAltText(guide.heroImage, publishing, 'heroImage');
@@ -324,6 +368,9 @@ export async function validateOkraGuides(entries, { root = publicDir, knownPaths
       publishing(`socialImage.src is required: create a ${SOCIAL_IMAGE_WIDTH}x${SOCIAL_IMAGE_HEIGHT} card for this guide (npm run social:guide -- ${guide.slug ?? '<slug>'}).`);
     } else {
       const src = guide.socialImage.src;
+      if (!src.startsWith('/')) {
+        structural('socialImage.src must start with "/" (for example /images/social/okra-guides/<slug>.jpg).');
+      }
       const socialPath = publicFilePath(src, root);
       checkAltText(guide.socialImage, publishing, 'socialImage');
       if (src === DEFAULT_SOCIAL_IMAGE) {

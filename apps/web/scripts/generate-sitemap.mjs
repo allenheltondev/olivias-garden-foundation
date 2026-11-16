@@ -32,7 +32,12 @@ function escapeXml(value) {
     .replace(/'/g, '&apos;');
 }
 
-function buildEntry(route) {
+function absoluteImageUrl(src) {
+  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  return `${siteUrl}${src.startsWith('/') ? '' : '/'}${src}`;
+}
+
+export function buildEntry(route) {
   const loc = `${siteUrl}${route.path === '/' ? '/' : route.path}`;
   const changefreq = route.sitemap?.changefreq ?? 'monthly';
   const priority = (route.sitemap?.priority ?? 0.5).toFixed(1);
@@ -43,8 +48,15 @@ function buildEntry(route) {
     ...(route.sitemap?.lastmod ? [`    <lastmod>${escapeXml(route.sitemap.lastmod)}</lastmod>`] : []),
     `    <changefreq>${changefreq}</changefreq>`,
     `    <priority>${priority}</priority>`,
+    // Google image sitemap extension: lets the page's photos be found in image search.
+    ...(route.sitemap?.images ?? []).map((src) => `    <image:image><image:loc>${escapeXml(absoluteImageUrl(src))}</image:loc></image:image>`),
     '  </url>',
   ].join('\n');
+}
+
+export function buildSitemapXml(routes) {
+  const body = routes.map(buildEntry).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${body}\n</urlset>\n`;
 }
 
 async function main() {
@@ -52,15 +64,16 @@ async function main() {
     (route) => route.allowIndex !== false && !route.canonicalPath,
   );
 
-  const body = indexable.map(buildEntry).join('\n');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
+  const xml = buildSitemapXml(indexable);
 
   const outPath = join(distDir, 'sitemap.xml');
   await writeFile(outPath, xml, 'utf8');
   console.log(`generate-sitemap: wrote ${indexable.length} URLs to ${outPath}`);
 }
 
-main().catch((error) => {
-  console.error('generate-sitemap failed:', error);
-  process.exit(1);
-});
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((error) => {
+    console.error('generate-sitemap failed:', error);
+    process.exit(1);
+  });
+}

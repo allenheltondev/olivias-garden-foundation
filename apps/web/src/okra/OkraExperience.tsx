@@ -8,6 +8,7 @@ import { SeedRequestModal } from './components/SeedRequestModal';
 import { SubmissionModal } from './components/SubmissionModal';
 import { okraGuides } from '../site/okra-guides';
 import { guidePath } from '../site/okra-guides/guide-core.mjs';
+import { ResponsiveImage } from '../site/responsive-images';
 import './buttons.css';
 import './theme.css';
 import './OkraExperience.css';
@@ -126,9 +127,11 @@ export function OkraExperience({
 
         <figure className="ok-hero__photo">
           <div className="ok-hero__photo-frame">
-            <img
+            <ResponsiveImage
               src="/images/okra/olivia-okra.jpg"
               alt="Olivia with her okra harvest."
+              sizes="(min-width: 960px) 26rem, min(100vw, 22rem)"
+              reserveSpace
               loading="eager"
               fetchPriority="high"
             />

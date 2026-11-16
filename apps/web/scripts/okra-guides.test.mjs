@@ -10,6 +10,7 @@ import {
   buildGuideBreadcrumbJsonLd,
   buildGuideFaqJsonLd,
   buildGuideJsonLdBlocks,
+  guidePhotos,
   collectGuideLinks,
   formatGuideDate,
   guideRouteMeta,
@@ -22,6 +23,7 @@ import {
 import { layoutHeadline, layoutPageHeadline, renderSocialCard } from './generate-guide-social-card.mjs';
 import { withGuideSection } from './generate-llms.mjs';
 import { loadOkraGuides, readGuideFiles, validateOkraGuides } from './okra-guides.mjs';
+import { buildEntry, buildSitemapXml } from './generate-sitemap.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixtureDir = join(__dirname, '__fixtures__', 'okra-guides');
@@ -242,6 +244,39 @@ describe('validation', () => {
     assert.ok(malformed.some((error) => /plant is required/.test(error)), malformed.join('\n'));
   });
 
+  test('published photos need responsive variants once the manifest exists', async () => {
+    const manifestPath = join(publicRoot, 'images', 'responsive', 'manifest.json');
+    mkdirSync(dirname(manifestPath), { recursive: true });
+    const variants = { avif: [{ width: 480, path: 'images/responsive/okra/olivia-okra-480.avif', bytes: 1 }] };
+    try {
+      writeFileSync(manifestPath, JSON.stringify({ images: {} }));
+      const { errors } = await validate(readFixture('example-okra-guide'), readFixture('example-related-guide'));
+      assert.ok(errors.some((error) => /heroImage \/images\/okra\/olivia-okra\.jpg has no responsive variants\. Run: .*--only=okra/.test(error)), errors.join('\n'));
+      assert.ok(errors.some((error) => /blocks\[\d+\] image \/images\/okra\/olivia-okra\.jpg has no responsive variants/.test(error)), errors.join('\n'));
+
+      // Listed in the manifest, but the AVIF file itself is missing.
+      writeFileSync(manifestPath, JSON.stringify({ images: { 'okra/olivia-okra.jpg': { width: 978, height: 1304, variants } } }));
+      const missingFile = await validate(readFixture('example-okra-guide'), readFixture('example-related-guide'));
+      assert.ok(missingFile.errors.some((error) => /lists responsive variants that don't exist under public\/: images\/responsive\/okra\/olivia-okra-480\.avif/.test(error)), missingFile.errors.join('\n'));
+
+      mkdirSync(join(publicRoot, 'images', 'responsive', 'okra'), { recursive: true });
+      writeFileSync(join(publicRoot, 'images', 'responsive', 'okra', 'olivia-okra-480.avif'), 'avif');
+      const ok = await validate(readFixture('example-okra-guide'), readFixture('example-related-guide'));
+      assert.deepEqual(ok.errors.filter((error) => /responsive variants/.test(error)), []);
+    } finally {
+      rmSync(join(publicRoot, 'images', 'responsive'), { recursive: true, force: true });
+    }
+  });
+
+  test('guide image paths must be root-relative, even in drafts', async () => {
+    const guide = { ...readFixture('example-related-guide'), status: 'draft' };
+    guide.heroImage = { ...guide.heroImage, src: guide.heroImage.src.replace(/^\//, '') };
+    guide.sections[0].blocks = [{ type: 'image', src: 'images/okra/olivia-okra.jpg', alt: 'Olivia holding okra pods in the garden' }];
+    const { errors } = await validate(readFixture('example-okra-guide'), guide);
+    assert.ok(errors.some((error) => /heroImage\.src must start with "\/"/.test(error)), errors.join('\n'));
+    assert.ok(errors.some((error) => /blocks\[0\]\.src must start with "\/"/.test(error)), errors.join('\n'));
+  });
+
   test('structural problems are errors even for drafts', async () => {
     const guide = { ...readFixture('example-related-guide'), status: 'draft', slug: 'submissions' };
     guide.sections = [{ id: 'Bad Id', title: '', blocks: [{ type: 'video' }] }];
@@ -266,11 +301,69 @@ describe('structured data and fallback HTML', () => {
     assert.equal(article.url, `${siteUrl}/okra/example-okra-guide`);
     assert.equal(article.datePublished, '2026-11-14');
     assert.equal(article.dateModified, '2026-11-15');
-    assert.deepEqual(article.image, [
+    // Each photo once (the fixture reuses its hero in the body), then the
+    // social card, each as a described ImageObject.
+    assert.deepEqual(article.image.map((image) => image.url), [
       `${siteUrl}/images/okra/olivia-okra.jpg`,
       `${siteUrl}/images/social/okra-guides/example-okra-guide.jpg`,
     ]);
+    for (const image of article.image) {
+      assert.equal(image['@type'], 'ImageObject');
+      assert.equal(image.contentUrl, image.url);
+      assert.ok(image.description, `${image.url} needs a description`);
+    }
+    assert.doesNotMatch(JSON.stringify(article.image), /\*\*|\]\(/, 'captions are plain text');
     assert.equal(article.publisher['@id'], `${siteUrl}/#organization`);
+  });
+
+  test('guide photos are the hero then in-body images, without the social card', () => {
+    const photos = guidePhotos(guide);
+    assert.equal(photos[0].src, guide.heroImage.src);
+    assert.ok(photos.every((photo) => !photo.src.includes('/images/social/')));
+    assert.equal(new Set(photos.map((photo) => photo.src)).size, photos.length, 'no repeats');
+    const withExtra = { ...guide, sections: [...guide.sections, { id: 'more', title: 'More', blocks: [{ type: 'image', src: '/images/okra/other.jpg', alt: 'Another okra photo for the test' }] }] };
+    assert.deepEqual(guidePhotos(withExtra).map((photo) => photo.src), [guide.heroImage.src, '/images/okra/other.jpg']);
+  });
+
+  test('image URLs get a slash even when a guide path leaves it out', () => {
+    const slashless = { ...guide, heroImage: { ...guide.heroImage, src: guide.heroImage.src.replace(/^\//, '') } };
+    const article = buildGuideArticleJsonLd(slashless, siteUrl);
+    assert.equal(article.image[0].url, `${siteUrl}/images/okra/olivia-okra.jpg`);
+    assert.ok(article.image.every((image) => image.url.startsWith(`${siteUrl}/`)), JSON.stringify(article.image));
+    const entry = buildEntry({ path: '/okra/example', sitemap: { images: ['images/okra/olivia-okra.jpg'] } });
+    assert.match(entry, /<image:loc>https:\/\/oliviasgarden\.org\/images\/okra\/olivia-okra\.jpg<\/image:loc>/);
+  });
+
+  test('a draft whose hero photo is still pending renders fallback HTML without an image', () => {
+    const draft = { ...guide, status: 'draft', heroImage: { alt: 'A photo to be added before publication' } };
+    const html = renderGuideFallbackHtml(draft);
+    assert.match(html, /<h1>Example okra guide<\/h1>/);
+    assert.doesNotMatch(html, /<img src="(undefined)?"/);
+    assert.ok(guidePhotos(draft).every((photo) => photo.src.startsWith('/')));
+    const withoutHero = { ...guide, status: 'draft' };
+    delete withoutHero.heroImage;
+    assert.doesNotThrow(() => renderGuideFallbackHtml(withoutHero));
+    assert.doesNotThrow(() => buildGuideArticleJsonLd(draft, siteUrl));
+  });
+
+  test('the same photo with and without a leading slash is listed once, root-relative', () => {
+    const mixed = {
+      ...guide,
+      heroImage: { ...guide.heroImage, src: 'images/okra/olivia-okra.jpg' },
+      sections: [{ id: 'more', title: 'More', blocks: [{ type: 'image', src: '/images/okra/olivia-okra.jpg', alt: 'Olivia holding okra pods in the garden' }] }],
+    };
+    assert.deepEqual(guidePhotos(mixed).map((photo) => photo.src), ['/images/okra/olivia-okra.jpg']);
+    const html = renderGuideFallbackHtml(mixed);
+    assert.doesNotMatch(html, /src="images\//);
+    assert.match(html, /<img src="\/images\/okra\/olivia-okra\.jpg"/);
+  });
+
+  test('the sitemap lists a page\'s photos with the image extension', () => {
+    const entry = buildEntry({ path: '/okra/example', sitemap: { lastmod: '2026-11-16', images: ['/images/okra/a & b.jpg'] } });
+    assert.match(entry, /<loc>https:\/\/oliviasgarden\.org\/okra\/example<\/loc>/);
+    assert.match(entry, /<image:image><image:loc>https:\/\/oliviasgarden\.org\/images\/okra\/a &amp; b\.jpg<\/image:loc><\/image:image>/);
+    assert.doesNotMatch(buildEntry({ path: '/about' }), /image:image/);
+    assert.match(buildSitemapXml([]), /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
   });
 
   test('breadcrumbs go Home > The Okra Project > guide', () => {

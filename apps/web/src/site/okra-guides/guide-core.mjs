@@ -96,8 +96,16 @@ function blockTexts(block) {
   }
 }
 
+/** A local image path as root-relative (/images/...); external URLs pass through. */
+export function rootRelative(path) {
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) return path;
+  return `/${path}`;
+}
+
 function absoluteUrl(siteUrl, path) {
-  return path.startsWith('http://') || path.startsWith('https://') ? path : `${siteUrl}${path}`;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Guide paths are written like /images/..., but tolerate a missing leading slash.
+  return `${siteUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 export function guidePageTitle(guide) {
@@ -146,11 +154,44 @@ export function sortGuides(guides) {
 
 // --- Structured data -------------------------------------------------------
 
+/**
+ * The guide's photos in page order, without repeats: the hero, then any
+ * in-body image blocks.
+ * The social card is left out, since it's a designed card, not a photo.
+ */
+export function guidePhotos(guide) {
+  const body = (guide.sections ?? []).flatMap((section) => (section.blocks ?? [])
+    .filter((block) => block.type === 'image' && block.src)
+    .map((block) => ({ src: block.src, alt: block.alt, caption: block.caption })));
+  const seen = new Set();
+  return [guide.heroImage, ...body]
+    .filter((image) => image?.src)
+    .map((image) => ({ ...image, src: rootRelative(image.src) }))
+    .filter((image) => {
+      if (seen.has(image.src)) return false;
+      seen.add(image.src);
+      return true;
+    });
+}
+
+function imageObject(siteUrl, image) {
+  const url = absoluteUrl(siteUrl, image.src);
+  return {
+    '@type': 'ImageObject',
+    url,
+    contentUrl: url,
+    ...(image.caption ? { caption: stripInline(image.caption) } : {}),
+    ...(image.alt ? { description: image.alt } : {}),
+  };
+}
+
 export function buildGuideArticleJsonLd(guide, siteUrl) {
   const url = absoluteUrl(siteUrl, guidePath(guide.slug));
-  const images = [guide.heroImage?.src, guide.socialImage?.src]
-    .filter(Boolean)
-    .map((src) => absoluteUrl(siteUrl, src));
+  // Every photo on the page, described, then the 1200x630 social card.
+  const images = [
+    ...guidePhotos(guide).map((image) => imageObject(siteUrl, image)),
+    ...(guide.socialImage?.src ? [imageObject(siteUrl, guide.socialImage)] : []),
+  ];
   const organizationRef = { '@id': `${siteUrl}/#organization` };
 
   const article = {
@@ -280,7 +321,7 @@ function blockToHtml(block) {
         rows: block.rows.map((row) => [zoneRowLabel(row.zones), row.plant]),
       });
     case 'image':
-      return `<figure><img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" />${block.caption ? `<figcaption>${inlineToHtml(block.caption)}</figcaption>` : ''}</figure>`;
+      return `<figure><img src="${escapeHtml(rootRelative(block.src))}" alt="${escapeHtml(block.alt)}" />${block.caption ? `<figcaption>${inlineToHtml(block.caption)}</figcaption>` : ''}</figure>`;
     default:
       return '';
   }
@@ -294,7 +335,8 @@ export function renderGuideFallbackHtml(guide, relatedGuides = []) {
   const parts = [
     `<h1>${escapeHtml(guide.title)}</h1>`,
     `<p>${inlineToHtml(guide.summary)}</p>`,
-    guide.heroImage ? `<img src="${escapeHtml(guide.heroImage.src)}" alt="${escapeHtml(guide.heroImage.alt)}" />` : '',
+    // Drafts can leave the photo out until it exists, so only render a real src.
+    typeof guide.heroImage?.src === 'string' && guide.heroImage.src.trim() ? `<img src="${escapeHtml(rootRelative(guide.heroImage.src))}" alt="${escapeHtml(guide.heroImage.alt)}" />` : '',
     ...guide.intro.map((paragraph) => `<p>${inlineToHtml(paragraph)}</p>`),
     ...guide.sections.flatMap((section) => [
       `<h2 id="${escapeHtml(section.id)}">${escapeHtml(section.title)}</h2>`,
